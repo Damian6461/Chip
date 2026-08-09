@@ -26,9 +26,11 @@ let ultimoCambioVisual = 0;
 let temporizadorAccion = null;
 let temporizadorDebounce = null;
 let visualForzado = null; // sólo lo escribe el panel de debug
+let refrescarDebug = null; // lo setea debug.js si está activo
 
 function pintar() {
   renderUI(estado, estadoVisualActual);
+  if (refrescarDebug) refrescarDebug();
 }
 
 // El forzado del panel de debug corta la cadena acá, no adentro: sprites.js
@@ -195,6 +197,10 @@ const apiDebug = {
 };
 
 // Import dinámico: sin ?debug en la URL, debug.js no se descarga.
+// iniciarDebug devuelve su refresco, que pintar() engancha para que la lectura
+// de stats siga a los botones del juego y no sólo a los del panel.
 if (new URLSearchParams(location.search).has(PARAM_DEBUG)) {
-  import('./debug.js').then(({ iniciarDebug }) => iniciarDebug(apiDebug));
+  import('./debug.js').then(({ iniciarDebug }) => {
+    refrescarDebug = iniciarDebug(apiDebug);
+  });
 }

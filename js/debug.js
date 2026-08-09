@@ -123,7 +123,6 @@ export function iniciarDebug(api) {
     const horas = Number(inputHoras.value) || 0;
     const multiplicador = Number(inputMultiplicador.value) || 1;
     api.simularHoras(horas, multiplicador);
-    refrescarStats();
   });
   filaHoras.append(inputHoras, botonSimular);
 
@@ -152,7 +151,6 @@ export function iniciarDebug(api) {
   botonReiniciar.addEventListener('click', () => {
     api.reiniciarSave();
     selectVisual.value = OPCION_DEBUG_AUTO;
-    refrescarStats();
   });
 
   // ---- Lectura de stats ----
@@ -173,8 +171,15 @@ export function iniciarDebug(api) {
     ].join('\n');
   }
 
+  // Primera pintada: debug.js se carga async, después del render inicial, así
+  // que el panel nace vacío si no se llena una vez acá.
   refrescarStats();
 
   panel.append(filaMultiplicador, filaHoras, botonVolver, filaVisual, botonReiniciar, stats);
   document.body.appendChild(panel);
+
+  // main.js llama a esto en cada pintada. Sin eso la lectura se queda vieja al
+  // usar los botones del juego, que el panel no puede escuchar sin meterse con
+  // el DOM que es de ui.js.
+  return refrescarStats;
 }
