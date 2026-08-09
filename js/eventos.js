@@ -17,14 +17,16 @@ function cuantosTocan(horas) {
   return MAX_EVENTOS_POR_VISITA;
 }
 
-// `aleatorio` es inyectable para que las pruebas sean deterministas.
-export function elegirEventos(horas, ultimoEventoId, aleatorio = Math.random) {
+// `ultimosIds` son los eventos mostrados en la visita anterior — todos, no sólo
+// el último. `aleatorio` es inyectable para que las pruebas sean deterministas.
+export function elegirEventos(horas, ultimosIds = [], aleatorio = Math.random) {
   const cuantos = cuantosTocan(horas);
   if (cuantos === 0) return [];
 
-  // El último mostrado queda afuera del sorteo: nunca se repite dos visitas
-  // seguidas.
-  const candidatos = EVENTOS.filter((evento) => evento.id !== ultimoEventoId);
+  // Lo mostrado la visita pasada queda afuera del sorteo: si viste dos eventos,
+  // ninguno de los dos vuelve a salir la próxima vez.
+  const excluidos = new Set(ultimosIds);
+  const candidatos = EVENTOS.filter((evento) => !excluidos.has(evento.id));
 
   const elegidos = [];
   const disponibles = [...candidatos];

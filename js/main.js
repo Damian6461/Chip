@@ -89,8 +89,8 @@ function marcarAccion(nombreVisual) {
 }
 
 // Si la acción devuelve el mismo estado, no aplicó (ej: jugar sin batería):
-// no se guarda ni se redibuja. `nombreVisual` es null para las acciones sin
-// estado visual propio: la spec sólo define cargando y jugando.
+// no se guarda ni se redibuja. Las tres acciones tienen estado visual propio;
+// `nombreVisual` acepta null por si alguna futura no lo tuviera.
 function ejecutar(nombreVisual, accion) {
   const siguiente = accion(estado);
   if (siguiente === estado) return;
@@ -112,11 +112,11 @@ const horasFuera = horasTranscurridas(estado, ahoraArranque);
 
 estado = aplicarDecay(estado, ahoraArranque);
 
-// Qué hizo Chip mientras no estabas. El último mostrado se persiste para no
-// repetirlo en la próxima visita; con dos eventos, el "último" es el segundo.
-const eventos = elegirEventos(horasFuera, estado.ultimoEventoId);
+// Qué hizo Chip mientras no estabas. Se persisten los ids de TODO lo mostrado
+// para que nada de esta visita pueda repetirse en la siguiente.
+const eventos = elegirEventos(horasFuera, estado.ultimosEventosIds);
 if (eventos.length > 0) {
-  estado = { ...estado, ultimoEventoId: eventos[eventos.length - 1].id };
+  estado = { ...estado, ultimosEventosIds: eventos.map((evento) => evento.id) };
 }
 
 guardarEstado(estado);
@@ -125,7 +125,7 @@ mostrarEventos(eventos);
 conectarAcciones({
   onCargar: () => ejecutar(E.cargando, cargar),
   onJugar: () => ejecutar(E.jugando, jugar),
-  onLimpiar: () => ejecutar(null, limpiar)
+  onLimpiar: () => ejecutar(E.limpiando, limpiar)
 });
 
 actualizarVisual({ inmediato: true });

@@ -83,6 +83,43 @@ prueba('4. sin doble decay: reaplicar en el mismo instante no vuelve a cobrar', 
   cerca(e.bateria, 85, 'tres recargas seguidas cobran 3 h, no 9');
 });
 
+// ---- El decay nunca regala stats ----
+// DECAY_FLOOR limita cuánto puede bajar el paso del tiempo, no dónde tiene que
+// estar el valor. Un stat por debajo del piso se queda donde está: sube sólo
+// con acciones. Si no, jugar con la batería en 15 la deja en 5 y el siguiente
+// tick devuelve esos 5 gratis.
+prueba('piso: un stat por debajo de DECAY_FLOOR no sube con el decay', () => {
+  const bajo = { ...base(), bateria: 5, humor: 3, mantenimiento: 0 };
+
+  const r = aplicarDecay(bajo, enHoras(5));
+
+  igual(r.bateria, 5, 'bateria en 5 se queda en 5, no sube a 10');
+  igual(r.humor, 3, 'humor en 3 se queda en 3');
+  igual(r.mantenimiento, 0, 'mantenimiento en 0 se queda en 0');
+});
+
+prueba('piso: el costo de jugar en el borde no se evapora', () => {
+  // El caso concreto: bateria 15, jugar la deja en 5 (clamp de acción), y el
+  // decay que viene después no puede devolverla a 10.
+  const traseJugar = { ...base(), bateria: 5 };
+
+  let e = aplicarDecay(traseJugar, enHoras(1));
+  e = aplicarDecay(e, enHoras(12));
+
+  igual(e.bateria, 5, 'dos ticks después sigue en 5');
+});
+
+prueba('piso: el decay nunca aumenta ningún stat, arranque donde arranque', () => {
+  for (const valor of [0, 1, 5, 9.99, 10, 10.01, 50, 100]) {
+    const inicial = { ...base(), bateria: valor, humor: valor, mantenimiento: valor };
+    const r = aplicarDecay(inicial, enHoras(24));
+
+    for (const stat of STATS) {
+      verdadero(r[stat] <= valor, `desde ${valor}, ${stat} no aumentó (quedó en ${r[stat]})`);
+    }
+  }
+});
+
 prueba('4b. sin doble decay: 2 h + 3 h da lo mismo que 5 h de una', () => {
   const partido = aplicarDecay(aplicarDecay(base(), enHoras(2)), enHoras(5));
   const entero = aplicarDecay(base(), enHoras(5));

@@ -5,7 +5,7 @@ import {
   VERSION_ESTADO,
   NOMBRE_INICIAL,
   STAT_INICIAL,
-  EVENTO_INICIAL_ID
+  EVENTOS_INICIALES_IDS
 } from './config.js';
 
 export function crearEstadoNuevo() {
@@ -17,7 +17,7 @@ export function crearEstadoNuevo() {
     mantenimiento: STAT_INICIAL,
     ultimaVisita: ahora,
     creado: ahora,
-    ultimoEventoId: EVENTO_INICIAL_ID,
+    ultimosEventosIds: [...EVENTOS_INICIALES_IDS],
     version: VERSION_ESTADO
   };
 }
@@ -32,11 +32,24 @@ export function crearEstadoNuevo() {
 function migrar(guardado) {
   if (guardado.version === VERSION_ESTADO) return guardado;
 
-  return {
+  const migrado = {
     ...crearEstadoNuevo(),
     ...guardado,
     version: VERSION_ESTADO
   };
+
+  // v2 -> v3: ultimoEventoId (uno) pasó a ultimosEventosIds (todos los de la
+  // última visita). El merge de arriba resuelve los campos que sólo se agregan;
+  // un campo que cambia de forma necesita su paso explícito, si no el viejo
+  // queda colgado en el save para siempre.
+  if ('ultimoEventoId' in migrado) {
+    if (migrado.ultimoEventoId && !Array.isArray(guardado.ultimosEventosIds)) {
+      migrado.ultimosEventosIds = [migrado.ultimoEventoId];
+    }
+    delete migrado.ultimoEventoId;
+  }
+
+  return migrado;
 }
 
 export function cargarEstado() {

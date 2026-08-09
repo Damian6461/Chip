@@ -37,6 +37,7 @@ function enFranjaStandby(hora) {
 const CADENA_ESTADOS = [
   { nombre: E.cargando, condicion: (c) => c.accion === E.cargando },
   { nombre: E.jugando, condicion: (c) => c.accion === E.jugando },
+  { nombre: E.limpiando, condicion: (c) => c.accion === E.limpiando },
   { nombre: E.critico, condicion: (c) => c.estado.bateria < UMBRAL_CRITICO_BATERIA },
   { nombre: E.standby, condicion: (c) => enFranjaStandby(horaLocal(c.ahora)) },
   {
@@ -81,8 +82,21 @@ export async function cargarSprites() {
   }
 }
 
-// Devuelve la imagen lista para dibujar, o null si no hay sprite disponible.
-export function obtenerSprite(nombre) {
+function imagenDe(nombre) {
   const sprite = sprites[nombre];
   return sprite && sprite.ok ? sprite.img : null;
+}
+
+// Devuelve la imagen lista para dibujar.
+//
+// Degradación en dos escalones: si falta el sprite del estado pedido se usa el
+// de ESTADO_POR_DEFECTO, y si tampoco está se devuelve null y ui.js dibuja el
+// placeholder con el nombre del estado escrito. Así el arte puede entregarse
+// incompleto — `limpiando.png` es opcional — sin que el juego muestre un
+// recuadro de debug en medio de una partida.
+//
+// Contrapartida: con arte real, un sprite que falte se ve como idle en vez de
+// cantar el error. El placeholder sólo aparece si no cargó ninguno de los dos.
+export function obtenerSprite(nombre) {
+  return imagenDe(nombre) ?? imagenDe(ESTADO_POR_DEFECTO);
 }

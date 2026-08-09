@@ -38,6 +38,8 @@ const CASOS = [
   // Estados de acción.
   ['cargando', { estado: estado(50), ahora: T0, accion: E.cargando }, E.cargando],
   ['jugando', { estado: estado(50), ahora: T0, accion: E.jugando }, E.jugando],
+  ['limpiando', { estado: estado(50), ahora: T0, accion: E.limpiando }, E.limpiando],
+  ['limpiando gana sobre critico', { estado: estado(10), ahora: T0, accion: E.limpiando }, E.limpiando],
   ['la acción gana sobre feliz', { estado: estado(100, 100), ahora: T0, accion: E.jugando }, E.jugando],
 
   // Feliz pide que los DOS stats pasen el umbral, y también es estricto.

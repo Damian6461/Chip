@@ -8,8 +8,10 @@
 // migrar en el lugar.
 export const SAVE_KEY = 'chip.save.v1';
 
-// v2 agregó ultimoEventoId.
-export const VERSION_ESTADO = 2;
+// v2 agregó ultimoEventoId. v3 lo reemplazó por ultimosEventosIds: si en una
+// visita se mostraron dos eventos, ninguno de los dos puede repetirse en la
+// siguiente, no sólo el último.
+export const VERSION_ESTADO = 3;
 
 // ---- Estado inicial ----
 
@@ -58,17 +60,24 @@ export const ESTADOS_VISUALES = {
   standby: 'standby',
   cargando: 'cargando',
   jugando: 'jugando',
+  limpiando: 'limpiando',
   feliz: 'feliz',
   idle: 'idle'
 };
 
 // Carpeta en minúscula a propósito: Windows no distingue mayúsculas, un hosting
-// Linux sí. Son seis archivos, no cinco: la cadena necesita `jugando`.
+// Linux sí.
+//
+// Son SIETE archivos ideales, no cinco. Seis son necesarios; `limpiando.png` es
+// opcional: si falta, el loader cae al sprite de idle y el juego sigue andando
+// (ver ESTADO_POR_DEFECTO en sprites.js). Se declara igual para que exista un
+// solo lugar donde está escrito el contrato de arte.
 export const RUTAS_SPRITES = {
   critico: 'sprites/critico.png',
   standby: 'sprites/standby.png',
   cargando: 'sprites/cargando.png',
   jugando: 'sprites/jugando.png',
+  limpiando: 'sprites/limpiando.png',
   feliz: 'sprites/feliz.png',
   idle: 'sprites/idle.png'
 };
@@ -107,8 +116,9 @@ export const HORAS_MINIMAS_EVENTO = 1;
 export const HORAS_DOS_EVENTOS = 6;
 export const MAX_EVENTOS_POR_VISITA = 2;
 
-// Con qué arranca ultimoEventoId en una partida nueva: sin nada excluido.
-export const EVENTO_INICIAL_ID = null;
+// Con qué arranca ultimosEventosIds en una partida nueva: sin nada excluido.
+// Se copia al crear el estado, nunca se comparte la referencia.
+export const EVENTOS_INICIALES_IDS = [];
 
 // ---- Service worker ----
 
