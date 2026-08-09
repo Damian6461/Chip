@@ -13,12 +13,19 @@ function clampDecay(valor) {
   return Math.min(STAT_MAX, Math.max(DECAY_FLOOR, valor));
 }
 
+// Horas desde la última visita, ya capeadas y nunca negativas.
+// Está exportada porque el sistema de eventos necesita exactamente el mismo
+// número: pedirlo acá evita duplicar la lógica del cap en otro módulo.
+export function horasTranscurridas(estado, ahora = Date.now()) {
+  const brutas = (ahora - estado.ultimaVisita) / MS_POR_HORA;
+  return Math.min(Math.max(brutas, 0), MAX_DECAY_HOURS);
+}
+
 // El decay se calcula siempre por diferencia de timestamps, nunca por un
 // contador corriendo. Mover ultimaVisita a `ahora` es lo que evita el doble
 // decay: lo ya cobrado no se vuelve a cobrar.
 export function aplicarDecay(estado, ahora = Date.now()) {
-  const horasTranscurridas = (ahora - estado.ultimaVisita) / MS_POR_HORA;
-  const horas = Math.min(Math.max(horasTranscurridas, 0), MAX_DECAY_HOURS);
+  const horas = horasTranscurridas(estado, ahora);
 
   return {
     ...estado,

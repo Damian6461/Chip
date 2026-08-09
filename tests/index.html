@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chip — pruebas</title>
+<style>
+  body {
+    background: #0d0f14;
+    color: #e6e6e6;
+    font-family: system-ui, sans-serif;
+    margin: 0;
+    padding: 24px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  #aviso { color: #9aa0ab; font-size: 13px; margin: 0 0 20px; }
+  #resultados { list-style: none; margin: 0; padding: 0; }
+  #resultados li {
+    font-size: 13px;
+    padding: 3px 0;
+    font-family: ui-monospace, monospace;
+  }
+  .ok::before { content: 'ok   '; color: #4ade80; white-space: pre; }
+  .falla { color: #f87171; }
+  .falla::before { content: 'FALLA '; font-weight: bold; white-space: pre; }
+  .detalle { color: #f87171; padding-left: 42px; font-size: 12px; }
+  #resumen {
+    margin-top: 20px;
+    padding-top: 12px;
+    border-top: 1px solid #2a2d38;
+    font-size: 15px;
+    font-weight: bold;
+  }
+  .verde { color: #4ade80; }
+  .rojo { color: #f87171; }
+</style>
+</head>
+<body>
+<h1>Chip — pruebas</h1>
+<p id="aviso">
+  Corren contra un localStorage en memoria: tu partida no se toca.
+  El mismo set corre en consola con <code>node tests/correr.mjs</code>.
+</p>
+<ul id="resultados"></ul>
+<p id="resumen">corriendo…</p>
+
+<script type="module">
+// El almacén falso se instala ANTES de importar nada del juego, por eso los
+// imports de las pruebas son dinámicos: los estáticos se evalúan todos antes
+// que el cuerpo del módulo y la instalación llegaría tarde.
+import { instalarAlmacenFalso } from './almacen-falso.js';
+
+instalarAlmacenFalso();
+
+const { correrPruebas } = await import('./runner.js');
+await import('./decay.test.js');
+await import('./cadena.test.js');
+await import('./eventos.test.js');
+
+const lista = document.getElementById('resultados');
+
+const resultado = correrPruebas(({ nombre, ok, mensaje }) => {
+  const item = document.createElement('li');
+  item.className = ok ? 'ok' : 'falla';
+  item.textContent = nombre;
+  lista.appendChild(item);
+
+  if (!ok) {
+    const detalle = document.createElement('li');
+    detalle.className = 'detalle';
+    detalle.textContent = mensaje;
+    lista.appendChild(detalle);
+  }
+
+  (ok ? console.log : console.error)(`${ok ? 'ok' : 'FALLA'} — ${nombre}${ok ? '' : `\n  ${mensaje}`}`);
+});
+
+const resumen = `${resultado.pasaron} pasaron / ${resultado.fallaron} fallaron`;
+const nodo = document.getElementById('resumen');
+nodo.textContent = resumen;
+nodo.className = resultado.fallaron === 0 ? 'verde' : 'rojo';
+document.title = `Chip — ${resumen}`;
+</script>
+</body>
+</html>

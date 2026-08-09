@@ -95,3 +95,23 @@ body {
 #acciones button:disabled:hover {
   background: #1e2129;
 }
+
+#eventos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 320px;
+}
+
+/* Imprescindible: sin esta regla el display:flex de arriba pisa el
+   comportamiento nativo de [hidden] y el contenedor vacío ocupa lugar. */
+#eventos[hidden] {
+  display: none;
+}
+
+.evento {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #9aa0ab;
+}

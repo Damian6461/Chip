@@ -2,25 +2,54 @@
 // No toca el DOM del documento: sólo crea Image() y resuelve qué sprite
 // corresponde. Quien dibuja es ui.js.
 
-const RUTAS = {
-  idle: 'sprites/idle.png'
-};
+import {
+  ESTADOS_VISUALES as E,
+  RUTAS_SPRITES,
+  UMBRAL_CRITICO_BATERIA,
+  UMBRAL_FELIZ_BATERIA,
+  UMBRAL_FELIZ_HUMOR,
+  HORA_STANDBY_INICIO,
+  HORA_STANDBY_FIN
+} from './config.js';
 
 const sprites = {};
 
+// Único new Date() del proyecto, y alimentado por un timestamp que llega de
+// afuera: así la franja de standby se puede testear sin depender del reloj real
+// ni de la zona horaria de quien corre las pruebas.
+function horaLocal(ahora) {
+  return new Date(ahora).getHours();
+}
+
+// La franja cruza la medianoche, por eso es un OR y no un rango.
+function enFranjaStandby(hora) {
+  return hora >= HORA_STANDBY_INICIO || hora < HORA_STANDBY_FIN;
+}
+
 // El orden define la prioridad: gana el primer estado cuya condición se cumple.
-// Hoy sólo existe el sprite de idle, así que la cadena tiene una sola entrada
-// que siempre gana. Agregar estados nuevos es agregar entradas arriba de idle.
+// Agregar estados nuevos es agregar entradas en la posición que les toque.
 const CADENA_ESTADOS = [
-  { nombre: 'idle', condicion: () => true }
+  { nombre: E.critico, condicion: (c) => c.estado.bateria < UMBRAL_CRITICO_BATERIA },
+  { nombre: E.standby, condicion: (c) => enFranjaStandby(horaLocal(c.ahora)) },
+  { nombre: E.cargando, condicion: (c) => c.accion === E.cargando },
+  { nombre: E.jugando, condicion: (c) => c.accion === E.jugando },
+  {
+    nombre: E.feliz,
+    condicion: (c) =>
+      c.estado.bateria > UMBRAL_FELIZ_BATERIA && c.estado.humor > UMBRAL_FELIZ_HUMOR
+  },
+  { nombre: E.idle, condicion: () => true }
 ];
 
 // Fallback de la cadena: si ninguna condición se cumpliera, se cae a idle.
-const ESTADO_POR_DEFECTO = 'idle';
+const ESTADO_POR_DEFECTO = E.idle;
 
-export function resolverEstadoVisual(estado) {
+// contexto: { estado, ahora, accion }. `ahora` es un timestamp en ms y no tiene
+// default a propósito — el reloj lo pone el llamador, igual que en aplicarDecay.
+// `accion` es el nombre del estado de acción en curso, o null.
+export function resolverEstadoVisual(contexto) {
   for (const entrada of CADENA_ESTADOS) {
-    if (entrada.condicion(estado)) return entrada.nombre;
+    if (entrada.condicion(contexto)) return entrada.nombre;
   }
   return ESTADO_POR_DEFECTO;
 }
@@ -38,7 +67,7 @@ function cargarSprite(nombre, ruta) {
 
 export async function cargarSprites() {
   const resultados = await Promise.all(
-    Object.entries(RUTAS).map(([nombre, ruta]) => cargarSprite(nombre, ruta))
+    Object.entries(RUTAS_SPRITES).map(([nombre, ruta]) => cargarSprite(nombre, ruta))
   );
 
   for (const resultado of resultados) {

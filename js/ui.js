@@ -2,7 +2,7 @@
 
 import { STAT_MIN, STAT_MAX, PLACEHOLDER } from './config.js';
 import { puedeJugar } from './acciones.js';
-import { resolverEstadoVisual, obtenerSprite } from './sprites.js';
+import { obtenerSprite } from './sprites.js';
 
 const canvas = document.getElementById('canvas-mascota');
 const ctx = canvas.getContext('2d');
@@ -25,6 +25,8 @@ const barras = {
 const btnCargar = document.getElementById('btn-cargar');
 const btnJugar = document.getElementById('btn-jugar');
 const btnLimpiar = document.getElementById('btn-limpiar');
+
+const contenedorEventos = document.getElementById('eventos');
 
 function clampVisual(valor) {
   return Math.min(STAT_MAX, Math.max(STAT_MIN, valor));
@@ -52,16 +54,17 @@ function dibujarPlaceholder(nombreEstado) {
   ctx.fillText(nombreEstado, w / 2, h / 2);
 }
 
-function dibujarMascota(estado) {
+// El nombre del estado llega resuelto desde afuera: resolver la cadena es
+// calcular, y este módulo pinta lo que le dan.
+function dibujarMascota(estadoVisual) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const nombreEstado = resolverEstadoVisual(estado);
-  const img = obtenerSprite(nombreEstado);
+  const img = obtenerSprite(estadoVisual);
 
   if (img) {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   } else {
-    dibujarPlaceholder(nombreEstado);
+    dibujarPlaceholder(estadoVisual);
   }
 }
 
@@ -75,9 +78,24 @@ function actualizarBarras(estado) {
   btnJugar.disabled = !puedeJugar(estado);
 }
 
-export function render(estado) {
-  dibujarMascota(estado);
+export function render(estado, estadoVisual) {
+  dibujarMascota(estadoVisual);
   actualizarBarras(estado);
+}
+
+// Separada de render() a propósito: los eventos se pintan una sola vez, al
+// arranque, mientras que render() corre en cada acción y en cada tick.
+// Recibe los eventos ya elegidos: acá no se decide cuáles ni cuántos.
+export function mostrarEventos(eventos) {
+  contenedorEventos.replaceChildren();
+  contenedorEventos.hidden = eventos.length === 0;
+
+  for (const evento of eventos) {
+    const parrafo = document.createElement('p');
+    parrafo.className = 'evento';
+    parrafo.textContent = evento.texto;
+    contenedorEventos.appendChild(parrafo);
+  }
 }
 
 export function conectarAcciones({ onCargar, onJugar, onLimpiar }) {
