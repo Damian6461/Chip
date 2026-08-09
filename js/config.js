@@ -35,7 +35,9 @@ export const DECAY_POR_HORA = {
   mantenimiento: 1.7
 };
 
-// Piso del paso del tiempo: el decay nunca deja un stat en 0.
+// Hasta dónde puede bajar un stat por paso del tiempo. No es dónde tiene que
+// estar el valor: un stat que ya venía por debajo se queda donde está, porque
+// el decay nunca aumenta nada. Ver aplicarPiso en decay.js.
 export const DECAY_FLOOR = 10;
 
 // Cap offline: por más días que pasen, se cobran como máximo estas horas.
