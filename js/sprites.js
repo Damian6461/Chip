@@ -28,11 +28,17 @@ function enFranjaStandby(hora) {
 
 // El orden define la prioridad: gana el primer estado cuya condición se cumple.
 // Agregar estados nuevos es agregar entradas en la posición que les toque.
+//
+// Los estados de acción van PRIMERO y le ganan a todo. Son feedback transitorio:
+// si el jugador toca Cargar con la batería en 12 y no ve cambiar nada porque
+// gana `critico`, la acción se siente muerta justo cuando más importa que
+// responda. Con este orden el bucle queda critico -> cargando -> idle: lo
+// atendiste y respondió.
 const CADENA_ESTADOS = [
-  { nombre: E.critico, condicion: (c) => c.estado.bateria < UMBRAL_CRITICO_BATERIA },
-  { nombre: E.standby, condicion: (c) => enFranjaStandby(horaLocal(c.ahora)) },
   { nombre: E.cargando, condicion: (c) => c.accion === E.cargando },
   { nombre: E.jugando, condicion: (c) => c.accion === E.jugando },
+  { nombre: E.critico, condicion: (c) => c.estado.bateria < UMBRAL_CRITICO_BATERIA },
+  { nombre: E.standby, condicion: (c) => enFranjaStandby(horaLocal(c.ahora)) },
   {
     nombre: E.feliz,
     condicion: (c) =>

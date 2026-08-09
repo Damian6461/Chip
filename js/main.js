@@ -7,8 +7,7 @@ import {
   DEBOUNCE_VISUAL_MS,
   TICK_VISUAL_MS,
   PARAM_DEBUG,
-  RUTA_SW,
-  HOSTS_SIN_SW
+  RUTA_SW
 } from './config.js';
 import { crearEstadoNuevo, cargarEstado, guardarEstado } from './estado.js';
 import { aplicarDecay, horasTranscurridas } from './decay.js';
@@ -141,10 +140,10 @@ setInterval(() => {
 }, TICK_VISUAL_MS);
 
 // ---- Service worker ----
-// La guarda de host es deliberada: en desarrollo el SW cachearía los módulos y
-// daría la impresión de que los cambios no se aplican. Ver el bloque de
-// cabecera de sw.js para el procedimiento de actualización.
-if ('serviceWorker' in navigator && !HOSTS_SIN_SW.includes(location.hostname)) {
+// Se registra también en desarrollo: localhost es contexto seguro y el SW anda
+// ahí sin trucos. Si parece que los cambios no se aplican, es caché: el bloque
+// de cabecera de sw.js tiene el procedimiento.
+if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register(RUTA_SW);
 }
 
@@ -167,6 +166,18 @@ const apiDebug = {
     guardarEstado(estado);
     actualizarVisual({ inmediato: true });
     pintar();
+  },
+
+  // Retrocede ultimaVisita SIN aplicar decay y recarga, para que el arranque
+  // corra completo igual que si hubieras cerrado y vuelto a abrir la app.
+  // simularHoras no sirve para esto: aplica el decay en el momento, así que al
+  // recargar ya no quedan horas transcurridas y los eventos nunca se disparan.
+  volverTrasHoras(horas, multiplicador) {
+    guardarEstado({
+      ...estado,
+      ultimaVisita: estado.ultimaVisita - horas * multiplicador * MS_POR_HORA
+    });
+    location.reload();
   },
 
   forzarEstadoVisual(nombre) {

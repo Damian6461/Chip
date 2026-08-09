@@ -13,12 +13,17 @@ const estado = (bateria, humor = 50) => ({ bateria, humor, mantenimiento: 50 });
 
 // [nombre, contexto, estado visual esperado]
 const CASOS = [
-  // Prioridad: critico gana sobre todo lo demás.
-  ['critico gana sobre standby', { estado: estado(10), ahora: T_MADRUGADA, accion: null }, E.critico],
-  ['critico gana sobre la acción en curso', { estado: estado(10), ahora: T_MADRUGADA, accion: E.cargando }, E.critico],
+  // Prioridad: la acción en curso le gana a TODO. Es feedback transitorio — si
+  // no gana, apretar un botón en el peor momento no muestra nada.
+  ['la acción gana sobre critico', { estado: estado(10), ahora: T0, accion: E.cargando }, E.cargando],
+  ['la acción gana sobre standby', { estado: estado(50), ahora: T_MADRUGADA, accion: E.cargando }, E.cargando],
+  ['la acción gana sobre critico Y standby a la vez', { estado: estado(10), ahora: T_MADRUGADA, accion: E.cargando }, E.cargando],
 
-  // Prioridad: standby gana sobre la acción y sobre feliz.
-  ['standby gana sobre la acción en curso', { estado: estado(50), ahora: T_MADRUGADA, accion: E.cargando }, E.standby],
+  // Prioridad: sin acción en curso, critico gana sobre el resto.
+  ['critico gana sobre standby', { estado: estado(10), ahora: T_MADRUGADA, accion: null }, E.critico],
+  ['critico gana sobre feliz', { estado: estado(10, 100), ahora: T0, accion: null }, E.critico],
+
+  // Prioridad: standby gana sobre feliz.
   ['standby gana sobre feliz', { estado: estado(100, 100), ahora: T_MADRUGADA, accion: null }, E.standby],
 
   // Bordes de la franja de standby: 23 inclusive, 7 exclusive.

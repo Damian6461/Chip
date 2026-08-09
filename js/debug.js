@@ -127,6 +127,17 @@ export function iniciarDebug(api) {
   });
   filaHoras.append(inputHoras, botonSimular);
 
+  // ---- Volver tras N horas ----
+  // Reusa los mismos inputs de arriba. A diferencia de "simular h", esto no
+  // aplica el decay en el momento: retrocede la última visita y recarga, así
+  // corre el camino de arranque real y los eventos se disparan.
+  const botonVolver = crearBoton('volver tras N h');
+  botonVolver.addEventListener('click', () => {
+    const horas = Number(inputHoras.value) || 0;
+    const multiplicador = Number(inputMultiplicador.value) || 1;
+    api.volverTrasHoras(horas, multiplicador);
+  });
+
   // ---- Forzar estado visual ----
   const filaVisual = crearFila();
   const selectVisual = crearSelect([OPCION_DEBUG_AUTO, ...api.obtenerNombresVisuales()]);
@@ -164,6 +175,6 @@ export function iniciarDebug(api) {
 
   refrescarStats();
 
-  panel.append(filaMultiplicador, filaHoras, filaVisual, botonReiniciar, stats);
+  panel.append(filaMultiplicador, filaHoras, botonVolver, filaVisual, botonReiniciar, stats);
   document.body.appendChild(panel);
 }

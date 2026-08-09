@@ -7,13 +7,16 @@
 // 1. Subir CACHE_VERSION en CADA cambio de cualquier archivo de ARCHIVOS_CACHE.
 //    Si no se sube, el usuario sigue viendo la versión vieja para siempre.
 //
-// 2. Durante el desarrollo el SW no se registra en localhost (ver HOSTS_SIN_SW
-//    en js/config.js), así que Live Server nunca sirve archivos rancios. Para
-//    probar el SW de verdad hay que servir por IP de LAN o desplegar.
+// 2. El SW se registra también en desarrollo. localhost y 127.0.0.1 son
+//    contextos seguros, así que funciona ahí igual que en producción y se puede
+//    probar normal con Live Server. Lo que NO alcanza es una IP de LAN sobre
+//    HTTP plano: eso no es contexto seguro y el navegador no registra nada.
+//    Para probar desde el celular hay que servir por HTTPS (GitHub Pages).
 //
-// 3. Si aun así quedó una versión pegada:
-//    DevTools -> Application -> Service Workers -> tildar "Update on reload" y
-//    "Bypass for network". O bien: "Unregister" + Application -> Storage ->
+// 3. Mientras se desarrolla conviene dejar tildado, en DevTools -> Application
+//    -> Service Workers: "Update on reload" y "Bypass for network". Sin eso el
+//    SW sirve la versión cacheada y parece que los cambios no se aplican.
+//    Si ya quedó una versión pegada: "Unregister" + Application -> Storage ->
 //    "Clear site data" + Ctrl+Shift+R.
 //
 // 4. skipWaiting + clients.claim hacen que el SW nuevo tome control sin cerrar

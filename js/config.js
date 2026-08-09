@@ -114,10 +114,10 @@ export const EVENTO_INICIAL_ID = null;
 
 export const RUTA_SW = './sw.js';
 
-// El SW no se registra en desarrollo. Sin esta guarda, Live Server sirve
-// archivos cacheados y da la impresión de que los cambios no se aplican.
-// Para probar el SW de verdad hay que servir por IP de LAN o desplegar.
-export const HOSTS_SIN_SW = ['localhost', '127.0.0.1'];
+// El SW se registra siempre, incluido en desarrollo: localhost y 127.0.0.1 son
+// contextos seguros, así que funciona ahí sin trucos. Si Live Server empieza a
+// servir archivos rancios, la solución es "Update on reload" en DevTools, no
+// desactivar el SW — ver el bloque de cabecera de sw.js.
 
 // OJO: CACHE_VERSION y la lista de archivos cacheados NO viven acá, viven en
 // sw.js. El navegador dispara el update comparando los bytes de sw.js, así que
