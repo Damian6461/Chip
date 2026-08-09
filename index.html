@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chip</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="escenario">
+  <canvas id="canvas-mascota" width="320" height="320"></canvas>
+
+  <div id="barra-bateria" class="barra">
+    <span class="barra-etiqueta">Batería</span>
+    <div class="barra-pista">
+      <div id="barra-bateria-fill" class="barra-fill"></div>
+    </div>
+    <span id="barra-bateria-valor" class="barra-valor">100</span>
+  </div>
+
+  <div id="barra-humor" class="barra">
+    <span class="barra-etiqueta">Humor</span>
+    <div class="barra-pista">
+      <div id="barra-humor-fill" class="barra-fill"></div>
+    </div>
+    <span id="barra-humor-valor" class="barra-valor">100</span>
+  </div>
+
+  <div id="barra-mantenimiento" class="barra">
+    <span class="barra-etiqueta">Mant.</span>
+    <div class="barra-pista">
+      <div id="barra-mantenimiento-fill" class="barra-fill"></div>
+    </div>
+    <span id="barra-mantenimiento-valor" class="barra-valor">100</span>
+  </div>
+
+  <div id="acciones">
+    <button id="btn-cargar" type="button">Cargar</button>
+    <button id="btn-jugar" type="button">Jugar</button>
+    <button id="btn-limpiar" type="button">Limpiar</button>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #0d0f14;
+  color: #e6e6e6;
+  font-family: system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#escenario {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+#canvas-mascota {
+  background: #14161d;
+  border: 2px solid #2a2d38;
+  border-radius: 8px;
+  display: block;
+}
+
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 320px;
+}
+
+.barra-etiqueta {
+  font-size: 14px;
+  color: #9aa0ab;
+  min-width: 56px;
+}
+
+.barra-pista {
+  flex: 1;
+  height: 14px;
+  background: #1e2129;
+  border: 1px solid #2a2d38;
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.barra-fill {
+  height: 100%;
+  width: 100%;
+  background: #4ade80;
+  transition: width 0.2s ease, background-color 0.2s ease;
+}
+
+.barra-valor {
+  font-size: 14px;
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#acciones {
+  display: flex;
+  gap: 10px;
+  width: 320px;
+}
+
+#acciones button {
+  flex: 1;
+  padding: 8px 0;
+  background: #1e2129;
+  border: 1px solid #2a2d38;
+  border-radius: 6px;
+  color: #e6e6e6;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#acciones button:hover {
+  background: #262a35;
+}
+
+#acciones button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#acciones button:disabled:hover {
+  background: #1e2129;
+}
