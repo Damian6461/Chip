@@ -78,17 +78,17 @@ export const ESTADOS_VISUALES = {
 // (ver ESTADO_POR_DEFECTO en sprites.js). Se declara igual para que exista un
 // solo lugar donde está escrito el contrato de arte.
 export const RUTAS_SPRITES = {
-  critico: 'sprites/critico.png',
-  standby: 'sprites/standby.png',
-  cargando: 'sprites/cargando.png',
-  jugando: 'sprites/jugando.png',
-  limpiando: 'sprites/limpiando.png',
-  esperando: 'sprites/esperando.png',
-  feliz: 'sprites/feliz.png',
-  idle: 'sprites/idle.png',
+  critico: 'sprites/critico.webp',
+  standby: 'sprites/standby.webp',
+  cargando: 'sprites/cargando.webp',
+  jugando: 'sprites/jugando.webp',
+  limpiando: 'sprites/limpiando.webp',
+  esperando: 'sprites/esperando.webp',
+  feliz: 'sprites/feliz.webp',
+  idle: 'sprites/idle.webp',
   // No es un estado: es la pose alternativa de idle. Vive acá igual porque el
   // loader la carga por la misma puerta y con el mismo fallback.
-  'idle-manitos': 'sprites/idle-manitos.png'
+  'idle-manitos': 'sprites/idle-manitos.webp'
 };
 
 // Las poses de idle. Chip quieto en una sola pose durante minutos se lee como
@@ -126,8 +126,8 @@ export const PROBABILIDAD_CAMBIO_POSE = 0.5;
 // si alguna vez tiene que hacerlo, lo que falta es `idle-manitos-ojos.png`
 // alineado al mismo lienzo de 256. Con el archivo puesto acá, funciona sola.
 export const RUTAS_OJOS = {
-  idle: 'sprites/idle-ojos.png',
-  feliz: 'sprites/feliz-ojos.png'
+  idle: 'sprites/idle-ojos.webp',
+  feliz: 'sprites/feliz-ojos.webp'
 };
 
 // Fondos del galpón, detrás de Chip. Mismo criterio que RUTAS_SPRITES: las
@@ -138,8 +138,8 @@ export const RUTAS_OJOS = {
 // Cuál de los dos se muestra lo decide la MISMA franja horaria que el standby
 // (ver esDeNoche en sprites.js): si Chip duerme, afuera es de noche.
 export const RUTAS_FONDOS = {
-  dia: 'sprites/fondo-dia.png',
-  noche: 'sprites/fondo-noche.png'
+  dia: 'sprites/fondo-dia.webp',
+  noche: 'sprites/fondo-noche.webp'
 };
 
 // Encuadre de la escena: se entra 8% DENTRO de la panorámica desde su borde

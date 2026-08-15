@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v26';
+const CACHE_VERSION = 'chip-cache-v27';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -60,19 +60,21 @@ const ARCHIVOS_CACHE = [
   // con el galpón de fondo y placeholders en el medio: ahora abre completa.
   // La lista está escrita a mano y no sale de RUTAS_SPRITES porque este archivo
   // no puede importar config.js — es el mismo carve-out del bloque de arriba.
-  './sprites/idle.png',
-  './sprites/idle-ojos.png',
-  './sprites/feliz-ojos.png',
-  './sprites/feliz.png',
-  './sprites/critico.png',
-  './sprites/standby.png',
-  './sprites/cargando.png',
-  './sprites/jugando.png',
-  './sprites/limpiando.png',
-  './sprites/esperando.png',
-  './sprites/idle-manitos.png',
-  './sprites/fondo-dia.png',
-  './sprites/fondo-noche.png',
+  './sprites/idle.webp',
+  './sprites/idle-ojos.webp',
+  './sprites/feliz-ojos.webp',
+  './sprites/feliz.webp',
+  './sprites/critico.webp',
+  './sprites/standby.webp',
+  './sprites/cargando.webp',
+  './sprites/jugando.webp',
+  './sprites/limpiando.webp',
+  './sprites/esperando.webp',
+  './sprites/idle-manitos.webp',
+  './sprites/fondo-amanecer.webp',
+  './sprites/fondo-mediodia.webp',
+  './sprites/fondo-dia.webp',
+  './sprites/fondo-noche.webp',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];

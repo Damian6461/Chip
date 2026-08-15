@@ -71,8 +71,28 @@ Se rompen y el proyecto se degrada rápido.
 - **`acciones.js` es puro.** Señala "no apliqué" devolviendo la misma referencia.
 - **`config.js` es el único hogar de las constantes del juego.** Tres carve-outs documentados en el propio archivo: `sw.js`, `manifest.json` y `tests/config.pruebas.js`.
 - **El decay se calcula por diferencia de timestamps, nunca con un contador corriendo.**
+- **Nunca el shorthand `animation` en una regla que pueda pisar delays de `:nth-child`.** Se declaran las propiedades por separado, o los `animation-delay` van **después** de la regla del shorthand y con el mismo prefijo de estado. Ver abajo: mordió tres veces.
+- **Todo asset nuevo entra en `ARCHIVOS_CACHE` con su bump de `CACHE_VERSION`**, y `tests/assets.test.js` lo verifica: el cruce ya no es disciplina.
 
 `main.js` orquesta: mantiene el estado vivo, resuelve el reloj y es el único con timers.
+
+### La regla del shorthand `animation`
+
+Mordió **tres veces** en el mismo archivo, con el mismo mecanismo y tres síntomas distintos:
+
+| dónde | qué se veía | qué pasaba |
+|---|---|---|
+| las Z de `standby` | "apenas se ve una Z" | las tres latían al unísono |
+| las chispas del enchufe | nada raro, por suerte | las cuatro salían juntas |
+| las motas de polvo | el galpón quieto | las seis corrían el mismo ciclo con el mismo arranque |
+
+Siempre lo mismo: `animation` es un **shorthand**, así que una regla como `.estado-standby .zeta { animation: … }` resetea `animation-delay` a `0s`. Y le gana a `.zeta:nth-child(N)`, que declara el delay, porque **tienen la misma especificidad** (0,2,0 contra 0,2,0 — o peor, 0,2,1 en el caso del polvo) y viene después en el archivo.
+
+Lo peligroso es que **no se detecta mirando ni midiendo el resultado**: los elementos están, tienen su color y su tamaño, y la animación corre. Lo único que lo delata es leer el `animation-delay` computado. Tres Z superpuestas y sincronizadas se ven exactamente como una Z.
+
+Las burbujas de `limpiando` nunca tuvieron el problema, y no por suerte: su regla de estado usa longhands (`animation-name`, `animation-duration`, …) en vez del shorthand. Ese es el patrón a copiar.
+
+Tres veces es patrón, no casualidad. Por eso está arriba, entre las reglas de arquitectura.
 
 ---
 

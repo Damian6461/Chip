@@ -14,6 +14,9 @@ await import('./cadena.test.js');
 await import('./eventos.test.js');
 await import('./coleccion.test.js');
 await import('./gigantes.test.js');
+// Sólo en Node: es el único que toca el sistema de archivos, por eso no está en
+// tests/index.html.
+await import('./assets.test.js');
 
 const VERDE = '\x1b[32m';
 const ROJO = '\x1b[31m';
