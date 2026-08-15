@@ -49,6 +49,10 @@ import {
   VARS_PERSONAJE,
   POSICIONES_ANTENA,
   VARS_ANTENA,
+  PUNTA_DEL_CABLE,
+  TAMANO_TOMA,
+  VARS_TOMA,
+  COLORES_TOMA,
   VARS_LUZ,
   COLORES_BARRAS,
   VARS_BARRAS,
@@ -70,7 +74,8 @@ import {
   svgDeCorazon,
   svgDeChispa,
   svgDePulso,
-  svgDeBurbuja
+  svgDeBurbuja,
+  svgDeToma
 } from './formas.js';
 
 const cajaChip = document.getElementById('chip');
@@ -151,6 +156,30 @@ raiz.style.setProperty(VARS_PERSONAJE.duracionBurbuja, `${DURACION_BURBUJA_MS}ms
 for (const [grupo, tonos] of Object.entries(GRUPOS_DE_COLOR)) {
   for (const [tono, valor] of Object.entries(tonos)) {
     raiz.style.setProperty(`--${grupo}-${tono}`, valor);
+  }
+}
+
+// ---- La toma de corriente ----
+//
+// Mobiliario del galpón, no un accesorio de `cargando`: se dibuja una vez, está
+// en todos los estados y lo único que le cambia por estado es el brillo de las
+// ranuras.
+//
+// La posición sale de PUNTA_DEL_CABLE, que está medida sobre el lienzo del
+// sprite. El CSS la convierte a la escena con los mismos anclajes que usa #chip
+// —el 50% de ancho y el piso— así que no hay ningún porcentaje de la escena de
+// por medio y el encastre aguanta cualquier viewport.
+const toma = document.getElementById('toma');
+
+if (toma) {
+  toma.innerHTML = svgDeToma();
+  raiz.style.setProperty(VARS_TOMA.x, String(PUNTA_DEL_CABLE.x / 100));
+  raiz.style.setProperty(VARS_TOMA.y, String(PUNTA_DEL_CABLE.y / 100));
+  raiz.style.setProperty(VARS_TOMA.ancho, String(TAMANO_TOMA.ancho / 100));
+  raiz.style.setProperty(VARS_TOMA.alto, String(TAMANO_TOMA.alto / 100));
+
+  for (const [tono, valor] of Object.entries(COLORES_TOMA)) {
+    raiz.style.setProperty(`--toma-${tono}`, valor);
   }
 }
 

@@ -328,6 +328,7 @@ El juego no es un panel de control con un dibujo arriba: es un lugar. Abrirlo es
 ```
 #escena  ← la panorámica a pantalla completa, nítida
 ├── #polvo          16 motitas de polvo, en toda la escena
+├── #toma           la toma de corriente; z-index -1, recibe la luz de la hora
 ├── #chip           posición y tamaño; NO se anima
 │   ├── #sombra     quieta: cuando Chip salta, se queda en el piso
 │   └── #contenedor-mascota   rebota
@@ -415,6 +416,20 @@ Las tres Z del standby **latían todas al mismo tiempo**, desde siempre. `animat
 
 En la captura eso era invisible: tres Z superpuestas parecen una Z. Se encontró leyendo el `animation-delay` computado. La misma trampa tenían las chispas del enchufe. Los `animation-delay` de cada pieza van **después** de la regla que pone el shorthand y adentro del mismo estado; las burbujas se salvaron porque su regla de estado usa longhands.
 
+### La toma de corriente
+
+El cable de `cargando.png` sale hacia abajo a la derecha y **terminaba en el aire**. Ahora termina en una toma dibujada por código —sin assets nuevos— que es **mobiliario del galpón**: está en todos los estados, no sólo mientras Chip carga.
+
+**Posicionada por el sprite, no por la escena.** `PUNTA_DEL_CABLE` (`config.js`) está medida con la misma técnica que la tabla de la antena —componente conexa de cian, la que llega al borde inferior— y da **79,7% / 98,6%** del lienzo de 256. El CSS la convierte usando los mismos anclajes que `#chip`: el 50% de ancho y `var(--piso-chip)`. Por eso el encastre no depende de la proporción de la pantalla — verificado con el alto de Chip en 229, 308, 416 y 484 px: el desfase entre la punta del cable y el borde de la toma nunca pasa de **0,02 px**.
+
+Un `left: 76%` de la escena no habría servido: Chip se escala con el **alto** y los porcentajes de `left` miden sobre el **ancho**, así que el encastre se rompería en cuanto cambiara la proporción.
+
+Mide el 11% del alto de Chip, que es el tamaño de su puño. Recibe la luz de la hora por estar en `z-index: -1` —debajo de la capa de luz, encima de la panorámica— y se apaga de noche con un filtro propio, porque al ser código no cambia con la panorámica nocturna. En `cargando`, las dos ranuras se encienden una vez **por pulso que sale**, no una por ciclo: `--duracion-pulso × 0,25`, que es el desfase entre pulsos. La energía sale de la toma y llega al rayo del pecho, y por eso el destello de la toma está al principio del ciclo y el del rayo al final.
+
+El selector es `#escena:has(.estado-cargando) #toma .ranura`. El `:has()` evita una segunda fuente de verdad: la clase de estado la sigue escribiendo `ui.js` en `#contenedor-mascota` y en ningún otro lado.
+
+**Desvío anotado.** La instrucción pedía la toma "en el zócalo de la pared". Ahí no hay pared: midiendo la columna de la panorámica en la x del cable, la línea donde el muro se junta con el piso está en el **65-66%** del alto de la escena y la punta del cable cae en el **81,4%** — quince puntos más adelante, unos 140 px de piso abierto de por medio. Una chapa de pared ahí flotaría. Se conservó el anclaje, que era lo que la instrucción pedía medir, y se cambió el objeto: es una caja de toma apoyada en el piso, con sombra de contacto, con la misma chapa oscura, las mismas dos ranuras y el mismo bisel naranja.
+
 ### La luz que recorre el día
 
 El galpón tenía día y noche. Ahora tiene hora: el charco que entra por la ventana cambia de lugar, de tamaño y de temperatura.
@@ -428,6 +443,12 @@ El galpón tenía día y noche. Ahora tiene hora: el charco que entra por la ven
 | noche | 23–7 | sin luz | — |
 
 Es un degradé radial en `#escena::after`, **puro CSS y sin arte nuevo**, con `z-index` negativo para quedar sobre la panorámica y debajo de Chip: es luz de piso y Chip está parado encima.
+
+> **Y durante un tiempo no se vio nunca.** El `z-index: -1` sólo hace eso si el ancestro es un contexto de apilado, y `#escena` era `position: relative` con `z-index: auto`, que **no** lo es. La capa se iba al contexto de la raíz y terminaba pintando **detrás del `background-image` de la propia escena**. El gradiente estaba perfectamente calculado y el CSS computado lo confirmaba; lo que fallaba era el orden de pintado, que ninguna medición de estilos iba a revelar.
+>
+> Se detectó con una prueba de una línea: poner `--luz-fuerza` en `1` y `--luz-color` en rojo puro, y capturar. Si el galpón no se pone rojo, la capa no existe. Se arregló con `isolation: isolate` en `#escena`, que la vuelve contexto de apilado sin efectos colaterales de posicionamiento.
+>
+> La moraleja para el resto del archivo: **toda capa con `z-index` negativo depende de que su ancestro sea contexto de apilado.** Hoy hay dos —la luz y la toma de corriente— y las dos cuelgan de ese `isolation`.
 
 `franjaDeLuz()` vive en `sprites.js` al lado de `esDeNoche()` porque es la misma pregunta y tiene que contestar con el mismo reloj — si la luz dijera "tarde" mientras el fondo ya es el nocturno, el galpón se contradiría solo.
 

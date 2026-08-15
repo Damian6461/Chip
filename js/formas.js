@@ -150,6 +150,37 @@ const PULSO = `
   <path d="M12 5.5c1.2 3.6 1.6 5.4 1.6 6.5s-.4 2.9-1.6 6.5c-1.2-3.6-1.6-5.4-1.6-6.5s.4-2.9 1.6-6.5z"
     fill="var(--pulso-nucleo)"/>`;
 
+// ---- La toma de corriente del galpón ----
+//
+// No es un efecto ni un objeto de la colección: es MOBILIARIO. Está siempre, en
+// todos los estados, y existe para que el cable de `cargando` termine en algo en
+// vez de terminar en el aire.
+//
+// El viewBox es 20x24 y no 24x24 —más alto que ancho— porque una toma real lo
+// es. La caja va con degradé de chapa, el bisel en el naranja del juego, y las
+// dos ranuras son huecos oscuros con clase propia (`ranura`) para que el CSS las
+// pueda encender mientras Chip carga.
+const TOMA = `
+  <defs>
+    <linearGradient id="chapa-toma" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--toma-alto)"/>
+      <stop offset="0.55" stop-color="var(--toma-chapa)"/>
+      <stop offset="1" stop-color="var(--toma-bajo)"/>
+    </linearGradient>
+  </defs>
+  <rect x="1.4" y="1.4" width="17.2" height="21.2" rx="1.8"
+    fill="url(#chapa-toma)" stroke="var(--toma-borde)" stroke-width="1.1"/>
+  <rect x="3.4" y="3.4" width="13.2" height="17.2" rx="1.2"
+    fill="none" stroke="var(--toma-filo)" stroke-width="0.9"/>
+  <path d="M3.6 3.2h12.8" stroke="var(--toma-brillo)" stroke-width="0.7"
+    stroke-linecap="round" opacity="0.5"/>
+  <rect class="ranura" x="6.1" y="7.4" width="2.4" height="6.4" rx="0.9"
+    fill="var(--toma-hueco)"/>
+  <rect class="ranura" x="11.5" y="7.4" width="2.4" height="6.4" rx="0.9"
+    fill="var(--toma-hueco)"/>
+  <circle cx="10" cy="18" r="1.5" fill="var(--toma-hueco)"/>
+  <path d="M9 18h2" stroke="var(--toma-filo)" stroke-width="0.7" stroke-linecap="round"/>`;
+
 // La burbuja de limpiando: redonda, con brillo arriba a la izquierda y un aro
 // más marcado, como las del sprite.
 const BURBUJA = `
@@ -179,6 +210,11 @@ export function svgDePulso() {
 
 export function svgDeBurbuja() {
   return envolver(BURBUJA);
+}
+
+// Su propio envoltorio: es la única forma con caja no cuadrada.
+export function svgDeToma() {
+  return `<svg viewBox="0 0 20 24" aria-hidden="true">${TOMA}</svg>`;
 }
 
 export function tieneForma(id) {

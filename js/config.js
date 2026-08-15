@@ -332,6 +332,44 @@ export const VARS_ANTENA = {
   y: '--antena-y'
 };
 
+// ---- La toma de corriente ----
+//
+// El cable de `cargando.png` salía hacia abajo a la derecha y terminaba en el
+// aire. Esta es su punta, medida con la misma técnica que la antena —componente
+// conexa de cian, la más grande que toca el borde inferior— en % del lienzo del
+// sprite:
+//
+//   el cable ocupa x 55,5-79,7% / y 86,7-98,8%, y su punta cae en 79,7% / 98,6%
+//
+// La coordenada es del SPRITE, no de la escena, y es a propósito: la toma se
+// posiciona con los mismos anclajes que usa #chip —el 50% de ancho y el piso—,
+// así que en cualquier viewport cae exactamente donde el dibujo la pide. Un
+// porcentaje de la escena se desalinearía apenas cambiara la proporción.
+export const PUNTA_DEL_CABLE = { x: 79.7, y: 98.6 };
+
+// Del tamaño de un puño de Chip: la mano de `cargando` mide ~12% del lienzo.
+// Más alta que ancha, como una toma de verdad.
+export const TAMANO_TOMA = { ancho: 11, alto: 13 }; // % del alto de Chip
+
+export const VARS_TOMA = {
+  x: '--toma-x',
+  y: '--toma-y',
+  ancho: '--toma-ancho',
+  alto: '--toma-alto-caja'
+};
+
+// La chapa sale de la paleta del galpón, no inventada: el gris del metal de las
+// piezas y el naranja que ya usan las hombreras de Chip y el borde del estante.
+export const COLORES_TOMA = {
+  alto: '#4a505c',
+  chapa: '#343a45',
+  bajo: '#22262e',
+  borde: '#c8781f',
+  filo: '#0b0e13',
+  hueco: '#05070a',
+  brillo: '#8f98a8'
+};
+
 // ---- El parpadeo ----
 
 // La primera animación que pasa ADENTRO de Chip. Todo lo anterior desplazaba la

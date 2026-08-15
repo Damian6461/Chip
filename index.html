@@ -41,6 +41,13 @@
     <div class="mota"></div>
   </div>
 
+  <!-- La toma de corriente. Es mobiliario del galpón, no un accesorio del
+       estado cargando: está siempre, en todos los estados, y existe para que el
+       cable dibujado en cargando.png termine en algo. Va antes de #chip y con
+       z-index negativo para quedar detrás de él y DEBAJO de la capa de luz, que
+       es lo que le da la hora del día. La forma la dibuja ui.js. -->
+  <div id="toma" aria-hidden="true"></div>
+
   <!-- La caja de Chip: define dónde pisa y cuánto mide, y NO se anima nunca.
        Adentro, la sombra queda quieta y el contenedor rebota; por eso al saltar
        Chip se despega y la sombra se queda en el piso. -->
