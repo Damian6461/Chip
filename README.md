@@ -51,7 +51,7 @@ Sin el parámetro, `js/debug.js` ni se descarga (import dinámico). Cinco contro
 
 **`simular h` y `volver tras N h` no son lo mismo.** El primero cobra el decay ya; al recargar no quedan horas transcurridas y **los eventos nunca se disparan**. El segundo recorre el camino de arranque real, como si hubieras cerrado y vuelto a abrir la app: es el único que sirve para ver eventos.
 
-*Arista conocida: la lectura de stats del panel se refresca con los controles del panel, no con los botones del juego. Las barras del juego sí.*
+La lectura de stats de abajo sigue **también** a los botones del juego: `iniciarDebug` devuelve su función de refresco y `pintar()` la engancha.
 
 ---
 
@@ -157,6 +157,7 @@ El dither va por imagen y no por gusto: en el día el piso queda limpio sin él 
 | rebote permanente, `0` → `-4px` | `#contenedor-mascota` | `CICLO_REBOTE_MS` — 2.2 s, loop |
 | salto de acción, `0` → `-8px` → `0` | `#canvas-mascota.saltando` | `DURACION_SALTO_MS` — 300 ms, una vez |
 | barra viajando al valor nuevo | `.barra-fill` | `TRANSICION_BARRA_MS` — 400 ms |
+| tecla que se hunde 1 px | `#acciones button:active` | `DURACION_PRESION_MS` — 90 ms |
 
 El rebote corre siempre, en todos los estados, sin que el jugador toque nada.
 
@@ -168,9 +169,35 @@ El rebote corre siempre, en todos los estados, sin que el jugador toque nada.
 
 `main.js` llama a `animarAccion()` dentro de `ejecutar()`, **después** del early return: si la acción no se aplicó —jugar sin batería—, no hay salto.
 
+### La piel del aparato
+
+La interfaz pertenece al galpón: es un instrumento, no una página.
+
+**Los colores salen de Chip, no de una paleta de UI.** Están muestreados de `sprites/idle.png` con conteo de píxeles y viven en `COLORES_BARRAS` (`config.js`), de donde `ui.js` los inyecta como custom properties.
+
+| Barra | Color | De dónde |
+|---|---|---|
+| Batería | `#01ffff` | las barras del display del pecho |
+| Humor | `#ffa300` | las hombreras |
+| Mant. | `#ffc899` | el brillo cálido de los aros de los ojos |
+
+**Los tres son colores de luz, y ahí está el criterio.** El primer candidato para Mant. fue `#c2a593`, la placa del torso: al 100% se leía apagado al lado de los otros dos, porque es color de superficie —luz reflejada— y las barras son indicadores encendidos. El naranja del hover de los botones y el `>` del log son el mismo `--color-humor`: el acento del aparato es el del personaje.
+
+**Una sola columna de 324 px** (`--ancho-columna`): los 320 del canvas más los 2 px de marco de cada lado. Panel, barras, botones y log se alinean con eso. Antes las barras median 320 y quedaban 2 px adentro de cada borde del panel.
+
+**Escala de espaciado 8 / 16 / 24** (`--esp-1/2/3`), y nada fuera de esa escala. El `gap` de la columna es el chico y los saltos grandes se hacen con márgenes en las piezas que abren bloque — es la única forma de tener tres separaciones distintas en un solo flex sin envolver las barras en un contenedor, y sumar elementos estaba prohibido en el rediseño.
+
+**La fuente de instrumento** (`--fuente-instrumento`) es el stack monoespaciado del sistema, sin archivo. Cualquier fuente externa rompería el offline. Si algún día entra una propia, se declara en el mismo lugar y va a `ARCHIVOS_CACHE` con su bump.
+
+**El prefijo `>` del log es un `::before`**, no un elemento: `ui.js` sigue escribiendo únicamente el texto del evento. La sangría francesa de `2ch` alinea la segunda línea bajo el texto y no bajo el prefijo, que es exactamente el ancho de `"> "` porque la fuente es monoespaciada.
+
+**Los tres estados de una tecla** tienen que distinguirse sin leer: normal con borde y canto duro abajo, apretada 1 px más abajo con el canto a la mitad, y deshabilitada sin borde, sin canto y al 28% — una tecla que no está no se puede confundir con una que sí.
+
 ### prefers-reduced-motion
 
-Un bloque al final de `style.css` apaga las tres. No es opcional y no tiene interruptor propio: quién puede moverse lo decide el CSS. `ui.js` pone la clase del salto igual, y con reduced-motion la clase no hace nada.
+Un bloque al final de `style.css` apaga el rebote, el salto, el viaje de las barras y la transición de las teclas. No es opcional y no tiene interruptor propio: quién puede moverse lo decide el CSS. `ui.js` pone la clase del salto igual, y con reduced-motion la clase no hace nada.
+
+La tecla apretada **sigue avisando** con reduced-motion: se le apaga el viaje de 1 px y la transición, pero el canto se achica igual. Eso es cambio de estado, no movimiento.
 
 ---
 

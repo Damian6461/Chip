@@ -187,6 +187,10 @@ export const DURACION_SALTO_MS = 300;
 // Cuánto tarda una barra en viajar hasta su nuevo ancho en vez de saltar.
 export const TRANSICION_BARRA_MS = 400;
 
+// Cuánto tarda un botón en hundirse y volver. Corto a propósito: es el acuse de
+// recibo del dedo, no una animación. Más lento se siente lento, no suave.
+export const DURACION_PRESION_MS = 90;
+
 // La otra punta de estos tres números está en style.css, que no puede importar
 // un módulo. En vez de duplicarlos ahí (sería un cuarto carve-out de la regla
 // de config.js), ui.js los inyecta como custom properties en :root al arrancar
@@ -195,7 +199,8 @@ export const TRANSICION_BARRA_MS = 400;
 export const VARS_ANIMACION = {
   cicloRebote: '--ciclo-rebote',
   duracionSalto: '--duracion-salto',
-  transicionBarra: '--transicion-barra'
+  transicionBarra: '--transicion-barra',
+  duracionPresion: '--duracion-presion'
 };
 
 // Clase que dispara el salto. La declara style.css, la pone y la saca ui.js.

@@ -7,6 +7,7 @@ import {
   CICLO_REBOTE_MS,
   DURACION_SALTO_MS,
   TRANSICION_BARRA_MS,
+  DURACION_PRESION_MS,
   VARS_ANIMACION,
   CLASE_SALTO,
   RUTAS_FONDOS,
@@ -38,6 +39,7 @@ const raiz = document.documentElement;
 raiz.style.setProperty(VARS_ANIMACION.cicloRebote, `${CICLO_REBOTE_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.duracionSalto, `${DURACION_SALTO_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.transicionBarra, `${TRANSICION_BARRA_MS}ms`);
+raiz.style.setProperty(VARS_ANIMACION.duracionPresion, `${DURACION_PRESION_MS}ms`);
 
 // Los colores de las barras viajan por el mismo puente. Salen del sprite de
 // Chip (ver COLORES_BARRAS): la piel del instrumento la define el personaje.

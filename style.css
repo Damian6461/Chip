@@ -9,6 +9,18 @@
    tipografía es estilo y se queda en la hoja. */
 :root {
   --fuente-instrumento: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+
+  /* Escala de espaciado. El aparato entero se arma con estos tres números y
+     nada más: 8 adentro de un grupo, 16 entre grupos vecinos, 24 entre bloques.
+     Un valor suelto de 10 o 12 rompe el ritmo aunque no se note de a uno. */
+  --esp-1: 8px;
+  --esp-2: 16px;
+  --esp-3: 24px;
+
+  /* Ancho de columna único: los 320 del canvas más los 2 px de marco de cada
+     lado. El panel del juego manda y todo lo demás se alinea con él; antes las
+     barras y los botones median 320 y quedaban 2 px adentro de cada borde. */
+  --ancho-columna: 324px;
 }
 
 * {
@@ -29,12 +41,17 @@ body {
   justify-content: center;
 }
 
+/* El gap de la columna es el chico, y los saltos grandes se hacen con márgenes
+   en las piezas que abren bloque. Es la única forma de tener tres separaciones
+   distintas en un solo flex sin envolver las barras en un contenedor — y sumar
+   un contenedor está prohibido en este rediseño. */
 #escenario {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: var(--esp-1);
 }
+
 
 /* El marco pasó del canvas a este panel: el fondo del galpón tiene que quedar
    DETRÁS de Chip, y el canvas ya no puede tener color propio o lo taparía.
@@ -50,6 +67,7 @@ body {
    así el marco y el recorte del fondo siguen al canvas si algún día cambia. */
 #panel-juego {
   position: relative;
+  margin-bottom: var(--esp-1); /* + el gap de la columna = 16 hasta la primera barra */
   background-color: #14161d;
   background-repeat: no-repeat;
   background-size: auto 100%;
@@ -99,8 +117,8 @@ body {
 .barra {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 320px;
+  gap: var(--esp-1);
+  width: var(--ancho-columna);
 }
 
 .barra-etiqueta {
@@ -177,41 +195,77 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---- Botonera industrial ----
+
+   Teclas rectangulares con borde visible y un canto duro abajo que las levanta
+   del fondo. Al apretarlas bajan 1 px y el canto se achica a la mitad: la tecla
+   se hunde contra el chasis en vez de "resaltarse". */
+
 #acciones {
   display: flex;
-  gap: 10px;
-  width: 320px;
+  gap: var(--esp-1);
+  width: var(--ancho-columna);
+  margin-top: var(--esp-2); /* + el gap de la columna = 24 desde la última barra */
 }
 
 #acciones button {
   flex: 1;
-  padding: 8px 0;
-  background: #1e2129;
-  border: 1px solid #2a2d38;
-  border-radius: 6px;
+  padding: var(--esp-1) 0;
+  background: linear-gradient(180deg, #242a35 0%, #191d26 100%);
+  border: 1px solid #3a4150;
+  border-radius: 2px;
   color: #e6e6e6;
   font-size: 14px;
   cursor: pointer;
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition:
+    transform var(--duracion-presion) ease-out,
+    box-shadow var(--duracion-presion) ease-out,
+    border-color var(--duracion-presion) ease-out;
 }
 
-#acciones button:hover {
-  background: #262a35;
+/* El hover toma el naranja de los acentos de Chip, el mismo de la barra de
+   humor: el acento del aparato es el del personaje. */
+#acciones button:hover:not(:disabled) {
+  border-color: var(--color-humor);
+  color: #fff;
 }
 
+#acciones button:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Deshabilitado tiene que cantarse de un vistazo, no adivinarse: sin borde, sin
+   canto y muy apagado. Una tecla que no está no se puede confundir con una que
+   sí. El :not(:disabled) de las reglas de arriba deja el hover afuera solo. */
 #acciones button:disabled {
-  opacity: 0.4;
+  opacity: 0.28;
+  border-color: transparent;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
-#acciones button:disabled:hover {
-  background: #1e2129;
-}
+/* ---- El log de mantenimiento del galpón ----
+
+   Panel propio, apenas más claro que el fondo, con la misma tipografía de
+   instrumento que los números de las barras. Sin timestamps: Chip no lleva la
+   hora, lleva lo que hizo. */
 
 #eventos {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  width: 320px;
+  gap: var(--esp-1);
+  width: var(--ancho-columna);
+  margin-top: var(--esp-2); /* + el gap de la columna = 24 desde los botones */
+  padding: var(--esp-2);
+  background: #12151c;
+  border: 1px solid #262b36;
+  border-radius: 2px;
 }
 
 /* Imprescindible: sin esta regla el display:flex de arriba pisa el
@@ -222,9 +276,22 @@ body {
 
 .evento {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.4;
+  font-family: var(--fuente-instrumento);
+  font-size: 12px;
+  line-height: 1.5;
   color: #9aa0ab;
+  /* Sangría francesa: la segunda línea arranca bajo el texto y no bajo el
+     prefijo, como una entrada de log de verdad. 2ch es exactamente el ancho de
+     "> " porque la fuente es monoespaciada. */
+  padding-left: 2ch;
+  text-indent: -2ch;
+}
+
+/* El prefijo es un ::before y no un elemento: la restricción del rediseño es no
+   sumar nodos, y ui.js sigue escribiendo únicamente el texto del evento. */
+.evento::before {
+  content: '> ';
+  color: var(--color-humor);
 }
 
 /* Si el sistema pide menos movimiento no hay rebote, no hay salto y las barras
@@ -238,5 +305,15 @@ body {
 
   .barra-fill {
     transition: none;
+  }
+
+  /* El botón sigue avisando que está apretado —el canto se achica igual, es
+     cambio de estado, no movimiento— pero sin viaje ni transición. */
+  #acciones button {
+    transition: none;
+  }
+
+  #acciones button:active:not(:disabled) {
+    transform: none;
   }
 }
