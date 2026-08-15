@@ -1121,15 +1121,24 @@ body.es-noche #antena {
 
 /* ---- 2. La sombra que respira ---- */
 
-/* Ancho y posición medidos: las orugas apoyan en el 96% de alto y ocupan del
-   15% al 80% de ancho en los siete sprites. */
+/* ANCLADA A LAS ORUGAS, no al borde del lienzo.
+   Estaba en top: 92% fijo y Chip flotaba: el canvas mide 416 px pero el
+   personaje no llega abajo del todo, así que la sombra quedaba unos píxeles por
+   debajo de las orugas, descolgada. La línea de apoyo y la huella salen de
+   APOYO_ORUGAS (config.js), medidas sprite por sprite, y las escribe ui.js.
+
+   La opacidad subió de 0,35 a 0,62: sobre el piso oscuro de la panorámica el
+   valor viejo no se leía. Ajustado mirando la captura, no el número. */
 #sombra {
-  left: 20%;
-  top: 92%;
-  width: 55%;
-  height: 7%;
+  left: var(--apoyo-x, 21.5%);
+  top: var(--apoyo-y, 96.5%);
+  width: var(--apoyo-ancho, 54.7%);
+  height: 6%;
+  /* La sombra nace EN la línea de apoyo, así que se sube media altura para
+     quedar centrada en ella en vez de colgando desde ahí. */
+  margin-top: -3%;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0) 70%);
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0) 72%);
   filter: blur(3px);
   animation: respirar-sombra var(--ciclo-rebote) ease-in-out infinite;
 }
@@ -1139,15 +1148,19 @@ body.es-noche #antena {
    medio ciclo la habría puesto justo al revés —chica con Chip abajo—, además de
    sumar una pieza que se puede desincronizar. Las dos animaciones comparten la
    misma variable de duración, que es lo que importa. */
+/* Ojo con estos dos números: la opacidad de acá MULTIPLICA a la del degradé.
+   Subir el alfa del radial-gradient a 0,62 y dejar esto en 0,35 daba un 0,22
+   efectivo, y la sombra seguía sin leerse. Se vio en la captura ampliada: bajo
+   las orugas no había nada. */
 @keyframes respirar-sombra {
   0%,
   100% {
     transform: scaleX(1);
-    opacity: 0.35;
+    opacity: 0.92;
   }
   50% {
     transform: scaleX(0.88);
-    opacity: 0.25;
+    opacity: 0.78;
   }
 }
 
@@ -1187,21 +1200,29 @@ body.es-noche #antena {
    arranca en 61% y se aleja, así que ninguna de las tres entra nunca en el
    círculo de exclusión. La más lejana termina en 78% + 8% de ancho = 86%, adentro
    de FRANJA_EFECTOS. */
+/* LA DIAGONAL, con los pasos MÁS LARGOS QUE EL VIAJE. Ese es el arreglo.
+   Antes los orígenes iban 6% y 7% aparte y cada Z viajaba 5% y 11%: o sea que
+   cada una terminaba su recorrido justo donde arrancaba la siguiente, y con los
+   desfasajes de un tercio, dos quedaban a 13 px una de otra —medido barriendo
+   el ciclo entero— y se leían como una sola "zz" pegoteada.
+   Ahora los pasos son de 9% y 9% (53 px de diagonal) y el viaje de 3% y 6%
+   (28 px), así cada Z se queda en su carril. El peor par del ciclo no baja de
+   28 px, arriba del mínimo de 25-30 que se pidió. */
 .zeta:nth-child(1) {
-  left: 61%;
-  top: 27%;
+  left: 58%;
+  top: 30%;
   font-size: calc(var(--alto-chip) * 0.055);
 }
 
 .zeta:nth-child(2) {
   left: 67%;
-  top: 20%;
+  top: 21%;
   font-size: calc(var(--alto-chip) * 0.068);
 }
 
 .zeta:nth-child(3) {
-  left: 73%;
-  top: 13%;
+  left: 76%;
+  top: 12%;
   font-size: calc(var(--alto-chip) * 0.082);
 }
 
@@ -1248,7 +1269,7 @@ body.es-noche #antena {
     opacity: 0.85;
   }
   100% {
-    transform: translate(calc(var(--alto-chip) * 0.05), calc(var(--alto-chip) * -0.11)) scale(1);
+    transform: translate(calc(var(--alto-chip) * 0.03), calc(var(--alto-chip) * -0.06)) scale(1);
     opacity: 0;
   }
 }
@@ -1455,11 +1476,20 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
    var() no resuelven, la declaración de animation queda inválida y no hay
    movimiento — el juego funciona igual.
 
-   El rebote va en el contenedor y el salto en el canvas de adentro a propósito.
-   Dos animaciones sobre el MISMO elemento no se suman: para la propiedad que
-   las dos tocan (transform) gana la última declarada, así que el salto se
-   comería el rebote mientras dura. Anidados, los dos transforms se componen
-   solos y el salto queda montado encima del rebote. */
+   El rebote va en el contenedor y el salto en #cuerpo, un nivel más adentro, a
+   propósito. Dos animaciones sobre el MISMO elemento no se suman: para la
+   propiedad que las dos tocan (transform) gana la última declarada, así que el
+   salto se comería el rebote mientras dura. Anidados, los dos transforms se
+   componen solos y el salto queda montado encima del rebote.
+
+   EL SALTO ESTABA EN EL CANVAS Y ESO ERA UN BUG. Todas las capas superpuestas
+   —la pantalla del pecho, el párpado, los ojos, los efectos— son HERMANAS del
+   canvas, no hijas, así que heredaban el rebote del contenedor pero no el
+   salto: Chip despegaba 8 px y su propia pantalla se quedaba flotando en el
+   aire. Con #cuerpo envolviendo a todas, el salto es de Chip entero.
+
+   La sombra es la única que queda afuera, y es deliberado: se queda en el piso
+   cuando Chip despega, que es lo que vende el despegue. */
 
 @keyframes respirar {
   0%, 100% { transform: translateY(0); }
@@ -1476,9 +1506,55 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   animation: respirar var(--ciclo-rebote) ease-in-out infinite;
 }
 
-#canvas-mascota.saltando {
+#cuerpo {
+  position: absolute;
+  inset: 0;
+}
+
+#cuerpo.saltando {
   animation: saltar var(--duracion-salto) ease-out;
 }
+
+/* EL SQUASH DEL CAMBIO AMBIENTAL.
+   Va en `scale` y no en `transform` a propósito: son propiedades distintas y
+   se componen solas, así que el squash puede convivir con el salto sin que
+   ninguno pise al otro. El orden que aplica el navegador es translate, rotate,
+   scale y recién después transform.
+
+   El pivote está en la base de las orugas —la misma --apoyo-y que ancla la
+   sombra— porque comprimido desde el centro Chip se hunde en el piso y flota al
+   mismo tiempo. Desde la base, se aplasta contra el suelo, que es lo que hace
+   una cosa con peso. */
+#cuerpo {
+  transform-origin: 50% var(--apoyo-y, 96.5%);
+}
+
+#cuerpo.cambiando {
+  animation: aplastar var(--duracion-squash) ease-out;
+}
+
+/* Si por casualidad se juntan —una acción que termina justo cuando cambia el
+   ambiente— corren las dos, cada una sobre su propiedad. */
+#cuerpo.saltando.cambiando {
+  animation: saltar var(--duracion-salto) ease-out, aplastar var(--duracion-squash) ease-out;
+}
+
+@keyframes aplastar {
+  0% { scale: 1 1; }
+  45% { scale: 1.035 0.955; }
+  100% { scale: 1 1; }
+}
+
+/* EL CROSSFADE SE PROBÓ Y SE FUE. Queda anotado para que nadie lo vuelva a
+   intentar sin la evidencia.
+   Se implementó de verdad —un segundo canvas con el sprite saliente,
+   desvaneciéndose 120 ms por debajo del nuevo— y se capturó el punto medio
+   exacto del cruce, en la transición idle -> feliz, que es la que más cambia de
+   pose (brazos abajo -> brazos arriba). A 300% se ven DOS Chips: el bulbo de la
+   antena aparece duplicado, la cabeza tiene doble contorno, los aros de los ojos
+   están dobles, y las dos manos —la de abajo y la levantada— conviven.
+   Es inevitable: un crossfade entre dos dibujos distintos los muestra a los dos.
+   Queda sólo el squash, que tapa el cambio con movimiento en vez de mezclarlo. */
 
 /* ============================================================================
    EL RINCÓN Y LA COLECCIÓN
@@ -1983,7 +2059,9 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
    misma especificidad que las reglas de arriba, declarada después. */
 @media (prefers-reduced-motion: reduce) {
   #contenedor-mascota,
-  #canvas-mascota.saltando {
+  #cuerpo.cambiando,
+  #cuerpo.saltando.cambiando,
+  #cuerpo.saltando {
     animation: none;
   }
 
@@ -2040,7 +2118,7 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   #sombra {
     animation: none;
     transform: scaleX(0.94);
-    opacity: 0.3;
+    opacity: 0.85;
   }
 
   /* El panel de estado aparece y desaparece igual: lo que se va es el viaje.

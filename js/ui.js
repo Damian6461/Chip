@@ -10,6 +10,10 @@ import {
   DURACION_PRESION_MS,
   VARS_ANIMACION,
   CLASE_SALTO,
+  ESTADOS_DE_ACCION,
+  DURACION_SQUASH_MS,
+  CLASE_CAMBIO,
+  VARS_CAMBIO,
   RUTAS_FONDOS,
   FONDO_CORRIMIENTO,
   VARS_FONDO,
@@ -49,6 +53,8 @@ import {
   VARS_PERSONAJE,
   POSICIONES_ANTENA,
   VARS_ANTENA,
+  APOYO_ORUGAS,
+  VARS_SOMBRA,
   PANTALLAS_PECHO,
   ESTADOS_CON_PANTALLA_VIVA,
   SEGMENTOS_PANTALLA,
@@ -101,6 +107,10 @@ const detalleColeccion = document.getElementById('coleccion-detalle');
 const grillaGigantes = document.getElementById('gigantes-grilla');
 const detalleGigantes = document.getElementById('gigantes-detalle');
 const canvas = document.getElementById('canvas-mascota');
+// El salto va en #cuerpo y no en el canvas: es el envoltorio que contiene TODAS
+// las capas de Chip, así que saltan juntas. Ver el bloque del rebote en
+// style.css.
+const cuerpo = document.getElementById('cuerpo');
 const ctx = canvas.getContext('2d');
 
 // Los sprites son pixel art. El canvas ahora mide 256x256, exactamente lo que
@@ -127,6 +137,7 @@ raiz.style.setProperty(VARS_ANIMACION.transicionBarra, `${TRANSICION_BARRA_MS}ms
 raiz.style.setProperty(VARS_ANIMACION.duracionPresion, `${DURACION_PRESION_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.transicionPanel, `${TRANSICION_PANEL_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.duracionLlegada, `${DURACION_LLEGADA_MS}ms`);
+raiz.style.setProperty(VARS_CAMBIO.duracionSquash, `${DURACION_SQUASH_MS}ms`);
 
 // El encuadre de la escena: cuánto hay que correr la panorámica para entrar 8%
 // en ella. Es un número sin unidad porque el CSS lo multiplica por el alto de
@@ -403,7 +414,7 @@ export function celebrarHumor() {
 // El salto es de una sola pasada: la clase se saca al terminar para que la
 // próxima acción la pueda volver a poner. El rebote vive en el contenedor y no
 // dispara este evento nunca, porque es infinito.
-canvas.addEventListener('animationend', () => canvas.classList.remove(CLASE_SALTO));
+cuerpo.addEventListener('animationend', () => cuerpo.classList.remove(CLASE_SALTO));
 
 // ---- El estado, que aparece al tocar a Chip ----
 //
@@ -707,17 +718,40 @@ function dibujarPlaceholder(nombreEstado) {
 
 // El nombre del estado llega resuelto desde afuera: resolver la cadena es
 // calcular, y este módulo pinta lo que le dan.
-function dibujarMascota(estadoVisual) {
+let claveDibujada = null;
+
+// `ambiental` decide si el cambio se acompaña con squash. Lo resuelve el
+// llamador porque depende del ESTADO —de si lo causó el jugador o no— y esto
+// sólo sabe de sprites.
+function dibujarMascota(claveSprite, ambiental = false) {
+  const cambia = claveSprite !== claveDibujada;
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const img = obtenerSprite(estadoVisual);
+  const img = obtenerSprite(claveSprite);
 
   if (img) {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   } else {
-    dibujarPlaceholder(estadoVisual);
+    dibujarPlaceholder(claveSprite);
   }
+
+  if (cambia && ambiental && claveDibujada) reiniciarAnimacion(cuerpo, CLASE_CAMBIO);
+  claveDibujada = claveSprite;
 }
+
+// Sacar, forzar reflow y volver a poner. Sin el reflow el navegador agrupa las
+// dos mutaciones, no ve ningún cambio de clase y la animación no se reinicia:
+// el mismo truco que usa el salto.
+function reiniciarAnimacion(elemento, clase) {
+  elemento.classList.remove(clase);
+  void elemento.offsetWidth;
+  elemento.classList.add(clase);
+}
+
+cuerpo.addEventListener('animationend', (e) => {
+  if (e.animationName === 'aplastar') cuerpo.classList.remove(CLASE_CAMBIO);
+});
 
 function actualizarBarras(estado) {
   for (const nombre of Object.keys(barras)) {
@@ -776,6 +810,14 @@ function pintarClaseEstado(estadoVisual, claveSprite) {
   const antena = POSICIONES_ANTENA[claveSprite] ?? POSICIONES_ANTENA.idle;
   contenedorMascota.style.setProperty(VARS_ANTENA.x, `${antena.x}%`);
   contenedorMascota.style.setProperty(VARS_ANTENA.y, `${antena.y}%`);
+
+  // Y la sombra al piso, por la misma razón y con la misma forma de tabla: las
+  // orugas no apoyan en el borde del lienzo ni en el mismo lugar en todas las
+  // poses. Va en #chip y no en el contenedor porque la sombra NO rebota.
+  const apoyo = APOYO_ORUGAS[claveSprite] ?? APOYO_ORUGAS.idle;
+  cajaChip.style.setProperty(VARS_SOMBRA.y, `${apoyo.y}%`);
+  cajaChip.style.setProperty(VARS_SOMBRA.x, `${apoyo.x}%`);
+  cajaChip.style.setProperty(VARS_SOMBRA.ancho, `${apoyo.ancho}%`);
 }
 
 // ---- La luz del galpón ----
@@ -814,7 +856,9 @@ export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = 
   pintarFondo(esNoche);
   pintarLuz(luz);
   pintarClaseEstado(estadoVisual, claveSprite);
-  dibujarMascota(claveSprite);
+  // Los cambios de acción van en corte seco: ESE corte es el feedback de que la
+  // acción respondió. Los ambientales, con squash.
+  dibujarMascota(claveSprite, !ESTADOS_DE_ACCION.includes(estadoVisual));
   pintarOjos(claveSprite);
   pintarPantalla(estado, claveSprite);
   actualizarBarras(estado);
@@ -848,9 +892,9 @@ export function animarAccion() {
   // Sacar, forzar reflow y volver a poner reinicia la animación cuando la
   // acción se repite antes de que la anterior haya terminado. Sin el reflow el
   // navegador agrupa las dos mutaciones y no ve ningún cambio de clase.
-  canvas.classList.remove(CLASE_SALTO);
-  void canvas.offsetWidth;
-  canvas.classList.add(CLASE_SALTO);
+  cuerpo.classList.remove(CLASE_SALTO);
+  void cuerpo.offsetWidth;
+  cuerpo.classList.add(CLASE_SALTO);
 }
 
 export function conectarAcciones({ onCargar, onJugar, onLimpiar }) {

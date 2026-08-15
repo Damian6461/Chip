@@ -300,6 +300,38 @@ export const VARS_ANIMACION = {
 // Clase que dispara el salto. La declara style.css, la pone y la saca ui.js.
 export const CLASE_SALTO = 'saltando';
 
+// ---- El cambio de sprite ----
+//
+// Los cambios de estado se sentían bruscos, y la respuesta NO es uniforme: hay
+// dos tipos y necesitan tratamiento opuesto.
+//
+// Los de ACCIÓN quedan en corte seco. Tocás Cargar y Chip cambia al instante:
+// ese corte ES el feedback de que la acción respondió. Suavizarlo lo haría
+// sentir flojo y con retardo. El salto que ya existe alcanza de acompañamiento.
+//
+// Los AMBIENTALES —cruzar 15 de batería, que den las 23, subir a feliz, que pase
+// un gigante, cambiar de pose— no los causó el jugador, y ahí el corte seco
+// parece un glitch en vez de un cambio de humor.
+//
+// La técnica es el truco clásico de la animación tradicional: se tapa el cambio
+// de dibujo con movimiento. Un squash corto justo en el instante del cambio y el
+// ojo lee el movimiento en vez del corte.
+export const ESTADOS_DE_ACCION = ['cargando', 'jugando', 'limpiando'];
+
+export const DURACION_SQUASH_MS = 150;
+export const CLASE_CAMBIO = 'cambiando';
+
+// El pivote va en la base de las orugas y no en el centro: comprimido desde el
+// medio, Chip se hunde en el piso y flota al mismo tiempo. Sale de la misma
+// tabla APOYO_ORUGAS que ancla la sombra.
+// El crossfade de 120 ms se probó encima del squash y NO quedó. Un fade entre
+// dos dibujos distintos muestra los dos: en la captura del punto medio exacto de
+// idle -> feliz se ven dos Chips superpuestos, con el bulbo de la antena
+// duplicado y las dos manos a la vez. El detalle está en style.css.
+export const VARS_CAMBIO = {
+  duracionSquash: '--duracion-squash'
+};
+
 // ---- El estado que aparece al tocar a Chip ----
 
 // El estado no vive en pantalla: vive en Chip. Se abre tocándolo y se cierra
@@ -389,6 +421,39 @@ export const POSICIONES_ANTENA = {
 export const VARS_ANTENA = {
   x: '--antena-x',
   y: '--antena-y'
+};
+
+// ---- Dónde apoyan las orugas ----
+//
+// La sombra estaba clavada al borde del canvas y Chip flotaba: el canvas mide
+// 416 px en pantalla pero Chip no llega abajo del todo, así que la sombra
+// quedaba unos píxeles por debajo de las orugas, descolgada.
+//
+// Esto es la línea de apoyo REAL, medida sprite por sprite: la fila más baja con
+// cuerpo —al menos 6 píxeles opacos, para no morder una antiesquina suelta— y la
+// huella, que son las columnas con cuerpo en las diez filas de arriba de esa
+// línea. Diez y no una porque las orugas son redondas: en la última fila tocan
+// 13% de ancho y en las diez, el 55% que es la huella de verdad.
+//
+// En `cargando` el cable y la ficha llegan al borde inferior del lienzo y daban
+// 100%: se excluye el cian del cable y se toma el valor de las otras poses, que
+// caen todas entre 95,7% y 96,9%. La ficha apoyada en el piso no es una oruga.
+export const APOYO_ORUGAS = {
+  idle: { y: 96.5, x: 21.5, ancho: 54.7 },
+  feliz: { y: 96.9, x: 17.6, ancho: 58.6 },
+  critico: { y: 96.9, x: 17.2, ancho: 59.0 },
+  standby: { y: 96.9, x: 17.6, ancho: 59.8 },
+  cargando: { y: 96.5, x: 25.4, ancho: 56.3 },
+  jugando: { y: 96.1, x: 28.1, ancho: 48.0 },
+  limpiando: { y: 96.5, x: 21.5, ancho: 54.3 },
+  esperando: { y: 95.7, x: 21.1, ancho: 55.5 },
+  'idle-manitos': { y: 96.1, x: 19.5, ancho: 56.6 }
+};
+
+export const VARS_SOMBRA = {
+  y: '--apoyo-y',
+  x: '--apoyo-x',
+  ancho: '--apoyo-ancho'
 };
 
 // ---- La pantalla del pecho ----

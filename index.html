@@ -55,6 +55,14 @@
     <div id="sombra" aria-hidden="true"></div>
 
     <div id="contenedor-mascota">
+      <!-- EL CUERPO: todo lo que es Chip y tiene que moverse con él.
+           El rebote va en #contenedor-mascota y el salto acá, un nivel más
+           adentro, para que los dos transforms se compongan en vez de pisarse.
+           Antes el salto estaba en el canvas, y todas las capas que son
+           HERMANAS del canvas —la pantalla del pecho, los ojos, el párpado, los
+           efectos— se quedaban quietas mientras Chip saltaba 8 px.
+           La sombra queda AFUERA a propósito: es la única que no despega. -->
+      <div id="cuerpo">
       <!-- 256x256 = el tamaño nativo de los sprites. El canvas no reescala
            nada: dibuja 1 a 1 y el CSS lo lleva al tamaño de la escena. -->
       <canvas id="canvas-mascota" width="256" height="256"></canvas>
@@ -110,6 +118,7 @@
           <div class="chispa"></div>
           <div class="chispa"></div>
         </div>
+      </div>
       </div>
     </div>
   </div>
