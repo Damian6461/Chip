@@ -35,7 +35,8 @@ import {
 import { puedeJugar } from './acciones.js';
 import { obtenerSprite } from './sprites.js';
 import { objetosConEstado } from './coleccion.js';
-import { svgDeObjeto } from './formas-objetos.js';
+import { gigantesConEstado } from './gigantes.js';
+import { svgDeObjeto, svgDeGigante } from './formas-objetos.js';
 
 const cajaChip = document.getElementById('chip');
 const contenedorMascota = document.getElementById('contenedor-mascota');
@@ -45,6 +46,8 @@ const estante = document.getElementById('estante');
 const panelColeccion = document.getElementById('coleccion');
 const grillaColeccion = document.getElementById('coleccion-grilla');
 const detalleColeccion = document.getElementById('coleccion-detalle');
+const grillaGigantes = document.getElementById('gigantes-grilla');
+const detalleGigantes = document.getElementById('gigantes-detalle');
 const canvas = document.getElementById('canvas-mascota');
 const ctx = canvas.getContext('2d');
 
@@ -212,6 +215,63 @@ document.addEventListener(
   },
   true
 );
+
+// ---- Los gigantes ----
+//
+// Se revelan por capas y nunca se vuelven amigos: el máximo del arco es un
+// gesto. Por eso la ficha no dice "desbloqueado" ni cuenta días — dice lo que
+// Chip sabe, y nada más.
+
+let gigantesActuales = [];
+
+function pintarGigantes(gigantes) {
+  grillaGigantes.replaceChildren();
+
+  for (const gigante of gigantes) {
+    const revelado = gigante.nombre !== null;
+    const nodo = document.createElement('button');
+    nodo.type = 'button';
+    nodo.className = 'objeto gigante';
+    nodo.dataset.id = gigante.id;
+    if (revelado) nodo.classList.add(CLASE_OBJETO_OBTENIDO);
+    if (gigante.hitoVivido) nodo.classList.add('lo-vio');
+    nodo.innerHTML = svgDeGigante(gigante.id, revelado);
+    nodo.setAttribute('aria-label', gigante.nombre ?? 'Todavía sin conocer');
+    grillaGigantes.appendChild(nodo);
+  }
+}
+
+function mostrarDetalleGigante(gigante) {
+  detalleGigantes.replaceChildren();
+
+  const nombre = document.createElement('strong');
+  nombre.textContent = gigante.nombre ?? 'Algo grande, todavía sin nombre';
+  detalleGigantes.appendChild(nombre);
+
+  // El detalle y el hito aparecen sólo cuando el arco llegó ahí. Un gigante sin
+  // contenido escrito —los tres que esperan la pasada editorial— muestra el
+  // nombre y nada más, que es exactamente lo que se sabe de él.
+  for (const linea of [gigante.detalle, gigante.hito]) {
+    if (!linea) continue;
+    const texto = document.createElement('span');
+    texto.textContent = linea;
+    detalleGigantes.appendChild(texto);
+  }
+}
+
+grillaGigantes.addEventListener('click', (evento) => {
+  const nodo = evento.target.closest('.gigante');
+  if (!nodo) return;
+
+  const gigante = gigantesActuales.find((g) => g.id === nodo.dataset.id);
+  if (gigante) mostrarDetalleGigante(gigante);
+});
+
+export function mostrarGigantes(dias, hitosVistos = []) {
+  gigantesActuales = gigantesConEstado(dias, hitosVistos);
+  pintarGigantes(gigantesActuales);
+  detalleGigantes.replaceChildren();
+}
 
 // Se llama una sola vez, al arranque: la colección sólo cambia al volver, igual
 // que los eventos. `nuevos` son los de esta visita, los que entran animados.

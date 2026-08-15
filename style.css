@@ -638,9 +638,68 @@ body:not(.es-noche) .mota {
   color: #9aa0ab;
 }
 
-#coleccion-detalle strong {
+#coleccion-detalle strong,
+#gigantes-detalle strong {
   color: var(--color-mantenimiento);
   font-weight: 400;
+}
+
+/* ---- Los grandes ----
+   Cuatro sombras. Nunca se ven a color: el mundo es enorme y no se deja mirar
+   de cerca. Lo único que cambia cuando el arco avanza es cuánto se sabe. */
+
+#gigantes-titulo {
+  margin: 0;
+  padding-top: var(--esp-1);
+  border-top: 1px solid #262b36;
+  font-family: var(--fuente-instrumento);
+  font-size: 12px;
+  color: #b8bec8;
+}
+
+#gigantes-grilla {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--esp-1);
+}
+
+#gigantes-grilla .gigante {
+  --sombra: #6c7482;
+
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #262b36;
+  border-radius: 2px;
+  cursor: pointer;
+  opacity: 0.5;
+  filter: none;
+}
+
+/* Con el nombre sabido, la sombra se ve entera. Sigue siendo una sombra. */
+#gigantes-grilla .gigante.obtenido {
+  --sombra: #97a1b1;
+  opacity: 1;
+}
+
+/* El que una vez lo miró queda marcado con el acento del personaje. No es un
+   trofeo: es que pasó. */
+#gigantes-grilla .gigante.lo-vio {
+  border-color: var(--color-humor);
+}
+
+#gigantes-detalle {
+  margin: 0;
+  min-height: 3.4em;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--fuente-instrumento);
+  font-size: 11px;
+  line-height: 1.5;
+  color: #9aa0ab;
 }
 
 /* ---- El estado, que aparece al tocar a Chip ----

@@ -15,11 +15,13 @@ import { cargar, jugar, limpiar } from './acciones.js';
 import { elegirEventos, horasConGarantiaDiaria, diaLocal } from './eventos.js';
 import { otorgarPorEventos } from './coleccion.js';
 import { OBJETOS } from './datos-objetos.js';
+import { hitoPendiente, eventoDeHito, capaPorDias } from './gigantes.js';
 import { cargarSprites, resolverEstadoVisual, esDeNoche } from './sprites.js';
 import {
   render as renderUI,
   mostrarEventos,
   mostrarColeccion,
+  mostrarGigantes,
   conectarAcciones,
   animarAccion
 } from './ui.js';
@@ -149,6 +151,18 @@ const horasFuera = horasTranscurridas(estado, ahoraArranque);
 
 estado = aplicarDecay(estado, ahoraArranque);
 
+// Presencia: días distintos en que se abrió el juego. Se cuenta antes que nada
+// más porque el arco de los gigantes depende de esto, y abrir tres veces el
+// mismo día tiene que contar uno solo.
+const hoy = diaLocal(ahoraArranque);
+if (estado.ultimoDiaVisitado !== hoy) {
+  estado = {
+    ...estado,
+    diasDePresencia: estado.diasDePresencia + 1,
+    ultimoDiaVisitado: hoy
+  };
+}
+
 // Qué hizo Chip mientras no estabas.
 //
 // La garantía diaria entra acá y no adentro de elegirEventos: es una decisión de
@@ -160,9 +174,20 @@ const horasEventos = horasConGarantiaDiaria(
   ahoraArranque
 );
 
+// Si el arco de un gigante llegó a su hito, ese es el evento de la visita y es
+// el único: es el momento en que el mundo mira a Chip y no comparte cartel con
+// "barrió el pasillo tres". Se anota como vivido para que no vuelva a pasar.
+const hito = hitoPendiente(estado.diasDePresencia, estado.hitosVistos);
+
 // Se persisten los ids de TODO lo mostrado para que nada de esta visita pueda
 // repetirse en la siguiente.
-const eventos = elegirEventos(horasEventos, estado.ultimosEventosIds);
+const eventos = hito
+  ? [eventoDeHito(hito)]
+  : elegirEventos(horasEventos, estado.ultimosEventosIds);
+
+if (hito) {
+  estado = { ...estado, hitosVistos: [...estado.hitosVistos, hito.id] };
+}
 
 // Y lo que la visita haya dejado. La colección se calcula acá y se guarda con
 // el resto del estado: coleccion.js no toca localStorage, igual que decay.js.
@@ -180,6 +205,7 @@ if (eventos.length > 0) {
 guardarEstado(estado);
 mostrarEventos(eventos);
 mostrarColeccion(estado.coleccion, hallazgos.nuevos);
+mostrarGigantes(estado.diasDePresencia, estado.hitosVistos);
 
 conectarAcciones({
   onCargar: () => ejecutar(E.cargando, cargar),
@@ -226,6 +252,10 @@ const apiDebug = {
   // cuenta: todo lo que el debug sabe del juego pasa por acá.
   totalDeObjetos: () => OBJETOS.length,
 
+  // La capa que alcanzó el arco con la presencia de hoy, para verlo avanzar en
+  // el panel sin abrir la colección.
+  capaDeLaGrua: () => capaPorDias(estado.diasDePresencia),
+
   // Suma el primer objeto que falte, para poder ver el estante poblado sin
   // esperar a que el sorteo lo traiga. Pasa por el mismo camino que un hallazgo
   // real: cambia el estado, se guarda y se repinta.
@@ -237,6 +267,30 @@ const apiDebug = {
     guardarEstado(estado);
     mostrarColeccion(estado.coleccion, [falta]);
     pintar();
+  },
+
+  // Simula presencia acumulada para ver el arco de los gigantes avanzar sin
+  // esperar meses. No recarga: repinta la colección en el lugar, así se puede
+  // ver la capa cambiar con el panel abierto.
+  sumarDias(dias) {
+    estado = { ...estado, diasDePresencia: estado.diasDePresencia + dias };
+    guardarEstado(estado);
+    mostrarGigantes(estado.diasDePresencia, estado.hitosVistos);
+    pintar();
+  },
+
+  // Dispara el hito que esté pendiente, si lo hay, sin esperar a la próxima
+  // apertura. Devuelve el texto para poder verificarlo desde el panel.
+  dispararHito() {
+    const pendiente = hitoPendiente(estado.diasDePresencia, estado.hitosVistos);
+    if (!pendiente) return null;
+
+    estado = { ...estado, hitosVistos: [...estado.hitosVistos, pendiente.id] };
+    guardarEstado(estado);
+    mostrarEventos([eventoDeHito(pendiente)]);
+    mostrarGigantes(estado.diasDePresencia, estado.hitosVistos);
+    pintar();
+    return pendiente.hito;
   },
 
   // El multiplicador escala cuántas horas representa cada simulación, para

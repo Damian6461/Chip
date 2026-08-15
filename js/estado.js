@@ -6,7 +6,9 @@ import {
   NOMBRE_INICIAL,
   STAT_INICIAL,
   EVENTOS_INICIALES_IDS,
-  COLECCION_INICIAL
+  COLECCION_INICIAL,
+  PRESENCIA_INICIAL,
+  HITOS_INICIALES
 } from './config.js';
 
 export function crearEstadoNuevo() {
@@ -25,6 +27,12 @@ export function crearEstadoNuevo() {
     // diaria. null en una partida nueva: la primera visita ya cuenta como día
     // sin estrenar y trae algo.
     ultimoDiaConEvento: null,
+    // Días distintos en que se abrió el juego. Es lo único que hace avanzar el
+    // arco de los gigantes: estar, no hacer.
+    diasDePresencia: PRESENCIA_INICIAL,
+    ultimoDiaVisitado: null,
+    // Hitos ya vividos, para que el momento pase una sola vez en la partida.
+    hitosVistos: [...HITOS_INICIALES],
     version: VERSION_ESTADO
   };
 }
@@ -44,6 +52,11 @@ function migrar(guardado) {
     ...guardado,
     version: VERSION_ESTADO
   };
+
+  // v4 -> v5: los tres campos del arco de gigantes también son nuevos y también
+  // los trajo el merge. Una partida vieja arranca el arco desde cero, que es lo
+  // correcto: la presencia se cuenta desde que existe el contador, no se inventa
+  // hacia atrás.
 
   // v3 -> v4: `coleccion` y `ultimoDiaConEvento` son campos NUEVOS, así que el
   // merge de arriba ya los trajo con su default. No hace falta un paso propio, y

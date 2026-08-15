@@ -7,10 +7,9 @@
 import {
   HORAS_MINIMAS_EVENTO,
   HORAS_DOS_EVENTOS,
-  MAX_EVENTOS_POR_VISITA,
-  PROBABILIDAD_EVENTO_RARO
+  MAX_EVENTOS_POR_VISITA
 } from './config.js';
-import { EVENTOS, EVENTO_RARO } from './datos-eventos.js';
+import { EVENTOS } from './datos-eventos.js';
 
 function cuantosTocan(horas) {
   if (horas < HORAS_MINIMAS_EVENTO) return 0;
@@ -42,33 +41,20 @@ export function horasConGarantiaDiaria(horas, ultimoDiaConEvento, ahora) {
 }
 
 // `ultimosIds` son los eventos mostrados en la visita anterior — todos, no sólo
-// el último.
+// el último. `aleatorio` es inyectable para que las pruebas sean deterministas.
 //
-// Las dos fuentes de azar entran separadas y son inyectables para que las
-// pruebas sean deterministas: `aleatorio` sortea la bolsa y `azarRaro` es el
-// portero del evento raro. Separadas a propósito — compartiendo fuente, un
-// `aleatorio` fijo en 0 (el que hace que el sorteo saque siempre el primero de
-// la bolsa) dispararía el raro en todas las visitas.
-export function elegirEventos(
-  horas,
-  ultimosIds = [],
-  aleatorio = Math.random,
-  azarRaro = Math.random
-) {
+// Acá NO hay eventos raros. El de la grúa que baja el brazo se sorteaba con una
+// moneda cargada al 1.5% por visita; ahora es el hito del arco de la grúa y lo
+// dispara gigantes.js cuando la presencia llega al umbral. Este módulo volvió a
+// hacer una sola cosa: repartir el pool general.
+export function elegirEventos(horas, ultimosIds = [], aleatorio = Math.random) {
   const cuantos = cuantosTocan(horas);
   if (cuantos === 0) return [];
 
   // Lo mostrado la visita pasada queda afuera: si viste dos eventos, ninguno de
-  // los dos vuelve a salir la próxima vez. Vale también para el raro, que si
-  // acaba de salir no se repite aunque la moneda vuelva a caer parada.
+  // los dos vuelve a salir la próxima vez.
   const excluidos = new Set(ultimosIds);
   const elegidos = [];
-
-  // El raro no se sortea: no está en el pool y no compite con nadie. Ocupa uno
-  // de los lugares de la visita, no suma uno extra.
-  if (!excluidos.has(EVENTO_RARO.id) && azarRaro() < PROBABILIDAD_EVENTO_RARO) {
-    elegidos.push(EVENTO_RARO);
-  }
 
   // filter ya devuelve un array nuevo, así que se puede splicear sin tocar el
   // pool. Sacar el elegido de la bolsa evita que salga dos veces en la misma

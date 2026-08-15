@@ -63,11 +63,56 @@ const FORMA_POR_DEFECTO = `
   <rect x="5" y="5" width="14" height="14" rx="2"
     fill="var(--hueco)" stroke="var(--filo)"/>`;
 
+// Las siluetas de los cuatro grandes. Nunca se ven a color: son sombras, y esa
+// es la idea — el mundo es enorme y no se deja mirar de cerca.
+const FORMAS_GIGANTES = {
+  // La grúa vieja: mástil, pluma y el gancho colgando.
+  'grua-vieja': `
+    <path d="M6 22V4h2v18zM4 4h11l-2 4H6zM13 8v5M10.5 13h5l-2.5 4z"
+      fill="var(--sombra)" stroke="var(--sombra)" stroke-width="1.4"
+      stroke-linejoin="round"/>`,
+
+  // El carguero de siete metros: una mole con ruedas.
+  carguero: `
+    <path d="M2 16V9h9l4 3h7v4z" fill="var(--sombra)"/>
+    <circle cx="7" cy="18" r="2.6" fill="var(--sombra)"/>
+    <circle cx="17" cy="18" r="2.6" fill="var(--sombra)"/>`,
+
+  // El robot de carga: torso y dos brazos que levantan.
+  'robot-de-carga': `
+    <path d="M8 6h8v11H8z" fill="var(--sombra)"/>
+    <path d="M8 9H4v7M16 9h4v7" fill="none" stroke="var(--sombra)" stroke-width="2.4"/>
+    <path d="M9 17h6v4H9z" fill="var(--sombra)"/>`,
+
+  // Los de mantenimiento pesado: tres, siempre juntos, nunca uno.
+  'mantenimiento-pesado': `
+    <path d="M3 20v-6h5v6zM9.5 20V8h5v12zM16 20v-8h5v8z" fill="var(--sombra)"/>`
+};
+
+// Lo que se ve mientras el gigante es sólo una silueta: la forma no se muestra,
+// se muestra el signo. Todavía no sabés quién es.
+const INCOGNITA = `
+  <circle cx="12" cy="12" r="9" fill="none" stroke="var(--sombra)" stroke-width="1.4"/>
+  <path d="M9.6 9.4c0-3.2 5-3.4 5 0 0 2.4-2.5 2.4-2.5 4.6" fill="none"
+    stroke="var(--sombra)" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="12.1" cy="17.4" r="1.1" fill="var(--sombra)"/>`;
+
 export function svgDeObjeto(id) {
   const forma = FORMAS[id] ?? FORMA_POR_DEFECTO;
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${forma}</svg>`;
 }
 
+// `revelado` false devuelve la incógnita: la silueta del gigante recién aparece
+// cuando la presencia alcanza para saber quién es.
+export function svgDeGigante(id, revelado) {
+  const forma = revelado ? FORMAS_GIGANTES[id] ?? INCOGNITA : INCOGNITA;
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${forma}</svg>`;
+}
+
 export function tieneForma(id) {
   return id in FORMAS;
+}
+
+export function tieneFormaDeGigante(id) {
+  return id in FORMAS_GIGANTES;
 }

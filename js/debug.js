@@ -10,7 +10,8 @@ import {
   MULTIPLICADOR_DEBUG_INICIAL,
   HORAS_DEBUG_INICIAL,
   OPCION_DEBUG_AUTO,
-  HORAS_DEL_DIA
+  HORAS_DEL_DIA,
+  DIAS_DEBUG_INICIAL
 } from './config.js';
 
 function crearPanel() {
@@ -160,6 +161,18 @@ export function iniciarDebug(api) {
   });
   filaHora.append(crearEtiqueta('hora'), selectHora);
 
+  // ---- Simular presencia ----
+  // El arco de los gigantes avanza por días distintos con visita, así que sin
+  // esto habría que esperar un mes para ver la última capa.
+  const filaDias = crearFila();
+  const inputDias = crearNumero(DIAS_DEBUG_INICIAL);
+  const botonDias = crearBoton('sumar días');
+  botonDias.addEventListener('click', () => api.sumarDias(Number(inputDias.value) || 0));
+  filaDias.append(inputDias, botonDias);
+
+  const botonHito = crearBoton('disparar hito');
+  botonHito.addEventListener('click', () => api.dispararHito());
+
   // ---- Sumar un objeto ----
   // Para ver el estante poblado sin esperar a que el sorteo traiga los hallazgos.
   const botonObjeto = crearBoton('sumar objeto');
@@ -198,7 +211,11 @@ export function iniciarDebug(api) {
       // y lo que hace falta ver es qué hay en el save, no cómo se ve.
       `colección ${coleccion.length}/${api.totalDeObjetos()}`,
       ...(coleccion.length ? coleccion.map((id) => `  ${id}`) : ['  (vacía)']),
-      `día evento ${e.ultimoDiaConEvento ?? '—'}`
+      `día evento ${e.ultimoDiaConEvento ?? '—'}`,
+      '',
+      `presencia ${e.diasDePresencia ?? 0} días`,
+      `capa grúa ${api.capaDeLaGrua()}`,
+      `hitos ${(e.hitosVistos ?? []).join(', ') || '(ninguno)'}`
     ].join('\n');
   }
 
@@ -212,6 +229,8 @@ export function iniciarDebug(api) {
     botonVolver,
     filaVisual,
     filaHora,
+    filaDias,
+    botonHito,
     botonObjeto,
     botonReiniciar,
     stats

@@ -16,7 +16,7 @@ http://127.0.0.1:5500/index.html
 
 ## Tests
 
-82 pruebas, mismos archivos en dos entrypoints:
+100 pruebas, mismos archivos en dos entrypoints:
 
 ```bash
 node tests/correr.mjs        # sale 0 si pasa todo, 1 si no
@@ -36,7 +36,7 @@ Se corren después de cualquier cambio que toque estado, decay o persistencia.
 http://127.0.0.1:5500/index.html?debug=1
 ```
 
-Sin el parámetro, `js/debug.js` ni se descarga (import dinámico). Cinco controles:
+Sin el parámetro, `js/debug.js` ni se descarga (import dinámico).
 
 | Control | Qué hace |
 |---|---|
@@ -45,7 +45,12 @@ Sin el parámetro, `js/debug.js` ni se descarga (import dinámico). Cinco contro
 | volver tras N h | retrocede `ultimaVisita` **sin** aplicar decay y recarga |
 | visual | fuerza un estado visual, o `auto` para volver a la cadena |
 | hora | fuerza la hora del reloj (0-23), o `auto` |
+| sumar días | suma presencia acumulada, para ver el arco de los gigantes avanzar |
+| disparar hito | dispara el hito pendiente sin esperar a la próxima apertura |
+| sumar objeto | agrega el primer objeto que falte, para poblar el estante |
 | reiniciar partida | save nuevo en 100/100/100 |
+
+La lectura de abajo muestra los stats con decimales, la colección cruda, la presencia, la capa que alcanzó el arco y los hitos ya vividos.
 
 **`visual` y `hora` no son lo mismo.** `visual` pisa el resultado de la cadena y no toca nada más: forzar `standby` cambia el sprite y deja el galpón como esté. `hora` mueve el reloj que usa el juego, así que arrastra la cadena **y** el fondo: poner 23 muestra a Chip en standby con el galpón de noche, que es el estado real de esa hora. `hora` no se resetea al reiniciar la partida — el save y el reloj son cosas distintas.
 
@@ -106,7 +111,7 @@ El loader degrada en dos escalones: falta el sprite pedido → usa el de `idle`;
 
 `ui.js` apaga el suavizado (`ctx.imageSmoothingEnabled = false`) apenas crea el contexto: el bilineal del navegador emborrona el pixel art al escalarlo. Es estado del contexto, no un parámetro de `drawImage`, así que se setea una sola vez y sobrevive a `clearRect`. **Cambiar el tamaño del canvas lo resetea a `true`** — si algún día el canvas deja de ser fijo, hay que volver a bajarlo.
 
-Arista abierta: el canvas mide **320** y los sprites **256**, así que se dibujan escalados ×1.25. Sin suavizado eso ya no es borroso, pero sigue siendo irregular: de cada cuatro píxeles del sprite, uno sale del doble de ancho. La salida limpia es un factor entero — canvas a 256, o dibujar el sprite a 256 centrado adentro de los 320.
+Esa arista se cerró con el rediseño full-bleed: **el canvas mide 256, igual que los sprites**, así que el contexto 2D dibuja 1 a 1 y el escalado a pantalla lo hace el CSS con `image-rendering: pixelated`. Antes el canvas medía 320 y el ×1,25 dejaba uno de cada cuatro píxeles del doble de ancho.
 
 ---
 
@@ -232,6 +237,36 @@ El alféizar además es canon — "Miró la lluvia por la ventana del fondo. Es 
 ### Las formas
 
 Los sprites de los objetos **se dibujan por código** (`js/formas-objetos.js`): siluetas SVG simples con la paleta del juego, todas en un `viewBox` de 24×24 para que el tamaño lo decida el CSS. No pretenden ser arte — pretenden ser reconocibles a 16 px mientras el arte ilustrado no exista. Hay una prueba que verifica que cada objeto del catálogo tenga la suya y no caiga al casillero genérico.
+
+### Los gigantes
+
+Los cuatro grandes del canon —la grúa vieja, el carguero, el robot de carga y los de mantenimiento pesado como grupo— viven en la segunda sección de la colección y se revelan **por capas, según la presencia acumulada**.
+
+**Presencia son días distintos con visita**, no visitas y no tareas: abrir tres veces el mismo día cuenta uno. Estar es lo único que hace avanzar esto, y eso es lo que lo separa de una barra de progreso.
+
+| Capa | Días | Qué se ve |
+|---|---|---|
+| silueta | 0 | una incógnita: no sabés quién es |
+| nombre | 3 | la silueta de verdad y el nombre |
+| detalle | 10 | lo que Chip fue entendiendo de él |
+| hito | 30 | el momento en que ese gigante lo nota |
+
+**El hito no se lee antes de vivirlo.** Llegar al umbral no alcanza: hasta que el evento no pasó, la ficha no muestra el texto. Leerlo antes sería spoilear el único momento del juego.
+
+**Regla de tono, textual del brief y anotada en `datos-gigantes.js`:** los gigantes nunca se vuelven amigos. Notar ≠ adoptar. El máximo del arco es un gesto.
+
+### La resignificación del evento del brazo
+
+El evento de la grúa que baja el brazo **ya no se sortea**. Salía con una moneda cargada al 1,5% por visita, fuera del pool; ahora es el hito del arco de la grúa y se dispara **una sola vez en la partida**, cuando la presencia llega a 30 días.
+
+Lo que eso cambió en el código:
+
+- `elegirEventos` perdió su cuarto parámetro y su import de `EVENTO_RARO`. Volvió a hacer una sola cosa: repartir el pool general.
+- `PROBABILIDAD_EVENTO_RARO` desapareció. La prueba de "probabilidad como fracción" sigue viva, pero sobre `PROBABILIDAD_OBJETO_RARO`, que es la que hoy sortea rareza.
+- El hito, cuando toca, es **el único evento de esa visita**: no comparte cartel con "barrió el pasillo tres".
+- `hitosVistos` en el save es lo que lo hace único. Los días siguen subiendo; el momento pasa una vez.
+
+La escasez es la misma que antes. Lo que cambia es que ahora significa algo: llegaste ahí por estar, no por suerte.
 
 ### El estado sin números
 

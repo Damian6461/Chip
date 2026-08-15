@@ -1,15 +1,11 @@
 // Sistema de eventos: cuántos tocan según las horas, que no se repita el
-// último mostrado, que el evento raro salga sólo cuando tiene que salir, y que
+// último mostrado, que el evento del brazo ya no salga por sorteo, y que
 // las migraciones de save no rompan una partida vieja. La cadencia diaria y la
 // colección tienen su propio archivo: coleccion.test.js.
 
 import { prueba, igual, verdadero } from './runner.js';
 import { T0 } from './config.pruebas.js';
-import {
-  VERSION_ESTADO,
-  MAX_EVENTOS_POR_VISITA,
-  PROBABILIDAD_EVENTO_RARO
-} from '../js/config.js';
+import { VERSION_ESTADO, MAX_EVENTOS_POR_VISITA } from '../js/config.js';
 import { EVENTOS, EVENTOS_POR_CATEGORIA, CATEGORIAS, EVENTO_RARO } from '../js/datos-eventos.js';
 import { elegirEventos } from '../js/eventos.js';
 import { cargarEstado, guardarEstado } from '../js/estado.js';
@@ -18,29 +14,24 @@ import { cargarEstado, guardarEstado } from '../js/estado.js';
 // bolsa de candidatos.
 const PRIMERO = () => 0;
 
-// El portero del evento raro va aparte del sorteo. Casi todas las pruebas de
-// abajo son sobre el pool general, así que lo dejan cerrado a propósito: si
-// compartiera fuente con PRIMERO, el raro saldría en todas.
-const NUNCA_RARO = () => 1;
-const SIEMPRE_RARO = () => 0;
 
 // ---- Cuántos eventos según las horas ----
 
 prueba('eventos: menos de 1 hora no muestra nada', () => {
-  igual(elegirEventos(0, [], PRIMERO, NUNCA_RARO).length, 0, '0 h -> ningún evento');
-  igual(elegirEventos(0.99, [], PRIMERO, NUNCA_RARO).length, 0, '0.99 h -> ningún evento');
+  igual(elegirEventos(0, [], PRIMERO).length, 0, '0 h -> ningún evento');
+  igual(elegirEventos(0.99, [], PRIMERO).length, 0, '0.99 h -> ningún evento');
 });
 
 prueba('eventos: entre 1 y 6 horas muestra uno', () => {
-  igual(elegirEventos(1, [], PRIMERO, NUNCA_RARO).length, 1, '1 h -> un evento (borde inclusive)');
-  igual(elegirEventos(3, [], PRIMERO, NUNCA_RARO).length, 1, '3 h -> un evento');
-  igual(elegirEventos(6, [], PRIMERO, NUNCA_RARO).length, 1, '6 h -> un evento (borde inclusive)');
+  igual(elegirEventos(1, [], PRIMERO).length, 1, '1 h -> un evento (borde inclusive)');
+  igual(elegirEventos(3, [], PRIMERO).length, 1, '3 h -> un evento');
+  igual(elegirEventos(6, [], PRIMERO).length, 1, '6 h -> un evento (borde inclusive)');
 });
 
 prueba('eventos: más de 6 horas muestra hasta dos', () => {
-  igual(elegirEventos(6.1, [], PRIMERO, NUNCA_RARO).length, 2, '6.1 h -> dos eventos');
+  igual(elegirEventos(6.1, [], PRIMERO).length, 2, '6.1 h -> dos eventos');
   igual(
-    elegirEventos(24, [], PRIMERO, NUNCA_RARO).length,
+    elegirEventos(24, [], PRIMERO).length,
     MAX_EVENTOS_POR_VISITA,
     '24 h -> el máximo'
   );
@@ -50,7 +41,7 @@ prueba('eventos: más de 6 horas muestra hasta dos', () => {
 
 prueba('eventos: cualquiera de la visita anterior queda excluido', () => {
   for (const excluido of EVENTOS.map((e) => e.id)) {
-    const elegidos = elegirEventos(24, [excluido], PRIMERO, NUNCA_RARO);
+    const elegidos = elegirEventos(24, [excluido], PRIMERO);
     verdadero(
       elegidos.every((e) => e.id !== excluido),
       `${excluido} quedó excluido del sorteo`
@@ -59,11 +50,11 @@ prueba('eventos: cualquiera de la visita anterior queda excluido', () => {
 });
 
 prueba('eventos: si la visita anterior mostró dos, NINGUNO de los dos se repite', () => {
-  const anteriores = elegirEventos(24, [], PRIMERO, NUNCA_RARO);
+  const anteriores = elegirEventos(24, [], PRIMERO);
   igual(anteriores.length, 2, 'la visita anterior mostró dos');
 
   const ids = anteriores.map((e) => e.id);
-  const siguientes = elegirEventos(24, ids, PRIMERO, NUNCA_RARO);
+  const siguientes = elegirEventos(24, ids, PRIMERO);
 
   verdadero(
     siguientes.every((e) => !ids.includes(e.id)),
@@ -73,19 +64,19 @@ prueba('eventos: si la visita anterior mostró dos, NINGUNO de los dos se repite
 });
 
 prueba('eventos: sin ultimosIds se comporta como si no hubiera exclusiones', () => {
-  igual(elegirEventos(24, undefined, PRIMERO, NUNCA_RARO).length, 2, 'undefined -> default []');
-  igual(elegirEventos(24, [], PRIMERO, NUNCA_RARO).length, 2, '[] -> sin exclusiones');
+  igual(elegirEventos(24, undefined, PRIMERO).length, 2, 'undefined -> default []');
+  igual(elegirEventos(24, [], PRIMERO).length, 2, '[] -> sin exclusiones');
 });
 
 prueba('eventos: los dos de una misma visita son distintos entre sí', () => {
-  const elegidos = elegirEventos(24, [], PRIMERO, NUNCA_RARO);
+  const elegidos = elegirEventos(24, [], PRIMERO);
   igual(elegidos.length, 2, 'salieron dos');
   verdadero(elegidos[0].id !== elegidos[1].id, 'no se repite el mismo evento en una visita');
 });
 
 prueba('eventos: con aleatorio fijo el resultado es reproducible', () => {
-  const a = elegirEventos(24, [], PRIMERO, NUNCA_RARO);
-  const b = elegirEventos(24, [], PRIMERO, NUNCA_RARO);
+  const a = elegirEventos(24, [], PRIMERO);
+  const b = elegirEventos(24, [], PRIMERO);
   igual(a.map((e) => e.id).join(), b.map((e) => e.id).join(), 'mismo aleatorio -> mismo resultado');
 });
 
@@ -127,61 +118,28 @@ prueba('eventos: la vista plana no pierde ni inventa nada', () => {
   );
 });
 
-// ---- Evento raro ----
+// ---- El evento del brazo ----
+//
+// Ya no se sortea. Era el "evento raro" con moneda cargada al 1.5% por visita;
+// ahora es el hito del arco de la grúa y lo dispara gigantes.js cuando la
+// presencia llega al umbral. Lo que este archivo verifica es que este módulo no
+// lo conozca; el arco tiene sus pruebas en gigantes.test.js.
 
-prueba('raro: no está en el pool general', () => {
+prueba('brazo: no está en el pool general', () => {
   verdadero(
     !EVENTOS.some((e) => e.id === EVENTO_RARO.id),
-    'el raro no puede salir sorteado como uno más'
+    'nunca fue uno más de la bolsa'
   );
 });
 
-prueba('raro: la probabilidad es una fracción, no un porcentaje', () => {
-  verdadero(
-    PROBABILIDAD_EVENTO_RARO > 0 && PROBABILIDAD_EVENTO_RARO < 1,
-    `${PROBABILIDAD_EVENTO_RARO} está entre 0 y 1 (1.5 sería 150% y saldría siempre)`
-  );
-});
-
-prueba('raro: con el portero cerrado no sale nunca', () => {
+prueba('brazo: elegirEventos no lo devuelve nunca', () => {
   for (const horas of [1, 3, 6, 10, 24]) {
-    const elegidos = elegirEventos(horas, [], PRIMERO, NUNCA_RARO);
+    const elegidos = elegirEventos(horas, [], PRIMERO);
     verdadero(
       elegidos.every((e) => e.id !== EVENTO_RARO.id),
-      `${horas} h sin raro`
+      `${horas} h: el brazo no sale de acá`
     );
   }
-});
-
-prueba('raro: cuando sale ocupa un lugar de la visita, no suma uno más', () => {
-  const unaVisita = elegirEventos(3, [], PRIMERO, SIEMPRE_RARO);
-  igual(unaVisita.length, 1, '3 h siguen siendo un evento');
-  igual(unaVisita[0].id, EVENTO_RARO.id, 'y ese evento es el raro');
-
-  const dosVisitas = elegirEventos(10, [], PRIMERO, SIEMPRE_RARO);
-  igual(dosVisitas.length, MAX_EVENTOS_POR_VISITA, '10 h siguen siendo dos eventos');
-  igual(dosVisitas[0].id, EVENTO_RARO.id, 'el raro es uno de los dos');
-  verdadero(
-    EVENTOS.some((e) => e.id === dosVisitas[1].id),
-    'el otro sale del pool general'
-  );
-});
-
-prueba('raro: el umbral es estricto', () => {
-  const justo = elegirEventos(24, [], PRIMERO, () => PROBABILIDAD_EVENTO_RARO);
-  verdadero(
-    justo.every((e) => e.id !== EVENTO_RARO.id),
-    'caer exactamente en la probabilidad NO dispara el raro'
-  );
-});
-
-prueba('raro: si salió la visita pasada, no se repite', () => {
-  const elegidos = elegirEventos(24, [EVENTO_RARO.id], PRIMERO, SIEMPRE_RARO);
-  verdadero(
-    elegidos.every((e) => e.id !== EVENTO_RARO.id),
-    'el raro respeta la exclusión igual que cualquier otro'
-  );
-  igual(elegidos.length, 2, 'los dos lugares los llena el pool general');
 });
 
 // ---- Migración del save ----

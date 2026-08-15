@@ -11,8 +11,9 @@ export const SAVE_KEY = 'chip.save.v1';
 // v2 agregó ultimoEventoId. v3 lo reemplazó por ultimosEventosIds: si en una
 // visita se mostraron dos eventos, ninguno de los dos puede repetirse en la
 // siguiente, no sólo el último. v4 agregó `coleccion` y `ultimoDiaConEvento`,
-// los dos campos nuevos del sistema de hallazgos.
-export const VERSION_ESTADO = 4;
+// los dos campos nuevos del sistema de hallazgos. v5 agregó los del arco de los
+// gigantes: `diasDePresencia`, `ultimoDiaVisitado` y `hitosVistos`.
+export const VERSION_ESTADO = 5;
 
 // ---- Estado inicial ----
 
@@ -335,17 +336,34 @@ export const MAX_OBJETOS_POR_VISITA = 3;
 // estado, nunca se comparte la referencia.
 export const COLECCION_INICIAL = [];
 
-// ---- Eventos raros ----
+// ---- Los gigantes ----
 
-// El evento raro (EVENTO_RARO en datos-eventos.js) no está en el pool: no se
-// sortea, se tira una moneda cargada una sola vez por visita con evento. Si
-// sale, ocupa uno de los lugares de la visita en vez de sumar uno más, así la
-// cuenta por horas de arriba no cambia.
+// Presencia: días distintos en que el jugador abrió el juego. No visitas —abrir
+// tres veces el mismo día cuenta uno— y no tareas. Estar es lo único que hace
+// avanzar esto, que es lo que lo separa de una barra de progreso.
+export const PRESENCIA_INICIAL = 0;
+
+// Las capas en que se revela un gigante. El orden importa: es el orden en que
+// se descubren.
+export const CAPAS_GIGANTE = ['silueta', 'nombre', 'detalle', 'hito'];
+
+// Cuántos días de presencia pide cada capa. La silueta está desde el día cero:
+// el casillero vacío es lo que hace preguntar quién es.
 //
-// La escasez ES el diseño: es el único momento en que el mundo mira a Chip, y
-// vale porque un jugador lo ve una vez cada varios meses. Subir este número lo
-// arruina, no lo mejora.
-export const PROBABILIDAD_EVENTO_RARO = 0.015; // 1.5%
+// El hito a 30 días es a propósito lento. Es el único momento en que el mundo
+// mira a Chip, y vale porque llegar ahí llevó meses de estar. Bajarlo lo
+// arruina, no lo mejora — es la misma lógica que tenía el 1.5% de antes, pero
+// ahora la escasez tiene estructura narrativa en vez de ser una moneda.
+export const UMBRALES_GIGANTE = {
+  silueta: 0,
+  nombre: 3,
+  detalle: 10,
+  hito: 30
+};
+
+// Con qué arranca la lista de hitos ya vistos. Un hito se dispara UNA vez en la
+// vida de la partida: por eso se anota, y por eso no alcanza con mirar los días.
+export const HITOS_INICIALES = [];
 
 // ---- Service worker ----
 
@@ -375,6 +393,7 @@ export const OPCION_DEBUG_AUTO = 'auto';
 export const HORAS_DEL_DIA = 24;
 export const MULTIPLICADOR_DEBUG_INICIAL = 1;
 export const HORAS_DEBUG_INICIAL = 1;
+export const DIAS_DEBUG_INICIAL = 10;
 
 // Estilos inline del panel, por simetría con PLACEHOLDER: es una superficie de
 // desarrollo y no justifica ensuciar style.css, que es del juego.
