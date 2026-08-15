@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v14';
+const CACHE_VERSION = 'chip-cache-v18';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -61,6 +61,8 @@ const ARCHIVOS_CACHE = [
   // La lista está escrita a mano y no sale de RUTAS_SPRITES porque este archivo
   // no puede importar config.js — es el mismo carve-out del bloque de arriba.
   './sprites/idle.png',
+  './sprites/idle-ojos.png',
+  './sprites/feliz-ojos.png',
   './sprites/feliz.png',
   './sprites/critico.png',
   './sprites/standby.png',

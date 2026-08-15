@@ -39,8 +39,27 @@
            nada: dibuja 1 a 1 y el CSS lo lleva al tamaño de la escena. -->
       <canvas id="canvas-mascota" width="256" height="256"></canvas>
 
+      <!-- El párpado: el mismo recorte usado como máscara y rellenado de un
+           color plano. Tapa los ojos que el sprite base trae dibujados, para que
+           al cerrarse no asomen por arriba y por abajo de la capa de ojos.
+           En reposo no se ve: queda exactamente debajo. -->
+      <div id="parpado" aria-hidden="true" hidden></div>
+
+      <!-- La capa de ojos, para el parpadeo. Es el mismo lienzo de 256 que el
+           cuerpo y se escala igual, así que se apoya encima sin corrimiento.
+           ui.js le cambia el src según el estado y la esconde en los que no
+           tienen recorte. -->
+      <img id="ojos" alt="" aria-hidden="true" hidden>
+
       <div id="efectos" aria-hidden="true">
         <div id="antena"></div>
+
+        <!-- Los corazones de feliz y las chispas amarillas, que antes estaban
+             dibujados en el sprite. Ahora son partículas: además de flotar,
+             pueden dispararse por evento. Los llena ui.js. -->
+        <div id="corazones"></div>
+        <div id="destellos"></div>
+        <div id="corazones-extra"></div>
 
         <div id="zetas">
           <span class="zeta">z</span>

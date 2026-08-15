@@ -22,6 +22,28 @@ import {
   ESPERA_ENTRE_LLEGADAS_MS,
   CLASE_OBJETO_NUEVO,
   CLASE_OBJETO_OBTENIDO,
+  RUTAS_OJOS,
+  ORIGEN_PARPADEO,
+  DURACION_PARPADEO_MS,
+  PARPADEO_INTERVALO_MIN_MS,
+  PARPADEO_INTERVALO_MAX_MS,
+  PROBABILIDAD_DOBLE_PARPADEO,
+  ESPERA_DOBLE_PARPADEO_MS,
+  CLASE_PARPADEO,
+  COLOR_PARPADO,
+  COLOR_CORAZON,
+  COLOR_DESTELLO,
+  CORAZONES_FELIZ,
+  DESTELLOS_FELIZ,
+  DURACION_CORAZON_MS,
+  ESPERA_ENTRE_CORAZONES_MS,
+  DURACION_DESTELLO_MS,
+  CORAZONES_EXTRA_MIN,
+  CORAZONES_EXTRA_MAX,
+  CLASE_CELEBRANDO,
+  VARS_PERSONAJE,
+  POSICIONES_ANTENA,
+  VARS_ANTENA,
   COLORES_BARRAS,
   VARS_BARRAS,
   PREFIJO_CLASE_ESTADO,
@@ -36,10 +58,15 @@ import { puedeJugar } from './acciones.js';
 import { obtenerSprite } from './sprites.js';
 import { objetosConEstado } from './coleccion.js';
 import { gigantesConEstado } from './gigantes.js';
-import { svgDeObjeto, svgDeGigante } from './formas-objetos.js';
+import { svgDeObjeto, svgDeGigante, svgDeCorazon } from './formas-objetos.js';
 
 const cajaChip = document.getElementById('chip');
 const contenedorMascota = document.getElementById('contenedor-mascota');
+const capaOjos = document.getElementById('ojos');
+const capaParpado = document.getElementById('parpado');
+const contenedorCorazones = document.getElementById('corazones');
+const contenedorDestellos = document.getElementById('destellos');
+const contenedorCorazonesExtra = document.getElementById('corazones-extra');
 const panelEstado = document.getElementById('estado');
 const lineaEvento = document.getElementById('evento');
 const estante = document.getElementById('estante');
@@ -95,6 +122,156 @@ raiz.style.setProperty(VARS_EFECTOS.cicloChispa, `${CICLO_CHISPA_MS}ms`);
 VARS_EFECTOS.ciclosPolvo.forEach((variable, i) => {
   raiz.style.setProperty(variable, `${CICLOS_POLVO_MS[i]}ms`);
 });
+
+// Y lo del personaje: el pivote del parpadeo, sus tiempos, y los dos colores
+// que salieron muestreados del sprite viejo de feliz.
+raiz.style.setProperty(VARS_PERSONAJE.origenParpadeo, ORIGEN_PARPADEO);
+raiz.style.setProperty(VARS_PERSONAJE.duracionParpadeo, `${DURACION_PARPADEO_MS}ms`);
+raiz.style.setProperty(VARS_PERSONAJE.colorParpado, COLOR_PARPADO);
+raiz.style.setProperty(VARS_PERSONAJE.colorCorazon, COLOR_CORAZON);
+raiz.style.setProperty(VARS_PERSONAJE.colorDestello, COLOR_DESTELLO);
+raiz.style.setProperty(VARS_PERSONAJE.duracionCorazon, `${DURACION_CORAZON_MS}ms`);
+raiz.style.setProperty(VARS_PERSONAJE.duracionDestello, `${DURACION_DESTELLO_MS}ms`);
+
+// ---- El parpadeo ----
+//
+// Va por capa DOM y no por transformación del contexto 2D. Las razones, que la
+// spec pedía reportar:
+//
+//   1. Todo lo que se mueve en este proyecto es CSS. Hacerlo en canvas obligaría
+//      a redibujar ~8 cuadros por parpadeo, o sea un bucle de render que hoy no
+//      existe en ningún lado.
+//   2. prefers-reduced-motion ya lo cubre el bloque @media de siempre. En canvas
+//      habría que consultarlo desde JS y mantener esa rama a mano.
+//   3. transform-origin da el pivote exacto; en canvas habría que armar la
+//      matriz a mano en cada cuadro.
+//   4. La capa y el canvas escalan idéntico —los dos son 256 y ocupan la misma
+//      caja— así que la alineación sale sola, sin cuentas.
+//
+// Se verificó antes de escribirlo: el recorte incluye el aro crema del ojo, así
+// que al achatarse tapa la pupila del cuerpo y lee como párpado. El cuerpo no se
+// redibuja nunca.
+
+let temporizadorParpadeo = null;
+let rutaOjosActual = null;
+
+function intervaloParpadeo() {
+  const rango = PARPADEO_INTERVALO_MAX_MS - PARPADEO_INTERVALO_MIN_MS;
+  return PARPADEO_INTERVALO_MIN_MS + Math.random() * rango;
+}
+
+function unParpadeo() {
+  // Sacar, forzar reflow y volver a poner: reinicia la animación aunque el
+  // parpadeo anterior no haya terminado. Mismo truco que el salto.
+  capaOjos.classList.remove(CLASE_PARPADEO);
+  void capaOjos.offsetWidth;
+  capaOjos.classList.add(CLASE_PARPADEO);
+}
+
+function cicloParpadeo() {
+  unParpadeo();
+
+  const doble = Math.random() < PROBABILIDAD_DOBLE_PARPADEO;
+  const extra = doble ? DURACION_PARPADEO_MS + ESPERA_DOBLE_PARPADEO_MS : 0;
+
+  if (doble) setTimeout(unParpadeo, extra);
+
+  // El intervalo se resortea acá, después de cada parpadeo, y no una vez al
+  // arrancar: con uno solo el ciclo entero quedaría fijo.
+  temporizadorParpadeo = setTimeout(cicloParpadeo, extra + intervaloParpadeo());
+}
+
+function pararParpadeo() {
+  clearTimeout(temporizadorParpadeo);
+  temporizadorParpadeo = null;
+  capaOjos.classList.remove(CLASE_PARPADEO);
+}
+
+// Un recorte que no carga no rompe nada: la capa se esconde y ese estado
+// simplemente no parpadea, igual que el fallback de los sprites.
+capaOjos.addEventListener('error', () => {
+  pararParpadeo();
+  capaOjos.hidden = true;
+});
+
+function pintarOjos(estadoVisual) {
+  const ruta = RUTAS_OJOS[estadoVisual] ?? null;
+  if (ruta === rutaOjosActual) return;
+
+  rutaOjosActual = ruta;
+  pararParpadeo();
+
+  if (!ruta) {
+    capaOjos.hidden = true;
+    capaParpado.hidden = true;
+    return;
+  }
+
+  capaOjos.src = ruta;
+  capaOjos.hidden = false;
+
+  // El párpado usa el MISMO archivo como máscara: la forma es exactamente la de
+  // los ojos, así que tapa los del cuerpo sin desbordar ni un píxel.
+  raiz.style.setProperty(VARS_PERSONAJE.mascaraOjos, `url("${ruta}")`);
+  capaParpado.hidden = false;
+
+  temporizadorParpadeo = setTimeout(cicloParpadeo, intervaloParpadeo());
+}
+
+// ---- Los corazones ----
+
+function armarCorazones(contenedor, cuantos, claseExtra = '') {
+  contenedor.replaceChildren();
+
+  for (let i = 0; i < cuantos; i++) {
+    const nodo = document.createElement('span');
+    nodo.className = `corazon ${claseExtra}`.trim();
+    nodo.innerHTML = svgDeCorazon();
+    contenedor.appendChild(nodo);
+  }
+}
+
+function armarDestellos() {
+  contenedorDestellos.replaceChildren();
+
+  for (let i = 0; i < DESTELLOS_FELIZ; i++) {
+    const nodo = document.createElement('span');
+    nodo.className = 'destello';
+    contenedorDestellos.appendChild(nodo);
+  }
+}
+
+armarCorazones(contenedorCorazones, CORAZONES_FELIZ);
+armarCorazones(contenedorCorazonesExtra, CORAZONES_EXTRA_MAX, 'extra');
+armarDestellos();
+
+let temporizadorCelebracion = null;
+
+// La tanda que dispara una acción que sube el humor. Es el momento en que la
+// mecánica y la emoción coinciden, y hasta ahora no tenía expresión visual.
+//
+// Sale de main.js sólo si el humor efectivamente subió: con el stat saturado la
+// acción se aplica igual —jugar gasta batería— pero no hay nada que celebrar, y
+// un corazón sin efecto le mentiría al jugador. Mismo criterio que el salto.
+export function celebrarHumor() {
+  clearTimeout(temporizadorCelebracion);
+
+  const cuantos =
+    CORAZONES_EXTRA_MIN +
+    Math.round(Math.random() * (CORAZONES_EXTRA_MAX - CORAZONES_EXTRA_MIN));
+
+  [...contenedorCorazonesExtra.children].forEach((nodo, i) => {
+    nodo.hidden = i >= cuantos;
+  });
+
+  contenedorCorazonesExtra.classList.remove(CLASE_CELEBRANDO);
+  void contenedorCorazonesExtra.offsetWidth;
+  contenedorCorazonesExtra.classList.add(CLASE_CELEBRANDO);
+
+  temporizadorCelebracion = setTimeout(() => {
+    contenedorCorazonesExtra.classList.remove(CLASE_CELEBRANDO);
+  }, DURACION_CORAZON_MS + ESPERA_ENTRE_CORAZONES_MS);
+}
 
 // El salto es de una sola pasada: la clase se saca al terminar para que la
 // próxima acción la pueda volver a poner. El rebote vive en el contenedor y no
@@ -457,6 +634,14 @@ function pintarClaseEstado(estadoVisual) {
   if (claseEstadoActual) contenedorMascota.classList.remove(claseEstadoActual);
   contenedorMascota.classList.add(clase);
   claseEstadoActual = clase;
+
+  // El glow sigue a la antena, que no está en el mismo lugar en todos los
+  // sprites. Los números viven en config.js —son medidas del arte, como los
+  // colores de las barras— y viajan por el puente de siempre en vez de por
+  // catorce reglas de CSS.
+  const antena = POSICIONES_ANTENA[estadoVisual] ?? POSICIONES_ANTENA.idle;
+  contenedorMascota.style.setProperty(VARS_ANTENA.x, `${antena.x}%`);
+  contenedorMascota.style.setProperty(VARS_ANTENA.y, `${antena.y}%`);
 }
 
 // `esNoche` llega resuelto desde afuera por la misma razón que `estadoVisual`:
@@ -465,6 +650,7 @@ export function render(estado, estadoVisual, esNoche) {
   pintarFondo(esNoche);
   pintarClaseEstado(estadoVisual);
   dibujarMascota(estadoVisual);
+  pintarOjos(estadoVisual);
   actualizarBarras(estado);
 }
 

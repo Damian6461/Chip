@@ -137,6 +137,257 @@ body {
 }
 
 /* ============================================================================
+   EL PARPADEO
+
+   La primera animación que pasa ADENTRO de Chip: todo lo demás mueve la imagen
+   entera, que es lo que lo hacía leer como sticker.
+
+   La capa es el recorte de los ojos, alineado al mismo lienzo de 256 que el
+   cuerpo y escalado igual, así que se apoya encima sin corrimiento de un píxel.
+   El cuerpo no se redibuja nunca: sólo se achata esta capa.
+   ============================================================================ */
+
+/* El párpado: el mismo recorte como máscara, relleno de un color plano. Está
+   para tapar los ojos que el sprite base trae dibujados — sin esto, al achatar
+   la capa de ojos los del cuerpo asoman arriba y abajo de la banda, con el
+   brillo blanco flotando sobre el párpado.
+
+   En reposo no se ve: la capa de ojos, a escala 1, lo cubre exacto. */
+#parpado {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-color: var(--color-parpado);
+  -webkit-mask-image: var(--mascara-ojos);
+  mask-image: var(--mascara-ojos);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+#parpado[hidden] {
+  display: none;
+}
+
+#ojos {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+  /* El pivote es el centro vertical de la región ocular, medido sobre los
+     recortes. Con el origen en el medio de la caja el ojo se cerraría hacia
+     arriba en vez de cerrarse sobre sí mismo. */
+  transform-origin: 50% var(--origen-parpadeo);
+}
+
+#ojos[hidden] {
+  display: none;
+}
+
+.parpadeando {
+  animation: parpadear var(--duracion-parpadeo) both;
+}
+
+/* El reparto interno del tiempo ES la forma del movimiento: 50 ms de cierre,
+   20 de mantener y 60 de apertura sobre 130 en total. El párpado baja más
+   rápido de lo que sube, como uno de verdad — por eso el cierre acelera
+   (ease-in) y la apertura frena (ease-out). */
+@keyframes parpadear {
+  0% {
+    transform: scaleY(1);
+    animation-timing-function: ease-in;
+  }
+  38.5% {
+    transform: scaleY(0.1);
+    animation-timing-function: linear;
+  }
+  53.8% {
+    transform: scaleY(0.1);
+    animation-timing-function: ease-out;
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+/* ============================================================================
+   LOS CORAZONES Y LOS DESTELLOS
+
+   Estaban dibujados adentro del sprite de feliz. Ahora son partículas: además
+   de flotar solas, pueden dispararse por evento — que es lo que un dibujo
+   pegado al sprite no podía hacer.
+
+   Los dos colores salen muestreados del feliz.png viejo (COLOR_CORAZON y
+   COLOR_DESTELLO en config.js), no de una estimación.
+   ============================================================================ */
+
+#corazones,
+#destellos,
+#corazones-extra {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.corazon {
+  position: absolute;
+  display: block;
+  opacity: 0;
+}
+
+.corazon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Tres tamaños y tres puntos de nacimiento alrededor de la cabeza. Si nacieran
+   todos del mismo lugar y del mismo tamaño se leerían como un solo corazón
+   parpadeando. */
+.corazon:nth-child(1) {
+  left: 16%;
+  top: 26%;
+  width: 16px;
+  height: 16px;
+}
+
+.corazon:nth-child(2) {
+  left: 70%;
+  top: 20%;
+  width: 20px;
+  height: 20px;
+}
+
+.corazon:nth-child(3) {
+  left: 40%;
+  top: 10%;
+  width: 25px;
+  height: 25px;
+}
+
+/* En feliz flotan en loop. Los delays escalonados evitan que nazcan juntos. */
+.estado-feliz #corazones .corazon {
+  animation: flotar-corazon var(--duracion-corazon) ease-out infinite;
+}
+
+.estado-feliz #corazones .corazon:nth-child(2) {
+  animation-delay: 800ms;
+}
+
+.estado-feliz #corazones .corazon:nth-child(3) {
+  animation-delay: 1600ms;
+}
+
+/* El arco es el punto: un corazón que sube derecho parece un globo. Sube 40 px
+   yéndose primero a un lado y volviendo. */
+@keyframes flotar-corazon {
+  0% {
+    transform: translate(0, 0) scale(0.6);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  55% {
+    transform: translate(9px, -22px) scale(1);
+  }
+  100% {
+    transform: translate(-5px, -40px) scale(0.85);
+    opacity: 0;
+  }
+}
+
+/* La tanda por evento: una sola pasada, sin loop, y en cualquier estado. */
+#corazones-extra.celebrando .corazon {
+  animation: flotar-corazon var(--duracion-corazon) ease-out;
+}
+
+#corazones-extra.celebrando .corazon:nth-child(2) {
+  animation-delay: 180ms;
+}
+
+#corazones-extra.celebrando .corazon:nth-child(3) {
+  animation-delay: 360ms;
+}
+
+#corazones-extra .corazon[hidden] {
+  display: none;
+}
+
+/* Los destellos NO flotan: laten. Cuatro trazos cortos alrededor de la cabeza
+   que aparecen y desaparecen desde el centro hacia afuera. Eso es lo que los
+   diferencia de los corazones, que son continuos y suaves. */
+.destello {
+  position: absolute;
+  width: 3px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--color-destello);
+  opacity: 0;
+}
+
+.destello:nth-child(1) {
+  left: 24%;
+  top: 14%;
+  --sale-x: -4px;
+  --sale-y: -3px;
+}
+
+.destello:nth-child(2) {
+  left: 74%;
+  top: 16%;
+  --sale-x: 4px;
+  --sale-y: -3px;
+}
+
+.destello:nth-child(3) {
+  left: 15%;
+  top: 30%;
+  --sale-x: -5px;
+  --sale-y: 1px;
+}
+
+.destello:nth-child(4) {
+  left: 82%;
+  top: 28%;
+  --sale-x: 5px;
+  --sale-y: 1px;
+}
+
+.estado-feliz .destello {
+  animation: latir-destello var(--duracion-destello) ease-out infinite;
+}
+
+.estado-feliz .destello:nth-child(2) {
+  animation-delay: 220ms;
+}
+
+.estado-feliz .destello:nth-child(3) {
+  animation-delay: 440ms;
+}
+
+.estado-feliz .destello:nth-child(4) {
+  animation-delay: 660ms;
+}
+
+@keyframes latir-destello {
+  0% {
+    transform: translate(0, 0) scale(0.4);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--sale-x), var(--sale-y)) scale(1);
+    opacity: 0;
+  }
+}
+
+/* ============================================================================
    EFECTOS DE VIDA
 
    Cinco micro-efectos de CSS puro sobre el canvas. Ninguno toca los PNG ni el
@@ -163,18 +414,16 @@ body {
   inset: 0;
 }
 
-/* Posición medida sobre los sprites, no estimada: la bombita de idle cae en
-   50.1% / 7.7%. El resto de los estados la tienen entre 44.5% y 60.4% de ancho
-   —el sprite está dibujado en poses distintas— así que el glow queda hasta
-   ~30 px corrido en `jugando`, que es el más girado. Se elige la posición de
-   idle porque es el estado por defecto y el más frecuente. La capa difusa ancha
-   tapa buena parte de ese desvío; afinarlo por estado ya es trivial con las
-   clases `estado-*`, pero no se hizo en esta pasada. */
+/* La posición ya no es una sola: cada sprite tiene la antena en otro lado —el
+   bulbo va del 44,2% al 60,5% de ancho según la pose— y ui.js escribe la que
+   corresponde al estado en estas dos variables, desde la tabla medida de
+   config.js. El default de idle es la red de contención si algún estado nuevo
+   entra sin medir. */
 #antena {
   --pico-antena: 0.8;
   position: absolute;
-  left: 50%;
-  top: 8%;
+  left: var(--antena-x, 50%);
+  top: var(--antena-y, 7.8%);
   width: 12px;
   height: 12px;
   margin: -6px 0 0 -6px;
@@ -991,6 +1240,21 @@ body:not(.es-noche) .mota {
 
   #acciones button:active:not(:disabled) {
     transform: none;
+  }
+
+  /* Chip no parpadea: los ojos quedan abiertos y quietos. La capa NO se
+     esconde —esconderla le sacaría los ojos— sólo se le apaga la animación. */
+  .parpadeando {
+    animation: none;
+  }
+
+  /* Los corazones y los destellos se van del todo. Son celebración, y la
+     celebración es movimiento. */
+  .estado-feliz #corazones .corazon,
+  .estado-feliz .destello,
+  #corazones-extra.celebrando .corazon {
+    animation: none;
+    display: none;
   }
 
   /* Los efectos de vida SON movimiento: sin movimiento no quedan, se van.

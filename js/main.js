@@ -23,7 +23,8 @@ import {
   mostrarColeccion,
   mostrarGigantes,
   conectarAcciones,
-  animarAccion
+  animarAccion,
+  celebrarHumor
 } from './ui.js';
 
 let estado = cargarEstado();
@@ -129,8 +130,16 @@ function ejecutar(nombreVisual, accion) {
   const siguiente = accion(estado);
   if (siguiente === estado) return;
 
+  // Se mira el humor ANTES de reemplazar el estado. La celebración no se dispara
+  // por "jugar" sino por "el humor subió": con el humor en 100 la acción se
+  // aplica igual —gasta batería— pero no hay nada que festejar. Así la regla
+  // vale también para cualquier acción futura que suba humor.
+  const subioElHumor = siguiente.humor > estado.humor;
+
   estado = siguiente;
   guardarEstado(estado);
+
+  if (subioElHumor) celebrarHumor();
 
   if (nombreVisual) marcarAccion(nombreVisual);
 

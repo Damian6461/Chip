@@ -109,6 +109,16 @@ export function svgDeGigante(id, revelado) {
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${forma}</svg>`;
 }
 
+// El corazón de feliz. Antes estaba dibujado en el sprite; ahora es una forma
+// que se puede animar y disparar por evento.
+const CORAZON = `
+  <path d="M12 21c-1.2-1-8-5.4-8-10.2A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 8 3.2C20 15.6 13.2 20 12 21z"
+    fill="var(--color-corazon)"/>`;
+
+export function svgDeCorazon() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${CORAZON}</svg>`;
+}
+
 export function tieneForma(id) {
   return id in FORMAS;
 }

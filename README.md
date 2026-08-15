@@ -107,6 +107,8 @@ idle.png  feliz.png  critico.png  standby.png  cargando.png  jugando.png  limpia
 
 Siete archivos ideales, **seis obligatorios**: `limpiando.png` es opcional. Los siete están en el repo desde `2e6b288`, todos a 256×256.
 
+Además hay dos **recortes de la región ocular** —`idle-ojos.png` y `feliz-ojos.png`— para el parpadeo: mismo lienzo de 256, transparentes, alineados al original. Un estado sin recorte no parpadea y no rompe nada.
+
 El loader degrada en dos escalones: falta el sprite pedido → usa el de `idle`; falta ese también → placeholder con el nombre del estado escrito. Eso permitió desarrollar sin arte y verificar la cadena a ojo. **Contrapartida, y ahora está activa:** con los siete PNG en su lugar, un sprite que falte se ve como `idle` en vez de cantar el error.
 
 `ui.js` apaga el suavizado (`ctx.imageSmoothingEnabled = false`) apenas crea el contexto: el bilineal del navegador emborrona el pixel art al escalarlo. Es estado del contexto, no un parámetro de `drawImage`, así que se setea una sola vez y sobrevive a `clearRect`. **Cambiar el tamaño del canvas lo resetea a `true`** — si algún día el canvas deja de ser fijo, hay que volver a bajarlo.
@@ -351,6 +353,45 @@ El juego no es un panel de control con un dibujo arriba: es un lugar. Abrirlo es
 **Safe areas.** `viewport-fit=cover` deja que la escena llegue al borde físico, y la botonera se protege con `env(safe-area-inset-bottom)` para no quedar abajo de la barra de gestos. Las teclas miden 48 px de alto, arriba del mínimo de 44 para el pulgar.
 
 **El alto va en `dvh`**, no en `vh`: en mobile la barra del navegador aparece y desaparece, y con `vh` la escena queda cortada o sobra por abajo. `--alto-escena` existe como variable porque el encuadre del fondo se calcula a partir de ella.
+
+### El parpadeo
+
+La primera animación que pasa **adentro** de Chip. Todo lo anterior desplazaba la imagen entera, que es lo que lo hacía leer como sticker.
+
+Los recortes `idle-ojos.png` y `feliz-ojos.png` están alineados al mismo lienzo de 256 que su sprite base, así que la capa se apoya encima sin calcular ningún offset. **Sólo idle y feliz parpadean**: los demás no tienen recorte y quedan igual, que es lo correcto — standby ya tiene los ojos cerrados, critico entrecerrados y jugando guiña. Un estado sin recorte no es un error.
+
+**Va por capa DOM y no por transformación del contexto 2D**, y las razones son de arquitectura, no de calidad de imagen:
+
+1. Todo lo que se mueve en este proyecto es CSS. En canvas habría que redibujar ~8 cuadros por parpadeo, o sea un bucle de render que hoy no existe.
+2. `prefers-reduced-motion` ya lo cubre el bloque `@media` de siempre; en canvas habría que consultarlo desde JS.
+3. `transform-origin` da el pivote exacto — el centro vertical de la región ocular, medido en los recortes (y=97 y y=98 de 256, los dos redondean a 38%).
+4. La capa y el canvas escalan idéntico, así que la alineación sale sola.
+
+**El párpado, que la spec no preveía.** El sprite base trae los ojos dibujados: al achatar la capa, los del cuerpo asomaban arriba y abajo de la banda, con el brillo blanco flotando sobre el párpado. Se ve sólo con zoom — a tamaño real parecía funcionar. La solución es una capa que usa el **mismo recorte como máscara** y lo rellena con `COLOR_PARPADO`, tapando los ojos del cuerpo; queda debajo de la capa de ojos, así que en reposo no cambia nada.
+
+Ese color tampoco está elegido a ojo: es el que el artista usó para dibujar los ojos cerrados de `standby` (`#ffc493`, dominante de su zona ocular después del contorno).
+
+**El ritmo:** 130 ms en total, con el reparto interno —50 de cierre, 20 de mantener, 60 de apertura— en los porcentajes del keyframe, porque es la forma del movimiento. El párpado baja más rápido de lo que sube. El intervalo entre parpadeos se **resortea después de cada uno** (2 a 6 s): fijo leería como metrónomo, que es peor que no parpadear. Y un 15% de las veces parpadea dos veces seguidas.
+
+### Los corazones y los destellos
+
+Estaban dibujados adentro de `feliz.png`. Ahora son partículas, y eso desbloquea lo que un dibujo pegado al sprite no podía hacer: **dispararse por evento**.
+
+Los dos colores salen muestreados del `feliz.png` viejo antes de reemplazarlo — `#ff8b8d` los corazones y `#ffe02c` los destellos. El rosa **no** es el `#ff6b81` que estimaba la spec: el del sprite es más cálido.
+
+**Los corazones flotan en arco**, no en línea recta: uno que sube derecho parece un globo. Tres tamaños, tres puntos de nacimiento y delays escalonados.
+
+**Los destellos no flotan: laten.** Aparecen y desaparecen desde el centro hacia afuera en 900 ms. Esa diferencia de comportamiento es lo que los separa de los corazones.
+
+**El disparo por evento no mira la acción, mira el humor.** `main.js` compara el humor antes y después: si subió, hay tanda. Con el humor en 100, jugar se aplica igual —gasta batería— pero no hay nada que festejar, y un corazón sin efecto le mentiría al jugador. Mismo criterio que el salto, y vale para cualquier acción futura que suba humor.
+
+### El glow de la antena, por estado
+
+El bulbo de la antena no está en el mismo lugar en todos los sprites: va del **44,2% al 60,5%** de ancho según la pose. Con la posición clavada en idle, en `jugando` quedaba unos 39 px corrido y se leía como un brillo suelto al costado.
+
+`POSICIONES_ANTENA` (`config.js`) tiene la tabla estado → {x%, y%}, medida sprite por sprite **aislando la componente conexa de cian**: la redondez del blob es lo que distingue el bulbo de las "Z" del standby y del cable de `cargando`, que son del mismo color y engañan a cualquier promedio. Un estado sin entrada cae en idle.
+
+Los números viajan por el puente de custom properties en vez de por catorce reglas de CSS, porque son medidas del arte — igual que los colores de las barras. El ritmo nocturno no cambia: de noche sigue latiendo más lento y más tenue; lo único que cambió es dónde se dibuja.
 
 ### Efectos de vida
 

@@ -86,6 +86,19 @@ export const RUTAS_SPRITES = {
   idle: 'sprites/idle.png'
 };
 
+// Recortes de la región ocular, para el parpadeo. Están alineados al MISMO
+// lienzo de 256x256 que su sprite base, así que la capa se superpone sin
+// calcular ningún offset: se dibuja en las mismas coordenadas.
+//
+// Sólo idle y feliz. Los demás estados no tienen recorte y no parpadean, que es
+// lo correcto por diseño: standby ya tiene los ojos cerrados, critico
+// entrecerrados y jugando guiña. Un estado sin recorte no es un error — es un
+// estado que no parpadea.
+export const RUTAS_OJOS = {
+  idle: 'sprites/idle-ojos.png',
+  feliz: 'sprites/feliz-ojos.png'
+};
+
 // Fondos del galpón, detrás de Chip. Mismo criterio que RUTAS_SPRITES: las
 // rutas de assets viven acá y no desperdigadas entre el CSS y el JS. Son
 // document-relative porque las consume una propiedad inline puesta desde ui.js,
@@ -263,6 +276,113 @@ export const CLASE_OBJETO_OBTENIDO = 'obtenido';
 // Cuánto tarda el segundo evento de la visita en reemplazar al primero. Se ve
 // uno por vez: son dos líneas sueltas en el mundo, no una lista.
 export const ESPERA_SEGUNDO_EVENTO_MS = 4000;
+
+// ---- La punta de la antena ----
+
+// Dónde cae el bulbo de la antena en cada sprite, en % del lienzo. Medido uno
+// por uno aislando la componente conexa de cian: la redondez del blob es lo que
+// distingue el bulbo de las "Z" del standby y del cable de cargando, que son del
+// mismo color y engañan a cualquier promedio.
+//
+// Antes el glow estaba clavado en la posición de idle y en las poses giradas
+// quedaba corrido — hasta 10,5% del ancho en `jugando`, unos 39 px en pantalla,
+// que se leía como un brillo suelto al lado de la antena. `cargando` está en
+// tres cuartos y se corre 5,8%.
+//
+// Un estado sin entrada cae en idle, que es el default del CSS.
+export const POSICIONES_ANTENA = {
+  idle: { x: 50.0, y: 7.8 },
+  feliz: { x: 53.8, y: 7.6 },
+  critico: { x: 44.4, y: 7.5 },
+  standby: { x: 50.0, y: 11.5 },
+  cargando: { x: 44.2, y: 8.3 },
+  jugando: { x: 60.5, y: 6.5 },
+  limpiando: { x: 45.9, y: 8.8 }
+};
+
+export const VARS_ANTENA = {
+  x: '--antena-x',
+  y: '--antena-y'
+};
+
+// ---- El parpadeo ----
+
+// La primera animación que pasa ADENTRO de Chip. Todo lo anterior desplazaba la
+// imagen entera, que es lo que lo hacía leer como sticker.
+//
+// El achatado va alrededor del centro vertical de la región ocular, medido sobre
+// los dos recortes: y=97 en idle y y=98 en feliz, sobre 256. Los dos redondean a
+// 38%, así que alcanza una constante.
+export const ORIGEN_PARPADEO = '38%';
+
+// El color del párpado cerrado.
+//
+// Hace falta porque el sprite base tiene los ojos dibujados: al achatar la capa
+// de ojos, los del cuerpo asomaban arriba y abajo de la banda —con el brillo
+// blanco flotando sobre el "párpado", que es justo lo que delata una animación
+// mal hecha—. Se verificó con zoom al 400% antes de arreglarlo.
+//
+// La solución es una capa que usa el MISMO recorte como máscara y lo rellena de
+// este color, tapando los ojos del cuerpo. Queda debajo de la capa de ojos, así
+// que en reposo no se ve nada distinto; sólo aparece cuando el ojo se cierra.
+//
+// El color no está elegido a ojo: es el que el artista usó para dibujar los ojos
+// cerrados de `standby`, muestreado de ese sprite (#ffc493, 103 px, dominante de
+// su zona ocular después del contorno negro).
+export const COLOR_PARPADO = '#ffc493';
+
+// 130 ms en total. El reparto interno —cierre 50, mantener 20, apertura 60— vive
+// en los porcentajes del keyframe, porque es la forma del movimiento y no un
+// número suelto: el párpado baja más rápido de lo que sube, como uno de verdad.
+export const DURACION_PARPADEO_MS = 130;
+
+// Intervalo entre parpadeos, resorteado después de cada uno. NUNCA fijo: a
+// intervalo constante lee como metrónomo, que es peor que no parpadear.
+export const PARPADEO_INTERVALO_MIN_MS = 2000;
+export const PARPADEO_INTERVALO_MAX_MS = 6000;
+
+// De vez en cuando parpadea dos veces seguidas. Es el detalle que lo saca de
+// mecánico.
+export const PROBABILIDAD_DOBLE_PARPADEO = 0.15;
+export const ESPERA_DOBLE_PARPADEO_MS = 180;
+
+export const CLASE_PARPADEO = 'parpadeando';
+
+// ---- Los corazones de feliz ----
+
+// Los dos colores salen del feliz.png viejo, el que traía los corazones y las
+// chispas dibujados, muestreados antes de reemplazarlo. El rosa NO es el
+// #ff6b81 que estimaba la spec: el del sprite es más cálido.
+export const COLOR_CORAZON = '#ff8b8d';
+export const COLOR_DESTELLO = '#ffe02c';
+
+export const CORAZONES_FELIZ = 3;
+export const DESTELLOS_FELIZ = 4;
+
+// Un corazón tarda esto en nacer, subir en arco y apagarse.
+export const DURACION_CORAZON_MS = 2400;
+export const ESPERA_ENTRE_CORAZONES_MS = 800;
+
+// Los destellos no flotan: laten. Por eso duran mucho menos.
+export const DURACION_DESTELLO_MS = 900;
+
+// La tanda que dispara una acción que sube el humor. Dos o tres, no siempre los
+// mismos: tres iguales cada vez volverían a leer como animación de estado.
+export const CORAZONES_EXTRA_MIN = 2;
+export const CORAZONES_EXTRA_MAX = 3;
+export const CLASE_CELEBRANDO = 'celebrando';
+
+// El puente de siempre hacia style.css, para lo que es del personaje.
+export const VARS_PERSONAJE = {
+  origenParpadeo: '--origen-parpadeo',
+  duracionParpadeo: '--duracion-parpadeo',
+  colorParpado: '--color-parpado',
+  mascaraOjos: '--mascara-ojos',
+  colorCorazon: '--color-corazon',
+  colorDestello: '--color-destello',
+  duracionCorazon: '--duracion-corazon',
+  duracionDestello: '--duracion-destello'
+};
 
 // ---- Efectos de vida ----
 
