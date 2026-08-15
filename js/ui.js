@@ -15,12 +15,20 @@ import {
   VARS_FONDO,
   CLASE_NOCHE,
   COLORES_BARRAS,
-  VARS_BARRAS
+  VARS_BARRAS,
+  PREFIJO_CLASE_ESTADO,
+  CICLO_ANTENA_MS,
+  CICLO_ANTENA_NOCHE_MS,
+  CICLO_ZETA_MS,
+  CICLO_CHISPA_MS,
+  CICLOS_POLVO_MS,
+  VARS_EFECTOS
 } from './config.js';
 import { puedeJugar } from './acciones.js';
 import { obtenerSprite } from './sprites.js';
 
 const panelJuego = document.getElementById('panel-juego');
+const contenedorMascota = document.getElementById('contenedor-mascota');
 const canvas = document.getElementById('canvas-mascota');
 const ctx = canvas.getContext('2d');
 
@@ -48,6 +56,15 @@ raiz.style.setProperty(VARS_ANIMACION.duracionPresion, `${DURACION_PRESION_MS}ms
 for (const [stat, variable] of Object.entries(VARS_BARRAS)) {
   raiz.style.setProperty(variable, COLORES_BARRAS[stat]);
 }
+
+// Y los ciclos de los efectos de vida, por el mismo puente otra vez.
+raiz.style.setProperty(VARS_EFECTOS.cicloAntena, `${CICLO_ANTENA_MS}ms`);
+raiz.style.setProperty(VARS_EFECTOS.cicloAntenaNoche, `${CICLO_ANTENA_NOCHE_MS}ms`);
+raiz.style.setProperty(VARS_EFECTOS.cicloZeta, `${CICLO_ZETA_MS}ms`);
+raiz.style.setProperty(VARS_EFECTOS.cicloChispa, `${CICLO_CHISPA_MS}ms`);
+VARS_EFECTOS.ciclosPolvo.forEach((variable, i) => {
+  raiz.style.setProperty(variable, `${CICLOS_POLVO_MS[i]}ms`);
+});
 
 // El salto es de una sola pasada: la clase se saca al terminar para que la
 // próxima acción la pueda volver a poner. El rebote vive en el contenedor y no
@@ -148,10 +165,26 @@ function pintarFondo(esNoche) {
   document.body.classList.toggle(CLASE_NOCHE, esNoche);
 }
 
+// La clase de estado es el único gancho que tienen los efectos de vida: las Z
+// del standby y las chispas de la carga se prenden desde el CSS con ella. Sale
+// del mismo `estadoVisual` que el sprite, así que no puede haber un efecto
+// mostrando algo distinto de lo que muestra Chip.
+let claseEstadoActual = null;
+
+function pintarClaseEstado(estadoVisual) {
+  const clase = PREFIJO_CLASE_ESTADO + estadoVisual;
+  if (clase === claseEstadoActual) return;
+
+  if (claseEstadoActual) contenedorMascota.classList.remove(claseEstadoActual);
+  contenedorMascota.classList.add(clase);
+  claseEstadoActual = clase;
+}
+
 // `esNoche` llega resuelto desde afuera por la misma razón que `estadoVisual`:
 // decidir qué hora es se calcula, y este módulo pinta lo que le dan.
 export function render(estado, estadoVisual, esNoche) {
   pintarFondo(esNoche);
+  pintarClaseEstado(estadoVisual);
   dibujarMascota(estadoVisual);
   actualizarBarras(estado);
 }

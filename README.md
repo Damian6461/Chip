@@ -216,11 +216,47 @@ La interfaz pertenece al galpón: es un instrumento, no una página.
 
 **Los tres estados de una tecla** tienen que distinguirse sin leer: normal con borde y canto duro abajo, apretada 1 px más abajo con el canto a la mitad, y deshabilitada sin borde, sin canto y al 28% — una tecla que no está no se puede confundir con una que sí.
 
+### Efectos de vida
+
+Cinco micro-efectos de CSS puro superpuestos al canvas. **Ninguno toca los PNG ni el contexto 2D**, ninguno recibe el mouse (`pointer-events: none`) y ninguno existe para un lector de pantalla (`aria-hidden`).
+
+| Efecto | Dónde vive | Cuándo corre | Ciclo |
+|---|---|---|---|
+| glow de la antena | `#antena` | siempre | `CICLO_ANTENA_MS` — 3,1 s (5 s de noche) |
+| sombra que respira | `#sombra` | siempre | `CICLO_REBOTE_MS` — 2,2 s |
+| Z que flotan | `.zeta` ×3 | sólo `standby` | `CICLO_ZETA_MS` — 4 s |
+| chispas de carga | `.chispa` ×4 | sólo `cargando` | `CICLO_CHISPA_MS` — 0,6 s |
+| polvo en el haz | `.mota` ×6 | sólo de día | `CICLOS_POLVO_MS` — 11 / 14 / 17 s |
+
+**Ningún efecto tiene lógica propia.** Los que dependen del estado se prenden con la clase `estado-*` que `ui.js` pone en `#contenedor-mascota`, derivada de la **misma** cadena que elige el sprite; los que dependen de la hora usan la clase `es-noche` del `body`, derivada del mismo `esDeNoche()` que el fondo. No hay un solo timer nuevo en el JS, y por lo tanto no hay forma de que un efecto muestre algo distinto de lo que muestra Chip.
+
+Sin la clase, los elementos van a `display: none` — que además de esconderlos **cancela la animación**, así que no gastan nada mientras no corresponden.
+
+**Qué rebota y qué no.** El glow, las Z y las chispas viven adentro de `#contenedor-mascota` porque tienen que moverse con Chip: si el glow no rebotara, se despegaría de la antena. La sombra y el polvo viven afuera. Por eso, cuando Chip salta por una acción, **la sombra se queda en el piso** — que es lo que vende el despegue.
+
+**La contrafase de la sombra no usa delay.** El rebote está arriba en su 50%, así que la sombra chica en el 50% ya es la contrafase; atarla con un `animation-delay` de medio ciclo la habría puesto justo al revés, chica con Chip abajo. Las dos animaciones comparten la variable de duración, que es lo que importa. Verificado buscando las dos al mismo `currentTime`: Chip en `translateY(0)` → sombra en `scaleX(1)`; Chip en `-4px` → sombra en `scaleX(0.88)`.
+
+**El glow de la antena está posicionado sobre `idle` y en los otros estados no cae perfecto.** La bombita, medida en los siete sprites, va del 44,5% al 60,4% de ancho porque las poses son distintas:
+
+| | idle | feliz | critico | standby | cargando | jugando | limpiando |
+|---|---|---|---|---|---|---|---|
+| x | 50,1% | 54,0% | 44,5% | *(tapada)* | 45,9% | **60,4%** | 45,4% |
+
+El glow se fija en 50% / 8%, que es `idle` —el estado por defecto y el más frecuente—, y la capa difusa ancha tapa buena parte del desvío. El peor caso es `jugando`, donde queda unos 30 px corrido y se lee como un brillo suelto al lado de la antena; dura los 2 s del estado de acción. Afinarlo por estado son cuatro líneas de CSS con las clases `estado-*` que ya existen, pero no se hizo en esta pasada.
+
+**Las chispas suman poco.** El sprite de `cargando` ya trae remolinos, destellos y cable dibujados en el mismo cian: las partículas compiten con el arte en vez de agregarle. Están en la boca del enchufe, que es la zona más limpia del cuadro.
+
+En idle diurno corren **9 animaciones** (6 motas + glow + rebote + sombra); el pico es **13**, en `cargando`.
+
 ### prefers-reduced-motion
 
 Un bloque al final de `style.css` apaga el rebote, el salto, el viaje de las barras y la transición de las teclas. No es opcional y no tiene interruptor propio: quién puede moverse lo decide el CSS. `ui.js` pone la clase del salto igual, y con reduced-motion la clase no hace nada.
 
 La tecla apretada **sigue avisando** con reduced-motion: se le apaga el viaje de 1 px y la transición, pero el canto se achica igual. Eso es cambio de estado, no movimiento.
+
+De los efectos de vida se van los cinco menos uno: **la sombra queda**, estática y en su tamaño medio, porque su trabajo es anclar a Chip al piso y eso lo hace igual de quieta. Verificado en el peor caso —de día y con `standby` forzado, que es cuando más cosas pueden estar prendidas—: **0 animaciones**, glow, Z, chispas y polvo en `display: none`, la sombra visible en `scaleX(0.94)` y el canvas dibujado.
+
+Los selectores del bloque `@media` repiten los que prenden cada efecto (`.estado-standby .zeta`, no `.zeta`): con el selector corto perderían por especificidad aunque vengan después.
 
 ---
 

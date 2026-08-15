@@ -19,8 +19,48 @@
        style.css: dos transforms en elementos anidados se componen; dos
        animaciones en el mismo elemento se pisan. -->
   <div id="panel-juego">
+    <!-- Efectos de vida. Todo lo de acá es decoración superpuesta: ninguno toca
+         el canvas ni los PNG, ninguno recibe el mouse y ninguno existe para un
+         lector de pantalla. Los que dependen del estado de Chip se prenden por
+         la clase que ui.js pone en el contenedor, derivada de la cadena: no hay
+         un solo timer nuevo en el JS. -->
+
+    <!-- Polvo en el haz de la ventana. Al fondo de todo y sólo de día. -->
+    <div id="polvo" aria-hidden="true">
+      <div class="mota"></div>
+      <div class="mota"></div>
+      <div class="mota"></div>
+      <div class="mota"></div>
+      <div class="mota"></div>
+      <div class="mota"></div>
+    </div>
+
+    <!-- La sombra vive afuera del contenedor que rebota, a propósito: cuando
+         Chip salta por una acción, la sombra se queda en el piso. Eso es lo que
+         vende el despegue. -->
+    <div id="sombra" aria-hidden="true"></div>
+
     <div id="contenedor-mascota">
       <canvas id="canvas-mascota" width="320" height="320"></canvas>
+
+      <!-- Estos van adentro del contenedor porque tienen que moverse CON Chip:
+           si el glow no rebotara, se despegaría de la antena. -->
+      <div id="efectos" aria-hidden="true">
+        <div id="antena"></div>
+
+        <div id="zetas">
+          <span class="zeta">z</span>
+          <span class="zeta">z</span>
+          <span class="zeta">z</span>
+        </div>
+
+        <div id="chispas">
+          <div class="chispa"></div>
+          <div class="chispa"></div>
+          <div class="chispa"></div>
+          <div class="chispa"></div>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -224,6 +224,40 @@ export const VARS_ANIMACION = {
 // Clase que dispara el salto. La declara style.css, la pone y la saca ui.js.
 export const CLASE_SALTO = 'saltando';
 
+// ---- Efectos de vida ----
+
+// Micro-efectos de CSS superpuestos al canvas. Ninguno tiene lógica propia:
+// los que dependen del estado de Chip se prenden con la clase que ui.js pone en
+// el contenedor de la mascota, derivada de la MISMA cadena de estados que el
+// sprite. Un efecto con su propio timer sería una segunda fuente de verdad.
+export const PREFIJO_CLASE_ESTADO = 'estado-';
+
+// La antena late fuera de fase con el rebote de 2.2 s a propósito: dos ciclos
+// del mismo largo se sincronizan y el conjunto se vuelve mecánico.
+export const CICLO_ANTENA_MS = 3100;
+
+// De noche el corazón va lento. Ver esDeNoche: es la misma franja del standby.
+export const CICLO_ANTENA_NOCHE_MS = 5000;
+
+// Cada "z" del standby tarda esto en nacer, subir y apagarse.
+export const CICLO_ZETA_MS = 4000;
+
+// Una chispa de carga. El estado `cargando` dura DURACION_ESTADO_ACCION_MS
+// (2 s), así que entran tres tandas antes de que el sprite vuelva a idle.
+export const CICLO_CHISPA_MS = 600;
+
+// Tres ciclos largos y desparejos para el polvo: si fueran múltiplos entre sí,
+// las motas volverían a alinearse cada tanto y el ojo lo pesca.
+export const CICLOS_POLVO_MS = [11_000, 14_000, 17_000];
+
+export const VARS_EFECTOS = {
+  cicloAntena: '--ciclo-antena',
+  cicloAntenaNoche: '--ciclo-antena-noche',
+  cicloZeta: '--ciclo-zeta',
+  cicloChispa: '--ciclo-chispa',
+  ciclosPolvo: ['--ciclo-polvo-1', '--ciclo-polvo-2', '--ciclo-polvo-3']
+};
+
 // ---- Eventos (vida propia) ----
 
 // Menos de 1 hora, nada. Entre 1 y 6, un evento. Más de 6, hasta dos.

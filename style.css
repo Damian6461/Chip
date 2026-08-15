@@ -115,6 +115,309 @@ body::before {
   display: block;
 }
 
+/* ============================================================================
+   EFECTOS DE VIDA
+
+   Cinco micro-efectos de CSS puro sobre el canvas. Ninguno toca los PNG ni el
+   contexto 2D: son DOM superpuesto. Ninguno tiene lógica propia — los que
+   dependen del estado se prenden con la clase `estado-*` que ui.js pone en el
+   contenedor, derivada de la misma cadena que elige el sprite.
+
+   Las duraciones viven en config.js y llegan por custom properties, igual que
+   el rebote y el salto.
+   ============================================================================ */
+
+#polvo,
+#sombra,
+#efectos {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* ---- 1. La antena que late ---- */
+
+/* La capa de efectos cubre el contenedor entero y todo adentro se ubica en %,
+   así sigue al canvas si algún día cambia de tamaño. */
+#efectos {
+  inset: 0;
+}
+
+/* Posición medida sobre los sprites, no estimada: la bombita de idle cae en
+   50.1% / 7.7%. El resto de los estados la tienen entre 44.5% y 60.4% de ancho
+   —el sprite está dibujado en poses distintas— así que el glow queda hasta
+   ~30 px corrido en `jugando`, que es el más girado. Se elige la posición de
+   idle porque es el estado por defecto y el más frecuente. La capa difusa ancha
+   tapa buena parte de ese desvío; afinarlo por estado ya es trivial con las
+   clases `estado-*`, pero no se hizo en esta pasada. */
+#antena {
+  --pico-antena: 0.8;
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  /* Dos capas: una difusa amplia que es el halo y una compacta que es el foco. */
+  box-shadow:
+    0 0 12px 5px color-mix(in srgb, var(--color-bateria) 45%, transparent),
+    0 0 4px 1px color-mix(in srgb, var(--color-bateria) 85%, transparent);
+  animation: latir var(--ciclo-antena) ease-in-out infinite;
+}
+
+@keyframes latir {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: var(--pico-antena);
+  }
+}
+
+/* De noche el corazón va más lento y más tenue. Es el mismo keyframe: sólo
+   cambian la duración y el pico, los dos por variable. */
+body.es-noche #antena {
+  --pico-antena: 0.5;
+  animation-duration: var(--ciclo-antena-noche);
+}
+
+/* ---- 2. La sombra que respira ---- */
+
+/* Ancho y posición medidos: las orugas apoyan en el 96% de alto y ocupan del
+   15% al 80% de ancho en los siete sprites. */
+#sombra {
+  left: 20%;
+  top: 92%;
+  width: 55%;
+  height: 7%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0) 70%);
+  filter: blur(3px);
+  animation: respirar-sombra var(--ciclo-rebote) ease-in-out infinite;
+}
+
+/* Contrafase SIN delay, y es a propósito: el rebote está arriba en su 50%, así
+   que la sombra chica en el 50% ya es la contrafase. Atarla con un delay de
+   medio ciclo la habría puesto justo al revés —chica con Chip abajo—, además de
+   sumar una pieza que se puede desincronizar. Las dos animaciones comparten la
+   misma variable de duración, que es lo que importa. */
+@keyframes respirar-sombra {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scaleX(0.88);
+    opacity: 0.25;
+  }
+}
+
+/* ---- 3. Las Z del standby ---- */
+
+#zetas {
+  position: absolute;
+  left: 62%;
+  top: 14%;
+}
+
+.zeta {
+  position: absolute;
+  color: var(--color-bateria);
+  font-family: var(--fuente-instrumento);
+  line-height: 1;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--color-bateria) 60%, transparent);
+  /* Sin la clase de estado no existen: display:none además de esconderlas
+     cancela la animación, así que no gastan nada mientras Chip está despierto. */
+  display: none;
+}
+
+.zeta:nth-child(1) {
+  font-size: 12px;
+}
+
+.zeta:nth-child(2) {
+  font-size: 16px;
+  animation-delay: calc(var(--ciclo-zeta) * 0.325); /* 1.3 s de 4 */
+}
+
+.zeta:nth-child(3) {
+  font-size: 20px;
+  animation-delay: calc(var(--ciclo-zeta) * 0.65); /* 2.6 s de 4 */
+}
+
+.estado-standby .zeta {
+  display: block;
+  animation: flotar var(--ciclo-zeta) linear infinite;
+}
+
+@keyframes flotar {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(14px, -34px);
+    opacity: 0;
+  }
+}
+
+/* ---- 4. Chispas al cargar ---- */
+
+/* En la boca del enchufe, que es de donde entra la energía. Medido sobre el
+   sprite de `cargando`: el cable sale en 55% / 79%.
+   Ojo con este efecto: ese sprite ya trae mucho cian dibujado —remolinos,
+   destellos, el cable— así que las chispas suman poco y compiten con el arte.
+   Acá abajo es la zona más limpia del cuadro. */
+#chispas {
+  position: absolute;
+  left: 56%;
+  top: 79%;
+}
+
+.chispa {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--color-bateria);
+  box-shadow: 0 0 4px 1px color-mix(in srgb, var(--color-bateria) 70%, transparent);
+  display: none;
+}
+
+/* Cada una con su arco: si las cuatro hicieran el mismo, se leería como una
+   sola partícula parpadeando. */
+.chispa:nth-child(1) {
+  --arco-x: 4px;
+  --arco-y: -14px;
+}
+
+.chispa:nth-child(2) {
+  --arco-x: -3px;
+  --arco-y: -18px;
+  animation-delay: calc(var(--ciclo-chispa) * 0.25);
+}
+
+.chispa:nth-child(3) {
+  --arco-x: 7px;
+  --arco-y: -12px;
+  animation-delay: calc(var(--ciclo-chispa) * 0.5);
+}
+
+.chispa:nth-child(4) {
+  --arco-x: -6px;
+  --arco-y: -16px;
+  animation-delay: calc(var(--ciclo-chispa) * 0.75);
+}
+
+.estado-cargando .chispa {
+  display: block;
+  animation: chispear var(--ciclo-chispa) ease-out infinite;
+}
+
+@keyframes chispear {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--arco-x), var(--arco-y)) scale(0.4);
+    opacity: 0;
+  }
+}
+
+/* ---- 5. Polvo en el haz de luz ---- */
+
+/* Sobre la ventana: con el encuadre del 18.3% cae en el tercio izquierdo del
+   panel, entre el 41% y el 58% de alto. El contenedor recorta para que ninguna
+   mota se escape al portón. */
+#polvo {
+  left: 0;
+  top: 30%;
+  width: 30%;
+  height: 42%;
+  overflow: hidden;
+}
+
+.mota {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--color-mantenimiento);
+  opacity: 0;
+}
+
+/* Sólo de día: de noche no hay haz, no hay polvo. */
+body:not(.es-noche) .mota {
+  animation: derivar var(--ciclo-polvo-1) linear infinite;
+}
+
+/* Posiciones repartidas y ciclos desparejos con arranques negativos, para que
+   nunca se vean nacer juntas ni volver a alinearse. */
+.mota:nth-child(1) {
+  left: 14%;
+  top: 8%;
+  animation-delay: -2s;
+}
+
+.mota:nth-child(2) {
+  left: 52%;
+  top: 22%;
+  animation-duration: var(--ciclo-polvo-2);
+  animation-delay: -7s;
+}
+
+.mota:nth-child(3) {
+  left: 30%;
+  top: 46%;
+  animation-duration: var(--ciclo-polvo-3);
+  animation-delay: -11s;
+}
+
+.mota:nth-child(4) {
+  left: 68%;
+  top: 62%;
+  animation-duration: var(--ciclo-polvo-2);
+  animation-delay: -4s;
+}
+
+.mota:nth-child(5) {
+  left: 8%;
+  top: 74%;
+  animation-duration: var(--ciclo-polvo-3);
+  animation-delay: -15s;
+}
+
+.mota:nth-child(6) {
+  left: 44%;
+  top: 88%;
+  animation-delay: -9s;
+}
+
+/* Deriva diagonal descendente, como el polvo en la luz de verdad. La regla de
+   oro es que no se note: los picos de opacidad son bajos a propósito. */
+@keyframes derivar {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.22;
+  }
+  75% {
+    opacity: 0.16;
+  }
+  100% {
+    transform: translate(20px, 14px);
+    opacity: 0;
+  }
+}
+
 /* ---- Animaciones de vida ----
 
    Las duraciones NO están escritas acá: viven en js/config.js y ui.js las
@@ -353,5 +656,25 @@ body::before {
 
   #acciones button:active:not(:disabled) {
     transform: none;
+  }
+
+  /* Los efectos de vida SON movimiento: sin movimiento no quedan, se van.
+     Los selectores repiten los de arriba porque si acá pusiera sólo `.zeta`
+     perdería por especificidad contra `.estado-standby .zeta`, aunque venga
+     después. */
+  #antena,
+  .estado-standby .zeta,
+  .estado-cargando .chispa,
+  body:not(.es-noche) .mota {
+    display: none;
+    animation: none;
+  }
+
+  /* La sombra es la excepción y no se elimina: su trabajo es anclar a Chip al
+     piso, y eso lo hace igual de quieta. Queda en su tamaño medio. */
+  #sombra {
+    animation: none;
+    transform: scaleX(0.94);
+    opacity: 0.3;
   }
 }
