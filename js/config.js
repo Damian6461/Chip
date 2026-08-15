@@ -65,6 +65,7 @@ export const ESTADOS_VISUALES = {
   cargando: 'cargando',
   jugando: 'jugando',
   limpiando: 'limpiando',
+  esperando: 'esperando',
   feliz: 'feliz',
   idle: 'idle'
 };
@@ -82,9 +83,27 @@ export const RUTAS_SPRITES = {
   cargando: 'sprites/cargando.png',
   jugando: 'sprites/jugando.png',
   limpiando: 'sprites/limpiando.png',
+  esperando: 'sprites/esperando.png',
   feliz: 'sprites/feliz.png',
-  idle: 'sprites/idle.png'
+  idle: 'sprites/idle.png',
+  // No es un estado: es la pose alternativa de idle. Vive acá igual porque el
+  // loader la carga por la misma puerta y con el mismo fallback.
+  'idle-manitos': 'sprites/idle-manitos.png'
 };
+
+// Las poses de idle. Chip quieto en una sola pose durante minutos se lee como
+// un sticker; con dos, cada tanto se acomoda distinto y sigue estando quieto.
+//
+// Son CLAVES DE SPRITE, no estados. La diferencia importa: el estado decide los
+// efectos, la clase del CSS y la cadena; la pose sólo decide qué PNG se dibuja,
+// dónde cae la antena y dónde la pantalla del pecho. Meter la pose en la cadena
+// obligaría a inventarle una condición que no tiene.
+export const POSES_IDLE = ['idle', 'idle-manitos'];
+
+// En cada tick visual —uno por minuto— Chip cambia de pose con esta
+// probabilidad. No es cada minuto exacto a propósito: un cambio metronómico se
+// nota como animación, y esto no es una animación, es Chip acomodándose.
+export const PROBABILIDAD_CAMBIO_POSE = 0.5;
 
 // Recortes de la región ocular, para el parpadeo. Están alineados al MISMO
 // lienzo de 256x256 que su sprite base, así que la capa se superpone sin
@@ -94,6 +113,18 @@ export const RUTAS_SPRITES = {
 // lo correcto por diseño: standby ya tiene los ojos cerrados, critico
 // entrecerrados y jugando guiña. Un estado sin recorte no es un error — es un
 // estado que no parpadea.
+//
+// `idle-manitos` TAMPOCO PARPADEA, y es una decisión medida, no una omisión.
+// La tentación era reusar idle-ojos.png, porque es la misma pose de idle con
+// las manos arriba. No sirve: comparando el centro de las dos pupilas entre los
+// dos PNG, el ojo izquierdo se corre 12 px a la derecha y 9 hacia arriba, y el
+// derecho 6 y 6. Que los dos ojos se muevan DISTINTO quiere decir que la cabeza
+// está a otro ángulo, no simplemente corrida — no hay offset que lo arregle.
+//
+// Un recorte desalineado 6-12 px es exactamente el defecto que apareció con el
+// párpado: no se nota midiendo y canta al 400%. Así que la pose no parpadea, y
+// si alguna vez tiene que hacerlo, lo que falta es `idle-manitos-ojos.png`
+// alineado al mismo lienzo de 256. Con el archivo puesto acá, funciona sola.
 export const RUTAS_OJOS = {
   idle: 'sprites/idle-ojos.png',
   feliz: 'sprites/feliz-ojos.png'
@@ -200,6 +231,28 @@ export const HORA_STANDBY_FIN = 7; // exclusive -> franja 23:00 a 06:59
 // Cuánto dura en pantalla el estado disparado por una acción antes de que la
 // cadena se reevalúe.
 export const DURACION_ESTADO_ACCION_MS = 2000;
+
+// ---- El estado `esperando` ----
+//
+// De dónde sale: del canon. El evento 11 dice "Pasó un carguero de siete
+// metros. CHIP ESPERÓ A QUE TERMINARA DE PASAR y después siguió con lo suyo, un
+// poco despeinado por el viento", y el sprite entró al repo con el mensaje
+// "Chip aguanta el paso de un gigante". La pose son los brazos cruzados: no es
+// impaciencia, es aguantar.
+//
+// El disparador es la categoría `grandes` de datos-eventos.js —"el mundo que no
+// lo ve"—, que hasta ahora nadie filtraba. Ese archivo ya avisaba que la
+// categoría era dato y no etiqueta decorativa; este es su primer consumidor.
+//
+// Así el texto y la pose dicen lo mismo al mismo tiempo, y hay una sola fuente
+// de verdad: el evento decide, el sprite ilustra. Nada de un timer aparte
+// inventando gigantes que el jugador no leyó.
+export const CATEGORIA_GRANDES = 'grandes';
+
+// Cuánto aguanta la pose. Más largo que una acción (2 s) porque un gigante no
+// pasa en dos segundos, y bastante más corto que la lectura completa de una
+// visita: es un momento, no un estado en el que Chip se queda a vivir.
+export const DURACION_ESPERANDO_MS = 9000;
 
 // Ventana mínima entre dos cambios de estado visual automáticos. Las acciones
 // del jugador la saltean: apretar un botón tiene que responder al instante.
@@ -324,7 +377,13 @@ export const POSICIONES_ANTENA = {
   standby: { x: 50.0, y: 11.5 },
   cargando: { x: 44.2, y: 8.3 },
   jugando: { x: 60.5, y: 6.5 },
-  limpiando: { x: 45.9, y: 8.8 }
+  limpiando: { x: 45.9, y: 8.8 },
+  esperando: { x: 52.8, y: 8.1 },
+  // La pose alternativa entra en la MISMA tabla que los estados, porque el glow
+  // sigue al dibujo y no a la cadena. Medida con la misma receta: la corrida
+  // sobre idle devolvió 50,0% / 7,8% clavado, que es el valor que ya estaba en
+  // la tabla — o sea que la técnica reproduce lo anterior.
+  'idle-manitos': { x: 51.7, y: 6.0 }
 };
 
 export const VARS_ANTENA = {
@@ -389,7 +448,10 @@ export const PANTALLAS_PECHO = {
   standby: { x: 37.9, y: 63.7, ancho: 17.2, alto: 12.5, giro: 0.7, vidrio: '#00283f' },
   cargando: { x: 43.0, y: 62.1, ancho: 18.3, alto: 11.7, giro: 2.5, vidrio: '#002137' },
   jugando: { x: 39.5, y: 57.0, ancho: 17.6, alto: 14.1, giro: 7.4, vidrio: '#001c2e' },
-  limpiando: { x: 37.9, y: 60.9, ancho: 16.4, alto: 13.3, giro: 0, vidrio: '#001e31' }
+  limpiando: { x: 37.9, y: 60.9, ancho: 16.4, alto: 13.3, giro: 0, vidrio: '#001e31' },
+  'idle-manitos': { x: 39.1, y: 60.2, ancho: 17.6, alto: 11.3, giro: 4.5, vidrio: '#002a3c' }
+  // `esperando` no está, y no es un olvido: los antebrazos cruzados tapan la
+  // pantalla entera. No hay nada que redibujar.
 };
 
 // En qué estados la pantalla se redibuja viva. NO es "en todos", y la razón es
@@ -400,7 +462,14 @@ export const PANTALLAS_PECHO = {
 //            cuando el stat está abajo de JUGAR_BATERIA_MINIMA.
 //
 // Taparlas sería reemplazar un dibujo correcto por uno peor.
-export const ESTADOS_CON_PANTALLA_VIVA = ['idle', 'feliz', 'cargando', 'jugando', 'limpiando'];
+export const ESTADOS_CON_PANTALLA_VIVA = [
+  'idle',
+  'idle-manitos',
+  'feliz',
+  'cargando',
+  'jugando',
+  'limpiando'
+];
 
 // Cuántos segmentos tiene el instrumento. Son seis porque son seis los que están
 // dibujados en el sprite: el reemplazo tiene que leerse como el mismo aparato.

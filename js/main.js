@@ -6,6 +6,10 @@ import {
   DURACION_ESTADO_ACCION_MS,
   DEBOUNCE_VISUAL_MS,
   TICK_VISUAL_MS,
+  CATEGORIA_GRANDES,
+  DURACION_ESPERANDO_MS,
+  ESPERA_SEGUNDO_EVENTO_MS,
+  PROBABILIDAD_CAMBIO_POSE,
   PARAM_DEBUG,
   RUTA_SW
 } from './config.js';
@@ -16,7 +20,13 @@ import { elegirEventos, horasConGarantiaDiaria, diaLocal } from './eventos.js';
 import { otorgarPorEventos } from './coleccion.js';
 import { OBJETOS } from './datos-objetos.js';
 import { hitoPendiente, eventoDeHito, capaPorDias } from './gigantes.js';
-import { cargarSprites, resolverEstadoVisual, esDeNoche, franjaDeLuz } from './sprites.js';
+import {
+  cargarSprites,
+  resolverEstadoVisual,
+  esDeNoche,
+  franjaDeLuz,
+  poseDeIdle
+} from './sprites.js';
 import {
   render as renderUI,
   mostrarEventos,
@@ -36,6 +46,9 @@ let estadoVisualActual = null;
 let ultimoCambioVisual = 0;
 let temporizadorAccion = null;
 let temporizadorDebounce = null;
+let gigantePasando = false; // true mientras se lee un evento de la categoría grandes
+let temporizadoresGigante = [];
+let poseIdle = 0; // qué PNG de idle se está dibujando
 let visualForzado = null; // sólo lo escribe el panel de debug
 let horaForzada = null; // ídem: 0-23, o null para el reloj real
 let esNocheActual = null;
@@ -53,7 +66,7 @@ function relojEfectivo() {
 }
 
 function pintar() {
-  renderUI(estado, estadoVisualActual, esNocheActual, franjaDeLuz(relojEfectivo()));
+  renderUI(estado, estadoVisualActual, esNocheActual, franjaDeLuz(relojEfectivo()), claveDeSprite());
   if (refrescarDebug) refrescarDebug();
 }
 
@@ -61,7 +74,59 @@ function pintar() {
 // queda puro y sin saber que existe un modo debug.
 function resolverObjetivo() {
   if (visualForzado) return visualForzado;
-  return resolverEstadoVisual({ estado, ahora: relojEfectivo(), accion: accionEnCurso });
+  return resolverEstadoVisual({
+    estado,
+    ahora: relojEfectivo(),
+    accion: accionEnCurso,
+    gigantePasando
+  });
+}
+
+// Qué PNG le toca dibujar. El ESTADO lo resuelve la cadena; la POSE sólo existe
+// adentro de idle y no participa de ninguna condición. Los demás estados son su
+// propia clave.
+function claveDeSprite() {
+  return estadoVisualActual === E.idle ? poseDeIdle(poseIdle) : estadoVisualActual;
+}
+
+// Chip se acomoda. Corre en el tick visual —uno por minuto— y sólo a veces, para
+// que el cambio no sea metronómico: dos poses alternándose cada 60 segundos
+// exactos se leen como una animación lenta, y esto no es una animación.
+function rotarPoseIdle() {
+  if (estadoVisualActual !== E.idle) return false;
+  if (Math.random() >= PROBABILIDAD_CAMBIO_POSE) return false;
+  poseIdle += 1;
+  return true;
+}
+
+// Prende `esperando` en el momento en que cada evento de la categoría grandes
+// aparece en pantalla, y lo apaga solo. El reloj es el mismo que usa ui.js para
+// encadenar los eventos, así que la pose y el texto entran juntos: Chip cruza
+// los brazos cuando se lee que pasó un gigante, no antes ni después.
+//
+// Los timers viven acá porque main.js es el único módulo que tiene timers. La
+// alternativa —que ui.js se fije en la categoría al pintar el texto— pondría
+// una decisión de estado en el módulo que sólo pinta.
+function programarEsperando(eventos) {
+  temporizadoresGigante.forEach(clearTimeout);
+  temporizadoresGigante = [];
+
+  eventos.forEach((evento, i) => {
+    if (evento.categoria !== CATEGORIA_GRANDES) return;
+
+    const arranque = ESPERA_SEGUNDO_EVENTO_MS * i;
+
+    temporizadoresGigante.push(
+      setTimeout(() => {
+        gigantePasando = true;
+        if (actualizarVisual({ inmediato: true })) pintar();
+      }, arranque),
+      setTimeout(() => {
+        gigantePasando = false;
+        if (actualizarVisual({ inmediato: true })) pintar();
+      }, arranque + DURACION_ESPERANDO_MS)
+    );
+  });
 }
 
 // Mismo contrato que actualizarVisual: devuelve si cambió, nunca pinta.
@@ -213,6 +278,7 @@ if (eventos.length > 0) {
 
 guardarEstado(estado);
 mostrarEventos(eventos);
+programarEsperando(eventos);
 mostrarColeccion(estado.coleccion, hallazgos.nuevos);
 mostrarGigantes(estado.diasDePresencia, estado.hitosVistos);
 
@@ -238,7 +304,8 @@ pintar();
 setInterval(() => {
   const cambioEstado = actualizarVisual();
   const cambioNoche = actualizarNoche();
-  if (cambioEstado || cambioNoche) pintar();
+  const cambioPose = rotarPoseIdle();
+  if (cambioEstado || cambioNoche || cambioPose) pintar();
 }, TICK_VISUAL_MS);
 
 // ---- Service worker ----
@@ -256,6 +323,14 @@ const apiDebug = {
   obtenerEstado: () => estado,
 
   obtenerNombresVisuales: () => Object.values(E),
+
+  // Cambia la pose de idle a mano. Con la rotación real corriendo una vez por
+  // minuto y con moneda, esperar a verla es incómodo; esto la fuerza.
+  cambiarPose: () => {
+    poseIdle += 1;
+    pintar();
+    return claveDeSprite();
+  },
 
   // Para que el panel pueda mostrar "3/8" sin importar datos-objetos.js por su
   // cuenta: todo lo que el debug sabe del juego pasa por acá.
@@ -296,7 +371,13 @@ const apiDebug = {
 
     estado = { ...estado, hitosVistos: [...estado.hitosVistos, pendiente.id] };
     guardarEstado(estado);
-    mostrarEventos([eventoDeHito(pendiente)]);
+
+    const evento = eventoDeHito(pendiente);
+    mostrarEventos([evento]);
+    // El mismo par que en el arranque. Si acá faltara, el hito de la grúa —que
+    // es de la categoría `grandes`— saldría por debug sin la pose, y el panel
+    // estaría probando un camino que no es el del juego.
+    programarEsperando([evento]);
     mostrarGigantes(estado.diasDePresencia, estado.hitosVistos);
     pintar();
     return pendiente.hito;

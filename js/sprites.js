@@ -10,7 +10,8 @@ import {
   UMBRAL_FELIZ_HUMOR,
   HORA_STANDBY_INICIO,
   HORA_STANDBY_FIN,
-  FRANJAS_LUZ
+  FRANJAS_LUZ,
+  POSES_IDLE
 } from './config.js';
 
 const sprites = {};
@@ -63,6 +64,11 @@ const CADENA_ESTADOS = [
   { nombre: E.limpiando, condicion: (c) => c.accion === E.limpiando },
   { nombre: E.critico, condicion: (c) => c.estado.bateria < UMBRAL_CRITICO_BATERIA },
   { nombre: E.standby, condicion: (c) => enFranjaStandby(horaLocal(c.ahora)) },
+  // Un gigante pasando le gana a estar contento, pero no a estar dormido ni a
+  // quedarse sin batería. Dormido no se aguanta nada —Chip no se entera— y con
+  // la batería en rojo el aviso urgente es el otro. Arriba de feliz porque es
+  // inmediato: está pasando ahora, del otro lado de la pared.
+  { nombre: E.esperando, condicion: (c) => c.gigantePasando === true },
   {
     nombre: E.feliz,
     condicion: (c) =>
@@ -74,14 +80,26 @@ const CADENA_ESTADOS = [
 // Fallback de la cadena: si ninguna condición se cumpliera, se cae a idle.
 const ESTADO_POR_DEFECTO = E.idle;
 
-// contexto: { estado, ahora, accion }. `ahora` es un timestamp en ms y no tiene
-// default a propósito — el reloj lo pone el llamador, igual que en aplicarDecay.
-// `accion` es el nombre del estado de acción en curso, o null.
+// contexto: { estado, ahora, accion, gigantePasando }. `ahora` es un timestamp
+// en ms y no tiene default a propósito — el reloj lo pone el llamador, igual que
+// en aplicarDecay. `accion` es el nombre del estado de acción en curso, o null.
+// `gigantePasando` es true mientras se está leyendo un evento de la categoría
+// `grandes`, y lo decide main.js: acá no hay timers.
 export function resolverEstadoVisual(contexto) {
   for (const entrada of CADENA_ESTADOS) {
     if (entrada.condicion(contexto)) return entrada.nombre;
   }
   return ESTADO_POR_DEFECTO;
+}
+
+// Qué PNG se dibuja mientras Chip está en idle. NO es parte de la cadena: la
+// cadena resuelve el ESTADO y esto elige la POSE adentro de ese estado.
+//
+// Se exporta como función y no se resuelve en ui.js para que el índice pueda
+// vivir en main.js, que es el único módulo con timers, y ui.js siga recibiendo
+// una clave ya decidida.
+export function poseDeIdle(indice) {
+  return POSES_IDLE[((indice % POSES_IDLE.length) + POSES_IDLE.length) % POSES_IDLE.length];
 }
 
 // El loader nunca rechaza: un sprite que no carga queda marcado ok:false y el

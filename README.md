@@ -16,7 +16,7 @@ http://127.0.0.1:5500/index.html
 
 ## Tests
 
-100 pruebas, mismos archivos en dos entrypoints:
+112 pruebas, mismos archivos en dos entrypoints:
 
 ```bash
 node tests/correr.mjs        # sale 0 si pasa todo, 1 si no
@@ -48,6 +48,7 @@ Sin el parámetro, `js/debug.js` ni se descarga (import dinámico).
 | sumar días | suma presencia acumulada, para ver el arco de los gigantes avanzar |
 | disparar hito | dispara el hito pendiente sin esperar a la próxima apertura |
 | sumar objeto | agrega el primer objeto que falte, para poblar el estante |
+| cambiar pose | fuerza la otra pose de idle, que si no cambia una vez por minuto y con moneda |
 | reiniciar partida | save nuevo en 100/100/100 |
 
 La lectura de abajo muestra los stats con decimales, la colección cruda, la presencia, la capa que alcanzó el arco y los hitos ya vividos.
@@ -82,8 +83,9 @@ Prioridad, gana la primera condición verdadera:
 1. acción en curso → `cargando` / `jugando` / `limpiando`
 2. `bateria < 15` → `critico`
 3. hora local entre 23 y 7 → `standby`
-4. `bateria > 70` **y** `humor > 70` → `feliz`
-5. resto → `idle`
+4. está pasando un gigante → `esperando`
+5. `bateria > 70` **y** `humor > 70` → `feliz`
+6. resto → `idle`
 
 Las tres comparaciones son **estrictas**: batería en 15 exacto no es `critico`, y `feliz` pide que los dos stats pasen el umbral.
 
@@ -91,7 +93,33 @@ Las acciones van primero porque son feedback transitorio: si tocás Cargar con l
 
 **Las acciones del jugador saltean el debounce.** Sin eso, con el debounce y la duración de acción valiendo lo mismo (2 s), la ventana se come la transición y a veces no ves nada.
 
-`resolverEstadoVisual({ estado, ahora, accion })` recibe `ahora` como timestamp **sin default**: el reloj entra por el llamador, así `standby` es testeable en cualquier zona horaria.
+`resolverEstadoVisual({ estado, ahora, accion, gigantePasando })` recibe `ahora` como timestamp **sin default**: el reloj entra por el llamador, así `standby` es testeable en cualquier zona horaria.
+
+### `esperando`: Chip aguanta el paso de un gigante
+
+El disparador **sale del canon, no de un timer**. El evento 11 dice *"Pasó un carguero de siete metros. **Chip esperó a que terminara de pasar** y después siguió con lo suyo, un poco despeinado por el viento"*, y el sprite entró al repo con el mensaje "Chip aguanta el paso de un gigante". La pose son los brazos cruzados: no es impaciencia, es aguantar.
+
+Lo que lo prende es la **categoría `grandes`** de `datos-eventos.js` — "el mundo que no lo ve". Ese archivo ya avisaba que la categoría era dato y no etiqueta decorativa, y que *"hoy nadie filtra por categoría todavía"*: este es su primer consumidor. `EVENTO_RARO` también lleva `categoria: 'grandes'`, así que el hito de la grúa entra por la misma puerta sin un caso especial.
+
+`main.js` programa la pose para que arranque **en el instante en que ese evento aparece en pantalla** — con el mismo `ESPERA_SEGUNDO_EVENTO_MS` que usa `ui.js` para encadenar los textos — y la apaga a los `DURACION_ESPERANDO_MS` (9 s). Así el texto y la pose dicen lo mismo al mismo tiempo, y sigue habiendo una sola fuente de verdad: **el evento decide, el sprite ilustra.** Nada de un timer aparte inventando gigantes que el jugador no leyó.
+
+Los timers viven en `main.js` porque es el único módulo que los tiene. La alternativa —que `ui.js` mire la categoría al pintar el texto— pondría una decisión de estado en el módulo que sólo pinta.
+
+**Dónde va en la cadena y por qué:** arriba de `feliz`, porque está pasando ahora del otro lado de la pared; abajo de `standby`, porque dormido Chip no se entera; y abajo de `critico`, porque con la batería en rojo el aviso urgente es el otro.
+
+`esperando` **no tiene efectos dibujados** —igual que `critico`— y **no tiene pantalla del pecho**: los antebrazos cruzados la tapan entera.
+
+### Las poses de idle
+
+`idle-manitos.png` es una **pose alternativa, no un estado**. La diferencia es estructural: el estado decide los efectos, la clase del CSS y la cadena; la pose sólo decide qué PNG se dibuja, dónde cae la antena y dónde la pantalla del pecho. Meterla en la cadena obligaría a inventarle una condición que no tiene.
+
+`render()` recibe por eso dos cosas distintas: `estadoVisual` para la clase y `claveSprite` para el dibujo. Y `pintarClaseEstado` toma las dos, porque **la antena sigue al dibujo y no al estado**: entre `idle` e `idle-manitos` el bulbo se corre 1,7% de ancho y 1,8% de alto, y con una sola entrada de tabla el glow quedaría flotando al lado de la antena en una de las dos poses.
+
+El cambio de pose corre en el **tick visual que ya existía** —uno por minuto— y sólo con probabilidad `PROBABILIDAD_CAMBIO_POSE`. No hace falta un timer nuevo, y el azar es lo que evita que dos poses alternándose cada 60 segundos exactos se lean como una animación lenta. Esto no es una animación: es Chip acomodándose.
+
+**La pose alternativa NO parpadea, y es una decisión medida.** La tentación era reusar `idle-ojos.png`, porque es la misma cara. No sirve: comparando el centro de las dos pupilas entre los dos PNG, el ojo izquierdo se corre **12 px a la derecha y 9 hacia arriba**, y el derecho **6 y 6**. Que los dos ojos se muevan *distinto* quiere decir que la cabeza está a otro ángulo, no simplemente corrida — no hay offset que lo arregle. Un recorte desalineado 6-12 px es exactamente el defecto que apareció con el párpado: no se nota midiendo y canta al 400%.
+
+El código ya lo soporta sin ramas: una clave sin entrada en `RUTAS_OJOS` no parpadea y esconde la capa. Si algún día la pose tiene que parpadear, lo que falta es `idle-manitos-ojos.png` alineado al mismo lienzo de 256; puesto en la tabla, funciona solo.
 
 ---
 
@@ -101,11 +129,13 @@ Las acciones van primero porque son feedback transitorio: si tocás Cargar con l
 
 ```
 idle.png  feliz.png  critico.png  standby.png  cargando.png  jugando.png  limpiando.png
+esperando.png                      ← estado
+idle-manitos.png                   ← pose alternativa de idle, NO es un estado
 ```
 
 256×256, PNG con transparencia, personaje centrado. **Mismo tamaño y mismo encuadre en todos**: si el robot está más arriba en uno, salta al cambiar de estado.
 
-Siete archivos ideales, **seis obligatorios**: `limpiando.png` es opcional. Los siete están en el repo desde `2e6b288`, todos a 256×256.
+Siete archivos ideales, **seis obligatorios**: `limpiando.png` es opcional. Los siete están en el repo desde `2e6b288`, todos a 256×256. Después entraron dos más: `esperando.png`, que es un estado nuevo, e `idle-manitos.png`, que **no** es un estado sino una pose alternativa de idle. Los dos pasan por el mismo loader y el mismo fallback, así que `RUTAS_SPRITES` los lista igual.
 
 Además hay dos **recortes de la región ocular** —`idle-ojos.png` y `feliz-ojos.png`— para el parpadeo: mismo lienzo de 256, transparentes, alineados al original. Un estado sin recorte no parpadea y no rompe nada.
 

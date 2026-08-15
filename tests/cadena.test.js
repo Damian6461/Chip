@@ -6,8 +6,15 @@
 
 import { prueba, igual } from './runner.js';
 import { T0, T_MADRUGADA, T_NOCHE, T_SEIS, T_SIETE } from './config.pruebas.js';
-import { ESTADOS_VISUALES as E } from '../js/config.js';
-import { resolverEstadoVisual, esDeNoche } from '../js/sprites.js';
+import {
+  ESTADOS_VISUALES as E,
+  POSES_IDLE,
+  RUTAS_SPRITES,
+  POSICIONES_ANTENA,
+  PANTALLAS_PECHO,
+  ESTADOS_CON_PANTALLA_VIVA
+} from '../js/config.js';
+import { resolverEstadoVisual, esDeNoche, poseDeIdle } from '../js/sprites.js';
 
 const estado = (bateria, humor = 50) => ({ bateria, humor, mantenimiento: 50 });
 
@@ -47,6 +54,17 @@ const CASOS = [
   ['71/70 no es feliz: humor no supera el umbral', { estado: estado(71, 70), ahora: T0, accion: null }, E.idle],
   ['70/71 no es feliz: bateria no supera el umbral', { estado: estado(70, 71), ahora: T0, accion: null }, E.idle],
 
+  // `esperando`: Chip aguanta el paso de un gigante. Va entre standby y feliz.
+  ['esperando gana sobre feliz', { estado: estado(100, 100), ahora: T0, accion: null, gigantePasando: true }, E.esperando],
+  ['esperando gana sobre idle', { estado: estado(50, 50), ahora: T0, accion: null, gigantePasando: true }, E.esperando],
+  ['standby gana sobre esperando: dormido no se entera', { estado: estado(50), ahora: T_MADRUGADA, accion: null, gigantePasando: true }, E.standby],
+  ['critico gana sobre esperando: el aviso urgente es el otro', { estado: estado(10), ahora: T0, accion: null, gigantePasando: true }, E.critico],
+  ['la acción gana sobre esperando', { estado: estado(50), ahora: T0, accion: E.jugando, gigantePasando: true }, E.jugando],
+  ['sin gigante no hay esperando', { estado: estado(50, 50), ahora: T0, accion: null, gigantePasando: false }, E.idle],
+  // El contexto viejo —sin el campo— no puede activar el estado nuevo: la
+  // condición compara contra true y no confía en que el campo exista.
+  ['el contexto sin gigantePasando no activa esperando', { estado: estado(50, 50), ahora: T0, accion: null }, E.idle],
+
   // Fallback.
   ['idle cuando no aplica nada', { estado: estado(50, 50), ahora: T0, accion: null }, E.idle]
 ];
@@ -79,5 +97,50 @@ prueba('noche: el fondo acompaña al standby en todos los bordes', () => {
       visual === E.standby,
       `en ${new Date(instante).getHours()}h el fondo y el standby coinciden`
     );
+  }
+});
+
+// ---- Las poses de idle ----
+//
+// La pose no es un estado: no entra en la cadena y no tiene condición. Lo único
+// que hay que garantizar es que el índice cicle y que ninguna entrada de
+// POSES_IDLE quede sin ruta de sprite — un nombre mal escrito acá se ve como
+// idle en producción, porque el loader degrada en silencio.
+
+prueba('poses: el índice cicla y nunca se sale de la lista', () => {
+  igual(poseDeIdle(0), POSES_IDLE[0], 'el 0 es la primera');
+  igual(poseDeIdle(POSES_IDLE.length), POSES_IDLE[0], 'da la vuelta');
+  igual(poseDeIdle(POSES_IDLE.length * 3 + 1), POSES_IDLE[1], 'sigue dando la vuelta');
+  igual(poseDeIdle(-1), POSES_IDLE[POSES_IDLE.length - 1], 'el negativo no rompe');
+});
+
+prueba('poses: todas tienen sprite declarado', () => {
+  for (const pose of POSES_IDLE) {
+    igual(typeof RUTAS_SPRITES[pose], 'string', `${pose} tiene ruta`);
+  }
+});
+
+// La primera pose ES idle: si no lo fuera, el fallback del loader y el default
+// de la tabla de la antena estarían apuntando a otra cosa que la que se dibuja.
+prueba('poses: la primera es idle', () => {
+  igual(POSES_IDLE[0], E.idle, 'idle encabeza la lista de poses');
+});
+
+// ---- Las tablas medidas cubren lo que se dibuja ----
+//
+// Cada clave de sprite que se puede llegar a dibujar necesita su entrada en la
+// tabla de la antena, o el glow se dibuja donde no está el bulbo. Es la clase de
+// error que no rompe nada y se ve feo para siempre.
+prueba('antena: hay posición medida para cada sprite dibujable', () => {
+  for (const clave of Object.keys(RUTAS_SPRITES)) {
+    igual(typeof POSICIONES_ANTENA[clave], 'object', `${clave} tiene antena medida`);
+  }
+});
+
+// Y cada estado con pantalla viva necesita su caja, o se dibujaría un rectángulo
+// sin coordenadas encima del pecho.
+prueba('pantalla: hay caja medida para cada estado con pantalla viva', () => {
+  for (const clave of ESTADOS_CON_PANTALLA_VIVA) {
+    igual(typeof PANTALLAS_PECHO[clave], 'object', `${clave} tiene pantalla medida`);
   }
 });

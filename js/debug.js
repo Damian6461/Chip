@@ -178,6 +178,12 @@ export function iniciarDebug(api) {
   const botonObjeto = crearBoton('sumar objeto');
   botonObjeto.addEventListener('click', () => api.sumarObjeto());
 
+  // ---- Cambiar la pose de idle ----
+  // La rotación real corre una vez por minuto y con moneda, así que esperar a
+  // ver la pose alternativa es incómodo. Esto la fuerza.
+  const botonPose = crearBoton('cambiar pose');
+  botonPose.addEventListener('click', () => api.cambiarPose());
+
   // ---- Reiniciar partida ----
   const botonReiniciar = crearBoton('reiniciar partida');
   botonReiniciar.addEventListener('click', () => {
@@ -232,6 +238,7 @@ export function iniciarDebug(api) {
     filaDias,
     botonHito,
     botonObjeto,
+    botonPose,
     botonReiniciar,
     stats
   );

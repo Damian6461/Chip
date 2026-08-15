@@ -754,19 +754,26 @@ function pintarFondo(esNoche) {
 // mostrando algo distinto de lo que muestra Chip.
 let claseEstadoActual = null;
 
-function pintarClaseEstado(estadoVisual) {
+// Dos argumentos y no uno, porque son dos cosas distintas: la CLASE sale del
+// estado —de ella cuelgan los efectos, que son del estado y no de la pose— y la
+// antena sale de la CLAVE DE SPRITE, porque el glow tiene que caer sobre el
+// bulbo que está dibujado. Con idle e idle-manitos el estado es el mismo y el
+// bulbo se corre 1,7% de ancho y 1,8% de alto: con una sola tabla, el glow
+// quedaría flotando al lado de la antena en una de las dos poses.
+function pintarClaseEstado(estadoVisual, claveSprite) {
   const clase = PREFIJO_CLASE_ESTADO + estadoVisual;
-  if (clase === claseEstadoActual) return;
 
-  if (claseEstadoActual) contenedorMascota.classList.remove(claseEstadoActual);
-  contenedorMascota.classList.add(clase);
-  claseEstadoActual = clase;
+  if (clase !== claseEstadoActual) {
+    if (claseEstadoActual) contenedorMascota.classList.remove(claseEstadoActual);
+    contenedorMascota.classList.add(clase);
+    claseEstadoActual = clase;
+  }
 
   // El glow sigue a la antena, que no está en el mismo lugar en todos los
   // sprites. Los números viven en config.js —son medidas del arte, como los
   // colores de las barras— y viajan por el puente de siempre en vez de por
   // catorce reglas de CSS.
-  const antena = POSICIONES_ANTENA[estadoVisual] ?? POSICIONES_ANTENA.idle;
+  const antena = POSICIONES_ANTENA[claveSprite] ?? POSICIONES_ANTENA.idle;
   contenedorMascota.style.setProperty(VARS_ANTENA.x, `${antena.x}%`);
   contenedorMascota.style.setProperty(VARS_ANTENA.y, `${antena.y}%`);
 }
@@ -800,13 +807,16 @@ function pintarLuz(franja) {
 // `esNoche` y `luz` llegan resueltos desde afuera por la misma razón que
 // `estadoVisual`: decidir qué hora es se calcula, y este módulo pinta lo que le
 // dan.
-export function render(estado, estadoVisual, esNoche, luz = null) {
+// `claveSprite` es qué PNG dibujar. Casi siempre coincide con `estadoVisual`;
+// la excepción es idle, que tiene dos poses. Llega resuelta desde main.js por la
+// regla de siempre: acá se pinta, no se decide.
+export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = estadoVisual) {
   pintarFondo(esNoche);
   pintarLuz(luz);
-  pintarClaseEstado(estadoVisual);
-  dibujarMascota(estadoVisual);
-  pintarOjos(estadoVisual);
-  pintarPantalla(estado, estadoVisual);
+  pintarClaseEstado(estadoVisual, claveSprite);
+  dibujarMascota(claveSprite);
+  pintarOjos(claveSprite);
+  pintarPantalla(estado, claveSprite);
   actualizarBarras(estado);
 }
 
