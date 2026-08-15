@@ -182,10 +182,18 @@ export function iniciarDebug(api) {
 
   function refrescarStats() {
     const e = api.obtenerEstado();
+    const coleccion = e.coleccion ?? [];
+
     stats.textContent = [
       `bat  ${e.bateria.toFixed(2)}`,
       `hum  ${e.humor.toFixed(2)}`,
-      `mant ${e.mantenimiento.toFixed(2)}`
+      `mant ${e.mantenimiento.toFixed(2)}`,
+      '',
+      // Lista cruda de ids a propósito: el panel es una superficie de desarrollo
+      // y lo que hace falta ver es qué hay en el save, no cómo se ve.
+      `colección ${coleccion.length}/${api.totalDeObjetos()}`,
+      ...(coleccion.length ? coleccion.map((id) => `  ${id}`) : ['  (vacía)']),
+      `día evento ${e.ultimoDiaConEvento ?? '—'}`
     ].join('\n');
   }
 

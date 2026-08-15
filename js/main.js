@@ -12,7 +12,9 @@ import {
 import { crearEstadoNuevo, cargarEstado, guardarEstado } from './estado.js';
 import { aplicarDecay, horasTranscurridas } from './decay.js';
 import { cargar, jugar, limpiar } from './acciones.js';
-import { elegirEventos } from './eventos.js';
+import { elegirEventos, horasConGarantiaDiaria, diaLocal } from './eventos.js';
+import { otorgarPorEventos } from './coleccion.js';
+import { OBJETOS } from './datos-objetos.js';
 import { cargarSprites, resolverEstadoVisual, esDeNoche } from './sprites.js';
 import { render as renderUI, mostrarEventos, conectarAcciones, animarAccion } from './ui.js';
 
@@ -141,11 +143,32 @@ const horasFuera = horasTranscurridas(estado, ahoraArranque);
 
 estado = aplicarDecay(estado, ahoraArranque);
 
-// Qué hizo Chip mientras no estabas. Se persisten los ids de TODO lo mostrado
-// para que nada de esta visita pueda repetirse en la siguiente.
-const eventos = elegirEventos(horasFuera, estado.ultimosEventosIds);
+// Qué hizo Chip mientras no estabas.
+//
+// La garantía diaria entra acá y no adentro de elegirEventos: es una decisión de
+// cadencia sobre las horas de esta visita, y elegirEventos sigue siendo una
+// función de horas a eventos, sin saber qué día es hoy.
+const horasEventos = horasConGarantiaDiaria(
+  horasFuera,
+  estado.ultimoDiaConEvento,
+  ahoraArranque
+);
+
+// Se persisten los ids de TODO lo mostrado para que nada de esta visita pueda
+// repetirse en la siguiente.
+const eventos = elegirEventos(horasEventos, estado.ultimosEventosIds);
+
+// Y lo que la visita haya dejado. La colección se calcula acá y se guarda con
+// el resto del estado: coleccion.js no toca localStorage, igual que decay.js.
+const hallazgos = otorgarPorEventos(estado.coleccion, eventos);
+
 if (eventos.length > 0) {
-  estado = { ...estado, ultimosEventosIds: eventos.map((evento) => evento.id) };
+  estado = {
+    ...estado,
+    ultimosEventosIds: eventos.map((evento) => evento.id),
+    coleccion: hallazgos.coleccion,
+    ultimoDiaConEvento: diaLocal(ahoraArranque)
+  };
 }
 
 guardarEstado(estado);
@@ -191,6 +214,10 @@ const apiDebug = {
   obtenerEstado: () => estado,
 
   obtenerNombresVisuales: () => Object.values(E),
+
+  // Para que el panel pueda mostrar "3/8" sin importar datos-objetos.js por su
+  // cuenta: todo lo que el debug sabe del juego pasa por acá.
+  totalDeObjetos: () => OBJETOS.length,
 
   // El multiplicador escala cuántas horas representa cada simulación, para
   // probar el decay sin esperar horas reales.

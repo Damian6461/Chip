@@ -12,6 +12,7 @@ const { correrPruebas } = await import('./runner.js');
 await import('./decay.test.js');
 await import('./cadena.test.js');
 await import('./eventos.test.js');
+await import('./coleccion.test.js');
 
 const VERDE = '\x1b[32m';
 const ROJO = '\x1b[31m';

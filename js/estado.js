@@ -5,7 +5,8 @@ import {
   VERSION_ESTADO,
   NOMBRE_INICIAL,
   STAT_INICIAL,
-  EVENTOS_INICIALES_IDS
+  EVENTOS_INICIALES_IDS,
+  COLECCION_INICIAL
 } from './config.js';
 
 export function crearEstadoNuevo() {
@@ -18,6 +19,12 @@ export function crearEstadoNuevo() {
     ultimaVisita: ahora,
     creado: ahora,
     ultimosEventosIds: [...EVENTOS_INICIALES_IDS],
+    // Los ids de lo que Chip ya juntó. Ver coleccion.js.
+    coleccion: [...COLECCION_INICIAL],
+    // Último día calendario en que la visita mostró eventos, para la garantía
+    // diaria. null en una partida nueva: la primera visita ya cuenta como día
+    // sin estrenar y trae algo.
+    ultimoDiaConEvento: null,
     version: VERSION_ESTADO
   };
 }
@@ -37,6 +44,11 @@ function migrar(guardado) {
     ...guardado,
     version: VERSION_ESTADO
   };
+
+  // v3 -> v4: `coleccion` y `ultimoDiaConEvento` son campos NUEVOS, así que el
+  // merge de arriba ya los trajo con su default. No hace falta un paso propio, y
+  // ese es justamente el punto del merge-primero: una partida de meses cruza a
+  // v4 con la colección vacía y la garantía diaria lista, sin código de puente.
 
   // v2 -> v3: ultimoEventoId (uno) pasó a ultimosEventosIds (todos los de la
   // última visita). El merge de arriba resuelve los campos que sólo se agregan;

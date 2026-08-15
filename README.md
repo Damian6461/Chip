@@ -16,7 +16,7 @@ http://127.0.0.1:5500/index.html
 
 ## Tests
 
-51 pruebas, mismos archivos en dos entrypoints:
+79 pruebas, mismos archivos en dos entrypoints:
 
 ```bash
 node tests/correr.mjs        # sale 0 si pasa todo, 1 si no
@@ -163,6 +163,44 @@ Los dos fondos son PNG-8 cuantizados, bajo 500 KB cada uno. **No son pixel art d
 | `fondo-noche.png` | 1467 KB | 411 KB | 48 colores | sí |
 
 El dither va por imagen y no por gusto: en el día el piso queda limpio sin él y el dither le mete grano visible; en la noche, sin dither el farol de la pared hace anillos concéntricos en la caída de luz. A 256 colores no bandea ninguna de las dos, pero pesan 765 KB y 946 KB — fuera de presupuesto.
+
+---
+
+## La colección
+
+Los eventos dejan cosas. "Encontró una tuerca del tamaño de su cabeza" ya no es sólo una línea: la tuerca entra a la colección y se queda.
+
+Mismo corte que los eventos: **`js/datos-objetos.js` es el contenido** (qué objetos hay, de qué evento salen, de qué tier son) y **`js/coleccion.js` es la lógica** (qué deja una visita). `coleccion.js` no toca `localStorage` — devuelve una colección nueva y quien guarda es `main.js`, igual que con el decay.
+
+**La línea del canon no se copia.** Cada objeto apunta a su evento por id y el texto se toma de `datos-eventos.js`. Copiarlo sería tener dos originales del mismo texto y que se separen en la primera corrección editorial. Hay una prueba que verifica que cada `canon` sea exactamente el texto de su evento.
+
+### Las reglas
+
+| Regla | Dónde | Cómo |
+|---|---|---|
+| un objeto no se otorga dos veces | `otorgarPorEventos` | el id ya está en la colección |
+| el raro pide moneda cargada | `PROBABILIDAD_OBJETO_RARO` | 0.04 — fracción, no porcentaje |
+| una sola tirada por visita | `otorgarPorEventos` | no una por objeto |
+| techo por visita | `MAX_OBJETOS_POR_VISITA` | 3 |
+| garantía diaria | `horasConGarantiaDiaria` | piso sobre las horas |
+
+**El evento sigue saliendo aunque su objeto ya esté.** Se decidió no sacarlo del pool: siete de los veinte eventos dejan objeto, y excluirlos iría achicando el pool justo a medida que la colección crece. Que Chip encuentre otra tuerca y no sume nada es fiel — la tuerca ya la tiene. La mezcla de eventos-con-objeto y eventos-puros aumenta sola con el tiempo, que es el ritmo que pide el brief.
+
+**La tirada de rareza va en el objeto, no en el evento.** El plan la pedía en el evento, pero el evento 8 deja tres objetos —resorte, arandela y la-cosa-que-no-sabe-qué-es— y sólo el tercero es raro: gatillar el evento al 4% habría arrastrado dos comunes a la rareza, justo lo contrario de "los comunes caen con la cadencia normal". Cuando los raros tengan evento propio, las dos lecturas coinciden y no hay que cambiar nada.
+
+**El techo existe porque un solo evento puede dejar tres objetos.** La tabla de horas ya limita los eventos a dos, pero sin techo una vuelta de ausencia larga podía entregar cinco cosas de golpe. Lo que no entra no se pierde: queda para la próxima visita.
+
+### La garantía diaria
+
+La primera visita de cada día calendario trae algo aunque hayan pasado diez minutos — el "periódico de Tsuki". Se implementa como **piso sobre las horas** y no como una rama adentro de `cuantosTocan`: "hoy todavía no viste nada" equivale exactamente a "pasó al menos el mínimo", y así la tabla de horas sigue siendo el único lugar donde se decide cuántos eventos tocan.
+
+El día es **local** y en formato `YYYY-MM-DD`: volver a las 23:50 y de nuevo a las 00:10 son dos días. Se guarda en `ultimoDiaConEvento`.
+
+### El save v4
+
+`coleccion` (array de ids) y `ultimoDiaConEvento` son campos nuevos, así que **la migración salió gratis**: el merge-con-defaults-primero de `estado.js` los trae solos. Una partida de meses cruza a v4 con la colección vacía y la garantía lista, sin código de puente. Es exactamente para lo que ese merge estaba escrito.
+
+El panel de debug muestra la colección cruda —`colección 2/8` y la lista de ids— y el día del último evento.
 
 ---
 

@@ -18,6 +18,29 @@ function cuantosTocan(horas) {
   return MAX_EVENTOS_POR_VISITA;
 }
 
+// Día calendario local, en YYYY-MM-DD. Local y no UTC porque el día del jugador
+// es el suyo: volver a las 23:50 y de nuevo a las 00:10 tienen que ser dos días.
+// Recibe el timestamp de afuera, así las pruebas no dependen del reloj.
+export function diaLocal(ahora) {
+  const fecha = new Date(ahora);
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${fecha.getFullYear()}-${mes}-${dia}`;
+}
+
+// La garantía diaria: la primera visita de un día nuevo siempre trae algo,
+// aunque hayan pasado diez minutos. Es el "periódico de Tsuki" — reabrir tiene
+// premio una vez por día, sin castigar al que vuelve más seguido.
+//
+// Se implementa como piso sobre las horas y no como una rama adentro de
+// cuantosTocan: "hoy todavía no viste nada" equivale exactamente a "pasó al
+// menos el mínimo", y así la tabla de horas sigue siendo el único lugar donde
+// se decide cuántos eventos tocan.
+export function horasConGarantiaDiaria(horas, ultimoDiaConEvento, ahora) {
+  if (ultimoDiaConEvento === diaLocal(ahora)) return horas;
+  return Math.max(horas, HORAS_MINIMAS_EVENTO);
+}
+
 // `ultimosIds` son los eventos mostrados en la visita anterior — todos, no sólo
 // el último.
 //

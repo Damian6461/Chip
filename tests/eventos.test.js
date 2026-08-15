@@ -1,6 +1,7 @@
 // Sistema de eventos: cuántos tocan según las horas, que no se repita el
 // último mostrado, que el evento raro salga sólo cuando tiene que salir, y que
-// la migración v1 -> v2 no rompa una partida vieja.
+// las migraciones de save no rompan una partida vieja. La cadencia diaria y la
+// colección tienen su propio archivo: coleccion.test.js.
 
 import { prueba, igual, verdadero } from './runner.js';
 import { T0 } from './config.pruebas.js';
@@ -185,8 +186,8 @@ prueba('raro: si salió la visita pasada, no se repite', () => {
 
 // ---- Migración del save ----
 
-prueba('migración v1 -> v3: agrega los campos nuevos sin tocar los stats', () => {
-  // Un save de v1 tal cual era: sin nada de eventos.
+prueba('migración v1 -> actual: agrega los campos nuevos sin tocar los stats', () => {
+  // Un save de v1 tal cual era: sin nada de eventos ni de colección.
   guardarEstado({
     nombre: 'Chip',
     bateria: 42.5,
@@ -209,7 +210,7 @@ prueba('migración v1 -> v3: agrega los campos nuevos sin tocar los stats', () =
   igual(migrado.creado, T0, 'creado intacto');
 });
 
-prueba('migración v2 -> v3: ultimoEventoId se convierte en ultimosEventosIds', () => {
+prueba('migración v2 -> actual: ultimoEventoId se convierte en ultimosEventosIds', () => {
   guardarEstado({
     nombre: 'Chip',
     bateria: 60,
@@ -229,7 +230,7 @@ prueba('migración v2 -> v3: ultimoEventoId se convierte en ultimosEventosIds', 
   igual(migrado.bateria, 60, 'los stats no se tocan');
 });
 
-prueba('migración: un save ya en v3 pasa sin tocarse', () => {
+prueba('migración: un save ya en la versión actual pasa sin tocarse', () => {
   guardarEstado({
     nombre: 'Chip',
     bateria: 50,

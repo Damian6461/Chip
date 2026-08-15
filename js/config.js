@@ -10,8 +10,9 @@ export const SAVE_KEY = 'chip.save.v1';
 
 // v2 agregó ultimoEventoId. v3 lo reemplazó por ultimosEventosIds: si en una
 // visita se mostraron dos eventos, ninguno de los dos puede repetirse en la
-// siguiente, no sólo el último.
-export const VERSION_ESTADO = 3;
+// siguiente, no sólo el último. v4 agregó `coleccion` y `ultimoDiaConEvento`,
+// los dos campos nuevos del sistema de hallazgos.
+export const VERSION_ESTADO = 4;
 
 // ---- Estado inicial ----
 
@@ -292,6 +293,35 @@ export const MAX_EVENTOS_POR_VISITA = 2;
 // Con qué arranca ultimosEventosIds en una partida nueva: sin nada excluido.
 // Se copia al crear el estado, nunca se comparte la referencia.
 export const EVENTOS_INICIALES_IDS = [];
+
+// ---- La colección ----
+
+// Los dos tiers de objeto. Nombres declarados acá para que no haya strings
+// sueltos entre datos-objetos.js y coleccion.js.
+export const TIERS_OBJETO = {
+  comun: 'comun',
+  raro: 'raro'
+};
+
+// Con qué probabilidad se otorga un objeto raro en una visita que lo tenía a
+// tiro. Fracción, no porcentaje: 0.04 es 4%, dentro del 3-5% que fija el brief.
+//
+// La tirada es UNA por visita, no una por objeto: si algún día dos raros caen
+// en la misma visita, o entran los dos o no entra ninguno. Que la escasez sea
+// del momento y no de cada pieza.
+export const PROBABILIDAD_OBJETO_RARO = 0.04;
+
+// Techo de objetos por visita. La tabla de horas ya limita los EVENTOS a dos,
+// pero un solo evento puede dejar tres objetos —el 8 deja resorte, arandela y
+// la-cosa—, así que sin este techo una vuelta de ausencia larga podía entregar
+// cinco cosas de golpe. El brief pide 1 a 3, nunca más.
+export const MAX_OBJETOS_POR_VISITA = 3;
+
+// Con qué arranca la colección en una partida nueva. Se copia al crear el
+// estado, nunca se comparte la referencia.
+export const COLECCION_INICIAL = [];
+
+// ---- Eventos raros ----
 
 // El evento raro (EVENTO_RARO en datos-eventos.js) no está en el pool: no se
 // sortea, se tira una moneda cargada una sola vez por visita con evento. Si

@@ -14,9 +14,10 @@ import {
 
 const sprites = {};
 
-// Único new Date() del proyecto, y alimentado por un timestamp que llega de
-// afuera: así la franja de standby se puede testear sin depender del reloj real
-// ni de la zona horaria de quien corre las pruebas.
+// Uno de los dos lugares donde se construye un Date —el otro es diaLocal en
+// eventos.js— y los dos con la misma regla: el timestamp llega de afuera, así la
+// franja de standby se puede testear sin depender del reloj real ni de la zona
+// horaria de quien corre las pruebas.
 function horaLocal(ahora) {
   return new Date(ahora).getHours();
 }
