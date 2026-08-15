@@ -131,6 +131,29 @@ El swap usa `esDeNoche()` de `sprites.js`, que es **la misma franja que el stand
 
 `main.js` la resuelve con el mismo `relojEfectivo()` que la cadena, así el sprite y el fondo no pueden discrepar. El tick de 60 s evalúa **las dos cosas sin cortocircuito**: con la batería en `critico`, cruzar las 23:00 no cambia el sprite —`critico` le gana a `standby`— pero el galpón igual se tiene que hacer de noche.
 
+### El ambiente de pantalla completa
+
+La misma panorámica llena la pantalla detrás de la interfaz, en `body::before`: `cover`, centrada, con `filter: blur(3px) brightness(0.3)`. El panel de Chip muestra la misma imagen **nítida**, y ese contraste es el punto: el panel es el foco y el resto es atmósfera.
+
+Va en un `::before` y no en el `body` porque el filtro tiene que caer sobre la imagen y sobre nada más — un `filter` en el `body` difuminaría también las barras, los botones y el log. La capa es `fixed` y se pasa 12 px del viewport por los cuatro lados: el blur samplea más allá del borde y, ajustada al pixel, chuparía transparencia y dejaría un halo claro en el marco de la pantalla.
+
+**Las dos capas leen la misma custom property** (`--fondo-actual`, `VARS_FONDO`), que `ui.js` escribe una sola vez. Con una asignación por capa podrían quedar en fondos distintos —galpón de día atrás y de noche adelante— y eso no se descubre hasta que alguien cruza las 23:00 con la app abierta. Así es estructuralmente imposible. La clase `es-noche` del `body` sale del mismo dato, para lo que cambia de ritmo y no de imagen.
+
+### Contraste sobre el ambiente
+
+El único texto apoyado directamente sobre el ambiente son las etiquetas y los números de las barras; el log y los botones tienen su propio fondo opaco.
+
+Medido contra **el píxel más claro de cada panorámica ya oscurecida** —el peor caso posible, en cualquier viewport y cualquier recorte de `cover`:
+
+| Texto | Antes | Ahora | AA (4.5:1) |
+|---|---|---|---|
+| etiqueta `#9aa0ab` → `#b8bec8` | 3.50:1 | **4.93:1** | pasa |
+| número `#e6e6e6` | 7.38:1 | 7.38:1 | pasa |
+
+La etiqueta se aclaró por eso y no por gusto: con el gris viejo **no llegaba a AA con ningún valor del rango de oscurecimiento** (a `brightness(0.25)`, el más oscuro razonable, daba 4.22:1). El píxel culpable es el cielo de la ventana, que con `cover` centrado cae justo a la izquierda del centro — es decir, detrás de las etiquetas. El log conserva el gris apagado porque tiene panel propio.
+
+Las teclas deshabilitadas quedan al 28% sobre el ambiente y no llegan a AA: WCAG exime a los controles deshabilitados, y que se lean apagadas es justamente el punto.
+
 ### Por qué el panel no recorta
 
 `#panel-juego` **no** lleva `overflow: hidden`. La imagen de fondo se recorta sola contra el `border-radius`, y recortar el panel entero le cortaría la cabeza a Chip: el sprite de `jugando` tiene 1,3 px de margen transparente arriba y el salto de acción sube 8 px. Chip saliéndose un instante del cuadro es la opción buena; la antena cortada no.

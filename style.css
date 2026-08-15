@@ -33,12 +33,44 @@ html, body {
 }
 
 body {
+  /* Base y red de contención: es lo que se ve si la panorámica no cargó. */
   background: #0d0f14;
   color: #e6e6e6;
   font-family: system-ui, sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ---- El ambiente ----
+
+   El galpón entero detrás de la interfaz, difuminado y bajado de luz para que
+   no compita con la UI. El panel de Chip mantiene la misma panorámica nítida:
+   ese es el punto de foco y el resto es atmósfera.
+
+   Va en un ::before y no en el body porque el filtro tiene que caer sobre la
+   imagen y sobre nada más: un filter en el body difuminaría también las barras,
+   los botones y el log. No es un elemento nuevo — el DOM no cambia.
+
+   Es `fixed` y se pasa 12 px del viewport por los cuatro lados: el blur samplea
+   más allá del borde y, si la capa midiera exactamente la pantalla, chuparía
+   transparencia y dejaría un halo claro en el marco.
+
+   La imagen sale de --fondo-actual, la misma que usa el panel: las dos capas
+   cambian de día a noche con una sola escritura de ui.js. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -12px;
+  z-index: -1;
+  background-image: var(--fondo-actual);
+  background-size: cover;
+  background-position: center;
+  /* Si en un celular real esto tironea, el reemplazo es sacar el blur y bajar
+     el brightness a 0.22 — el ambiente queda igual de discreto y el contraste
+     sólo mejora. La capa es estática: no se anima nada, así que el navegador la
+     rasteriza una vez y después sólo la compone. */
+  filter: blur(3px) brightness(0.3);
 }
 
 /* El gap de la columna es el chico, y los saltos grandes se hacen con márgenes
@@ -69,6 +101,7 @@ body {
   position: relative;
   margin-bottom: var(--esp-1); /* + el gap de la columna = 16 hasta la primera barra */
   background-color: #14161d;
+  background-image: var(--fondo-actual);
   background-repeat: no-repeat;
   background-size: auto 100%;
   border: 2px solid #2a2d38;
@@ -121,9 +154,14 @@ body {
   width: var(--ancho-columna);
 }
 
+/* Más claro que el gris de antes (#9aa0ab) por contraste, no por gusto: la
+   etiqueta es el único texto que quedó apoyado directamente sobre el ambiente,
+   sin panel opaco atrás. Contra el píxel más claro de la panorámica de día ya
+   oscurecida, el gris viejo daba 3.50:1 y no llegaba a AA; este da 4.93:1.
+   El log conserva el gris apagado porque tiene su propio panel debajo. */
 .barra-etiqueta {
   font-size: 14px;
-  color: #9aa0ab;
+  color: #b8bec8;
   min-width: 56px;
 }
 

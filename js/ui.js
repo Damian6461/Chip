@@ -12,6 +12,8 @@ import {
   CLASE_SALTO,
   RUTAS_FONDOS,
   FONDO_POSICION_X,
+  VARS_FONDO,
+  CLASE_NOCHE,
   COLORES_BARRAS,
   VARS_BARRAS
 } from './config.js';
@@ -136,7 +138,14 @@ function pintarFondo(esNoche) {
   if (ruta === fondoActual) return;
 
   fondoActual = ruta;
-  panelJuego.style.backgroundImage = `url("${ruta}")`;
+
+  // Una sola escritura para las dos capas: el panel nítido y el ambiente
+  // difuminado del body leen la misma custom property, así el swap de las 23:00
+  // las mueve juntas y no hay forma de que queden en fondos distintos.
+  raiz.style.setProperty(VARS_FONDO.actual, `url("${ruta}")`);
+
+  // Y el mismo dato como clase, para lo que cambia de ritmo y no de imagen.
+  document.body.classList.toggle(CLASE_NOCHE, esNoche);
 }
 
 // `esNoche` llega resuelto desde afuera por la misma razón que `estadoVisual`:

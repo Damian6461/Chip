@@ -110,6 +110,24 @@ export const RUTAS_FONDOS = {
 // caños y el aparatito de la punta izquierda, y la ventana se le iba atrás.
 export const FONDO_POSICION_X = '18.3%';
 
+// La panorámica se usa en DOS capas: el panel de Chip, nítido y recortado, y el
+// ambiente de pantalla completa del body, difuminado y oscurecido. Las dos leen
+// esta misma custom property, que ui.js escribe una sola vez.
+//
+// Es a propósito que sea una sola: si cada capa tuviera su propia asignación,
+// podrían quedar en fondos distintos —galpón de día detrás y de noche adelante—
+// y eso no se ve hasta que alguien cruza las 23:00 con la app abierta. Así es
+// estructuralmente imposible.
+export const VARS_FONDO = {
+  actual: '--fondo-actual'
+};
+
+// Marca en el <body> que es de noche. La imagen ya viaja por la custom property
+// de arriba, pero hay efectos que no cambian de imagen sino de ritmo —la antena
+// late más lento, el polvo del haz de luz no existe— y necesitan un gancho de
+// CSS. Sale del mismo esDeNoche que el fondo: una sola fuente de verdad.
+export const CLASE_NOCHE = 'es-noche';
+
 // ---- Paleta de las barras ----
 
 // Los tres colores salen del sprite de Chip, muestreados de idle.png con conteo
