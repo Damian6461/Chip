@@ -1,11 +1,43 @@
 // Único módulo que toca el DOM.
 
-import { STAT_MIN, STAT_MAX, PLACEHOLDER } from './config.js';
+import {
+  STAT_MIN,
+  STAT_MAX,
+  PLACEHOLDER,
+  CICLO_REBOTE_MS,
+  DURACION_SALTO_MS,
+  TRANSICION_BARRA_MS,
+  VARS_ANIMACION,
+  CLASE_SALTO
+} from './config.js';
 import { puedeJugar } from './acciones.js';
 import { obtenerSprite } from './sprites.js';
 
 const canvas = document.getElementById('canvas-mascota');
 const ctx = canvas.getContext('2d');
+
+// Los sprites son pixel art y el canvas los escala: con el suavizado bilineal
+// que el navegador trae por defecto, salen borrosos.
+//
+// Se setea una sola vez, acá: es estado del contexto, no un parámetro de
+// drawImage, y sobrevive a clearRect. Lo único que lo resetea a `true` es
+// cambiar el tamaño del canvas — hoy nadie lo cambia, está fijo en index.html.
+ctx.imageSmoothingEnabled = false;
+
+// Las duraciones de las animaciones viven en config.js y se usan en style.css,
+// que no puede importar un módulo. El puente son estas custom properties: se
+// escriben una sola vez, acá, y la hoja las lee con var(). Duplicar los números
+// en el CSS sería un carve-out más de la regla de config.js, y este no hace
+// falta.
+const raiz = document.documentElement;
+raiz.style.setProperty(VARS_ANIMACION.cicloRebote, `${CICLO_REBOTE_MS}ms`);
+raiz.style.setProperty(VARS_ANIMACION.duracionSalto, `${DURACION_SALTO_MS}ms`);
+raiz.style.setProperty(VARS_ANIMACION.transicionBarra, `${TRANSICION_BARRA_MS}ms`);
+
+// El salto es de una sola pasada: la clase se saca al terminar para que la
+// próxima acción la pueda volver a poner. El rebote vive en el contenedor y no
+// dispara este evento nunca, porque es infinito.
+canvas.addEventListener('animationend', () => canvas.classList.remove(CLASE_SALTO));
 
 const barras = {
   bateria: {
@@ -96,6 +128,19 @@ export function mostrarEventos(eventos) {
     parrafo.textContent = evento.texto;
     contenedorEventos.appendChild(parrafo);
   }
+}
+
+// Salto de feedback, separado de render() por la misma razón que mostrarEventos:
+// render() corre en cada tick y esto pasa una sola vez, cuando el jugador toca
+// un botón y la acción efectivamente se aplicó. Con prefers-reduced-motion la
+// clase se pone igual y no hace nada: quién puede moverse lo decide el CSS.
+export function animarAccion() {
+  // Sacar, forzar reflow y volver a poner reinicia la animación cuando la
+  // acción se repite antes de que la anterior haya terminado. Sin el reflow el
+  // navegador agrupa las dos mutaciones y no ve ningún cambio de clase.
+  canvas.classList.remove(CLASE_SALTO);
+  void canvas.offsetWidth;
+  canvas.classList.add(CLASE_SALTO);
 }
 
 export function conectarAcciones({ onCargar, onJugar, onLimpiar }) {

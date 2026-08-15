@@ -111,6 +111,36 @@ export const DEBOUNCE_VISUAL_MS = 2000;
 // abierta: no toca stats, no aplica decay, no guarda.
 export const TICK_VISUAL_MS = 60_000;
 
+// ---- Animaciones de vida ----
+
+// Rebote permanente: Chip respira siempre, en todos los estados.
+//
+// 2.2 s y no 2 a propósito. DEBOUNCE_VISUAL_MS y DURACION_ESTADO_ACCION_MS
+// valen 2 s los dos: un ciclo del mismo largo quedaría en fase con ellos y el
+// cambio de sprite caería siempre en el mismo punto del rebote, que es
+// justamente lo que hace que una animación se vea mecánica.
+export const CICLO_REBOTE_MS = 2200;
+
+// Salto de acción: sube y vuelve, una sola vez, montado encima del rebote.
+export const DURACION_SALTO_MS = 300;
+
+// Cuánto tarda una barra en viajar hasta su nuevo ancho en vez de saltar.
+export const TRANSICION_BARRA_MS = 400;
+
+// La otra punta de estos tres números está en style.css, que no puede importar
+// un módulo. En vez de duplicarlos ahí (sería un cuarto carve-out de la regla
+// de config.js), ui.js los inyecta como custom properties en :root al arrancar
+// y la hoja los lee con var(). Sin JS no hay animación, que es exactamente lo
+// que corresponde.
+export const VARS_ANIMACION = {
+  cicloRebote: '--ciclo-rebote',
+  duracionSalto: '--duracion-salto',
+  transicionBarra: '--transicion-barra'
+};
+
+// Clase que dispara el salto. La declara style.css, la pone y la saca ui.js.
+export const CLASE_SALTO = 'saltando';
+
 // ---- Eventos (vida propia) ----
 
 // Menos de 1 hora, nada. Entre 1 y 6, un evento. Más de 6, hasta dos.
@@ -121,6 +151,16 @@ export const MAX_EVENTOS_POR_VISITA = 2;
 // Con qué arranca ultimosEventosIds en una partida nueva: sin nada excluido.
 // Se copia al crear el estado, nunca se comparte la referencia.
 export const EVENTOS_INICIALES_IDS = [];
+
+// El evento raro (EVENTO_RARO en datos-eventos.js) no está en el pool: no se
+// sortea, se tira una moneda cargada una sola vez por visita con evento. Si
+// sale, ocupa uno de los lugares de la visita en vez de sumar uno más, así la
+// cuenta por horas de arriba no cambia.
+//
+// La escasez ES el diseño: es el único momento en que el mundo mira a Chip, y
+// vale porque un jugador lo ve una vez cada varios meses. Subir este número lo
+// arruina, no lo mejora.
+export const PROBABILIDAD_EVENTO_RARO = 0.015; // 1.5%
 
 // ---- Service worker ----
 

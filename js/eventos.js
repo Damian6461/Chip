@@ -2,14 +2,15 @@
 //
 // Función pura: recibe las horas transcurridas (las mismas del decay, ya
 // capeadas) y devuelve los eventos a mostrar. No toca el DOM, no toca
-// localStorage, no elige el texto — sólo decide cuántos y cuáles.
+// localStorage, no escribe el texto — sólo decide cuántos y cuáles.
 
 import {
   HORAS_MINIMAS_EVENTO,
   HORAS_DOS_EVENTOS,
-  MAX_EVENTOS_POR_VISITA
+  MAX_EVENTOS_POR_VISITA,
+  PROBABILIDAD_EVENTO_RARO
 } from './config.js';
-import { EVENTOS } from './datos-eventos.js';
+import { EVENTOS, EVENTO_RARO } from './datos-eventos.js';
 
 function cuantosTocan(horas) {
   if (horas < HORAS_MINIMAS_EVENTO) return 0;
@@ -18,22 +19,41 @@ function cuantosTocan(horas) {
 }
 
 // `ultimosIds` son los eventos mostrados en la visita anterior — todos, no sólo
-// el último. `aleatorio` es inyectable para que las pruebas sean deterministas.
-export function elegirEventos(horas, ultimosIds = [], aleatorio = Math.random) {
+// el último.
+//
+// Las dos fuentes de azar entran separadas y son inyectables para que las
+// pruebas sean deterministas: `aleatorio` sortea la bolsa y `azarRaro` es el
+// portero del evento raro. Separadas a propósito — compartiendo fuente, un
+// `aleatorio` fijo en 0 (el que hace que el sorteo saque siempre el primero de
+// la bolsa) dispararía el raro en todas las visitas.
+export function elegirEventos(
+  horas,
+  ultimosIds = [],
+  aleatorio = Math.random,
+  azarRaro = Math.random
+) {
   const cuantos = cuantosTocan(horas);
   if (cuantos === 0) return [];
 
-  // Lo mostrado la visita pasada queda afuera del sorteo: si viste dos eventos,
-  // ninguno de los dos vuelve a salir la próxima vez.
+  // Lo mostrado la visita pasada queda afuera: si viste dos eventos, ninguno de
+  // los dos vuelve a salir la próxima vez. Vale también para el raro, que si
+  // acaba de salir no se repite aunque la moneda vuelva a caer parada.
   const excluidos = new Set(ultimosIds);
-  const candidatos = EVENTOS.filter((evento) => !excluidos.has(evento.id));
-
   const elegidos = [];
-  const disponibles = [...candidatos];
+
+  // El raro no se sortea: no está en el pool y no compite con nadie. Ocupa uno
+  // de los lugares de la visita, no suma uno extra.
+  if (!excluidos.has(EVENTO_RARO.id) && azarRaro() < PROBABILIDAD_EVENTO_RARO) {
+    elegidos.push(EVENTO_RARO);
+  }
+
+  // filter ya devuelve un array nuevo, así que se puede splicear sin tocar el
+  // pool. Sacar el elegido de la bolsa evita que salga dos veces en la misma
+  // visita.
+  const disponibles = EVENTOS.filter((evento) => !excluidos.has(evento.id));
 
   while (elegidos.length < cuantos && disponibles.length > 0) {
     const indice = Math.floor(aleatorio() * disponibles.length);
-    // Sacar el elegido de la bolsa evita que salga dos veces en la misma visita.
     elegidos.push(disponibles.splice(indice, 1)[0]);
   }
 

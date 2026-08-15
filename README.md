@@ -16,7 +16,7 @@ http://127.0.0.1:5500/index.html
 
 ## Tests
 
-41 pruebas, mismos archivos en dos entrypoints:
+49 pruebas, mismos archivos en dos entrypoints:
 
 ```bash
 node tests/correr.mjs        # sale 0 si pasa todo, 1 si no
@@ -97,11 +97,37 @@ idle.png  feliz.png  critico.png  standby.png  cargando.png  jugando.png  limpia
 
 256×256, PNG con transparencia, personaje centrado. **Mismo tamaño y mismo encuadre en todos**: si el robot está más arriba en uno, salta al cambiar de estado.
 
-Siete archivos ideales, **seis obligatorios**: `limpiando.png` es opcional.
+Siete archivos ideales, **seis obligatorios**: `limpiando.png` es opcional. Los siete están en el repo desde `2e6b288`, todos a 256×256.
 
-El loader degrada en dos escalones: falta el sprite pedido → usa el de `idle`; falta ese también → placeholder con el nombre del estado escrito. Eso permite desarrollar sin arte y verificar la cadena a ojo. **Contrapartida:** con arte real, un sprite faltante se ve como `idle` en vez de cantar el error.
+El loader degrada en dos escalones: falta el sprite pedido → usa el de `idle`; falta ese también → placeholder con el nombre del estado escrito. Eso permitió desarrollar sin arte y verificar la cadena a ojo. **Contrapartida, y ahora está activa:** con los siete PNG en su lugar, un sprite que falte se ve como `idle` en vez de cantar el error.
 
-Pendiente para cuando entre el arte: `ctx.imageSmoothingEnabled = false` en `ui.js`, o el pixel art sale borroso.
+`ui.js` apaga el suavizado (`ctx.imageSmoothingEnabled = false`) apenas crea el contexto: el bilineal del navegador emborrona el pixel art al escalarlo. Es estado del contexto, no un parámetro de `drawImage`, así que se setea una sola vez y sobrevive a `clearRect`. **Cambiar el tamaño del canvas lo resetea a `true`** — si algún día el canvas deja de ser fijo, hay que volver a bajarlo.
+
+Arista abierta: el canvas mide **320** y los sprites **256**, así que se dibujan escalados ×1.25. Sin suavizado eso ya no es borroso, pero sigue siendo irregular: de cada cuatro píxeles del sprite, uno sale del doble de ancho. La salida limpia es un factor entero — canvas a 256, o dibujar el sprite a 256 centrado adentro de los 320.
+
+---
+
+## Animaciones de vida
+
+| Qué | Dónde | Duración |
+|---|---|---|
+| rebote permanente, `0` → `-4px` | `#contenedor-mascota` | `CICLO_REBOTE_MS` — 2.2 s, loop |
+| salto de acción, `0` → `-8px` → `0` | `#canvas-mascota.saltando` | `DURACION_SALTO_MS` — 300 ms, una vez |
+| barra viajando al valor nuevo | `.barra-fill` | `TRANSICION_BARRA_MS` — 400 ms |
+
+El rebote corre siempre, en todos los estados, sin que el jugador toque nada.
+
+**Las duraciones viven en `config.js`, no en el CSS.** Una hoja de estilos no puede importar un módulo, así que `ui.js` las inyecta como custom properties en `:root` al arrancar (`VARS_ANIMACION`) y `style.css` las lee con `var()`. Duplicarlas en el CSS habría sido un cuarto carve-out de la regla de `config.js`, y este no hacía falta. Sin JS las `var()` no resuelven, la declaración de `animation` queda inválida y no hay movimiento: el juego funciona igual.
+
+**2.2 s y no 2, a propósito.** `DEBOUNCE_VISUAL_MS` y `DURACION_ESTADO_ACCION_MS` valen 2 s los dos: un ciclo del mismo largo quedaría en fase con ellos y el cambio de sprite caería siempre en el mismo punto del rebote.
+
+**El rebote va en el contenedor y el salto en el canvas de adentro.** Dos animaciones sobre el mismo elemento no se suman: para la propiedad que las dos tocan (`transform`) gana la última declarada, así que el salto se comería el rebote mientras dura. Anidados, los dos transforms se componen solos. Para eso existe `#contenedor-mascota` en `index.html` — es un elemento que está sólo para animar.
+
+`main.js` llama a `animarAccion()` dentro de `ejecutar()`, **después** del early return: si la acción no se aplicó —jugar sin batería—, no hay salto.
+
+### prefers-reduced-motion
+
+Un bloque al final de `style.css` apaga las tres. No es opcional y no tiene interruptor propio: quién puede moverse lo decide el CSS. `ui.js` pone la clase del salto igual, y con reduced-motion la clase no hace nada.
 
 ---
 
@@ -135,6 +161,32 @@ Con `max(FLOOR, valor)` a secas, jugar con la batería en 15 la dejaba en 5 y el
 
 ---
 
+## Eventos (vida propia)
+
+Los textos son del brief editorial y **no se escriben en el código**: `js/datos-eventos.js` los transporta. Si un texto cambia, cambia primero en el brief.
+
+El pool son veinte eventos agrupados en cuatro categorías: `funcion`, `coleccion`, `grandes`, `resto`. La agrupación es estructura de datos, no un comentario — `EVENTOS` es la vista plana que consume `eventos.js`, con la categoría estampada en cada entrada, y `CATEGORIAS` se deriva de las claves para que la lista no exista escrita dos veces. Nadie filtra por categoría todavía: está para poder condicionar el pool al estado de Chip sin reescribir la estructura.
+
+Cuántos salen, según las horas fuera (las mismas del decay, ya capeadas):
+
+| Horas | Eventos |
+|---|---|
+| < 1 | ninguno |
+| 1 a 6 | uno |
+| > 6 | dos |
+
+Se persisten los ids de **todo** lo mostrado en `ultimosEventosIds`: nada de una visita puede repetirse en la siguiente.
+
+### El evento raro
+
+`EVENTO_RARO` vive **fuera del pool** y no se sortea: se tira una moneda cargada con `PROBABILIDAD_EVENTO_RARO` (`config.js`, hoy 1.5%), una vez por visita con evento. Si sale, **ocupa uno de los lugares de la visita** en vez de sumar uno extra: la tabla de arriba no cambia. Respeta la exclusión como cualquier otro.
+
+La escasez es el diseño, no un número de balance: adentro del pool saldría cada tres días y no significaría nada.
+
+`elegirEventos(horas, ultimosIds, aleatorio, azarRaro)` recibe las dos fuentes de azar **separadas**: `aleatorio` sortea la bolsa, `azarRaro` es el portero del raro. Compartiendo fuente, un `aleatorio` fijo en 0 —el que hace que el sorteo saque siempre el primero de la bolsa— dispararía el raro en todas las visitas de las pruebas.
+
+---
+
 ## Service worker
 
 Se registra siempre, **incluido en desarrollo**: `localhost` y `127.0.0.1` son contextos seguros. Una IP de LAN sobre HTTP plano **no** lo es — para probar desde el celular hace falta HTTPS.
@@ -149,8 +201,7 @@ Mientras desarrollás, dejá tildado en DevTools → Application → Service Wor
 
 ## Qué NO está en el código
 
-- **El sprite de Chip.** La carpeta está vacía. Es el camino crítico real.
-- **El texto de los eventos.** `js/datos-eventos.js` tiene 6 placeholders. Es la decisión de diseño central y no la toma el código. Agregar un evento es agregar una entrada con `id` único; la lógica no se toca.
+- **El criterio editorial de los eventos.** Los veinte textos ya están en `js/datos-eventos.js`, pero la fuente de verdad es el brief: el código los transporta, no los decide. Agregar un evento es agregar una entrada con `id` único; la lógica no se toca.
 - **El balance de números.** Se ajusta mirando a Chip, no leyendo código.
 
 ---

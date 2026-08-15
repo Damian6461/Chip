@@ -11,7 +11,13 @@
 </head>
 <body>
 <div id="escenario">
-  <canvas id="canvas-mascota" width="320" height="320"></canvas>
+  <!-- El contenedor existe para animar: lleva el rebote permanente, y el canvas
+       de adentro lleva el salto de acción. Ver el bloque de animaciones en
+       style.css: dos transforms en elementos anidados se componen; dos
+       animaciones en el mismo elemento se pisan. -->
+  <div id="contenedor-mascota">
+    <canvas id="canvas-mascota" width="320" height="320"></canvas>
+  </div>
 
   <div id="barra-bateria" class="barra">
     <span class="barra-etiqueta">Batería</span>

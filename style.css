@@ -30,6 +30,38 @@ body {
   display: block;
 }
 
+/* ---- Animaciones de vida ----
+
+   Las duraciones NO están escritas acá: viven en js/config.js y ui.js las
+   inyecta como custom properties en :root al arrancar. Si el JS no corrió, las
+   var() no resuelven, la declaración de animation queda inválida y no hay
+   movimiento — el juego funciona igual.
+
+   El rebote va en el contenedor y el salto en el canvas de adentro a propósito.
+   Dos animaciones sobre el MISMO elemento no se suman: para la propiedad que
+   las dos tocan (transform) gana la última declarada, así que el salto se
+   comería el rebote mientras dura. Anidados, los dos transforms se componen
+   solos y el salto queda montado encima del rebote. */
+
+@keyframes respirar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes saltar {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0); }
+}
+
+#contenedor-mascota {
+  animation: respirar var(--ciclo-rebote) ease-in-out infinite;
+}
+
+#canvas-mascota.saltando {
+  animation: saltar var(--duracion-salto) ease-out;
+}
+
 .barra {
   display: flex;
   align-items: center;
@@ -56,7 +88,7 @@ body {
   height: 100%;
   width: 100%;
   background: #4ade80;
-  transition: width 0.2s ease, background-color 0.2s ease;
+  transition: width var(--transicion-barra) ease-out, background-color 0.2s ease;
 }
 
 .barra-valor {
@@ -114,4 +146,18 @@ body {
   font-size: 13px;
   line-height: 1.4;
   color: #9aa0ab;
+}
+
+/* Si el sistema pide menos movimiento no hay rebote, no hay salto y las barras
+   van directo al valor nuevo. Va al final del archivo porque gana por orden:
+   misma especificidad que las reglas de arriba, declarada después. */
+@media (prefers-reduced-motion: reduce) {
+  #contenedor-mascota,
+  #canvas-mascota.saltando {
+    animation: none;
+  }
+
+  .barra-fill {
+    transition: none;
+  }
 }

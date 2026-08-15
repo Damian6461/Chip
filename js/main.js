@@ -14,7 +14,7 @@ import { aplicarDecay, horasTranscurridas } from './decay.js';
 import { cargar, jugar, limpiar } from './acciones.js';
 import { elegirEventos } from './eventos.js';
 import { cargarSprites, resolverEstadoVisual } from './sprites.js';
-import { render as renderUI, mostrarEventos, conectarAcciones } from './ui.js';
+import { render as renderUI, mostrarEventos, conectarAcciones, animarAccion } from './ui.js';
 
 let estado = cargarEstado();
 
@@ -101,6 +101,11 @@ function ejecutar(nombreVisual, accion) {
   guardarEstado(estado);
 
   if (nombreVisual) marcarAccion(nombreVisual);
+
+  // Salta sólo si la acción se aplicó: el early return de arriba ya filtró los
+  // casos en que no pasó nada, y un salto sin efecto sería mentirle al jugador.
+  animarAccion();
+
   actualizarVisual({ inmediato: true });
   pintar();
 }
