@@ -14,7 +14,10 @@ import {
   DURACION_SQUASH_MS,
   CLASE_CAMBIO,
   VARS_CAMBIO,
-  RUTAS_FONDOS,
+  DURACION_CRUCE_FONDO_MS,
+  DURACION_CRUCE_APERTURA_MS,
+  VARS_CRUCE_FONDO,
+  CLASE_CRUCE_FONDO,
   FONDO_CORRIMIENTO,
   VARS_FONDO,
   CLASE_NOCHE,
@@ -767,19 +770,46 @@ function actualizarBarras(estado) {
 // cada acción: el fondo cambia dos veces por día, render() corre todo el tiempo.
 let fondoActual = null;
 
-function pintarFondo(esNoche) {
-  const ruta = esNoche ? RUTAS_FONDOS.noche : RUTAS_FONDOS.dia;
+const capaAnterior = document.getElementById('fondo-anterior');
+
+// `cruce` es null cuando no hay que hacer transición, o la duración en ms
+// cuando sí. Lo decide main.js: acá se pinta lo que se recibe.
+function pintarFondo(franja, esNoche, cruce = null) {
+  const ruta = franja.fondo;
   if (ruta === fondoActual) return;
 
+  const saliente = fondoActual;
   fondoActual = ruta;
 
   // Una sola escritura para las dos capas: el panel nítido y el ambiente
-  // difuminado del body leen la misma custom property, así el swap de las 23:00
-  // las mueve juntas y no hay forma de que queden en fondos distintos.
+  // difuminado del body leen la misma custom property, así el swap las mueve
+  // juntas y no hay forma de que queden en fondos distintos.
   raiz.style.setProperty(VARS_FONDO.actual, `url("${ruta}")`);
 
   // Y el mismo dato como clase, para lo que cambia de ritmo y no de imagen.
   document.body.classList.toggle(CLASE_NOCHE, esNoche);
+
+  // El crossfade se hace con la panorámica que SE VA, encima de la nueva y
+  // desvaneciéndose. Al revés —la nueva apareciendo encima— el galpón se
+  // oscurecería un instante en el medio, porque las dos son opacas.
+  if (!saliente || !cruce) return;
+
+  raiz.style.setProperty(VARS_CRUCE_FONDO.anterior, `url("${saliente}")`);
+  raiz.style.setProperty(VARS_CRUCE_FONDO.duracion, `${cruce}ms`);
+  capaAnterior.classList.remove(CLASE_CRUCE_FONDO);
+  void capaAnterior.offsetWidth;
+  capaAnterior.classList.add(CLASE_CRUCE_FONDO);
+}
+
+capaAnterior.addEventListener('animationend', () =>
+  capaAnterior.classList.remove(CLASE_CRUCE_FONDO)
+);
+
+// Para el fade de apertura: main.js pisa el fondo con el del tramo anterior
+// ANTES del primer render, así el primer pintado ya tiene de dónde venir.
+export function sembrarFondo(ruta) {
+  fondoActual = ruta;
+  raiz.style.setProperty(VARS_FONDO.actual, `url("${ruta}")`);
 }
 
 // La clase de estado es el único gancho que tienen los efectos de vida: las Z
@@ -827,23 +857,21 @@ function pintarClaseEstado(estadoVisual, claveSprite) {
 //
 // De noche la fuerza va a 0 en vez de sacar la capa: así el degradé no
 // desaparece de golpe si algún día se le pone transición.
-let franjaActual = null;
 
-function pintarLuz(franja) {
-  const nombre = franja?.nombre ?? null;
-  if (nombre === franjaActual) return;
-  franjaActual = nombre;
-
-  if (!franja) {
+// Sin cortocircuito por nombre de franja: la luz ahora se INTERPOLA adentro del
+// tramo, así que cambia en cada tick aunque el tramo sea el mismo. Comparar por
+// nombre la habría dejado clavada en el valor del arranque.
+function pintarLuz(luz) {
+  if (!luz) {
     raiz.style.setProperty(VARS_LUZ.fuerza, '0');
     return;
   }
 
-  raiz.style.setProperty(VARS_LUZ.x, franja.x);
-  raiz.style.setProperty(VARS_LUZ.y, franja.y);
-  raiz.style.setProperty(VARS_LUZ.radio, franja.radio);
-  raiz.style.setProperty(VARS_LUZ.color, franja.color);
-  raiz.style.setProperty(VARS_LUZ.fuerza, String(franja.fuerza));
+  raiz.style.setProperty(VARS_LUZ.x, luz.x);
+  raiz.style.setProperty(VARS_LUZ.y, luz.y);
+  raiz.style.setProperty(VARS_LUZ.radio, luz.radio);
+  raiz.style.setProperty(VARS_LUZ.color, luz.color);
+  raiz.style.setProperty(VARS_LUZ.fuerza, String(luz.fuerza));
 }
 
 // `esNoche` y `luz` llegan resueltos desde afuera por la misma razón que
@@ -852,8 +880,8 @@ function pintarLuz(franja) {
 // `claveSprite` es qué PNG dibujar. Casi siempre coincide con `estadoVisual`;
 // la excepción es idle, que tiene dos poses. Llega resuelta desde main.js por la
 // regla de siempre: acá se pinta, no se decide.
-export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = estadoVisual) {
-  pintarFondo(esNoche);
+export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = estadoVisual, franja = null, cruce = null) {
+  if (franja) pintarFondo(franja, esNoche, cruce);
   pintarLuz(luz);
   pintarClaseEstado(estadoVisual, claveSprite);
   // Los cambios de acción van en corte seco: ESE corte es el feedback de que la

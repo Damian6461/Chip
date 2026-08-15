@@ -134,6 +134,32 @@ body {
   );
 }
 
+/* La panorámica saliente. Usa EXACTAMENTE el mismo encuadre que #escena —mismo
+   background-size, misma cuenta de corrimiento— porque si no, el crossfade se
+   vería como un desplazamiento lateral en vez de una disolvencia. */
+#fondo-anterior {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--fondo-anterior);
+  background-repeat: no-repeat;
+  background-size: auto 100%;
+  background-position-x: calc(var(--alto-escena) * var(--fondo-corrimiento) * -1);
+  opacity: 0;
+  display: none;
+}
+
+#fondo-anterior.cruzando-fondo {
+  display: block;
+  animation: disolver-fondo var(--duracion-cruce-fondo) ease-in-out;
+}
+
+@keyframes disolver-fondo {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 /* ============================================================================
    LA TOMA DE CORRIENTE
 
@@ -2077,6 +2103,13 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 
   #acciones button:active:not(:disabled) {
     transform: none;
+  }
+
+  /* El cambio de momento del día se muestra igual: lo que se va es la
+     disolvencia. El galpón correcto aparece de una. */
+  #fondo-anterior.cruzando-fondo {
+    display: none;
+    animation: none;
   }
 
   /* Chip no parpadea: los ojos quedan abiertos y quietos. La capa NO se

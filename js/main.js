@@ -10,6 +10,9 @@ import {
   DURACION_ESPERANDO_MS,
   ESPERA_SEGUNDO_EVENTO_MS,
   PROBABILIDAD_CAMBIO_POSE,
+  DURACION_CRUCE_FONDO_MS,
+  DURACION_CRUCE_APERTURA_MS,
+  FRANJAS_DIA,
   PARAM_DEBUG,
   RUTA_SW
 } from './config.js';
@@ -24,11 +27,13 @@ import {
   cargarSprites,
   resolverEstadoVisual,
   esDeNoche,
-  franjaDeLuz,
+  franjaDelDia,
+  luzDelMomento,
   poseDeIdle
 } from './sprites.js';
 import {
   render as renderUI,
+  sembrarFondo,
   mostrarEventos,
   mostrarColeccion,
   mostrarGigantes,
@@ -52,6 +57,10 @@ let poseIdle = 0; // qué PNG de idle se está dibujando
 let visualForzado = null; // sólo lo escribe el panel de debug
 let horaForzada = null; // ídem: 0-23, o null para el reloj real
 let esNocheActual = null;
+let franjaActual = null;
+// Duración del próximo crossfade de fondo, o null para cambio seco. Se consume
+// en la pintada siguiente y se limpia: una transición es un evento, no un modo.
+let cruceFondo = null;
 let refrescarDebug = null; // lo setea debug.js si está activo
 
 // Reloj efectivo: el real, salvo que el panel de debug esté forzando una hora.
@@ -66,7 +75,16 @@ function relojEfectivo() {
 }
 
 function pintar() {
-  renderUI(estado, estadoVisualActual, esNocheActual, franjaDeLuz(relojEfectivo()), claveDeSprite());
+  renderUI(
+    estado,
+    estadoVisualActual,
+    esNocheActual,
+    luzDelMomento(relojEfectivo()),
+    claveDeSprite(),
+    franjaActual,
+    cruceFondo
+  );
+  cruceFondo = null;
   if (refrescarDebug) refrescarDebug();
 }
 
@@ -130,12 +148,34 @@ function programarEsperando(eventos) {
 }
 
 // Mismo contrato que actualizarVisual: devuelve si cambió, nunca pinta.
+//
+// Ahora resuelve las dos cosas juntas —el tramo del día y si es de noche—
+// porque salen del mismo reloj y de la misma tabla. Separarlas era lo que
+// permitía que se contradijeran.
 function actualizarNoche() {
+  const franja = franjaDelDia(relojEfectivo());
   const noche = esDeNoche(relojEfectivo());
-  if (noche === esNocheActual) return false;
+  const cambio = franja.nombre !== franjaActual?.nombre || noche !== esNocheActual;
+  if (!cambio) return false;
 
+  // Cruzar un límite con la app abierta: disolvencia de un par de segundos.
+  // Sólo si ya había un tramo — en el arranque lo decide el save.
+  if (franjaActual && franja.nombre !== franjaActual.nombre) {
+    cruceFondo = DURACION_CRUCE_FONDO_MS;
+  }
+
+  franjaActual = franja;
   esNocheActual = noche;
+  guardarFranja(franja);
   return true;
+}
+
+// El tramo visto se persiste para poder hacer el fade de apertura. Se guarda
+// solo cuando cambia, no en cada tick: el save no es un log.
+function guardarFranja(franja) {
+  if (estado.ultimaFranja === franja.nombre) return;
+  estado = { ...estado, ultimaFranja: franja.nombre };
+  guardarEstado(estado);
 }
 
 function cancelarDebounce() {
@@ -289,6 +329,26 @@ conectarAcciones({
 });
 
 actualizarVisual({ inmediato: true });
+
+// EL FADE DE APERTURA. Casi nadie va a tener la app abierta justo en el minuto
+// del cambio de tramo; en cambio todos abren después de horas y encuentran el
+// galpón distinto. Es la misma lógica que los eventos: lo que pasó mientras no
+// estabas se muestra, no se oculta.
+//
+// Se siembra el fondo con el del tramo ANTERIOR —el que quedó guardado en el
+// save— para que el primer pintado tenga de dónde venir, y recién ahí se
+// resuelve el tramo real. Sin sembrar, la primera pintada no tendría saliente y
+// la disolvencia no existiría.
+const franjaDeArranque = franjaDelDia(relojEfectivo());
+const franjaGuardada = FRANJAS_DIA.find((f) => f.nombre === estado.ultimaFranja);
+
+if (franjaGuardada && franjaGuardada.nombre !== franjaDeArranque.nombre) {
+  sembrarFondo(franjaGuardada.fondo);
+  franjaActual = franjaGuardada;
+  esNocheActual = franjaGuardada.nombre === 'noche';
+  cruceFondo = DURACION_CRUCE_APERTURA_MS;
+}
+
 actualizarNoche();
 cargarSprites().then(pintar);
 pintar();
@@ -421,6 +481,16 @@ const apiDebug = {
     actualizarVisual({ inmediato: true });
     actualizarNoche();
     pintar();
+  },
+
+  // Para poder ver el fade de apertura sin esperar seis horas: deja el save
+  // apuntando a otro tramo y recarga, que es exactamente el camino real.
+  simularAperturaEnOtroTramo() {
+    const actual = franjaDelDia(relojEfectivo());
+    const otra = FRANJAS_DIA.find((f) => f.nombre !== actual.nombre);
+    estado = { ...estado, ultimaFranja: otra.nombre };
+    guardarEstado(estado);
+    location.reload();
   },
 
   reiniciarSave() {

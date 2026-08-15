@@ -10,7 +10,7 @@ import {
   UMBRAL_FELIZ_HUMOR,
   HORA_STANDBY_INICIO,
   HORA_STANDBY_FIN,
-  FRANJAS_LUZ,
+  FRANJAS_DIA,
   POSES_IDLE
 } from './config.js';
 
@@ -37,17 +37,76 @@ export function esDeNoche(ahora) {
   return enFranjaStandby(horaLocal(ahora));
 }
 
-// En qué momento del día está la luz que entra por la ventana. Devuelve null de
-// noche, que es cuando no entra ninguna.
+// En qué tramo del día estamos. Vive acá con esDeNoche porque es la misma
+// pregunta —qué hora es— y tiene que contestar con el mismo reloj: si la luz
+// dijera "atardecer" mientras el fondo ya es el nocturno, el galpón se
+// contradiría solo.
 //
-// Vive acá con esDeNoche porque es la misma pregunta —qué hora es— y tiene que
-// contestar con el mismo reloj: si la luz dijera "tarde" mientras el fondo ya es
-// el nocturno, el galpón se contradiría solo.
-export function franjaDeLuz(ahora) {
-  if (esDeNoche(ahora)) return null;
-
+// El tramo de noche cruza la medianoche, por eso la comparación es un OR, igual
+// que enFranjaStandby. Sus bordes SON los del standby, así que la invariante "si
+// Chip duerme, afuera es de noche" no depende de que dos tablas coincidan.
+export function franjaDelDia(ahora) {
   const hora = horaLocal(ahora);
-  return FRANJAS_LUZ.find((franja) => hora >= franja.desde && hora < franja.hasta) ?? null;
+
+  return (
+    FRANJAS_DIA.find((f) =>
+      f.desde < f.hasta ? hora >= f.desde && hora < f.hasta : hora >= f.desde || hora < f.hasta
+    ) ?? FRANJAS_DIA[0]
+  );
+}
+
+// Cuánto se corrió la hora adentro de su tramo, de 0 a 1. Se calcula con los
+// minutos y no sólo con la hora entera: si no, la luz daría cuatro saltos por
+// tramo en vez de moverse.
+function avanceEnFranja(ahora, franja) {
+  const d = new Date(ahora);
+  const hora = d.getHours() + d.getMinutes() / 60;
+  const largo = franja.desde < franja.hasta
+    ? franja.hasta - franja.desde
+    : 24 - franja.desde + franja.hasta;
+  const transcurrido = hora >= franja.desde ? hora - franja.desde : 24 - franja.desde + hora;
+  return Math.min(1, Math.max(0, transcurrido / largo));
+}
+
+const mezclar = (a, b, t) => a + (b - a) * t;
+
+// Los colores se interpolan canal por canal en sRGB. Alcanza y sobra: son dos
+// tonos vecinos de la misma escena, no dos extremos del círculo cromático.
+function mezclarColor(a, b, t) {
+  const leer = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const [r1, g1, b1] = leer(a);
+  const [r2, g2, b2] = leer(b);
+  const c = (x, y) => Math.round(mezclar(x, y, t)).toString(16).padStart(2, '0');
+  return `#${c(r1, r2)}${c(g1, g2)}${c(b1, b2)}`;
+}
+
+// La luz del piso, INTERPOLADA adentro del tramo. El fondo marca el momento del
+// día y no se mueve; esto marca el paso del tiempo y no para nunca.
+//
+// El destino es el arranque del tramo siguiente, así que al final del atardecer
+// la luz ya está viajando hacia la fuerza 0 de la noche y llega apagada al
+// cambio de fondo, en vez de cortarse de golpe.
+export function luzDelMomento(ahora) {
+  const franja = franjaDelDia(ahora);
+  const siguiente = FRANJAS_DIA[(FRANJAS_DIA.indexOf(franja) + 1) % FRANJAS_DIA.length];
+  const t = avanceEnFranja(ahora, franja);
+  const a = franja.luz;
+  const b = siguiente.luz;
+
+  // De noche no hay charco, y punto: la fuerza se queda en 0 en vez de
+  // interpolar hacia el amanecer. Sin esto, a las 6:59 el piso ya tenía un
+  // charco lila al 0,26 con el galpón nocturno de fondo — la luna no entra por
+  // esa ventana. La posición sí sigue interpolando, para que al llegar el
+  // amanecer el charco aparezca donde corresponde y no viaje desde el borde.
+  const fuerza = a.fuerza === 0 ? 0 : mezclar(a.fuerza, b.fuerza, t);
+
+  return {
+    x: `${mezclar(a.x, b.x, t).toFixed(1)}%`,
+    y: `${mezclar(a.y, b.y, t).toFixed(1)}%`,
+    radio: `${mezclar(a.radio, b.radio, t).toFixed(1)}%`,
+    color: mezclarColor(a.color, b.color, t),
+    fuerza: +fuerza.toFixed(3)
+  };
 }
 
 // El orden define la prioridad: gana el primer estado cuya condición se cumple.

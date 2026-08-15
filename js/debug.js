@@ -178,6 +178,10 @@ export function iniciarDebug(api) {
   const botonObjeto = crearBoton('sumar objeto');
   botonObjeto.addEventListener('click', () => api.sumarObjeto());
 
+  // ---- Simular una apertura con el tramo cambiado ----
+  const botonTramo = crearBoton('abrir en otro tramo');
+  botonTramo.addEventListener('click', () => api.simularAperturaEnOtroTramo());
+
   // ---- Cambiar la pose de idle ----
   // La rotación real corre una vez por minuto y con moneda, así que esperar a
   // ver la pose alternativa es incómodo. Esto la fuerza.
@@ -238,6 +242,7 @@ export function iniciarDebug(api) {
     filaDias,
     botonHito,
     botonObjeto,
+    botonTramo,
     botonPose,
     botonReiniciar,
     stats

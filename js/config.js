@@ -12,8 +12,10 @@ export const SAVE_KEY = 'chip.save.v1';
 // visita se mostraron dos eventos, ninguno de los dos puede repetirse en la
 // siguiente, no sólo el último. v4 agregó `coleccion` y `ultimoDiaConEvento`,
 // los dos campos nuevos del sistema de hallazgos. v5 agregó los del arco de los
-// gigantes: `diasDePresencia`, `ultimoDiaVisitado` y `hitosVistos`.
-export const VERSION_ESTADO = 5;
+// gigantes: `diasDePresencia`, `ultimoDiaVisitado` y `hitosVistos`. v6 agregó
+// `ultimaFranja`: qué momento del día se vio la última vez, para poder hacer el
+// fade de apertura cuando cambió mientras no estabas.
+export const VERSION_ESTADO = 6;
 
 // ---- Estado inicial ----
 
@@ -369,16 +371,63 @@ export const ESPERA_SEGUNDO_EVENTO_MS = 4000;
 // largo del día. Amanecer bajo y cálido, mediodía alto y neutro, tarde
 // anaranjada y larga.
 //
-// Es puro CSS sobre la escena que ya existe: un degradé radial detrás de Chip,
-// sin arte nuevo. Chip no se mueve — el que se mueve es el taller.
+// AHORA SON CUATRO TRAMOS CON PANORÁMICA PROPIA, no dos. Antes el galpón tenía
+// día y noche y el degradé del piso simulaba el recorrido de la luz; ahora el
+// momento del día lo dice el ARTE —cuatro panorámicas con la misma composición
+// y la misma ventana— y el degradé pasa a hacer lo que un dibujo fijo no puede:
+// moverse DENTRO del tramo.
 //
-// Las franjas son [desde, hasta) en hora local, y cierran contra la franja de
-// standby: de 23 a 7 no hay luz, que es cuando el fondo ya es el nocturno.
-export const FRANJAS_LUZ = [
-  { nombre: 'amanecer', desde: 7, hasta: 11, x: '20%', y: '76%', radio: '58%', color: '#ffae5e', fuerza: 0.32 },
-  { nombre: 'mediodia', desde: 11, hasta: 16, x: '36%', y: '66%', radio: '40%', color: '#fff2d2', fuerza: 0.18 },
-  { nombre: 'tarde', desde: 16, hasta: 20, x: '58%', y: '79%', radio: '64%', color: '#ff8a3c', fuerza: 0.36 },
-  { nombre: 'anochecer', desde: 20, hasta: 23, x: '66%', y: '83%', radio: '52%', color: '#c9683f', fuerza: 0.18 }
+// Los cortes horarios, y por qué:
+//
+//   amanecer   7-11   el cielo lila y la luz fría y baja
+//   mediodia  11-17   el cielo azul, la luz blanca y alta
+//   atardecer 17-23   el cielo dorado, la luz larga y naranja
+//   noche     23-7    el cielo con estrellas
+//
+// El corte de la noche NO es un número nuevo: son HORA_STANDBY_INICIO y
+// HORA_STANDBY_FIN, los mismos que deciden el standby. Así la invariante de
+// siempre —si Chip duerme, afuera es de noche— queda garantizada por
+// construcción y no por dos tablas que hay que acordarse de mantener iguales.
+//
+// OJO CON LOS NOMBRES DE ARCHIVO. `fondo-dia.webp` es el ATARDECER: mantiene el
+// nombre viejo para no romper referencias. El lila es `fondo-amanecer`, el azul
+// `fondo-mediodia` y el nocturno `fondo-noche`. Verificado mirando las cuatro,
+// no leyendo los nombres.
+//
+// `luz` es dónde arranca el charco de cada tramo. El final de un tramo es el
+// arranque del siguiente, y sprites.js interpola entre los dos según lo que se
+// haya corrido la hora: al principio del mediodía la luz está en un lugar y al
+// final en otro, moviéndose sin saltos. El fondo marca el momento del día; la
+// luz marca el paso del tiempo.
+export const FRANJAS_DIA = [
+  {
+    nombre: 'amanecer',
+    desde: 7,
+    hasta: 11,
+    fondo: 'sprites/fondo-amanecer.webp',
+    luz: { x: 18, y: 78, radio: 60, color: '#c9a6ff', fuerza: 0.26 }
+  },
+  {
+    nombre: 'mediodia',
+    desde: 11,
+    hasta: 17,
+    fondo: 'sprites/fondo-mediodia.webp',
+    luz: { x: 34, y: 64, radio: 42, color: '#fff6e0', fuerza: 0.2 }
+  },
+  {
+    nombre: 'atardecer',
+    desde: 17,
+    hasta: 23,
+    fondo: 'sprites/fondo-dia.webp',
+    luz: { x: 58, y: 80, radio: 66, color: '#ff9440', fuerza: 0.38 }
+  },
+  {
+    nombre: 'noche',
+    desde: 23,
+    hasta: 7,
+    fondo: 'sprites/fondo-noche.webp',
+    luz: { x: 66, y: 84, radio: 50, color: '#3a4a7a', fuerza: 0 }
+  }
 ];
 
 export const VARS_LUZ = {
@@ -388,6 +437,27 @@ export const VARS_LUZ = {
   color: '--luz-color',
   fuerza: '--luz-fuerza'
 };
+
+// ---- Las transiciones entre tramos ----
+//
+// DECISIÓN CERRADA: tramos con transición, no crossfade continuo. Mezclar los
+// dos fondos vecinos según la hora exacta obliga a tener dos imágenes de más de
+// un mega superpuestas en memoria todo el tiempo, y en un celular de gama media
+// no vale lo que aporta.
+//
+// La transición importa MÁS AL ABRIR que al cruzar. Casi nadie va a tener la app
+// abierta justo en el minuto del cambio; en cambio todos abren después de horas
+// y encuentran el galpón distinto. Es la misma lógica que los eventos: lo que
+// pasó mientras no estabas se muestra, no se oculta.
+export const DURACION_CRUCE_FONDO_MS = 2600;
+export const DURACION_CRUCE_APERTURA_MS = 1500;
+
+export const VARS_CRUCE_FONDO = {
+  anterior: '--fondo-anterior',
+  duracion: '--duracion-cruce-fondo'
+};
+
+export const CLASE_CRUCE_FONDO = 'cruzando-fondo';
 
 // ---- La punta de la antena ----
 

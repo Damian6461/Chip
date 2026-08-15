@@ -33,6 +33,11 @@ export function crearEstadoNuevo() {
     ultimoDiaVisitado: null,
     // Hitos ya vividos, para que el momento pase una sola vez en la partida.
     hitosVistos: [...HITOS_INICIALES],
+    // Qué momento del día se vio la última vez. Es lo que permite el fade de
+    // apertura: si al abrir el tramo cambió, el galpón se disuelve desde el
+    // anterior en vez de aparecer ya cambiado. null en una partida nueva —no
+    // hay desde dónde venir, así que el primer arranque no hace fade.
+    ultimaFranja: null,
     version: VERSION_ESTADO
   };
 }

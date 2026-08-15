@@ -481,29 +481,45 @@ El selector es `#escena:has(.estado-cargando) #toma .ranura`. El `:has()` evita 
 
 **Desvío anotado.** La instrucción pedía la toma "en el zócalo de la pared". Ahí no hay pared: midiendo la columna de la panorámica en la x del cable, la línea donde el muro se junta con el piso está en el **65-66%** del alto de la escena y la punta del cable cae en el **81,4%** — quince puntos más adelante, unos 140 px de piso abierto de por medio. Una chapa de pared ahí flotaría. Se conservó el anclaje, que era lo que la instrucción pedía medir, y se cambió el objeto: es una caja de toma apoyada en el piso, con sombra de contacto, con la misma chapa oscura, las mismas dos ranuras y el mismo bisel naranja.
 
-### La luz que recorre el día
+### Los cuatro momentos del día
 
-El galpón tenía día y noche. Ahora tiene hora: el charco que entra por la ventana cambia de lugar, de tamaño y de temperatura.
+El galpón tenía día y noche. Ahora tiene cuatro panorámicas con la misma composición y la misma ventana, y el degradé del piso pasó de simular el recorrido de la luz a hacer lo que un dibujo fijo no puede: moverse **dentro** del tramo.
 
-| Franja | Horas | Dónde | Color |
+| tramo | horas | archivo | cielo |
 |---|---|---|---|
-| amanecer | 7–11 | bajo y a la izquierda | `#ffae5e` |
-| mediodía | 11–16 | alto y centrado, tenue | `#fff2d2` |
-| tarde | 16–20 | largo y a la derecha | `#ff8a3c` |
-| anochecer | 20–23 | apagándose | `#c9683f` |
-| noche | 23–7 | sin luz | — |
+| amanecer | 7-11 | `fondo-amanecer.webp` | lila, luz fría y baja |
+| mediodía | 11-17 | `fondo-mediodia.webp` | azul, luz blanca y alta |
+| atardecer | 17-23 | `fondo-dia.webp` | dorado, luz larga |
+| noche | 23-7 | `fondo-noche.webp` | estrellas |
 
-Es un degradé radial en `#escena::after`, **puro CSS y sin arte nuevo**, con `z-index` negativo para quedar sobre la panorámica y debajo de Chip: es luz de piso y Chip está parado encima.
+**El corte de la noche no es un número nuevo:** son `HORA_STANDBY_INICIO` y `HORA_STANDBY_FIN`, los mismos que deciden el standby. La invariante de siempre —si Chip duerme, afuera es de noche— queda garantizada por construcción y no por dos tablas que hay que acordarse de mantener iguales.
 
-> **Y durante un tiempo no se vio nunca.** El `z-index: -1` sólo hace eso si el ancestro es un contexto de apilado, y `#escena` era `position: relative` con `z-index: auto`, que **no** lo es. La capa se iba al contexto de la raíz y terminaba pintando **detrás del `background-image` de la propia escena**. El gradiente estaba perfectamente calculado y el CSS computado lo confirmaba; lo que fallaba era el orden de pintado, que ninguna medición de estilos iba a revelar.
->
-> Se detectó con una prueba de una línea: poner `--luz-fuerza` en `1` y `--luz-color` en rojo puro, y capturar. Si el galpón no se pone rojo, la capa no existe. Se arregló con `isolation: isolate` en `#escena`, que la vuelve contexto de apilado sin efectos colaterales de posicionamiento.
->
-> La moraleja para el resto del archivo: **toda capa con `z-index` negativo depende de que su ancestro sea contexto de apilado.** Hoy hay dos —la luz y la toma de corriente— y las dos cuelgan de ese `isolation`.
+**Ojo con los nombres de archivo:** `fondo-dia.webp` **es el atardecer**. Mantiene el nombre viejo para no romper referencias. Se verificó mirando las cuatro, no leyendo los nombres.
 
-`franjaDeLuz()` vive en `sprites.js` al lado de `esDeNoche()` porque es la misma pregunta y tiene que contestar con el mismo reloj — si la luz dijera "tarde" mientras el fondo ya es el nocturno, el galpón se contradiría solo.
+**La luz se interpola adentro del tramo.** Cada franja declara dónde arranca su charco; el destino es el arranque de la siguiente, y `luzDelMomento()` interpola posición, radio, color y fuerza según lo que se corrió la hora — con minutos, no con la hora entera, o daría cuatro saltos por tramo. Al final del atardecer la luz ya viaja hacia la fuerza 0 de la noche y llega apagada al cambio de fondo.
 
-**Chip no se desplaza por el taller.** El que se mueve es la luz. Es decisión de diseño cerrada: mover a Chip rompería el modelo pasivo y competiría con los eventos, que ya cuentan lo que hizo mientras no estabas.
+**De noche no hay charco:** la fuerza se queda en 0 en vez de interpolar hacia el amanecer. Sin eso, a las 6:59 el piso tenía un charco lila al 0,26 con el galpón nocturno de fondo — la luna no entra por esa ventana. La posición sí sigue interpolando, para que al llegar el amanecer el charco aparezca donde corresponde en vez de viajar desde el borde.
+
+#### Las dos transiciones
+
+**Tramos con transición, no crossfade continuo.** Mezclar los dos fondos vecinos según la hora exacta obliga a tener dos imágenes superpuestas en memoria todo el tiempo, y no vale lo que aporta.
+
+- **Al cruzar con la app abierta:** disolvencia de 2,6 s. La panorámica que SE VA se desvanece **encima** de la nueva; al revés, el galpón se oscurecería un instante en el medio porque las dos son opacas.
+- **Al abrir:** si el tramo cambió desde la última visita, fade de 1,5 s desde el anterior. Es la parte que más importa —casi nadie tiene la app abierta en el minuto del cambio, pero todos abren después de horas— y es la misma lógica que los eventos: lo que pasó mientras no estabas se muestra, no se oculta. Requiere el campo `ultimaFranja` del save (v6), que el merge-con-defaults trae gratis.
+
+Con `prefers-reduced-motion` no hay disolvencia ni interpolación: el momento correcto se muestra igual, estático.
+
+#### El contraste del texto contra las cuatro
+
+El mediodía es mucho más luminoso que las escenas contra las que se calculó el contraste original, así que se recalculó **contra el píxel más claro de las cuatro panorámicas**, compuesto con el velo de cada superficie:
+
+| superficie | peor caso | compuesto | contraste |
+|---|---|---|---|
+| panel de estado | mediodía, blanco puro | `rgb(27,29,34)` | **9,02:1** |
+| línea de evento | mediodía, `rgb(186,188,178)` | `rgb(56,58,58)` | **7,20:1** |
+| botonera | amanecer, `rgb(92,91,98)` | `rgb(36,42,53)` | **11,54:1** |
+
+Los tres pasan AA con holgura y **no hizo falta tocar nada**. El motivo es de diseño y estaba de antes: ninguna superficie de texto se apoya directo sobre la panorámica — todas llevan su propio velo opaco (0,72 a 1,0), así que el fondo aporta como mucho el 28% del color compuesto. La conclusión importante para el futuro: mientras se respete esa regla, un fondo nuevo no puede romper el contraste.
 
 ### Los corazones y los destellos
 
