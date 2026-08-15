@@ -96,14 +96,19 @@ export const RUTAS_FONDOS = {
   noche: 'sprites/fondo-noche.png'
 };
 
-// Recorte validado de la panorámica: cuadrado de altura completa, corrido 8%
-// desde la izquierda. Ojo con la semántica de background-position en
-// porcentaje: no es "8% del ancho de la imagen", es 8% del sobrante entre la
-// imagen escalada y el panel. Con la panorámica de 1672x941 en un panel de 320,
-// la imagen escalada mide 568 px de ancho, sobran 248 y el 8% son ~20 px: la
-// ventana del galpón queda a la izquierda del cuadro, que es el encuadre que se
-// validó.
-export const FONDO_POSICION_X = '8%';
+// Recorte validado de la panorámica: cuadrado de altura completa, entrando 8%
+// DENTRO de la imagen desde su borde izquierdo.
+//
+// El valor no es 8% porque background-position en porcentaje no mide lo que
+// parece: no es "8% del ancho de la imagen", es 8% del SOBRANTE entre la imagen
+// escalada y el panel. Con la panorámica de 1672x941 escalada a un panel de 320
+// de alto, la imagen mide 569 px de ancho y sobran 249. Entrar 8% en la imagen
+// son 0,08 x 569 = 45,5 px, y esos 45,5 px sobre los 249 de sobrante dan 18,3%.
+//
+// Con este encuadre la ventana del galpón cae en el tercio izquierdo del panel y
+// detrás de Chip queda la pared lisa del portón. Con 8% literal entraban los
+// caños y el aparatito de la punta izquierda, y la ventana se le iba atrás.
+export const FONDO_POSICION_X = '18.3%';
 
 // ---- Umbrales visuales ----
 

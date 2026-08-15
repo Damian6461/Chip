@@ -118,10 +118,12 @@ Dos panorámicas de 1672×941 en `/sprites/`: `fondo-dia.png` y `fondo-noche.png
 
 ```
 background-size: auto 100%;      /* la panorámica se escala a la altura del panel */
-background-position-x: 8%;       /* FONDO_POSICION_X */
+background-position-x: 18.3%;    /* FONDO_POSICION_X */
 ```
 
-**Ojo con la semántica del porcentaje**: `8%` no es "8% del ancho de la imagen", es 8% del **sobrante**. Con la panorámica escalada a 320 de alto quedan 568 px de ancho contra un panel de 320: sobran 248 y el 8% son ~20 px. La ventana del galpón cae en el tercio izquierdo del cuadro, que es el encuadre validado. Si lo que se quería era entrar 8% dentro de la panorámica, el número es 18,3%, no 8%.
+El encuadre buscado es entrar **8% dentro de la panorámica** desde su borde izquierdo. El valor CSS no es 8% porque `background-position` en porcentaje no mide lo que parece: no es "8% del ancho de la imagen", es 8% del **sobrante** entre la imagen escalada y el panel. Escalada a 320 de alto, la panorámica mide 569 px de ancho contra un panel de 320: sobran 249. Entrar 8% en la imagen son 45,5 px, y 45,5 sobre 249 dan **18,3%**.
+
+Con eso la ventana del galpón cae en el tercio izquierdo del panel y detrás de Chip queda la pared lisa del portón. Con `8%` literal el cuadro empezaba 20 px antes: entraban los caños y el aparatito de la punta izquierda, y la ventana se le iba atrás a Chip.
 
 ### Día y noche
 
@@ -238,7 +240,9 @@ Mientras desarrollás, dejá tildado en DevTools → Application → Service Wor
 
 `icons/generador.html` regenera los PNG del manifest sin instalar nada. Desde que hay arte, dibuja a Chip desde `sprites/idle.png` sobre el charcoal del juego (`#0d0f14`, el mismo de `manifest.json` y del `body`) en vez del placeholder. El suavizado lo decide el sentido del escalado: 512 es 2x exacto de 256 y va con nearest; 192 es una reducción a 0,75 y con nearest se caerían filas de píxeles justo en la cara.
 
-**Los siete sprites de estado no están en `ARCHIVOS_CACHE`** y nunca estuvieron. Instalada y sin red, la app levanta con el fondo del galpón y dibuja placeholders en vez de Chip. Son siete líneas y ~700 KB de instalación: es una decisión pendiente, no un olvido.
+`ARCHIVOS_CACHE` incluye **todo el arte**: los siete sprites de estado y los dos fondos. Instalada y sin red, la app abre completa — Chip real sobre el galpón real, no placeholders. La instalación pesa ~1,6 MB.
+
+La lista está escrita a mano y no sale de `RUTAS_SPRITES`: `sw.js` no puede importar `config.js`, es el mismo carve-out de `CACHE_VERSION`. **Un sprite nuevo hay que agregarlo en los dos lados.**
 
 ---
 
