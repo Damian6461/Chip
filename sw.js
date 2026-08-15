@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v4';
+const CACHE_VERSION = 'chip-cache-v5';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -51,9 +51,16 @@ const ARCHIVOS_CACHE = [
   './js/sprites.js',
   './js/ui.js',
   './js/main.js',
+  './sprites/fondo-dia.png',
+  './sprites/fondo-noche.png',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];
+
+// OJO: los siete sprites de estado NO están en esta lista y nunca estuvieron.
+// Instalada y sin red, la app levanta con el fondo del galpón pero dibuja los
+// placeholders en vez de Chip. Es una decisión pendiente, no un olvido de este
+// cambio: agregarlos son siete líneas más y ~700 KB de instalación.
 
 self.addEventListener('install', (evento) => {
   evento.waitUntil(

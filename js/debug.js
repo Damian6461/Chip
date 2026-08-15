@@ -9,7 +9,8 @@ import {
   PANEL_DEBUG,
   MULTIPLICADOR_DEBUG_INICIAL,
   HORAS_DEBUG_INICIAL,
-  OPCION_DEBUG_AUTO
+  OPCION_DEBUG_AUTO,
+  HORAS_DEL_DIA
 } from './config.js';
 
 function crearPanel() {
@@ -146,12 +147,29 @@ export function iniciarDebug(api) {
   });
   filaVisual.append(crearEtiqueta('visual'), selectVisual);
 
+  // ---- Forzar hora ----
+  // No es lo mismo que forzar el estado visual: esto mueve el reloj que usa el
+  // juego, así que el sprite y el fondo del galpón cambian juntos. Poner 23 o 3
+  // muestra a Chip en standby con el galpón de noche.
+  const filaHora = crearFila();
+  const horas = Array.from({ length: HORAS_DEL_DIA }, (_, i) => String(i));
+  const selectHora = crearSelect([OPCION_DEBUG_AUTO, ...horas]);
+  selectHora.addEventListener('change', () => {
+    const elegida = selectHora.value;
+    api.forzarHora(elegida === OPCION_DEBUG_AUTO ? null : Number(elegida));
+  });
+  filaHora.append(crearEtiqueta('hora'), selectHora);
+
   // ---- Reiniciar partida ----
   const botonReiniciar = crearBoton('reiniciar partida');
   botonReiniciar.addEventListener('click', () => {
     api.reiniciarSave();
     selectVisual.value = OPCION_DEBUG_AUTO;
   });
+
+  // El forzado de hora NO se resetea acá: reiniciar la partida es del save, y la
+  // hora forzada es del reloj. Mezclarlos haría que probar la franja nocturna se
+  // pierda cada vez que se reinicia.
 
   // ---- Lectura de stats ----
   const stats = document.createElement('div');
@@ -175,7 +193,15 @@ export function iniciarDebug(api) {
   // que el panel nace vacío si no se llena una vez acá.
   refrescarStats();
 
-  panel.append(filaMultiplicador, filaHoras, botonVolver, filaVisual, botonReiniciar, stats);
+  panel.append(
+    filaMultiplicador,
+    filaHoras,
+    botonVolver,
+    filaVisual,
+    filaHora,
+    botonReiniciar,
+    stats
+  );
   document.body.appendChild(panel);
 
   // main.js llama a esto en cada pintada. Sin eso la lectura se queda vieja al

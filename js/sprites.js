@@ -26,6 +26,14 @@ function enFranjaStandby(hora) {
   return hora >= HORA_STANDBY_INICIO || hora < HORA_STANDBY_FIN;
 }
 
+// El fondo del galpón cambia con la MISMA franja que el standby, no con una
+// regla propia: si Chip duerme, afuera es de noche. Se exporta para que main.js
+// la resuelva con el mismo `ahora` que la cadena, así el sprite y el fondo no
+// pueden discrepar sobre qué hora es.
+export function esDeNoche(ahora) {
+  return enFranjaStandby(horaLocal(ahora));
+}
+
 // El orden define la prioridad: gana el primer estado cuya condición se cumple.
 // Agregar estados nuevos es agregar entradas en la posición que les toque.
 //

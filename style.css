@@ -23,10 +23,31 @@ body {
   gap: 16px;
 }
 
-#canvas-mascota {
-  background: #14161d;
+/* El marco pasó del canvas a este panel: el fondo del galpón tiene que quedar
+   DETRÁS de Chip, y el canvas ya no puede tener color propio o lo taparía.
+
+   No lleva overflow: hidden a propósito. La imagen de fondo se recorta sola
+   contra el border-radius —es un background, se pinta dentro del border box—,
+   mientras que recortar el panel entero le cortaría la cabeza a Chip: el sprite
+   de `jugando` tiene 1,3 px de margen transparente arriba y el salto de acción
+   sube 8 px. Que Chip se salga un instante del cuadro al saltar es la opción
+   buena; que se le corte la antena no.
+
+   El tamaño no se declara: lo fija el canvas de adentro (320x320 en index.html),
+   así el marco y el recorte del fondo siguen al canvas si algún día cambia. */
+#panel-juego {
+  position: relative;
+  background-color: #14161d;
+  background-repeat: no-repeat;
+  background-size: auto 100%;
   border: 2px solid #2a2d38;
   border-radius: 8px;
+}
+
+/* La imagen y su posición horizontal las pone ui.js desde config.js
+   (RUTAS_FONDOS y FONDO_POSICION_X): son datos del juego, no estilo. */
+
+#canvas-mascota {
   display: block;
 }
 

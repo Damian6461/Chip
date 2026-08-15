@@ -16,7 +16,7 @@ http://127.0.0.1:5500/index.html
 
 ## Tests
 
-49 pruebas, mismos archivos en dos entrypoints:
+51 pruebas, mismos archivos en dos entrypoints:
 
 ```bash
 node tests/correr.mjs        # sale 0 si pasa todo, 1 si no
@@ -44,7 +44,10 @@ Sin el parámetro, `js/debug.js` ni se descarga (import dinámico). Cinco contro
 | simular h | aplica el decay de N horas **en el momento** |
 | volver tras N h | retrocede `ultimaVisita` **sin** aplicar decay y recarga |
 | visual | fuerza un estado visual, o `auto` para volver a la cadena |
+| hora | fuerza la hora del reloj (0-23), o `auto` |
 | reiniciar partida | save nuevo en 100/100/100 |
+
+**`visual` y `hora` no son lo mismo.** `visual` pisa el resultado de la cadena y no toca nada más: forzar `standby` cambia el sprite y deja el galpón como esté. `hora` mueve el reloj que usa el juego, así que arrastra la cadena **y** el fondo: poner 23 muestra a Chip en standby con el galpón de noche, que es el estado real de esa hora. `hora` no se resetea al reiniciar la partida — el save y el reloj son cosas distintas.
 
 **`simular h` y `volver tras N h` no son lo mismo.** El primero cobra el decay ya; al recargar no quedan horas transcurridas y **los eventos nunca se disparan**. El segundo recorre el camino de arranque real, como si hubieras cerrado y vuelto a abrir la app: es el único que sirve para ver eventos.
 
@@ -104,6 +107,44 @@ El loader degrada en dos escalones: falta el sprite pedido → usa el de `idle`;
 `ui.js` apaga el suavizado (`ctx.imageSmoothingEnabled = false`) apenas crea el contexto: el bilineal del navegador emborrona el pixel art al escalarlo. Es estado del contexto, no un parámetro de `drawImage`, así que se setea una sola vez y sobrevive a `clearRect`. **Cambiar el tamaño del canvas lo resetea a `true`** — si algún día el canvas deja de ser fijo, hay que volver a bajarlo.
 
 Arista abierta: el canvas mide **320** y los sprites **256**, así que se dibujan escalados ×1.25. Sin suavizado eso ya no es borroso, pero sigue siendo irregular: de cada cuatro píxeles del sprite, uno sale del doble de ancho. La salida limpia es un factor entero — canvas a 256, o dibujar el sprite a 256 centrado adentro de los 320.
+
+---
+
+## El fondo del galpón
+
+Dos panorámicas de 1672×941 en `/sprites/`: `fondo-dia.png` y `fondo-noche.png`. No son sprites de estado — no entran en `RUTAS_SPRITES` ni pasan por el loader con fallback. Las rutas viven en `RUTAS_FONDOS` (`config.js`) y las aplica `ui.js` como `background-image` de `#panel-juego`.
+
+### El encuadre
+
+```
+background-size: auto 100%;      /* la panorámica se escala a la altura del panel */
+background-position-x: 8%;       /* FONDO_POSICION_X */
+```
+
+**Ojo con la semántica del porcentaje**: `8%` no es "8% del ancho de la imagen", es 8% del **sobrante**. Con la panorámica escalada a 320 de alto quedan 568 px de ancho contra un panel de 320: sobran 248 y el 8% son ~20 px. La ventana del galpón cae en el tercio izquierdo del cuadro, que es el encuadre validado. Si lo que se quería era entrar 8% dentro de la panorámica, el número es 18,3%, no 8%.
+
+### Día y noche
+
+El swap usa `esDeNoche()` de `sprites.js`, que es **la misma franja que el standby** (23 a 7): si Chip duerme, afuera es de noche. No es una regla paralela, es la misma función — hay una prueba que lo verifica en los cuatro bordes.
+
+`main.js` la resuelve con el mismo `relojEfectivo()` que la cadena, así el sprite y el fondo no pueden discrepar. El tick de 60 s evalúa **las dos cosas sin cortocircuito**: con la batería en `critico`, cruzar las 23:00 no cambia el sprite —`critico` le gana a `standby`— pero el galpón igual se tiene que hacer de noche.
+
+### Por qué el panel no recorta
+
+`#panel-juego` **no** lleva `overflow: hidden`. La imagen de fondo se recorta sola contra el `border-radius`, y recortar el panel entero le cortaría la cabeza a Chip: el sprite de `jugando` tiene 1,3 px de margen transparente arriba y el salto de acción sube 8 px. Chip saliéndose un instante del cuadro es la opción buena; la antena cortada no.
+
+El marco (borde, radio, color) pasó del canvas al panel. **El canvas ya no puede tener color de fondo propio** o taparía la panorámica.
+
+### Peso
+
+Los dos fondos son PNG-8 cuantizados, bajo 500 KB cada uno. **No son pixel art de paleta corta**: el original de día tiene 59.685 colores únicos y el de noche 26.103, así que la cuantización es con pérdida y hay que elegirla mirando.
+
+| Archivo | Antes | Ahora | Paleta | Dither |
+|---|---|---|---|---|
+| `fondo-dia.png` | 1620 KB | 464 KB | 101 colores | no |
+| `fondo-noche.png` | 1467 KB | 411 KB | 48 colores | sí |
+
+El dither va por imagen y no por gusto: en el día el piso queda limpio sin él y el dither le mete grano visible; en la noche, sin dither el farol de la pared hace anillos concéntricos en la caída de luz. A 256 colores no bandea ninguna de las dos, pero pesan 765 KB y 946 KB — fuera de presupuesto.
 
 ---
 
@@ -195,7 +236,9 @@ Se registra siempre, **incluido en desarrollo**: `localhost` y `127.0.0.1` son c
 
 Mientras desarrollás, dejá tildado en DevTools → Application → Service Workers: **Update on reload** y **Bypass for network**. Sin eso parece que los cambios no se aplican. Si ya quedó pegado: Unregister + Clear site data + Ctrl+Shift+R.
 
-`icons/generador.html` regenera los PNG del manifest sin instalar nada.
+`icons/generador.html` regenera los PNG del manifest sin instalar nada. Desde que hay arte, dibuja a Chip desde `sprites/idle.png` sobre el charcoal del juego (`#0d0f14`, el mismo de `manifest.json` y del `body`) en vez del placeholder. El suavizado lo decide el sentido del escalado: 512 es 2x exacto de 256 y va con nearest; 192 es una reducción a 0,75 y con nearest se caerían filas de píxeles justo en la cara.
+
+**Los siete sprites de estado no están en `ARCHIVOS_CACHE`** y nunca estuvieron. Instalada y sin red, la app levanta con el fondo del galpón y dibuja placeholders en vez de Chip. Son siete líneas y ~700 KB de instalación: es una decisión pendiente, no un olvido.
 
 ---
 

@@ -37,46 +37,54 @@
 <p>
   Dibuja los dos PNG que pide <code>manifest.json</code> y los baja al disco.
   Movelos a <code>/icons/</code> pisando los que ya están. Cero herramientas
-  externas: es sólo canvas. Cuando exista el sprite definitivo de Chip, esto se
-  reemplaza por el arte real.
+  externas: es sólo canvas. Ahora dibuja a Chip de verdad, desde
+  <code>sprites/idle.png</code>, sobre el fondo del juego.
 </p>
 
 <div class="par" id="par"></div>
 
 <script type="module">
-import { PLACEHOLDER } from '../js/config.js';
+import { RUTAS_SPRITES } from '../js/config.js';
 
 const TAMANOS = [192, 512];
-const FONDO = '#0d0f14';
-const OJO = '#4ade80';
 
-function dibujar(canvas, n) {
+// El charcoal del juego: mismo valor que background_color y theme_color de
+// manifest.json y que el body de style.css. Un ícono transparente lo pinta cada
+// launcher a su manera, casi siempre en blanco.
+const FONDO = '#0d0f14';
+
+// Este archivo vive en /icons/, así que la ruta del sprite —que es
+// document-relative en config.js— necesita subir un nivel.
+const RUTA_IDLE = '../' + RUTAS_SPRITES.idle;
+
+const TAMANO_SPRITE = 256;
+
+function cargar(ruta) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('no se pudo cargar ' + ruta));
+    img.src = ruta;
+  });
+}
+
+function dibujar(canvas, n, chip) {
   const ctx = canvas.getContext('2d');
 
   ctx.fillStyle = FONDO;
   ctx.fillRect(0, 0, n, n);
 
-  // Mismo lenguaje visual que el placeholder del canvas del juego: cuerpo
-  // centrado con borde. Los ojos son lo único que se agrega, para que el ícono
-  // se lea como robot y no como un cuadrado suelto.
-  const lado = n * PLACEHOLDER.proporcion * 1.12;
-  const ini = (n - lado) / 2;
-  const grosor = Math.max(1, Math.round(n / 64));
-
-  ctx.fillStyle = PLACEHOLDER.colorRelleno;
-  ctx.fillRect(ini, ini, lado, lado);
-
-  ctx.strokeStyle = PLACEHOLDER.colorBorde;
-  ctx.lineWidth = grosor;
-  ctx.strokeRect(ini + grosor / 2, ini + grosor / 2, lado - grosor, lado - grosor);
-
-  ctx.fillStyle = OJO;
-  const ojoAncho = n * 0.09;
-  const ojoAlto = n * 0.1;
-  const ojoY = n * 0.4;
-  ctx.fillRect(n * 0.35, ojoY, ojoAncho, ojoAlto);
-  ctx.fillRect(n * 0.56, ojoY, ojoAncho, ojoAlto);
+  // Mismo encuadre que el canvas del juego: el sprite ocupa todo el cuadrado y
+  // el aire se lo da el margen transparente que ya trae el arte.
+  //
+  // El suavizado se decide por el sentido del escalado: 512 es exactamente 2x de
+  // 256 y nearest lo deja perfecto; 192 es una reducción a 0,75 y con nearest se
+  // caerían filas enteras de píxeles justo en la cara. Ahí conviene suavizar.
+  ctx.imageSmoothingEnabled = n < TAMANO_SPRITE;
+  ctx.drawImage(chip, 0, 0, n, n);
 }
+
+const chip = await cargar(RUTA_IDLE);
 
 const contenedor = document.getElementById('par');
 
@@ -88,7 +96,7 @@ for (const n of TAMANOS) {
   canvas.height = n;
   canvas.style.width = '192px';
   canvas.style.height = '192px';
-  dibujar(canvas, n);
+  dibujar(canvas, n, chip);
 
   const pie = document.createElement('figcaption');
   pie.textContent = `icon-${n}.png — ${n}×${n}`;

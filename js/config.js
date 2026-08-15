@@ -84,6 +84,27 @@ export const RUTAS_SPRITES = {
   idle: 'sprites/idle.png'
 };
 
+// Fondos del galpón, detrás de Chip. Mismo criterio que RUTAS_SPRITES: las
+// rutas de assets viven acá y no desperdigadas entre el CSS y el JS. Son
+// document-relative porque las consume una propiedad inline puesta desde ui.js,
+// no una regla de style.css.
+//
+// Cuál de los dos se muestra lo decide la MISMA franja horaria que el standby
+// (ver esDeNoche en sprites.js): si Chip duerme, afuera es de noche.
+export const RUTAS_FONDOS = {
+  dia: 'sprites/fondo-dia.png',
+  noche: 'sprites/fondo-noche.png'
+};
+
+// Recorte validado de la panorámica: cuadrado de altura completa, corrido 8%
+// desde la izquierda. Ojo con la semántica de background-position en
+// porcentaje: no es "8% del ancho de la imagen", es 8% del sobrante entre la
+// imagen escalada y el panel. Con la panorámica de 1672x941 en un panel de 320,
+// la imagen escalada mide 568 px de ancho, sobran 248 y el 8% son ~20 px: la
+// ventana del galpón queda a la izquierda del cuadro, que es el encuadre que se
+// validó.
+export const FONDO_POSICION_X = '8%';
+
 // ---- Umbrales visuales ----
 
 // Separado de JUGAR_BATERIA_MINIMA aunque hoy valgan lo mismo: uno es una regla
@@ -184,6 +205,10 @@ export const RUTA_SW = './sw.js';
 // descarga: main.js lo carga con import dinámico.
 export const PARAM_DEBUG = 'debug';
 export const OPCION_DEBUG_AUTO = 'auto';
+
+// Opciones del selector de hora del panel: 0 a 23. Forzar la hora mueve el
+// reloj entero, así que arrastra el sprite y el fondo juntos.
+export const HORAS_DEL_DIA = 24;
 export const MULTIPLICADOR_DEBUG_INICIAL = 1;
 export const HORAS_DEBUG_INICIAL = 1;
 

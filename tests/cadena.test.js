@@ -7,7 +7,7 @@
 import { prueba, igual } from './runner.js';
 import { T0, T_MADRUGADA, T_NOCHE, T_SEIS, T_SIETE } from './config.pruebas.js';
 import { ESTADOS_VISUALES as E } from '../js/config.js';
-import { resolverEstadoVisual } from '../js/sprites.js';
+import { resolverEstadoVisual, esDeNoche } from '../js/sprites.js';
 
 const estado = (bateria, humor = 50) => ({ bateria, humor, mantenimiento: 50 });
 
@@ -56,3 +56,28 @@ for (const [nombre, contexto, esperado] of CASOS) {
     igual(resolverEstadoVisual(contexto), esperado, nombre);
   });
 }
+
+// ---- El fondo del galpón usa la MISMA franja que el standby ----
+//
+// Si esto se desincroniza, Chip duerme con el galpón de día. Los bordes van con
+// los mismos instantes que los casos de arriba a propósito: son el mismo
+// contrato horario, no dos parecidos.
+
+prueba('noche: la franja del fondo es exactamente la del standby', () => {
+  igual(esDeNoche(T_NOCHE), true, 'las 23 ya son de noche (borde inclusive)');
+  igual(esDeNoche(T_MADRUGADA), true, 'las 3 son de noche');
+  igual(esDeNoche(T_SEIS), true, 'las 6 siguen siendo de noche');
+  igual(esDeNoche(T_SIETE), false, 'las 7 ya son de día (borde exclusive)');
+  igual(esDeNoche(T0), false, 'el mediodía es de día');
+});
+
+prueba('noche: el fondo acompaña al standby en todos los bordes', () => {
+  for (const instante of [T_NOCHE, T_MADRUGADA, T_SEIS, T_SIETE, T0]) {
+    const visual = resolverEstadoVisual({ estado: estado(50), ahora: instante, accion: null });
+    igual(
+      esDeNoche(instante),
+      visual === E.standby,
+      `en ${new Date(instante).getHours()}h el fondo y el standby coinciden`
+    );
+  }
+});

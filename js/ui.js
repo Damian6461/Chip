@@ -8,11 +8,14 @@ import {
   DURACION_SALTO_MS,
   TRANSICION_BARRA_MS,
   VARS_ANIMACION,
-  CLASE_SALTO
+  CLASE_SALTO,
+  RUTAS_FONDOS,
+  FONDO_POSICION_X
 } from './config.js';
 import { puedeJugar } from './acciones.js';
 import { obtenerSprite } from './sprites.js';
 
+const panelJuego = document.getElementById('panel-juego');
 const canvas = document.getElementById('canvas-mascota');
 const ctx = canvas.getContext('2d');
 
@@ -38,6 +41,10 @@ raiz.style.setProperty(VARS_ANIMACION.transicionBarra, `${TRANSICION_BARRA_MS}ms
 // próxima acción la pueda volver a poner. El rebote vive en el contenedor y no
 // dispara este evento nunca, porque es infinito.
 canvas.addEventListener('animationend', () => canvas.classList.remove(CLASE_SALTO));
+
+// El encuadre del fondo es fijo y se escribe una sola vez. La imagen sí cambia,
+// pero el recorte validado es el mismo de día y de noche.
+panelJuego.style.backgroundPositionX = FONDO_POSICION_X;
 
 const barras = {
   bateria: {
@@ -110,7 +117,22 @@ function actualizarBarras(estado) {
   btnJugar.disabled = !puedeJugar(estado);
 }
 
-export function render(estado, estadoVisual) {
+// Se guarda la ruta puesta para no reescribir la propiedad en cada tick y en
+// cada acción: el fondo cambia dos veces por día, render() corre todo el tiempo.
+let fondoActual = null;
+
+function pintarFondo(esNoche) {
+  const ruta = esNoche ? RUTAS_FONDOS.noche : RUTAS_FONDOS.dia;
+  if (ruta === fondoActual) return;
+
+  fondoActual = ruta;
+  panelJuego.style.backgroundImage = `url("${ruta}")`;
+}
+
+// `esNoche` llega resuelto desde afuera por la misma razón que `estadoVisual`:
+// decidir qué hora es se calcula, y este módulo pinta lo que le dan.
+export function render(estado, estadoVisual, esNoche) {
+  pintarFondo(esNoche);
   dibujarMascota(estadoVisual);
   actualizarBarras(estado);
 }

@@ -13,7 +13,7 @@ import { crearEstadoNuevo, cargarEstado, guardarEstado } from './estado.js';
 import { aplicarDecay, horasTranscurridas } from './decay.js';
 import { cargar, jugar, limpiar } from './acciones.js';
 import { elegirEventos } from './eventos.js';
-import { cargarSprites, resolverEstadoVisual } from './sprites.js';
+import { cargarSprites, resolverEstadoVisual, esDeNoche } from './sprites.js';
 import { render as renderUI, mostrarEventos, conectarAcciones, animarAccion } from './ui.js';
 
 let estado = cargarEstado();
@@ -26,10 +26,23 @@ let ultimoCambioVisual = 0;
 let temporizadorAccion = null;
 let temporizadorDebounce = null;
 let visualForzado = null; // sólo lo escribe el panel de debug
+let horaForzada = null; // ídem: 0-23, o null para el reloj real
+let esNocheActual = null;
 let refrescarDebug = null; // lo setea debug.js si está activo
 
+// Reloj efectivo: el real, salvo que el panel de debug esté forzando una hora.
+// Lo comparten la cadena de estados y el fondo del galpón, así el sprite y la
+// hora del día no pueden discrepar: si Chip está en standby, afuera es de noche.
+function relojEfectivo() {
+  if (horaForzada === null) return Date.now();
+
+  const fecha = new Date();
+  fecha.setHours(horaForzada, 0, 0, 0);
+  return fecha.getTime();
+}
+
 function pintar() {
-  renderUI(estado, estadoVisualActual);
+  renderUI(estado, estadoVisualActual, esNocheActual);
   if (refrescarDebug) refrescarDebug();
 }
 
@@ -37,7 +50,16 @@ function pintar() {
 // queda puro y sin saber que existe un modo debug.
 function resolverObjetivo() {
   if (visualForzado) return visualForzado;
-  return resolverEstadoVisual({ estado, ahora: Date.now(), accion: accionEnCurso });
+  return resolverEstadoVisual({ estado, ahora: relojEfectivo(), accion: accionEnCurso });
+}
+
+// Mismo contrato que actualizarVisual: devuelve si cambió, nunca pinta.
+function actualizarNoche() {
+  const noche = esDeNoche(relojEfectivo());
+  if (noche === esNocheActual) return false;
+
+  esNocheActual = noche;
+  return true;
 }
 
 function cancelarDebounce() {
@@ -136,14 +158,22 @@ conectarAcciones({
 });
 
 actualizarVisual({ inmediato: true });
+actualizarNoche();
 cargarSprites().then(pintar);
 pintar();
 
 // Reevaluación periódica. Los stats sólo cambian por acción, así que el único
 // efecto real de este tick es detectar el cruce de las 23:00 y las 07:00 con la
 // app abierta. No toca stats, no aplica decay, no guarda.
+//
+// Los dos chequeos corren SIEMPRE, sin cortocircuito: el fondo puede tener que
+// cambiar aunque el estado visual no se mueva. Con la batería en critico, cruzar
+// las 23:00 no cambia el sprite —critico le gana a standby— pero el galpón sí
+// se tiene que hacer de noche.
 setInterval(() => {
-  if (actualizarVisual()) pintar();
+  const cambioEstado = actualizarVisual();
+  const cambioNoche = actualizarNoche();
+  if (cambioEstado || cambioNoche) pintar();
 }, TICK_VISUAL_MS);
 
 // ---- Service worker ----
@@ -190,6 +220,15 @@ const apiDebug = {
   forzarEstadoVisual(nombre) {
     visualForzado = nombre;
     actualizarVisual({ inmediato: true });
+    pintar();
+  },
+
+  // Mueve el reloj entero, no sólo el sprite: por eso el fondo y el estado
+  // visual cambian juntos y no puede quedar Chip durmiendo con el galpón de día.
+  forzarHora(hora) {
+    horaForzada = hora;
+    actualizarVisual({ inmediato: true });
+    actualizarNoche();
     pintar();
   },
 

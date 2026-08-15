@@ -11,12 +11,17 @@
 </head>
 <body>
 <div id="escenario">
-  <!-- El contenedor existe para animar: lleva el rebote permanente, y el canvas
-       de adentro lleva el salto de acción. Ver el bloque de animaciones en
+  <!-- El panel lleva el marco y el fondo del galpón (background-image, que ui.js
+       cambia entre día y noche). Es la capa de atrás y no se mueve nunca.
+
+       El contenedor de adentro existe para animar: lleva el rebote permanente, y
+       el canvas lleva el salto de acción. Ver el bloque de animaciones en
        style.css: dos transforms en elementos anidados se componen; dos
        animaciones en el mismo elemento se pisan. -->
-  <div id="contenedor-mascota">
-    <canvas id="canvas-mascota" width="320" height="320"></canvas>
+  <div id="panel-juego">
+    <div id="contenedor-mascota">
+      <canvas id="canvas-mascota" width="320" height="320"></canvas>
+    </div>
   </div>
 
   <div id="barra-bateria" class="barra">
