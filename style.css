@@ -1106,25 +1106,40 @@ body.es-noche #antena {
 
 /* ---- 5. Polvo en el haz de luz ---- */
 
-/* Sobre la ventana. Con la escena a altura completa la panorámica se ve entera
-   de arriba abajo, así que la ventana cae entre el 41% y el 58% del alto, y con
-   el encuadre del 8% arranca casi pegada al borde izquierdo. El contenedor
-   recorta para que ninguna mota se escape al portón. */
+/* EL POLVO OCUPA LA ESCENA ENTERA, no sólo el recuadro de la ventana.
+
+   Antes vivía en una caja de 46% x 30% pegada al borde izquierdo, y adentro
+   había seis motas de 2 px con un pico de opacidad de 0,22. En una escena de
+   480x944 eso son seis puntos casi transparentes en un sexto de la pantalla:
+   en producción el galpón se veía quieto.
+
+   El cambio de idea: el galpón tiene polvo en TODOS lados; el haz de la ventana
+   es donde se ve. Por eso las dieciséis motas se reparten por toda la escena y
+   la diferencia la hace el brillo — las seis que caen en la columna de la
+   ventana llevan `en-luz` y pican al doble que las de la penumbra.
+
+   Se corta antes del piso de la pantalla para no espolvorear la botonera. */
 #polvo {
-  left: 0;
-  top: 35%;
-  width: 46%;
-  height: 30%;
+  inset: 0 0 13% 0;
   overflow: hidden;
 }
 
 .mota {
+  --pico: 0.25;
+  --tam: 2px;
   position: absolute;
-  width: 2px;
-  height: 2px;
+  width: var(--tam);
+  height: var(--tam);
   border-radius: 50%;
   background: var(--color-mantenimiento);
   opacity: 0;
+}
+
+/* La columna de la ventana: la panorámica la deja entre el 41% y el 58% del
+   alto y, con el encuadre del 8%, casi pegada al borde izquierdo. El haz baja
+   desde ahí hacia el piso. */
+.mota.en-luz {
+  --pico: 0.5;
 }
 
 /* Sólo de día: de noche no hay haz, no hay polvo. */
@@ -1132,63 +1147,79 @@ body:not(.es-noche) .mota {
   animation: derivar var(--ciclo-polvo-1) linear infinite;
 }
 
-/* Posiciones repartidas y ciclos desparejos con arranques negativos, para que
-   nunca se vean nacer juntas ni volver a alinearse. */
-.mota:nth-child(1) {
-  left: 14%;
-  top: 8%;
-  animation-delay: -2s;
-}
+/* ---- Dónde nace y hacia dónde va cada una ----
 
-.mota:nth-child(2) {
-  left: 52%;
-  top: 22%;
-  animation-duration: var(--ciclo-polvo-2);
-  animation-delay: -7s;
-}
+   Las seis primeras están en el haz; las diez restantes, repartidas por el
+   resto del cuadro. Las derivas son todas diagonales descendentes pero de
+   distinto largo: si todas viajaran lo mismo, el campo entero se leería como
+   una sola textura desplazándose. */
+.mota:nth-child(1)  { left:  8%; top: 40%; --tam: 3px; --dx: 26px; --dy: 19px; }
+.mota:nth-child(2)  { left: 22%; top: 52%; --tam: 2px; --dx: 20px; --dy: 15px; }
+.mota:nth-child(3)  { left: 34%; top: 37%; --tam: 4px; --dx: 32px; --dy: 23px; }
+.mota:nth-child(4)  { left: 14%; top: 61%; --tam: 2px; --dx: 18px; --dy: 13px; }
+.mota:nth-child(5)  { left: 40%; top: 56%; --tam: 3px; --dx: 28px; --dy: 21px; }
+.mota:nth-child(6)  { left: 28%; top: 45%; --tam: 2px; --dx: 22px; --dy: 17px; }
 
-.mota:nth-child(3) {
-  left: 30%;
-  top: 46%;
-  animation-duration: var(--ciclo-polvo-3);
-  animation-delay: -11s;
-}
+.mota:nth-child(7)  { left: 62%; top: 18%; --tam: 2px; --dx: 24px; --dy: 18px; }
+.mota:nth-child(8)  { left: 84%; top: 30%; --tam: 3px; --dx: 30px; --dy: 22px; }
+.mota:nth-child(9)  { left: 70%; top: 63%; --tam: 2px; --dx: 19px; --dy: 14px; }
+.mota:nth-child(10) { left: 52%; top:  8%; --tam: 2px; --dx: 25px; --dy: 20px; }
+.mota:nth-child(11) { left: 90%; top: 51%; --tam: 2px; --dx: 21px; --dy: 16px; }
+.mota:nth-child(12) { left:  5%; top: 14%; --tam: 3px; --dx: 34px; --dy: 24px; }
+.mota:nth-child(13) { left: 76%; top: 77%; --tam: 2px; --dx: 23px; --dy: 17px; }
+.mota:nth-child(14) { left: 46%; top: 72%; --tam: 3px; --dx: 29px; --dy: 21px; }
+.mota:nth-child(15) { left: 19%; top: 84%; --tam: 2px; --dx: 20px; --dy: 15px; }
+.mota:nth-child(16) { left: 59%; top: 42%; --tam: 2px; --dx: 26px; --dy: 19px; }
 
-.mota:nth-child(4) {
-  left: 68%;
-  top: 62%;
-  animation-duration: var(--ciclo-polvo-2);
-  animation-delay: -4s;
-}
+/* ---- Los ritmos, DESPUÉS de la regla que pone el shorthand ----
 
-.mota:nth-child(5) {
-  left: 8%;
-  top: 74%;
-  animation-duration: var(--ciclo-polvo-3);
-  animation-delay: -15s;
-}
+   Este bloque estaba arriba, mezclado con las posiciones, y no servía para
+   nada: `body:not(.es-noche) .mota` es (0,2,1) contra el (0,2,0) de
+   `.mota:nth-child(N)`, así que ganaba y reseteaba duration y delay a los
+   valores por defecto. Las seis motas venían corriendo el MISMO ciclo con el
+   MISMO arranque desde siempre — un bloque de polvo moviéndose en formación en
+   vez de un campo. Es el mismo defecto que tenían las Z del standby y las
+   chispas del enchufe, y se encuentra igual: leyendo el estilo computado.
 
-.mota:nth-child(6) {
-  left: 44%;
-  top: 88%;
-  animation-delay: -9s;
-}
+   Los tres ciclos siguen siendo desparejos y no múltiplos entre sí (11 / 14 /
+   17 s, en config.js) y los arranques son dieciséis valores distintos, así que
+   el campo nunca se vuelve a alinear ni empieza vacío. */
+body:not(.es-noche) .mota:nth-child(3n + 2) { animation-duration: var(--ciclo-polvo-2); }
+body:not(.es-noche) .mota:nth-child(3n)     { animation-duration: var(--ciclo-polvo-3); }
 
-/* Deriva diagonal descendente, como el polvo en la luz de verdad. La regla de
-   oro es que no se note: los picos de opacidad son bajos a propósito. */
+body:not(.es-noche) .mota:nth-child(1)  { animation-delay:  -2s; }
+body:not(.es-noche) .mota:nth-child(2)  { animation-delay:  -7s; }
+body:not(.es-noche) .mota:nth-child(3)  { animation-delay: -11s; }
+body:not(.es-noche) .mota:nth-child(4)  { animation-delay:  -4s; }
+body:not(.es-noche) .mota:nth-child(5)  { animation-delay: -15s; }
+body:not(.es-noche) .mota:nth-child(6)  { animation-delay:  -9s; }
+body:not(.es-noche) .mota:nth-child(7)  { animation-delay:  -1s; }
+body:not(.es-noche) .mota:nth-child(8)  { animation-delay: -13s; }
+body:not(.es-noche) .mota:nth-child(9)  { animation-delay:  -6s; }
+body:not(.es-noche) .mota:nth-child(10) { animation-delay: -16s; }
+body:not(.es-noche) .mota:nth-child(11) { animation-delay:  -3s; }
+body:not(.es-noche) .mota:nth-child(12) { animation-delay: -10s; }
+body:not(.es-noche) .mota:nth-child(13) { animation-delay:  -8s; }
+body:not(.es-noche) .mota:nth-child(14) { animation-delay: -14s; }
+body:not(.es-noche) .mota:nth-child(15) { animation-delay:  -5s; }
+body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
+
+/* Deriva diagonal descendente, como el polvo en la luz de verdad. El pico no
+   está escrito acá: lo trae cada mota en --pico, y por eso las del haz brillan
+   al doble que las de la penumbra con una sola animación. */
 @keyframes derivar {
   0% {
     transform: translate(0, 0);
     opacity: 0;
   }
-  25% {
-    opacity: 0.22;
+  20% {
+    opacity: var(--pico);
   }
-  75% {
-    opacity: 0.16;
+  70% {
+    opacity: calc(var(--pico) * 0.72);
   }
   100% {
-    transform: translate(24px, 17px);
+    transform: translate(var(--dx, 24px), var(--dy, 17px));
     opacity: 0;
   }
 }

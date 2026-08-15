@@ -327,7 +327,7 @@ El juego no es un panel de control con un dibujo arriba: es un lugar. Abrirlo es
 
 ```
 #escena  ← la panorámica a pantalla completa, nítida
-├── #polvo          motitas en el haz de la ventana
+├── #polvo          16 motitas de polvo, en toda la escena
 ├── #chip           posición y tamaño; NO se anima
 │   ├── #sombra     quieta: cuando Chip salta, se queda en el piso
 │   └── #contenedor-mascota   rebota
@@ -463,9 +463,19 @@ Cinco micro-efectos de CSS puro superpuestos al canvas. **Ninguno toca los PNG n
 | sombra que respira | `#sombra` | siempre | `CICLO_REBOTE_MS` — 2,2 s |
 | Z que flotan | `.zeta` ×3 | sólo `standby` | `CICLO_ZETA_MS` — 4 s |
 | chispas de carga | `.chispa` ×4 | sólo `cargando` | `CICLO_CHISPA_MS` — 0,6 s |
-| polvo en el haz | `.mota` ×6 | sólo de día | `CICLOS_POLVO_MS` — 11 / 14 / 17 s |
+| polvo en el aire | `.mota` ×16 | sólo de día | `CICLOS_POLVO_MS` — 11 / 14 / 17 s |
 
 **Ningún efecto tiene lógica propia.** Los que dependen del estado se prenden con la clase `estado-*` que `ui.js` pone en `#contenedor-mascota`, derivada de la **misma** cadena que elige el sprite; los que dependen de la hora usan la clase `es-noche` del `body`, derivada del mismo `esDeNoche()` que el fondo. No hay un solo timer nuevo en el JS, y por lo tanto no hay forma de que un efecto muestre algo distinto de lo que muestra Chip.
+
+#### El polvo, recalibrado
+
+Vivía en una caja de 46% × 30% pegada al borde izquierdo, con **seis motas de 2 px y un pico de opacidad de 0,22**. En una escena de 480×944 eso son seis puntos casi transparentes en un sexto de la pantalla: el galpón se veía quieto.
+
+Ahora son **dieciséis, de 2 a 4 px, repartidas por toda la escena**. El cambio de idea es que el galpón tiene polvo en todos lados y el haz de la ventana es *donde se ve*: las seis que caen en la columna de la ventana llevan la clase `en-luz` y pican en **0,5**; las diez de la penumbra, en **0,25**. El pico no está escrito en el `@keyframes` sino en la variable `--pico` de cada mota, así que una sola animación sostiene los dos brillos.
+
+Y estaban **todas corriendo el mismo ciclo con el mismo arranque**. `body:not(.es-noche) .mota` es (0,2,1) contra el (0,2,0) de `.mota:nth-child(N)`: el shorthand `animation` ganaba y reseteaba `animation-duration` y `animation-delay` a los valores por defecto. Un bloque de polvo en formación, no un campo. Es el mismo defecto de las Z del standby y de las chispas del enchufe — tercera vez en el mismo archivo, y por eso ahora los ritmos van siempre **después** de la regla que pone el shorthand, con el mismo prefijo de estado.
+
+Verificado con dos capturas separadas 4,5 s: **13 grupos de píxeles cambiados repartidos por toda la escena**, con todo lo demás congelado. Detalle del entorno que hay que saber para repetir la prueba: en la pestaña de automatización `document.visibilityState` es `hidden` y el reloj de animaciones **no avanza solo** (`currentTime` leído dos veces con 1,5 s de por medio da 0 las dos veces). Los 4,5 s se producen moviendo `currentTime`, no esperando. Esperar da dos capturas idénticas y eso no prueba nada.
 
 Sin la clase, los elementos van a `display: none` — que además de esconderlos **cancela la animación**, así que no gastan nada mientras no corresponden.
 
@@ -477,7 +487,7 @@ Sin la clase, los elementos van a `display: none` — que además de esconderlos
 
 **Las chispas del enchufe son el detalle, no el efecto.** Cuatro puntos de 4 px en la boca del zócalo: la lectura del estado la sostienen los pulsos que suben y el latido del display. Cuidado al tocarlas, porque el sprite de `cargando` ya trae cable y display en el mismo cian — todo lo que se agregue ahí compite con el arte.
 
-En idle diurno corren **9 animaciones** (6 motas + glow + rebote + sombra); el pico es **13**, en `cargando`.
+En idle diurno corren **19 animaciones** (16 motas + glow + rebote + sombra); el pico es **28**, en `cargando`. El polvo es la mayoría: son transformaciones y opacidad, las dos propiedades que el compositor maneja sin recalcular layout.
 
 ### prefers-reduced-motion
 

@@ -531,6 +531,11 @@ export const CICLO_CHISPA_MS = 600;
 
 // Tres ciclos largos y desparejos para el polvo: si fueran múltiplos entre sí,
 // las motas volverían a alinearse cada tanto y el ojo lo pesca.
+//
+// Cuántas motas hay, dónde nacen y cuánto brilla cada una NO está acá: está en
+// el markup y en style.css, igual que las posiciones de los corazones y de las
+// burbujas. Son composición, no parámetros — moverlas es mirar el cuadro, y el
+// cuadro está en la hoja de estilos.
 export const CICLOS_POLVO_MS = [11_000, 14_000, 17_000];
 
 export const VARS_EFECTOS = {
