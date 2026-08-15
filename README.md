@@ -238,7 +238,7 @@ El alféizar además es canon — "Miró la lluvia por la ventana del fondo. Es 
 
 ### Las formas
 
-Los sprites de los objetos **se dibujan por código** (`js/formas-objetos.js`): siluetas SVG simples con la paleta del juego, todas en un `viewBox` de 24×24 para que el tamaño lo decida el CSS. No pretenden ser arte — pretenden ser reconocibles a 16 px mientras el arte ilustrado no exista. Hay una prueba que verifica que cada objeto del catálogo tenga la suya y no caiga al casillero genérico.
+Los sprites de los objetos **se dibujan por código** (`js/formas.js`): siluetas SVG simples con la paleta del juego, todas en un `viewBox` de 24×24 para que el tamaño lo decida el CSS. No pretenden ser arte — pretenden ser reconocibles a 16 px mientras el arte ilustrado no exista. Hay una prueba que verifica que cada objeto del catálogo tenga la suya y no caiga al casillero genérico.
 
 ### Los gigantes
 
@@ -379,17 +379,41 @@ Damián borró de los siete sprites los efectos que estaban dibujados. Estos los
 
 | Estado | Efecto | Comportamiento |
 |---|---|---|
-| feliz | corazones + chispas | los corazones flotan en arco; las chispas laten |
-| cargando | dos estelas cian | orbitan el cuerpo, desfasadas medio ciclo |
+| feliz | cuatro corazones + cuatro chispas | los corazones suben en abanico, dos por lado; las chispas laten |
+| cargando | cuatro pulsos + latido del rayo | los pulsos suben del enchufe al pecho y el display se enciende en sincronía |
 | jugando | cinco rayitas | pulso radial, el doble de rápido que en feliz |
 | limpiando | cinco burbujas | suben y **estallan** al final |
-| standby | tres Z | flotan hacia arriba-derecha |
+| standby | tres Z | flotan hacia arriba-derecha, cada una desde su punto |
 | critico | **ninguno** | la ausencia es la lectura del estado |
 | idle | ninguno | |
 
-**Los tamaños, colores y posiciones no están estimados.** Salen de medir por diferencia los sprites viejos —sacados de git— contra los pelados: lo que desapareció de cada uno es exactamente el efecto que había, con su caja y su paleta. Los corazones dibujados median 24×22 px sobre 256, o sea 9,4% del alto de Chip; los arcos de cargando llegaban a 47×39; las Z a 20×25.
+**Los tamaños, colores y posiciones no están estimados.** Salen de medir por diferencia los sprites viejos —sacados de git— contra los pelados: lo que desapareció de cada uno es exactamente el efecto que había, con su caja y su paleta. Los corazones dibujados median 24×22 px sobre 256, o sea 9,4% del alto de Chip; las Z, 20×25.
 
 **Todo lleva tres tonos: borde saturado, cuerpo y brillo.** Así está pintado el arte del juego, y el borde no es negro — en el corazón es rojo (`#ff2741` sobre `#ff8d90`) y en la Z es azul marino (`#00204b` sobre `#00efff`). Sin borde, cualquier forma se hunde en la pared charcoal: la primera versión de los corazones, de un tono y a la mitad del tamaño, **no se veía**. Los tamaños van en % del contenedor para acompañar a Chip en cualquier pantalla.
+
+#### Las dos reglas de composición
+
+El tamaño y el color no alcanzan: un efecto puede estar bien medido y componer mal. De mirar las capturas en producción salieron dos reglas, las dos en `config.js` y las dos válidas para los cinco estados.
+
+**1. Nada toca la punta de la antena** (`RADIO_EXCLUSION_ANTENA`, 11% del contenedor). El bulbo tiene su propio glow y es el indicador de "encendido": una partícula encima le apaga la lectura. No se resuelve detectando colisiones — se resuelve componiendo, con las piezas naciendo a los costados y yéndose hacia afuera. Los corazones de feliz son **cuatro y no tres** exactamente por esto: con tres, uno queda en el medio, y ese era el que se paraba arriba del bulbo.
+
+**2. Los efectos caben en la silueta ensanchada un 30%** (`FRANJA_EFECTOS`, de 5% a 88%). Lo que se sale deja de leerse como algo que le pasa a Chip y pasa a ser decoración de pantalla. Los arcos que orbitaban en `cargando` median 40% de ancho, arrancaban en −4% y daban la vuelta entera: se veían como dos ganchos cian saliendo de los costados de la cabeza —orejas— y al pasar por el frente tapaban el display del pecho, que era justo lo que había que enfatizar. **Los efectos acompañan a Chip, no lo envuelven.**
+
+Las dos se verifican barriendo el ciclo completo de cada estado y midiendo, para cada pieza visible, el rectángulo de contorno contra la franja y su distancia al bulbo. Lo que no se puede medir —si el efecto *funciona*— se mira: **tres momentos separados del ciclo por estado**, no uno. Las dos formas encontraron cosas que la otra no veía.
+
+#### Lo que sólo apareció en la captura ampliada
+
+Tres defectos de esta tanda no los mostró ninguna medición. Los tres decían "está ahí, con su tamaño y su color":
+
+- **Las chispas de feliz se las comían los corazones.** Estaban a la misma altura y a pocos píxeles; el corazón es más grande y va encima. Al bajarlas a los hombros pasó lo otro: la chispa es una cuña finita y, apoyada sobre el brazo naranja, desaparece. Ahora van en aire oscuro, medido fila por fila sobre `feliz.png`.
+- **El pulso de cargando se dibujaba cuadrado.** El SVG tiene `viewBox` de 24×24 y el elemento es alto y angosto: con el `preserveAspectRatio` por defecto el dibujo entra a lo ancho y queda centrado con aire arriba y abajo. Un huso de 17 px en vez de un trazo de 17×50. Es el único efecto con `preserveAspectRatio="none"`.
+- **El pulso cian sobre el display cian no se despegaba.** Subiendo derecho pasaba por la zona más cargada del sprite. Ahora sube en diagonal a la izquierda, por la chapa gris — que además es la continuación natural del cable, que llega desde abajo a la derecha.
+
+#### Y uno que sólo apareció midiendo
+
+Las tres Z del standby **latían todas al mismo tiempo**, desde siempre. `animation` es un shorthand: `.estado-standby .zeta { animation: … }` reseteaba a `0s` los `animation-delay` de `.zeta:nth-child(N)`, que tiene la misma especificidad y viene antes. Como además las tres estaban posicionadas en el mismo punto —el contenedor tenía la posición y las Z no—, se leían como una sola Z que crecía y se achicaba. Apiladas **y** sincronizadas.
+
+En la captura eso era invisible: tres Z superpuestas parecen una Z. Se encontró leyendo el `animation-delay` computado. La misma trampa tenían las chispas del enchufe. Los `animation-delay` de cada pieza van **después** de la regla que pone el shorthand y adentro del mismo estado; las burbujas se salvaron porque su regla de estado usa longhands.
 
 ### La luz que recorre el día
 
@@ -415,7 +439,7 @@ Estaban dibujados adentro de `feliz.png`. Ahora son partículas, y eso desbloque
 
 Los dos colores salen muestreados del `feliz.png` viejo antes de reemplazarlo — `#ff8b8d` los corazones y `#ffe02c` los destellos. El rosa **no** es el `#ff6b81` que estimaba la spec: el del sprite es más cálido.
 
-**Los corazones flotan en arco**, no en línea recta: uno que sube derecho parece un globo. Tres tamaños, tres puntos de nacimiento y delays escalonados.
+**Los corazones suben en abanico**, no en línea recta: uno que sube derecho parece un globo, y uno que cruza al otro lado le pasa por encima a la antena. Son cuatro —par interno en 27% y 65%, par externo en 15% y 75%, simétricos respecto del 50%— y cada uno se abre hacia su lado. La tanda por evento reordena las mismas posiciones para que, cuando salen dos, sean un par simétrico y no dos del mismo lado.
 
 **Los destellos no flotan: laten.** Aparecen y desaparecen desde el centro hacia afuera en 900 ms. Esa diferencia de comportamiento es lo que los separa de los corazones.
 
@@ -449,15 +473,9 @@ Sin la clase, los elementos van a `display: none` — que además de esconderlos
 
 **La contrafase de la sombra no usa delay.** El rebote está arriba en su 50%, así que la sombra chica en el 50% ya es la contrafase; atarla con un `animation-delay` de medio ciclo la habría puesto justo al revés, chica con Chip abajo. Las dos animaciones comparten la variable de duración, que es lo que importa. Verificado buscando las dos al mismo `currentTime`: Chip en `translateY(0)` → sombra en `scaleX(1)`; Chip en `-4px` → sombra en `scaleX(0.88)`.
 
-**El glow de la antena está posicionado sobre `idle` y en los otros estados no cae perfecto.** La bombita, medida en los siete sprites, va del 44,5% al 60,4% de ancho porque las poses son distintas:
+**El glow de la antena ya no está clavado en `idle`:** sigue la tabla por estado de más arriba. Ese mismo bulbo es el centro del círculo de exclusión que ninguna partícula puede pisar, y por eso la tabla es una medida y no una estimación — si la posición estuviera mal, la zona prohibida estaría mal.
 
-| | idle | feliz | critico | standby | cargando | jugando | limpiando |
-|---|---|---|---|---|---|---|---|
-| x | 50,1% | 54,0% | 44,5% | *(tapada)* | 45,9% | **60,4%** | 45,4% |
-
-El glow se fija en 50% / 8%, que es `idle` —el estado por defecto y el más frecuente—, y la capa difusa ancha tapa buena parte del desvío. El peor caso es `jugando`, donde queda unos 30 px corrido y se lee como un brillo suelto al lado de la antena; dura los 2 s del estado de acción. Afinarlo por estado son cuatro líneas de CSS con las clases `estado-*` que ya existen, pero no se hizo en esta pasada.
-
-**Las chispas suman poco.** El sprite de `cargando` ya trae remolinos, destellos y cable dibujados en el mismo cian: las partículas compiten con el arte en vez de agregarle. Están en la boca del enchufe, que es la zona más limpia del cuadro.
+**Las chispas del enchufe son el detalle, no el efecto.** Cuatro puntos de 4 px en la boca del zócalo: la lectura del estado la sostienen los pulsos que suben y el latido del display. Cuidado al tocarlas, porque el sprite de `cargando` ya trae cable y display en el mismo cian — todo lo que se agregue ahí compite con el arte.
 
 En idle diurno corren **9 animaciones** (6 motas + glow + rebote + sombra); el pico es **13**, en `cargando`.
 

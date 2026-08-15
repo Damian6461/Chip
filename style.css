@@ -268,46 +268,76 @@ body {
   height: 100%;
 }
 
-/* Tamaños y posiciones de los originales, medidos sobre el sprite viejo: los
-   corazones dibujados eran de 24x22 px sobre 256 —o sea 9,4% del alto de Chip—
-   y nacían pegados a los costados de la cabeza, en 17,8% y 80,3% de ancho.
+/* Tamaños de los originales, medidos sobre el sprite viejo: los corazones
+   dibujados eran de 24x22 px sobre 256 —o sea 9,4% del alto de Chip— y nacían
+   pegados a los costados de la cabeza, en 17,8% y 80,3% de ancho.
 
    La primera versión los puso en 4-7% y dispersos: a ese tamaño, sobre la pared
    texturizada del galpón, no se leían. El tamaño va en % del contenedor para que
-   acompañe a Chip en cualquier pantalla. */
+   acompañe a Chip en cualquier pantalla.
+
+   EL ABANICO. La segunda versión tenía el tamaño bien pero la composición mal:
+   tres corazones, y el tercero nacía en 45%/6% —o sea exactamente encima del
+   bulbo de la antena, que en feliz está en 53,8%/7,6%— y se lo tapaba mientras
+   subía. Son cuatro y no tres justamente por eso: con cuatro se reparten dos de
+   cada lado y el centro de arriba queda libre por construcción, sin detectar
+   colisiones. Cada uno lleva --lado (-1 izquierda, +1 derecha) y el keyframe se
+   va hacia AFUERA, así el abanico se abre en vez de cerrarse sobre la cabeza.
+
+   Las cuatro posiciones son simétricas respecto del 50%: el par interno en 27% y
+   65% (centros 31,3 y 69,3) y el externo en 15% y 75% (centros 20 y 80). Ninguna
+   entra en el círculo de RADIO_EXCLUSION_ANTENA ni en ningún punto del recorrido,
+   y todas caben en FRANJA_EFECTOS. */
 .corazon:nth-child(1) {
-  left: 14%;
-  top: 21%;
-  width: 9.4%;
+  left: 15%;
+  top: 26%;
+  width: 10%;
+  --lado: -1;
 }
 
 .corazon:nth-child(2) {
-  left: 76%;
-  top: 20%;
-  width: 10.5%;
+  left: 27%;
+  top: 17%;
+  width: 8.6%;
+  --lado: -1;
 }
 
 .corazon:nth-child(3) {
-  left: 45%;
-  top: 6%;
-  width: 8%;
+  left: 65%;
+  top: 17%;
+  width: 8.6%;
+  --lado: 1;
 }
 
-/* En feliz flotan en loop. Los delays escalonados evitan que nazcan juntos. */
+.corazon:nth-child(4) {
+  left: 75%;
+  top: 26%;
+  width: 10%;
+  --lado: 1;
+}
+
+/* En feliz flotan en loop. Los delays van cruzados —externo izquierdo, interno
+   derecho, interno izquierdo, externo derecho— para que el abanico no se lea
+   como dos pares saliendo al mismo tiempo. */
 .estado-feliz #corazones .corazon {
   animation: flotar-corazon var(--duracion-corazon) ease-out infinite;
 }
 
-.estado-feliz #corazones .corazon:nth-child(2) {
-  animation-delay: 800ms;
-}
-
 .estado-feliz #corazones .corazon:nth-child(3) {
-  animation-delay: 1600ms;
+  animation-delay: 600ms;
 }
 
-/* El arco es el punto: un corazón que sube derecho parece un globo. Sube 40 px
-   yéndose primero a un lado y volviendo. */
+.estado-feliz #corazones .corazon:nth-child(2) {
+  animation-delay: 1200ms;
+}
+
+.estado-feliz #corazones .corazon:nth-child(4) {
+  animation-delay: 1800ms;
+}
+
+/* Sube separándose del cuerpo: primero casi derecho, después abriéndose hacia su
+   lado. Un corazón que sube en vertical parece un globo; uno que cruza al otro
+   lado le pasa por encima a la antena. Este hace las dos cosas bien. */
 @keyframes flotar-corazon {
   0% {
     transform: translate(0, 0) scale(0.6);
@@ -317,12 +347,37 @@ body {
     opacity: 1;
   }
   55% {
-    transform: translate(9px, -22px) scale(1);
+    transform: translate(calc(var(--lado, 1) * 4px), -18px) scale(1);
   }
   100% {
-    transform: translate(-5px, -40px) scale(0.85);
+    transform: translate(calc(var(--lado, 1) * 9px), -34px) scale(0.85);
     opacity: 0;
   }
+}
+
+/* La tanda por evento sale de a dos o tres, así que el orden de las posiciones
+   no le sirve: con las de arriba, dos corazones caerían los dos a la izquierda.
+   Acá se reordena para que el primer par sea simétrico y el tercero, si sale,
+   abra a un costado. Mismas cuatro posiciones, otro orden. */
+#corazones-extra .corazon:nth-child(1) {
+  left: 27%;
+  top: 17%;
+  width: 8.6%;
+  --lado: -1;
+}
+
+#corazones-extra .corazon:nth-child(2) {
+  left: 65%;
+  top: 17%;
+  width: 8.6%;
+  --lado: 1;
+}
+
+#corazones-extra .corazon:nth-child(3) {
+  left: 15%;
+  top: 26%;
+  width: 10%;
+  --lado: -1;
 }
 
 /* La tanda por evento: una sola pasada, sin loop, y en cualquier estado. */
@@ -336,6 +391,10 @@ body {
 
 #corazones-extra.celebrando .corazon:nth-child(3) {
   animation-delay: 360ms;
+}
+
+#corazones-extra.celebrando .corazon:nth-child(4) {
+  animation-delay: 540ms;
 }
 
 #corazones-extra .corazon[hidden] {
@@ -380,32 +439,47 @@ body {
   aspect-ratio: 1;
 }
 
+/* Mismo abanico que los corazones: dos de cada lado, simétricas respecto del
+   50%, y todas salen hacia afuera. Pero en OTRA franja de altura.
+
+   Las primeras posiciones las dejaban a la misma altura que los corazones y a
+   pocos píxeles: en la captura ampliada, el corazón —más grande y encima— se
+   comía la chispa entera. La segunda tanda las bajó a los hombros y ahí pasó lo
+   otro: la chispa es una cuña finita, y apoyada sobre el brazo naranja de Chip
+   desaparece. Ninguna de las dos cosas la dijo una medición; las dos las dijo la
+   captura al 300%.
+
+   Las cuatro van ahora en aire oscuro, medido sobre feliz.png fila por fila:
+   arriba, en la cuña que queda entre la cabeza y las manos levantadas (a y=20%
+   el cuerpo va de 31,3% a 62,1%, así que 18% y 76% son fondo); abajo, al costado
+   del torso (a y=66% el cuerpo va de 27,7% a 77,3%). Los cuatro centros son
+   simétricos respecto del 50% y ninguno pisa el carril de un corazón. */
 .destello:nth-child(1) {
-  left: 66%;
-  top: 10%;
-  --sale-x: 4px;
-  --sale-y: -4px;
+  left: 76%;
+  top: 20%;
+  --sale-x: 5px;
+  --sale-y: -3px;
 }
 
 .destello:nth-child(2) {
-  left: 26%;
-  top: 9%;
-  --sale-x: -4px;
-  --sale-y: -4px;
+  left: 18%;
+  top: 20%;
+  --sale-x: -5px;
+  --sale-y: -3px;
 }
 
 .destello:nth-child(3) {
-  left: 82%;
-  top: 28%;
+  left: 79%;
+  top: 66%;
   --sale-x: 5px;
-  --sale-y: 1px;
+  --sale-y: 2px;
 }
 
 .destello:nth-child(4) {
-  left: 9%;
-  top: 27%;
+  left: 15%;
+  top: 66%;
   --sale-x: -5px;
-  --sale-y: 1px;
+  --sale-y: 2px;
 }
 
 .estado-feliz .destello {
@@ -481,8 +555,15 @@ body {
   --giro: 260deg;
 }
 
+/* Estaba en 79% y con 10% de ancho llegaba al 89%, afuera de FRANJA_EFECTOS, y
+   encima se iba 8 px más para afuera. La antena de jugando está en 60,5%/6,5%,
+   así que el hueco entre el bulbo y el borde permitido es angosto: acá entra.
+
+   El 73% sale de barrer el ciclo entero midiendo el borde derecho, no de la
+   cuenta a mano: esta cuña va rotada 20°, y una caja rotada tiene un rectángulo
+   de contorno más ancho que la caja. Ese punto de más era el que se escapaba. */
 .rayita:nth-child(5) {
-  left: 79%;
+  left: 73%;
   top: 13%;
   --sale-x: 8px;
   --sale-y: -2px;
@@ -509,61 +590,159 @@ body {
   animation-delay: 360ms;
 }
 
-/* ---- Cargando: la energía que entra ----
+/* ---- Cargando: la energía que sube ----
 
-   Dos estelas cian que orbitan el cuerpo, en el lugar donde el sprite tenía los
-   remolinos dibujados (15,2%/56,6% y 75%/48,4%, de hasta 47x39 px). El rayo del
-   pecho sigue dibujado en el sprite: esto lo acompaña, no lo reemplaza. */
+   La primera versión eran dos estelas cian orbitando el cuerpo, puestas donde el
+   sprite viejo tenía los remolinos dibujados. En producción no se leían como
+   energía: medían 40% de ancho —más que la cabeza—, arrancaban en -4% y daban la
+   vuelta completa, así que se veían como dos ganchos cian saliendo de los
+   costados de la cabeza. Orejas. Y al pasar por el frente tapaban el display del
+   pecho, que es exactamente lo que había que enfatizar.
 
-.arco {
+   La regla que salió de ahí y que ahora vale para los cinco estados: los efectos
+   ACOMPAÑAN a Chip, no lo envuelven.
+
+   Lo que hay ahora es la energía haciendo el recorrido real, medido sobre el
+   sprite de cargando: la ficha entra en el zócalo del frente (52%/78%), el cable
+   llega desde abajo a la derecha, y el display del pecho es el bloque denso de
+   45-55% de ancho y 62-72% de alto.
+
+   Los pulsos suben en DIAGONAL HACIA LA IZQUIERDA, no en vertical, y eso tiene
+   dos motivos. Uno de composición: es la continuación del cable, que viene desde
+   abajo a la derecha — la energía sigue de largo en vez de doblar en ángulo
+   recto. Y uno de contraste: derecho para arriba, el pulso cian pasa por encima
+   del display cian, del cable cian y del rayo, que es la zona más cargada de
+   todo el sprite; en la captura al 400% no se despegaba del arte. Corrido a la
+   izquierda sube por la chapa gris de la placa del pecho, donde no compite. */
+
+.pulso {
   position: absolute;
   display: block;
-  width: 40%;
-  aspect-ratio: 1;
+  /* El recorrido arranca en 76% de alto: el zócalo. Es la altura de partida, no
+     el viaje — el viaje lo hace el keyframe. */
+  top: 76%;
+  width: 8.5%;
+  height: 16%;
   opacity: 0;
 }
 
-.arco svg {
+.pulso svg {
   display: block;
   width: 100%;
   height: 100%;
+  /* El halo del cian es lo que lo despega del cuerpo gris de Chip: sin esto, a
+     este tamaño, el pulso se confunde con un reflejo de la chapa. */
+  filter: drop-shadow(0 0 5px var(--pulso-halo));
 }
 
-.arco:nth-child(1) {
-  left: -4%;
-  top: 38%;
+/* Los cuatro nacen apretados en el zócalo (48-52%) y se abren apenas al subir:
+   no salen en fila india, que se leería como una barra.
+
+   La deriva va en % del ALTO DE CHIP y no en % a secas: un porcentaje adentro de
+   translate() mide sobre el propio elemento, que acá tiene 5,5% de ancho, así
+   que -10% serían 2 px. Atado a --alto-chip escala con el personaje y mide sobre
+   el contenedor, que es lo que se quiere. */
+.pulso:nth-child(1) {
+  left: 50%;
+  --deriva: calc(var(--alto-chip) * -0.1);
 }
 
-.arco:nth-child(2) {
-  left: 58%;
-  top: 28%;
-  --giro-inicial: 180deg;
+.pulso:nth-child(2) {
+  left: 52%;
+  --deriva: calc(var(--alto-chip) * -0.13);
 }
 
-.estado-cargando .arco {
-  animation: orbitar var(--duracion-arco) linear infinite;
+.pulso:nth-child(3) {
+  left: 48%;
+  --deriva: calc(var(--alto-chip) * -0.08);
 }
 
-.estado-cargando .arco:nth-child(2) {
-  animation-delay: calc(var(--duracion-arco) / -2);
+.pulso:nth-child(4) {
+  left: 51%;
+  --deriva: calc(var(--alto-chip) * -0.115);
 }
 
-/* La estela da la vuelta y se apaga en los extremos, así el arco parece pasar
-   por detrás del cuerpo en vez de cortarse de golpe. */
-@keyframes orbitar {
+.estado-cargando .pulso {
+  animation: subir-energia var(--duracion-pulso) ease-in infinite;
+}
+
+/* Desfasados en cuartos: siempre hay uno arriba, uno al medio y uno naciendo, y
+   la línea se lee continua sin ser una barra. */
+.estado-cargando .pulso:nth-child(2) {
+  animation-delay: calc(var(--duracion-pulso) * 0.25);
+}
+
+.estado-cargando .pulso:nth-child(3) {
+  animation-delay: calc(var(--duracion-pulso) * 0.5);
+}
+
+.estado-cargando .pulso:nth-child(4) {
+  animation-delay: calc(var(--duracion-pulso) * 0.75);
+}
+
+/* Sube 22% del alto de Chip: del 82% al 60%, que es donde empieza el display.
+   Se estira al arrancar y se comprime al llegar, como un trazo que acelera. */
+@keyframes subir-energia {
   0% {
-    transform: rotate(var(--giro-inicial, 0deg)) scale(0.9);
+    transform: translate(0, 0) scaleY(0.5);
     opacity: 0;
   }
-  25% {
-    opacity: 0.9;
+  20% {
+    opacity: 0.95;
   }
   75% {
-    opacity: 0.9;
+    opacity: 0.95;
   }
   100% {
-    transform: rotate(calc(var(--giro-inicial, 0deg) + 360deg)) scale(1.05);
+    transform: translate(var(--deriva), calc(var(--alto-chip) * -0.22)) scaleY(0.35);
     opacity: 0;
+  }
+}
+
+/* El latido del rayo: el display del pecho se enciende cuando el pulso llega.
+   No es una forma nueva —el rayo ya está dibujado en el sprite— es luz encima,
+   en la caja medida del display. Comparte --duracion-pulso, así que late en
+   sincronía con lo que sube: eso es lo que cierra el circuito visualmente. */
+#latido-rayo {
+  position: absolute;
+  /* El display medido va de 45% a 55% de ancho y de 62% a 72% de alto. La caja
+     es más grande que eso a propósito: el degradé se apaga antes del borde, así
+     que si midiera justo el display la luz quedaría cortada en el filo. */
+  left: 40%;
+  top: 57%;
+  width: 20%;
+  height: 20%;
+  border-radius: 40%;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--pulso-nucleo) 70%, transparent) 0%,
+    color-mix(in srgb, var(--pulso-halo) 45%, transparent) 45%,
+    transparent 75%
+  );
+  opacity: 0;
+  display: none;
+}
+
+.estado-cargando #latido-rayo {
+  display: block;
+  animation: latir-rayo var(--duracion-pulso) ease-out infinite;
+}
+
+/* El pico va al final del ciclo del pulso, no al principio: primero llega la
+   energía, después prende. */
+@keyframes latir-rayo {
+  0%,
+  55% {
+    opacity: 0.15;
+    transform: scale(0.9);
+  }
+  85% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 0.15;
+    transform: scale(0.9);
   }
 }
 
@@ -605,8 +784,11 @@ body {
   animation-delay: 800ms;
 }
 
+/* La única que subía cerca de la antena: en 57% y creciendo a 1,5 al estallar,
+   su borde izquierdo llegaba a 54,4% y rozaba el círculo de exclusión, que en
+   limpiando va de 34,9% a 56,9%. Tres puntos a la derecha la sacan del paso. */
 .burbuja:nth-child(4) {
-  left: 57%;
+  left: 60%;
   top: 12%;
   width: 10.5%;
   animation-delay: 1200ms;
@@ -747,10 +929,15 @@ body.es-noche #antena {
 
 /* ---- 3. Las Z del standby ---- */
 
+/* La capa cubre el contenedor entero y cada Z se ubica sola. Antes el contenedor
+   estaba en 62%/14% y las tres Z, posicionadas absolutas sin left ni top, caían
+   TODAS en el mismo punto: se apilaban una encima de otra. Como además tienen
+   tamaños distintos y delays distintos, en pantalla eso no se leía como tres Z
+   subiendo — se leía como una sola Z que crecía y se achicaba en el lugar. Ese
+   era el bug de "apenas se ve una Z": estaban las tres, superpuestas. */
 #zetas {
   position: absolute;
-  left: 62%;
-  top: 14%;
+  inset: 0;
 }
 
 /* Tamaño y contorno de las Z dibujadas en el sprite viejo: la más grande media
@@ -771,18 +958,27 @@ body.es-noche #antena {
   display: none;
 }
 
+/* Cada una en su lugar, sobre la diagonal que sale de la sien derecha y se va
+   arriba a la derecha. La antena en standby está en 50%/11,5%: la diagonal
+   arranca en 61% y se aleja, así que ninguna de las tres entra nunca en el
+   círculo de exclusión. La más lejana termina en 78% + 8% de ancho = 86%, adentro
+   de FRANJA_EFECTOS. */
 .zeta:nth-child(1) {
+  left: 61%;
+  top: 27%;
   font-size: calc(var(--alto-chip) * 0.055);
 }
 
 .zeta:nth-child(2) {
+  left: 67%;
+  top: 20%;
   font-size: calc(var(--alto-chip) * 0.068);
-  animation-delay: calc(var(--ciclo-zeta) * 0.325); /* 1.3 s de 4 */
 }
 
 .zeta:nth-child(3) {
+  left: 73%;
+  top: 13%;
   font-size: calc(var(--alto-chip) * 0.082);
-  animation-delay: calc(var(--ciclo-zeta) * 0.65); /* 2.6 s de 4 */
 }
 
 .estado-standby .zeta {
@@ -790,16 +986,45 @@ body.es-noche #antena {
   animation: flotar var(--ciclo-zeta) linear infinite;
 }
 
+/* LOS DESFASAJES VAN DESPUÉS Y ADENTRO DEL ESTADO, y no arriba con el tamaño de
+   cada Z. Es la parte del arreglo que no se veía mirando: `animation` es un
+   shorthand, así que la regla de arriba reseteaba animation-delay a 0s y le
+   ganaba por orden a `.zeta:nth-child(N)`, que tiene la misma especificidad. Las
+   tres Z venían latiendo en perfecta sincronía desde siempre. Apiladas Y
+   sincronizadas: por eso se leía una sola.
+   Se detectó midiendo el animation-delay computado, no en la captura.
+
+   El delay negativo, además, hace que el ciclo arranque ya poblado en vez de
+   empezar vacío: en el primer cuadro ya hay dos Z en el aire. */
+.estado-standby .zeta:nth-child(2) {
+  animation-delay: calc(var(--ciclo-zeta) * -0.3333);
+}
+
+.estado-standby .zeta:nth-child(3) {
+  animation-delay: calc(var(--ciclo-zeta) * -0.6666);
+}
+
+/* La meseta de opacidad es lo que garantiza que SIEMPRE haya al menos dos a la
+   vista. Cada Z está encendida del 12% al 78% del ciclo —66% del ciclo— y las
+   tres están desfasadas un tercio (33%): como 66 > 2 x 33, en cualquier momento
+   hay dos prendidas, y la mayor parte del tiempo hay tres.
+
+   Antes la opacidad subía a 0,8 en el 25% y caía en línea recta hasta el 100%:
+   la mitad del ciclo cada Z estaba por debajo de 0,4 y no se veía. Con delays
+   negativos, además, el ciclo arranca ya poblado en vez de empezar vacío. */
 @keyframes flotar {
   0% {
-    transform: translate(0, 0);
+    transform: translate(0, 0) scale(0.75);
     opacity: 0;
   }
-  25% {
-    opacity: 0.8;
+  12% {
+    opacity: 0.85;
+  }
+  78% {
+    opacity: 0.85;
   }
   100% {
-    transform: translate(17px, -41px);
+    transform: translate(calc(var(--alto-chip) * 0.05), calc(var(--alto-chip) * -0.11)) scale(1);
     opacity: 0;
   }
 }
@@ -808,7 +1033,7 @@ body.es-noche #antena {
 
 /* En la boca del enchufe, que es de donde entra la energía. Medido sobre el
    sprite de `cargando`: el cable sale en 55% / 79%.
-   Ojo con este efecto: ese sprite ya trae mucho cian dibujado —remolinos,
+   Ojo con este efecto: ese sprite ya trae mucho cian dibujado —el display,
    destellos, el cable— así que las chispas suman poco y compiten con el arte.
    Acá abajo es la zona más limpia del cuadro. */
 #chispas {
@@ -837,24 +1062,35 @@ body.es-noche #antena {
 .chispa:nth-child(2) {
   --arco-x: -3px;
   --arco-y: -18px;
-  animation-delay: calc(var(--ciclo-chispa) * 0.25);
 }
 
 .chispa:nth-child(3) {
   --arco-x: 7px;
   --arco-y: -12px;
-  animation-delay: calc(var(--ciclo-chispa) * 0.5);
 }
 
 .chispa:nth-child(4) {
   --arco-x: -6px;
   --arco-y: -16px;
-  animation-delay: calc(var(--ciclo-chispa) * 0.75);
 }
 
 .estado-cargando .chispa {
   display: block;
   animation: chispear var(--ciclo-chispa) ease-out infinite;
+}
+
+/* Mismo caso que las Z: los delays van después del shorthand, si no los pisa.
+   Las cuatro chispas también salían todas juntas. */
+.estado-cargando .chispa:nth-child(2) {
+  animation-delay: calc(var(--ciclo-chispa) * 0.25);
+}
+
+.estado-cargando .chispa:nth-child(3) {
+  animation-delay: calc(var(--ciclo-chispa) * 0.5);
+}
+
+.estado-cargando .chispa:nth-child(4) {
+  animation-delay: calc(var(--ciclo-chispa) * 0.75);
 }
 
 @keyframes chispear {
@@ -1524,7 +1760,8 @@ body:not(.es-noche) .mota {
   .estado-feliz #corazones .corazon,
   .estado-feliz .destello,
   .estado-jugando .rayita,
-  .estado-cargando .arco,
+  .estado-cargando .pulso,
+  .estado-cargando #latido-rayo,
   .estado-limpiando .burbuja,
   #corazones-extra.celebrando .corazon {
     animation: none;

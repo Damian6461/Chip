@@ -136,13 +136,19 @@ const CHISPA = `
     fill="var(--chispa-cuerpo)" stroke="var(--chispa-borde)" stroke-width="1.6"
     stroke-linejoin="round"/>`;
 
-// El remolino de cargando: un arco con núcleo claro, como la estela de energía
-// que rodeaba el cuerpo.
-const ARCO = `
-  <path d="M3.5 15.5A10 10 0 0 0 20.5 9.5" fill="none"
-    stroke="var(--arco-halo)" stroke-width="5" stroke-linecap="round"/>
-  <path d="M3.5 15.5A10 10 0 0 0 20.5 9.5" fill="none"
-    stroke="var(--arco-nucleo)" stroke-width="1.8" stroke-linecap="round"/>`;
+// El pulso de cargando: un huso vertical —ancho al medio, en punta arriba y
+// abajo— que sube por el cuerpo del enchufe al pecho. No rodea a Chip: lo
+// recorre.
+//
+// Es una forma llena y no dos trazos. La primera versión eran dos líneas con
+// stroke, y con el elemento en 3% del contenedor el trazo grueso terminaba
+// midiendo 3 px: en la captura no existía. Un huso lleno sostiene el mismo
+// dibujo —halo afuera, núcleo adentro— a cualquier tamaño.
+const PULSO = `
+  <path d="M12 1.5c2.6 5.6 3.6 8.6 3.6 10.5s-1 4.9-3.6 10.5c-2.6-5.6-3.6-8.6-3.6-10.5s1-4.9 3.6-10.5z"
+    fill="var(--pulso-halo)"/>
+  <path d="M12 5.5c1.2 3.6 1.6 5.4 1.6 6.5s-.4 2.9-1.6 6.5c-1.2-3.6-1.6-5.4-1.6-6.5s.4-2.9 1.6-6.5z"
+    fill="var(--pulso-nucleo)"/>`;
 
 // La burbuja de limpiando: redonda, con brillo arriba a la izquierda y un aro
 // más marcado, como las del sprite.
@@ -161,8 +167,14 @@ export function svgDeChispa() {
   return envolver(CHISPA);
 }
 
-export function svgDeArco() {
-  return envolver(ARCO);
+// El único que NO conserva la proporción. Todas las demás formas viven en cajas
+// cuadradas, así que el `meet` por defecto no las toca; el pulso vive en una caja
+// alta y angosta, y con `meet` el dibujo de 24x24 se escalaba entero para entrar
+// a lo ancho y quedaba centrado con aire arriba y abajo — o sea, un huso cuadrado
+// de 17 px en vez de un trazo de 17x40. En la captura eso se veía como una mancha
+// clara y no como energía subiendo. El huso es simétrico: estirarlo no lo rompe.
+export function svgDePulso() {
+  return `<svg viewBox="0 0 24 24" preserveAspectRatio="none" aria-hidden="true">${PULSO}</svg>`;
 }
 
 export function svgDeBurbuja() {

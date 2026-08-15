@@ -35,14 +35,13 @@ import {
   CORAZONES_FELIZ,
   DESTELLOS_FELIZ,
   RAYITAS_JUGANDO,
-  ARCOS_CARGANDO,
-  CHISPAS_CARGANDO,
+  PULSOS_CARGANDO,
   BURBUJAS_LIMPIANDO,
   DURACION_CORAZON_MS,
   ESPERA_ENTRE_CORAZONES_MS,
   DURACION_DESTELLO_MS,
   DURACION_RAYITA_MS,
-  DURACION_ARCO_MS,
+  DURACION_PULSO_MS,
   DURACION_BURBUJA_MS,
   CORAZONES_EXTRA_MIN,
   CORAZONES_EXTRA_MAX,
@@ -70,7 +69,7 @@ import {
   svgDeGigante,
   svgDeCorazon,
   svgDeChispa,
-  svgDeArco,
+  svgDePulso,
   svgDeBurbuja
 } from './formas.js';
 
@@ -145,7 +144,7 @@ raiz.style.setProperty(VARS_PERSONAJE.colorParpado, COLOR_PARPADO);
 raiz.style.setProperty(VARS_PERSONAJE.duracionCorazon, `${DURACION_CORAZON_MS}ms`);
 raiz.style.setProperty(VARS_PERSONAJE.duracionDestello, `${DURACION_DESTELLO_MS}ms`);
 raiz.style.setProperty(VARS_PERSONAJE.duracionRayita, `${DURACION_RAYITA_MS}ms`);
-raiz.style.setProperty(VARS_PERSONAJE.duracionArco, `${DURACION_ARCO_MS}ms`);
+raiz.style.setProperty(VARS_PERSONAJE.duracionPulso, `${DURACION_PULSO_MS}ms`);
 raiz.style.setProperty(VARS_PERSONAJE.duracionBurbuja, `${DURACION_BURBUJA_MS}ms`);
 
 // Las paletas de los efectos, por convención de nombre: --<grupo>-<tono>.
@@ -270,7 +269,7 @@ armarCorazones(contenedorCorazones, CORAZONES_FELIZ);
 armarCorazones(contenedorCorazonesExtra, CORAZONES_EXTRA_MAX, 'extra');
 armarEfecto(contenedorDestellos, DESTELLOS_FELIZ, 'destello', svgDeChispa);
 armarEfecto(document.getElementById('rayitas'), RAYITAS_JUGANDO, 'rayita', svgDeChispa);
-armarEfecto(document.getElementById('arcos'), ARCOS_CARGANDO, 'arco', svgDeArco);
+armarEfecto(document.getElementById('pulsos'), PULSOS_CARGANDO, 'pulso', svgDePulso);
 armarEfecto(document.getElementById('burbujas'), BURBUJAS_LIMPIANDO, 'burbuja', svgDeBurbuja);
 
 let temporizadorCelebracion = null;

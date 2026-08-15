@@ -412,9 +412,9 @@ export const COLORES_RAYITA = {
   cuerpo: '#ffb900'
 };
 
-// Remolinos de cargando: arcos de hasta 47x39 px —los más grandes de todos— con
-// núcleo blanco y halo cian.
-export const COLORES_ARCO = {
+// Pulsos de cargando: la energía que sube por el cuerpo desde el enchufe hasta
+// el rayo del pecho. Mismo cian del cable y del display.
+export const COLORES_PULSO = {
   halo: '#16c8e6',
   nucleo: '#eafcff'
 };
@@ -432,18 +432,40 @@ export const COLORES_ZETA = {
   cuerpo: '#00efff'
 };
 
-// Cuántas piezas de cada cosa. Los originales eran 2 corazones y 4 chispas en
-// feliz; se usan 3 corazones para que el loop no se lea como un péndulo.
-export const CORAZONES_FELIZ = 3;
+// ---- Dos reglas de composición, para los cinco estados ----
+//
+// 1. NADA toca la punta de la antena. El bulbo tiene su propio glow y es el
+//    indicador de "encendido": una partícula que le pasa por encima le apaga la
+//    lectura. La zona prohibida es un círculo de este radio alrededor de la
+//    posición de POSICIONES_ANTENA, que cambia por estado.
+//
+//    No se resuelve con detección de colisiones: se resuelve componiendo. Las
+//    partículas nacen a los costados de la cabeza y se van hacia afuera, así el
+//    centro de arriba queda libre por construcción.
+export const RADIO_EXCLUSION_ANTENA = 11; // % del contenedor
+
+// 2. Los efectos tienen que caber en la silueta de Chip ensanchada un 30%. El
+//    cuerpo va de x 14% a x 78% —medido sobre el sprite—, así que la franja
+//    permitida es de 5% a 88%. Todo lo que se salga deja de leerse como algo que
+//    le pasa a Chip y pasa a ser decoración de pantalla.
+//
+//    Los arcos que orbitaban en `cargando` medían 40% de ancho y arrancaban en
+//    -4%: se leían como dos orejas cian, más grandes que la cabeza, y encima
+//    tapaban el rayo del pecho, que era justo lo que había que enfatizar.
+export const FRANJA_EFECTOS = { desde: 5, hasta: 88 }; // % del contenedor
+
+// Cuántas piezas de cada cosa. Los corazones son cuatro y no tres para poder
+// repartirlos en abanico simétrico: dos de un lado y dos del otro. Con tres, uno
+// queda en el medio — arriba de la antena.
+export const CORAZONES_FELIZ = 4;
 export const DESTELLOS_FELIZ = 4;
 export const RAYITAS_JUGANDO = 5;
-export const ARCOS_CARGANDO = 2;
-export const CHISPAS_CARGANDO = 4;
+export const PULSOS_CARGANDO = 4;
 export const BURBUJAS_LIMPIANDO = 5;
 
 // Ritmos. Cada estado tiene el suyo: no son partículas genéricas recoloreadas.
 export const DURACION_RAYITA_MS = 700;
-export const DURACION_ARCO_MS = 1800;
+export const DURACION_PULSO_MS = 900;
 export const DURACION_BURBUJA_MS = 2200;
 
 // Un corazón tarda esto en nacer, subir en arco y apagarse.
@@ -468,7 +490,7 @@ export const VARS_PERSONAJE = {
   duracionCorazon: '--duracion-corazon',
   duracionDestello: '--duracion-destello',
   duracionRayita: '--duracion-rayita',
-  duracionArco: '--duracion-arco',
+  duracionPulso: '--duracion-pulso',
   duracionBurbuja: '--duracion-burbuja'
 };
 
@@ -480,7 +502,7 @@ export const GRUPOS_DE_COLOR = {
   corazon: COLORES_CORAZON,
   destello: COLORES_DESTELLO,
   rayita: COLORES_RAYITA,
-  arco: COLORES_ARCO,
+  pulso: COLORES_PULSO,
   burbuja: COLORES_BURBUJA,
   zeta: COLORES_ZETA
 };
