@@ -333,6 +333,7 @@ El juego no es un panel de control con un dibujo arriba: es un lugar. Abrirlo es
 │   ├── #sombra     quieta: cuando Chip salta, se queda en el piso
 │   └── #contenedor-mascota   rebota
 │       ├── canvas 256×256
+│       ├── #pantalla         la del pecho, con la batería de verdad
 │       └── #efectos          glow, Z, chispas
 ├── #estado         los números, sólo al tocar a Chip
 ├── #evento         una línea apoyada en el piso
@@ -465,6 +466,35 @@ Los dos colores salen muestreados del `feliz.png` viejo antes de reemplazarlo �
 **Los destellos no flotan: laten.** Aparecen y desaparecen desde el centro hacia afuera en 900 ms. Esa diferencia de comportamiento es lo que los separa de los corazones.
 
 **El disparo por evento no mira la acción, mira el humor.** `main.js` compara el humor antes y después: si subió, hay tanda. Con el humor en 100, jugar se aplica igual —gasta batería— pero no hay nada que festejar, y un corazón sin efecto le mentiría al jugador. Mismo criterio que el salto, y vale para cualquier acción futura que suba humor.
+
+### La pantalla del pecho, viva
+
+El display del torso estaba **pintado** en los siete sprites y decía siempre `100%`. Era lo único del juego que mentía: Chip podía estar con la batería en 12 y mostrar el instrumento lleno. Ahora una capa lo tapa y lo redibuja con el stat real — seis segmentos y el número.
+
+**La tabla salió de dos métodos, porque ninguno solo resuelve los nueve sprites**, y cada fracaso tiene su motivo:
+
+| método | qué busca | dónde falla |
+|---|---|---|
+| vidrio | el color del cristal: `b − r ≥ 26` con luminancia baja. Muestreado adentro de idle, el vidrio es un azul-verde muy oscuro y esa firma no la tiene nada más — el contorno negro tiene `b − r ≈ 0` y la chapa del pecho es cálida | `critico`, donde la pantalla está en alarma y el cristal se pinta gris; `cargando`, donde el cable cian comparte la firma |
+| hueco | el agujero oscuro más grande adentro de la placa del pecho. Topológico, no cromático | `limpiando` y `standby`, donde el trapo y los brazos parten la placa |
+
+**La elección entre los dos no es a ojo.** Una pantalla válida entra en la placa del pecho, ocupa entre 14% y 27% del ancho del lienzo y tiene relación de aspecto entre 1,15 y 2,3. Sin la condición de la placa, en `critico` el método del vidrio elegía un recorte de más abajo que pasaba las pruebas de forma, y en `esperando` elegía los antebrazos cruzados.
+
+A los dos que salen por el método del hueco se les **erosiona el borde** después, porque ese método se come el bisel. El corte de la derecha lo marca el separador del rayo: el rayo vive en su propio recuadro, al lado del cristal, y no es parte de la pantalla. Sin la erosión, el reemplazo de `cargando` se comía el marco y el rayo del arte — se vio en la captura ampliada, no en los números. Las ocho cajas terminan entre **17,2% y 18,3% de ancho**, que es la confirmación de que los dos métodos miden la misma cosa.
+
+**El giro también está medido**, ajustando una recta al borde superior del cristal columna por columna y descartando el 12% de cada punta por las esquinas redondeadas. Va de 0° en las poses frontales a 7,4° en `jugando`. El residuo del ajuste delata algo: 0 a 0,4 px de frente, pero **2,9 px en `cargando`**, donde la pantalla no está girada sino en **perspectiva** — es un trapecio, y 2,5° es la mejor aproximación con un giro plano.
+
+**No se redibuja en los siete estados, y eso es a propósito:**
+
+- `standby` muestra una luna. No hay número, no hay mentira: Chip duerme.
+- `critico` muestra la batería vacía en rojo, que es exactamente lo que pasa cuando el stat está abajo del umbral.
+- `esperando` **no tiene pantalla visible**: los antebrazos cruzados la tapan entera. No es que el detector falle — es que no está.
+
+Taparlas sería cambiar un dibujo correcto por uno peor.
+
+**El número es una fuente de píxeles de 3×5 dibujada en `formas.js`**, no tipografía. El primer intento usó la monoespaciada del sistema y, comparando la captura ampliada contra el sprite **a la misma escala** —la única comparación que vale—, quedaba una mancha ilegible al lado del `100%` del arte, que es una fuente de display gruesa. A 3×5 la proporción sale sola: `100%` son cuatro caracteres de 3 más tres separaciones de 1, o sea 15 × 5 unidades, y esa relación 3:1 es exactamente la del texto dibujado, que ocupa el 50% del ancho y el 15% del alto del cristal.
+
+Los segmentos redondean **hacia arriba con piso en 1**: con batería en 1 queda algo encendido —el aparato está prendido— y sólo en 0 queda todo apagado. Redondear al más cercano dejaría el instrumento vacío desde el 8% para abajo, que es justo cuando el jugador más mira la pantalla.
 
 ### El glow de la antena, por estado
 

@@ -272,6 +272,119 @@ body.es-noche #toma {
 }
 
 /* ============================================================================
+   LA PANTALLA DEL PECHO, VIVA
+
+   El display del torso estaba PINTADO en los siete sprites y decía siempre
+   "100%". Era lo único del juego que mentía: Chip podía estar con la batería en
+   12 y mostrar el instrumento lleno.
+
+   Esta capa tapa el cristal dibujado y lo vuelve a dibujar con el stat real.
+   Va justo encima del canvas y debajo del párpado, los ojos y los efectos:
+   forma parte del cuerpo, no es un efecto superpuesto.
+
+   La caja y el giro salen de PANTALLAS_PECHO (config.js), medidos sprite por
+   sprite. El giro importa: salvo idle y limpiando, que están de frente, todas
+   las poses tienen la pantalla algo inclinada, y un rectángulo derecho encima
+   de una pantalla inclinada canta enseguida.
+   ============================================================================ */
+
+#pantalla {
+  position: absolute;
+  left: var(--pantalla-x);
+  top: var(--pantalla-y);
+  width: var(--pantalla-ancho);
+  height: var(--pantalla-alto);
+  transform: rotate(var(--pantalla-giro));
+  /* El cristal de cada pose tiene su propio color, porque cambia la
+     iluminación. Un solo color para las siete se notaba en las laterales. */
+  background: var(--pantalla-vidrio);
+  border-radius: 12%/16%;
+  overflow: hidden;
+  pointer-events: none;
+  /* Contenedor de tamaño, para que el número pueda medirse en cqh —o sea, en %
+     del alto de ESTA pantalla—. Es la única forma limpia de que el tipo escale
+     con la caja de cada pose: las siete miden distinto, de 11,3% a 14,1% del
+     lienzo, y un tamaño atado al alto de Chip quedaría grande en unas y chico
+     en otras. */
+  container-type: size;
+}
+
+#pantalla[hidden] {
+  display: none;
+}
+
+/* El vidrio no es plano: el arte le pinta un brillo arriba y sombra abajo. Sin
+   esto el reemplazo se lee como un sticker mate sobre un dibujo con volumen. */
+#pantalla::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.09) 0%,
+    rgba(255, 255, 255, 0) 42%,
+    rgba(0, 0, 0, 0.22) 100%
+  );
+}
+
+#pantalla-segmentos {
+  position: absolute;
+  left: var(--pantalla-seg-x);
+  top: var(--pantalla-seg-y);
+  width: var(--pantalla-seg-ancho);
+  height: var(--pantalla-seg-alto);
+  display: flex;
+  /* Medido sobre el arte: los seis segmentos dibujados son gruesos y la ranura
+     entre ellos es la mitad de angosta. Con 8% quedaban flacos y el instrumento
+     se leía como seis rayitas en vez de un medidor. */
+  gap: 6%;
+}
+
+.segmento {
+  flex: 1 1 0;
+  border-radius: 1px;
+  background: var(--color-bateria);
+  /* Apagado no es invisible: el aparato tiene seis casilleros y se ven los
+     seis, prendidos o no. Es lo que hace que el instrumento se lea como
+     instrumento y no como una barra que crece. */
+  opacity: 0.16;
+}
+
+.segmento.encendido {
+  opacity: 1;
+  box-shadow: 0 0 3px color-mix(in srgb, var(--color-bateria) 55%, transparent);
+}
+
+#pantalla-numero {
+  position: absolute;
+  left: 0;
+  top: var(--pantalla-num-y);
+  width: 100%;
+  height: var(--pantalla-num-alto);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* El color va acá y el SVG lo toma con `fill="currentColor"`. */
+  color: var(--color-bateria);
+}
+
+/* El número es una fuente de píxeles de 3x5 dibujada en formas.js, no
+   tipografía. El primer intento usó la monoespaciada del sistema y al comparar
+   la captura ampliada contra el sprite —a la MISMA escala, que es la única
+   comparación que vale— quedaba una mancha ilegible al lado del "100%" del
+   arte, que es una fuente de display gruesa.
+
+   El alto va en cqh —% del alto del cristal— porque el texto dibujado ocupa el
+   15% de esa caja. El ancho lo decide el viewBox: así "9%" y "100%" tienen los
+   glifos del mismo tamaño y sólo cambia lo que ocupan. */
+#pantalla-numero svg {
+  display: block;
+  height: 15cqh;
+  width: auto;
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--color-bateria) 55%, transparent));
+}
+
+/* ============================================================================
    EL PARPADEO
 
    La primera animación que pasa ADENTRO de Chip: todo lo demás mueve la imagen

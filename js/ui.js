@@ -49,6 +49,12 @@ import {
   VARS_PERSONAJE,
   POSICIONES_ANTENA,
   VARS_ANTENA,
+  PANTALLAS_PECHO,
+  ESTADOS_CON_PANTALLA_VIVA,
+  SEGMENTOS_PANTALLA,
+  CAJA_SEGMENTOS,
+  CAJA_NUMERO,
+  VARS_PANTALLA,
   PUNTA_DEL_CABLE,
   TAMANO_TOMA,
   VARS_TOMA,
@@ -75,7 +81,8 @@ import {
   svgDeChispa,
   svgDePulso,
   svgDeBurbuja,
-  svgDeToma
+  svgDeToma,
+  svgDeNumero
 } from './formas.js';
 
 const cajaChip = document.getElementById('chip');
@@ -180,6 +187,70 @@ if (toma) {
 
   for (const [tono, valor] of Object.entries(COLORES_TOMA)) {
     raiz.style.setProperty(`--toma-${tono}`, valor);
+  }
+}
+
+// ---- La pantalla del pecho, viva ----
+//
+// Tapa la que está pintada en el sprite —que decía siempre 100%, con la batería
+// en 12 igual que en 100— y muestra el stat de verdad.
+//
+// Los segmentos se crean una sola vez: son seis, como los seis que están
+// dibujados en el arte, y lo que cambia en cada render es cuáles están
+// encendidos. Crearlos de nuevo en cada tick sería tirar y rehacer seis nodos
+// varias veces por segundo para no cambiar nada.
+const pantalla = document.getElementById('pantalla');
+const segmentosPantalla = document.getElementById('pantalla-segmentos');
+const numeroPantalla = document.getElementById('pantalla-numero');
+
+if (pantalla) {
+  for (let i = 0; i < SEGMENTOS_PANTALLA; i++) {
+    const seg = document.createElement('span');
+    seg.className = 'segmento';
+    segmentosPantalla.appendChild(seg);
+  }
+  raiz.style.setProperty('--pantalla-seg-x', `${CAJA_SEGMENTOS.x}%`);
+  raiz.style.setProperty('--pantalla-seg-y', `${CAJA_SEGMENTOS.y}%`);
+  raiz.style.setProperty('--pantalla-seg-ancho', `${CAJA_SEGMENTOS.ancho}%`);
+  raiz.style.setProperty('--pantalla-seg-alto', `${CAJA_SEGMENTOS.alto}%`);
+  raiz.style.setProperty('--pantalla-num-y', `${CAJA_NUMERO.y}%`);
+  raiz.style.setProperty('--pantalla-num-alto', `${CAJA_NUMERO.alto}%`);
+}
+
+// Cuántos segmentos prende un stat. Se redondea hacia ARRIBA salvo en cero: con
+// batería en 1 tiene que quedar algo encendido —el aparato está prendido— y con
+// batería en 0 no puede quedar nada. Redondear al más cercano dejaría el
+// instrumento vacío desde el 8% para abajo, que es justo cuando el jugador más
+// mira la pantalla.
+function segmentosEncendidos(bateria) {
+  if (bateria <= STAT_MIN) return 0;
+  return Math.max(1, Math.ceil((bateria / STAT_MAX) * SEGMENTOS_PANTALLA));
+}
+
+function pintarPantalla(estado, estadoVisual) {
+  if (!pantalla) return;
+
+  const caja = PANTALLAS_PECHO[estadoVisual];
+  const viva = caja && ESTADOS_CON_PANTALLA_VIVA.includes(estadoVisual);
+  pantalla.hidden = !viva;
+  if (!viva) return;
+
+  pantalla.style.setProperty(VARS_PANTALLA.x, `${caja.x}%`);
+  pantalla.style.setProperty(VARS_PANTALLA.y, `${caja.y}%`);
+  pantalla.style.setProperty(VARS_PANTALLA.ancho, `${caja.ancho}%`);
+  pantalla.style.setProperty(VARS_PANTALLA.alto, `${caja.alto}%`);
+  pantalla.style.setProperty(VARS_PANTALLA.giro, `${caja.giro}deg`);
+  pantalla.style.setProperty(VARS_PANTALLA.vidrio, caja.vidrio);
+
+  const bateria = Math.round(estado.bateria);
+  const prendidos = segmentosEncendidos(estado.bateria);
+  [...segmentosPantalla.children].forEach((seg, i) => {
+    seg.classList.toggle('encendido', i < prendidos);
+  });
+  const texto = `${bateria}%`;
+  if (numeroPantalla.dataset.texto !== texto) {
+    numeroPantalla.dataset.texto = texto;
+    numeroPantalla.innerHTML = svgDeNumero(texto);
   }
 }
 
@@ -735,6 +806,7 @@ export function render(estado, estadoVisual, esNoche, luz = null) {
   pintarClaseEstado(estadoVisual);
   dibujarMascota(estadoVisual);
   pintarOjos(estadoVisual);
+  pintarPantalla(estado, estadoVisual);
   actualizarBarras(estado);
 }
 

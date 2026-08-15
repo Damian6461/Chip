@@ -59,6 +59,16 @@
            nada: dibuja 1 a 1 y el CSS lo lleva al tamaño de la escena. -->
       <canvas id="canvas-mascota" width="256" height="256"></canvas>
 
+      <!-- La pantalla del pecho, viva. Tapa la que está pintada en el sprite
+           —que decía siempre 100%— y muestra la batería de verdad. Va justo
+           encima del canvas y debajo de todo lo demás: es parte del cuerpo, no
+           un efecto. Su contenido y su posición los escribe ui.js desde la
+           tabla medida de config.js. -->
+      <div id="pantalla" aria-hidden="true" hidden>
+        <div id="pantalla-segmentos"></div>
+        <div id="pantalla-numero"></div>
+      </div>
+
       <!-- El párpado: el mismo recorte usado como máscara y rellenado de un
            color plano. Tapa los ojos que el sprite base trae dibujados, para que
            al cerrarse no asomen por arriba y por abajo de la capa de ojos.

@@ -150,6 +150,56 @@ const PULSO = `
   <path d="M12 5.5c1.2 3.6 1.6 5.4 1.6 6.5s-.4 2.9-1.6 6.5c-1.2-3.6-1.6-5.4-1.6-6.5s.4-2.9 1.6-6.5z"
     fill="var(--pulso-nucleo)"/>`;
 
+// ---- El número de la pantalla del pecho ----
+//
+// Una fuente de píxeles de 3x5, dibujada acá y no tipografiada.
+//
+// El primer intento usó la monoespaciada del sistema, la misma de las barras
+// del panel. Al comparar la captura ampliada contra el sprite —a la MISMA
+// escala, que es la única comparación que vale— el número quedaba una mancha
+// ilegible: el "100%" del arte es una fuente de display gruesa que ocupa la
+// mitad del ancho del cristal, y una monoespaciada vectorial a 12 px con halo
+// no se le parece en nada.
+//
+// A 3x5 la proporción da sola: "100%" son cuatro caracteres de 3 más tres
+// separaciones de 1, o sea 15 x 5 unidades. Esa relación 3:1 es exactamente la
+// del texto dibujado, que ocupa el 50% del ancho y el 15% del alto del cristal.
+const DIGITOS = {
+  '0': ['111', '101', '101', '101', '111'],
+  '1': ['010', '110', '010', '010', '111'],
+  '2': ['111', '001', '111', '100', '111'],
+  '3': ['111', '001', '111', '001', '111'],
+  '4': ['101', '101', '111', '001', '001'],
+  '5': ['111', '100', '111', '001', '111'],
+  '6': ['111', '100', '111', '101', '111'],
+  '7': ['111', '001', '001', '001', '001'],
+  '8': ['111', '101', '111', '101', '111'],
+  '9': ['111', '101', '111', '001', '111'],
+  '%': ['101', '001', '010', '100', '101']
+};
+
+// Un rect por píxel encendido. Son a lo sumo 5 caracteres x 15 píxeles: sale más
+// barato que cualquier alternativa y no depende de ninguna fuente instalada.
+export function svgDeNumero(texto) {
+  const chars = [...texto].filter((c) => c in DIGITOS);
+  if (!chars.length) return '';
+
+  const ancho = chars.length * 4 - 1;
+  let px = '';
+  chars.forEach((c, i) => {
+    DIGITOS[c].forEach((fila, y) => {
+      [...fila].forEach((bit, x) => {
+        if (bit === '1') px += `<rect x="${i * 4 + x}" y="${y}" width="1" height="1"/>`;
+      });
+    });
+  });
+
+  // shape-rendering crispEdges: sin esto el navegador antialiasa los bordes de
+  // cada píxel al escalar y el número deja de ser pixel art.
+  return `<svg viewBox="0 0 ${ancho} 5" aria-hidden="true" shape-rendering="crispEdges"
+    fill="currentColor">${px}</svg>`;
+}
+
 // ---- La toma de corriente del galpón ----
 //
 // No es un efecto ni un objeto de la colección: es MOBILIARIO. Está siempre, en

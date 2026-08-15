@@ -332,6 +332,95 @@ export const VARS_ANTENA = {
   y: '--antena-y'
 };
 
+// ---- La pantalla del pecho ----
+//
+// El display del torso estaba PINTADO en los siete sprites y decía siempre
+// "100%". Era la única cosa del juego que mentía: Chip podía estar con la
+// batería en 12 y mostrar el instrumento lleno.
+//
+// Esta tabla es dónde cae el vidrio de esa pantalla en cada sprite, en % del
+// lienzo de 256, medida con la misma disciplina que POSICIONES_ANTENA: aislar
+// por una firma que separe, quedarse con la componente conexa, y MIRAR la caja
+// dibujada encima del sprite antes de darla por buena.
+//
+// Hicieron falta dos métodos, porque ninguno solo resuelve los nueve sprites:
+//
+//   vidrio — el color del cristal. Muestreado adentro de la pantalla de idle, es
+//            un azul-verde muy oscuro (r≈0, g 19-36, b 36-56); la firma
+//            `b - r >= 26` con luminancia baja no la tiene nada más, porque el
+//            contorno negro tiene b-r≈0 y la chapa del pecho es cálida. Falla en
+//            `critico`, donde la pantalla está en alarma y el cristal se pinta
+//            gris, y en `cargando`, donde el cable cian comparte la firma.
+//
+//   hueco  — el agujero oscuro más grande adentro de la placa del pecho.
+//            Topológico y no cromático, así que sirve justo donde falla el otro.
+//
+// La elección entre los dos no es a ojo: una pantalla válida entra en la placa
+// del pecho, ocupa entre 14% y 27% del ancho del lienzo y tiene relación de
+// aspecto entre 1,15 y 2,3. Sin la condición de la placa, en `critico` el
+// método del vidrio elegía un recorte de más abajo que pasaba las pruebas de
+// forma, y en `esperando` elegía los antebrazos cruzados.
+//
+// `giro` sale de ajustar una recta al borde superior del cristal, columna por
+// columna, descartando el 12% de cada punta por las esquinas redondeadas. Todos
+// los sprites tienen la pantalla algo inclinada salvo idle y limpiando, que
+// están de frente. El residuo del ajuste es de 0 a 0,4 px en las poses
+// frontales y sube a 2,9 px en `cargando`: ahí la pantalla no está inclinada
+// sino EN PERSPECTIVA —es un trapecio, no un rectángulo girado— y 2,5° es la
+// mejor aproximación de un giro plano.
+//
+// `vidrio` es el color de fondo, la moda de los píxeles oscuros de adentro de
+// cada pantalla. Cambia de sprite a sprite porque cambia la iluminación de la
+// pose, y por eso no hay un solo color para todas.
+//
+// A los dos que salieron por el método del hueco —critico y cargando— se les
+// erosionó el borde después, porque ese método se come el bisel de alrededor y
+// deja la caja unos píxeles más grande. El corte de la derecha lo marca el
+// separador del rayo: el rayo vive en su propio recuadro, al lado del cristal,
+// y no forma parte de la pantalla. Con el bisel adentro, en la captura ampliada
+// el reemplazo de `cargando` se comía el marco y el rayo del arte.
+//
+// Todas las cajas caen entre 17,2% y 18,3% de ancho, que es la confirmación de
+// que los dos métodos están midiendo la misma cosa.
+export const PANTALLAS_PECHO = {
+  idle: { x: 37.5, y: 61.3, ancho: 17.2, alto: 12.5, giro: 0, vidrio: '#001e30' },
+  feliz: { x: 36.3, y: 60.9, ancho: 18.0, alto: 12.9, giro: 2.3, vidrio: '#001c2e' },
+  critico: { x: 34.0, y: 65.2, ancho: 17.2, alto: 11.3, giro: 6.8, vidrio: '#0f1825' },
+  standby: { x: 37.9, y: 63.7, ancho: 17.2, alto: 12.5, giro: 0.7, vidrio: '#00283f' },
+  cargando: { x: 43.0, y: 62.1, ancho: 18.3, alto: 11.7, giro: 2.5, vidrio: '#002137' },
+  jugando: { x: 39.5, y: 57.0, ancho: 17.6, alto: 14.1, giro: 7.4, vidrio: '#001c2e' },
+  limpiando: { x: 37.9, y: 60.9, ancho: 16.4, alto: 13.3, giro: 0, vidrio: '#001e31' }
+};
+
+// En qué estados la pantalla se redibuja viva. NO es "en todos", y la razón es
+// que el arte de los otros dos ya dice la verdad:
+//
+//   standby  muestra una luna. No hay número, no hay mentira: Chip duerme.
+//   critico  muestra la batería vacía en rojo, que es exactamente lo que pasa
+//            cuando el stat está abajo de JUGAR_BATERIA_MINIMA.
+//
+// Taparlas sería reemplazar un dibujo correcto por uno peor.
+export const ESTADOS_CON_PANTALLA_VIVA = ['idle', 'feliz', 'cargando', 'jugando', 'limpiando'];
+
+// Cuántos segmentos tiene el instrumento. Son seis porque son seis los que están
+// dibujados en el sprite: el reemplazo tiene que leerse como el mismo aparato.
+export const SEGMENTOS_PANTALLA = 6;
+
+// Dónde cae cada cosa adentro del cristal, en % de la caja. Medido sobre idle,
+// que es la pose frontal: las barras ocupan de 22% a 53% de alto y de 16% a 84%
+// de ancho; el número, de 69% a 84% de alto.
+export const CAJA_SEGMENTOS = { x: 16, y: 22, ancho: 68, alto: 31 };
+export const CAJA_NUMERO = { y: 66, alto: 20 };
+
+export const VARS_PANTALLA = {
+  x: '--pantalla-x',
+  y: '--pantalla-y',
+  ancho: '--pantalla-ancho',
+  alto: '--pantalla-alto',
+  giro: '--pantalla-giro',
+  vidrio: '--pantalla-vidrio'
+};
+
 // ---- La toma de corriente ----
 //
 // El cable de `cargando.png` salía hacia abajo a la derecha y terminaba en el
