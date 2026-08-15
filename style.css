@@ -1,3 +1,16 @@
+/* Fuente del instrumento: los números de las barras.
+   Stack del sistema, sin archivo propio. Cualquier fuente externa rompería el
+   offline, que acá es requisito duro, y en el repo no hay ninguna pixel font
+   para servir local. Si algún día entra una, se declara en este mismo lugar y
+   va a ARCHIVOS_CACHE con su bump de versión.
+
+   Los COLORES de las barras no están acá: los inyecta ui.js desde config.js,
+   porque salen muestreados del sprite de Chip y son datos del personaje. La
+   tipografía es estilo y se queda en la hoja. */
+:root {
+  --fuente-instrumento: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono", monospace;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -96,25 +109,70 @@ body {
   min-width: 56px;
 }
 
+/* ---- Las barras son hardware ----
+
+   Un hueco oscuro hundido bajo un marco fino de metal, y adentro una barra que
+   ilumina como las pantallitas de las máquinas del galpón. Esquinas de 2 px:
+   instrumento, no pastilla web. */
+
 .barra-pista {
   flex: 1;
   height: 14px;
-  background: #1e2129;
-  border: 1px solid #2a2d38;
-  border-radius: 7px;
+  background: #0a0c11;
+  border: 1px solid #363c49;
+  border-radius: 2px;
   overflow: hidden;
+  box-shadow:
+    /* la sombra de arriba hunde el hueco bajo el marco */
+    inset 0 2px 3px rgba(0, 0, 0, 0.75),
+    /* el filo de abajo lo devuelve, como chapa doblada */
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+/* El tratamiento del fill es UNO solo y el color entra por --color-barra, que
+   cada barra define abajo. Así el brillo y el degradé se tocan en un lugar y no
+   en tres.
+
+   El degradé va claro arriba, color en el medio y apagado abajo: es cómo se ve
+   una barra encendida detrás de un vidrio. El brillo es inset a propósito — la
+   pista tiene overflow hidden, así que un resplandor hacia afuera quedaría
+   recortado y no se vería nunca. */
 .barra-fill {
   height: 100%;
   width: 100%;
-  background: #4ade80;
-  transition: width var(--transicion-barra) ease-out, background-color 0.2s ease;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, white 30%, var(--color-barra)) 0%,
+    var(--color-barra) 45%,
+    color-mix(in srgb, black 22%, var(--color-barra)) 100%
+  );
+  box-shadow:
+    inset 0 0 7px color-mix(in srgb, var(--color-barra) 55%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: width var(--transicion-barra) ease-out;
 }
 
+/* Los tres colores del personaje, uno por barra. Ver COLORES_BARRAS en
+   config.js: de dónde sale cada uno está anotado ahí. */
+#barra-bateria-fill {
+  --color-barra: var(--color-bateria);
+}
+
+#barra-humor-fill {
+  --color-barra: var(--color-humor);
+}
+
+#barra-mantenimiento-fill {
+  --color-barra: var(--color-mantenimiento);
+}
+
+/* Lectura de instrumento: monoespaciada y de ancho fijo, para que el número no
+   baile al pasar de 100 a 99. */
 .barra-valor {
-  font-size: 14px;
-  min-width: 32px;
+  font-family: var(--fuente-instrumento);
+  font-size: 13px;
+  min-width: 34px;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }

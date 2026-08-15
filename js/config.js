@@ -110,6 +110,40 @@ export const RUTAS_FONDOS = {
 // caños y el aparatito de la punta izquierda, y la ventana se le iba atrás.
 export const FONDO_POSICION_X = '18.3%';
 
+// ---- Paleta de las barras ----
+
+// Los tres colores salen del sprite de Chip, muestreados de idle.png con conteo
+// de píxeles. Ninguno está inventado ni "ajustado a ojo":
+//
+//   bateria       #01ffff  las barras del display del pecho — 77 px, dominante
+//                          absoluto de la pantalla
+//   humor         #ffa300  las hombreras naranjas — cabeza del cluster de
+//                          acentos, que va de #ff9200 a #ffaa00
+//   mantenimiento #ffc899  el brillo cálido de los aros de los ojos — cabeza de
+//                          un cluster de ~60 px de reflejos especulares
+//
+// Los tres son colores de LUZ, y eso es a propósito. El primer candidato para
+// mantenimiento fue #c2a593, la placa del torso, pero al 100% se leía apagado al
+// lado de las otras dos: es un color de superficie —luz reflejada— y las barras
+// son indicadores encendidos. El brillo del ojo es el emisivo que faltaba.
+//
+// Si el arte de Chip cambia, estos tres se vuelven a muestrear: son un reflejo
+// del personaje, no una decisión de UI independiente.
+export const COLORES_BARRAS = {
+  bateria: '#01ffff',
+  humor: '#ffa300',
+  mantenimiento: '#ffc899'
+};
+
+// Mismo puente que VARS_ANIMACION: style.css no puede importar un módulo, así
+// que ui.js escribe estos custom properties en :root al arrancar y la hoja los
+// lee con var(). Las claves son las de COLORES_BARRAS y las de los stats.
+export const VARS_BARRAS = {
+  bateria: '--color-bateria',
+  humor: '--color-humor',
+  mantenimiento: '--color-mantenimiento'
+};
+
 // ---- Umbrales visuales ----
 
 // Separado de JUGAR_BATERIA_MINIMA aunque hoy valgan lo mismo: uno es una regla

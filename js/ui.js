@@ -10,7 +10,9 @@ import {
   VARS_ANIMACION,
   CLASE_SALTO,
   RUTAS_FONDOS,
-  FONDO_POSICION_X
+  FONDO_POSICION_X,
+  COLORES_BARRAS,
+  VARS_BARRAS
 } from './config.js';
 import { puedeJugar } from './acciones.js';
 import { obtenerSprite } from './sprites.js';
@@ -36,6 +38,12 @@ const raiz = document.documentElement;
 raiz.style.setProperty(VARS_ANIMACION.cicloRebote, `${CICLO_REBOTE_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.duracionSalto, `${DURACION_SALTO_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.transicionBarra, `${TRANSICION_BARRA_MS}ms`);
+
+// Los colores de las barras viajan por el mismo puente. Salen del sprite de
+// Chip (ver COLORES_BARRAS): la piel del instrumento la define el personaje.
+for (const [stat, variable] of Object.entries(VARS_BARRAS)) {
+  raiz.style.setProperty(variable, COLORES_BARRAS[stat]);
+}
 
 // El salto es de una sola pasada: la clase se saca al terminar para que la
 // próxima acción la pueda volver a poner. El rebote vive en el contenedor y no
