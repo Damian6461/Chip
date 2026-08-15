@@ -16,7 +16,7 @@ import { elegirEventos, horasConGarantiaDiaria, diaLocal } from './eventos.js';
 import { otorgarPorEventos } from './coleccion.js';
 import { OBJETOS } from './datos-objetos.js';
 import { hitoPendiente, eventoDeHito, capaPorDias } from './gigantes.js';
-import { cargarSprites, resolverEstadoVisual, esDeNoche } from './sprites.js';
+import { cargarSprites, resolverEstadoVisual, esDeNoche, franjaDeLuz } from './sprites.js';
 import {
   render as renderUI,
   mostrarEventos,
@@ -53,7 +53,7 @@ function relojEfectivo() {
 }
 
 function pintar() {
-  renderUI(estado, estadoVisualActual, esNocheActual);
+  renderUI(estado, estadoVisualActual, esNocheActual, franjaDeLuz(relojEfectivo()));
   if (refrescarDebug) refrescarDebug();
 }
 

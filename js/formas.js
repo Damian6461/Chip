@@ -109,14 +109,64 @@ export function svgDeGigante(id, revelado) {
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${forma}</svg>`;
 }
 
-// El corazón de feliz. Antes estaba dibujado en el sprite; ahora es una forma
-// que se puede animar y disparar por evento.
+// ---- Los efectos que antes estaban dibujados en los sprites ----
+//
+// Todas estas formas replican el tratamiento del arte original, medido sobre las
+// versiones viejas sacadas de git: TRES TONOS, no uno. Un borde saturado del
+// mismo tono, el cuerpo, y un brillo.
+//
+// El borde no es negro: en el corazón es rojo (#ff2741 sobre #ff8d90) y en la Z
+// es azul marino (#00204b sobre #00efff). Pero está siempre, y es lo que
+// despega la forma de la pared del galpón. Sin borde, cualquier cosa se hunde en
+// el charcoal — que es exactamente lo que pasó con la primera versión de los
+// corazones.
+
 const CORAZON = `
-  <path d="M12 21c-1.2-1-8-5.4-8-10.2A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 8 3.2C20 15.6 13.2 20 12 21z"
-    fill="var(--color-corazon)"/>`;
+  <path d="M12 21.2c-1.3-1-8.6-5.6-8.6-10.6A4.8 4.8 0 0 1 12 7.2a4.8 4.8 0 0 1 8.6 3.4c0 5-7.3 9.6-8.6 10.6z"
+    fill="var(--corazon-cuerpo)" stroke="var(--corazon-borde)" stroke-width="2.6"
+    stroke-linejoin="round"/>
+  <path d="M8.2 10.4c.3-1.4 1.6-2.1 2.6-1.8" fill="none" stroke="var(--corazon-brillo)"
+    stroke-width="1.8" stroke-linecap="round"/>`;
+
+// La chispa: una cuña que va de gruesa a fina, como las rayitas de sorpresa del
+// sprite. Sirve para el destello de feliz y para la rayita de jugando: es la
+// misma forma del arte, en dos tamaños y dos amarillos.
+const CHISPA = `
+  <path d="M17.5 5.5 8 17.2l-2.6-2.1L15.4 4z"
+    fill="var(--chispa-cuerpo)" stroke="var(--chispa-borde)" stroke-width="1.6"
+    stroke-linejoin="round"/>`;
+
+// El remolino de cargando: un arco con núcleo claro, como la estela de energía
+// que rodeaba el cuerpo.
+const ARCO = `
+  <path d="M3.5 15.5A10 10 0 0 0 20.5 9.5" fill="none"
+    stroke="var(--arco-halo)" stroke-width="5" stroke-linecap="round"/>
+  <path d="M3.5 15.5A10 10 0 0 0 20.5 9.5" fill="none"
+    stroke="var(--arco-nucleo)" stroke-width="1.8" stroke-linecap="round"/>`;
+
+// La burbuja de limpiando: redonda, con brillo arriba a la izquierda y un aro
+// más marcado, como las del sprite.
+const BURBUJA = `
+  <circle cx="12" cy="12" r="8.6" fill="var(--burbuja-cuerpo)"
+    stroke="var(--burbuja-borde)" stroke-width="1.8"/>
+  <circle cx="8.8" cy="8.8" r="2.6" fill="var(--burbuja-brillo)"/>`;
+
+const envolver = (forma) => `<svg viewBox="0 0 24 24" aria-hidden="true">${forma}</svg>`;
 
 export function svgDeCorazon() {
-  return `<svg viewBox="0 0 24 24" aria-hidden="true">${CORAZON}</svg>`;
+  return envolver(CORAZON);
+}
+
+export function svgDeChispa() {
+  return envolver(CHISPA);
+}
+
+export function svgDeArco() {
+  return envolver(ARCO);
+}
+
+export function svgDeBurbuja() {
+  return envolver(BURBUJA);
 }
 
 export function tieneForma(id) {

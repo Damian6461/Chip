@@ -13,7 +13,7 @@ import {
 import { OBJETOS, objetosDelEvento, objetoPorId } from '../js/datos-objetos.js';
 import { EVENTOS } from '../js/datos-eventos.js';
 import { otorgarPorEventos, tiene, objetosConEstado } from '../js/coleccion.js';
-import { svgDeObjeto, tieneForma } from '../js/formas-objetos.js';
+import { svgDeObjeto, tieneForma } from '../js/formas.js';
 import { diaLocal, horasConGarantiaDiaria } from '../js/eventos.js';
 import { cargarEstado, guardarEstado } from '../js/estado.js';
 

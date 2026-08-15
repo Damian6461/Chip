@@ -9,7 +9,8 @@ import {
   UMBRAL_FELIZ_BATERIA,
   UMBRAL_FELIZ_HUMOR,
   HORA_STANDBY_INICIO,
-  HORA_STANDBY_FIN
+  HORA_STANDBY_FIN,
+  FRANJAS_LUZ
 } from './config.js';
 
 const sprites = {};
@@ -33,6 +34,19 @@ function enFranjaStandby(hora) {
 // pueden discrepar sobre qué hora es.
 export function esDeNoche(ahora) {
   return enFranjaStandby(horaLocal(ahora));
+}
+
+// En qué momento del día está la luz que entra por la ventana. Devuelve null de
+// noche, que es cuando no entra ninguna.
+//
+// Vive acá con esDeNoche porque es la misma pregunta —qué hora es— y tiene que
+// contestar con el mismo reloj: si la luz dijera "tarde" mientras el fondo ya es
+// el nocturno, el galpón se contradiría solo.
+export function franjaDeLuz(ahora) {
+  if (esDeNoche(ahora)) return null;
+
+  const hora = horaLocal(ahora);
+  return FRANJAS_LUZ.find((franja) => hora >= franja.desde && hora < franja.hasta) ?? null;
 }
 
 // El orden define la prioridad: gana el primer estado cuya condición se cumple.

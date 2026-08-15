@@ -277,6 +277,33 @@ export const CLASE_OBJETO_OBTENIDO = 'obtenido';
 // uno por vez: son dos líneas sueltas en el mundo, no una lista.
 export const ESPERA_SEGUNDO_EVENTO_MS = 4000;
 
+// ---- La luz que recorre el día ----
+//
+// El galpón tiene día y noche desde el swap de fondos. Esto suma la hora: el
+// charco de luz que entra por la ventana cambia de lugar y de temperatura a lo
+// largo del día. Amanecer bajo y cálido, mediodía alto y neutro, tarde
+// anaranjada y larga.
+//
+// Es puro CSS sobre la escena que ya existe: un degradé radial detrás de Chip,
+// sin arte nuevo. Chip no se mueve — el que se mueve es el taller.
+//
+// Las franjas son [desde, hasta) en hora local, y cierran contra la franja de
+// standby: de 23 a 7 no hay luz, que es cuando el fondo ya es el nocturno.
+export const FRANJAS_LUZ = [
+  { nombre: 'amanecer', desde: 7, hasta: 11, x: '20%', y: '76%', radio: '58%', color: '#ffae5e', fuerza: 0.32 },
+  { nombre: 'mediodia', desde: 11, hasta: 16, x: '36%', y: '66%', radio: '40%', color: '#fff2d2', fuerza: 0.18 },
+  { nombre: 'tarde', desde: 16, hasta: 20, x: '58%', y: '79%', radio: '64%', color: '#ff8a3c', fuerza: 0.36 },
+  { nombre: 'anochecer', desde: 20, hasta: 23, x: '66%', y: '83%', radio: '52%', color: '#c9683f', fuerza: 0.18 }
+];
+
+export const VARS_LUZ = {
+  x: '--luz-x',
+  y: '--luz-y',
+  radio: '--luz-radio',
+  color: '--luz-color',
+  fuerza: '--luz-fuerza'
+};
+
 // ---- La punta de la antena ----
 
 // Dónde cae el bulbo de la antena en cada sprite, en % del lienzo. Medido uno
@@ -348,16 +375,76 @@ export const ESPERA_DOBLE_PARPADEO_MS = 180;
 
 export const CLASE_PARPADEO = 'parpadeando';
 
-// ---- Los corazones de feliz ----
+// ---- Los efectos por estado ----
+//
+// Damián borró los efectos que estaban dibujados en los siete sprites. Estos
+// los reemplazan, animados y prendidos por la clase de estado.
+//
+// Los colores y los TAMAÑOS no están estimados: salen de medir por diferencia
+// los sprites viejos contra los pelados, sacando los viejos de git. Lo que
+// desapareció de cada uno es exactamente el efecto que había, con su caja y su
+// paleta. La medición está anotada al lado de cada grupo.
+//
+// Todo lleva tres tonos —borde saturado, cuerpo, brillo— porque así está pintado
+// el arte del juego. Sin borde, cualquier forma se hunde en la pared charcoal:
+// la primera versión de los corazones, de un solo tono y a la mitad del tamaño,
+// no se veía.
 
-// Los dos colores salen del feliz.png viejo, el que traía los corazones y las
-// chispas dibujados, muestreados antes de reemplazarlo. El rosa NO es el
-// #ff6b81 que estimaba la spec: el del sprite es más cálido.
-export const COLOR_CORAZON = '#ff8b8d';
-export const COLOR_DESTELLO = '#ffe02c';
+// Corazones de feliz. Los originales median 24x22 px sobre el lienzo de 256, o
+// sea 9,4% del alto de Chip, y nacían pegados a los costados de la cabeza
+// (17,8% y 80,3% de ancho, 21% de alto).
+export const COLORES_CORAZON = {
+  borde: '#ff2741',
+  cuerpo: '#ff8d90',
+  brillo: '#ffe0df'
+};
 
+// Chispas de feliz: cuñas de 13-14 px de ancho, o sea 5,5%.
+export const COLORES_DESTELLO = {
+  borde: '#ffb100',
+  cuerpo: '#ffdc16'
+};
+
+// Rayitas de jugando: la misma cuña pero de 26x25, el doble, y en un amarillo
+// más anaranjado. Es el estado más enérgico y el efecto lo tiene que decir.
+export const COLORES_RAYITA = {
+  borde: '#e07d00',
+  cuerpo: '#ffb900'
+};
+
+// Remolinos de cargando: arcos de hasta 47x39 px —los más grandes de todos— con
+// núcleo blanco y halo cian.
+export const COLORES_ARCO = {
+  halo: '#16c8e6',
+  nucleo: '#eafcff'
+};
+
+// Burbujas de limpiando: redondas, de 20 a 26 px.
+export const COLORES_BURBUJA = {
+  borde: '#7fd8f0',
+  cuerpo: '#cdeffb',
+  brillo: '#ffffff'
+};
+
+// Las Z del standby: 20x25 px el más grande, con contorno azul marino.
+export const COLORES_ZETA = {
+  borde: '#00204b',
+  cuerpo: '#00efff'
+};
+
+// Cuántas piezas de cada cosa. Los originales eran 2 corazones y 4 chispas en
+// feliz; se usan 3 corazones para que el loop no se lea como un péndulo.
 export const CORAZONES_FELIZ = 3;
 export const DESTELLOS_FELIZ = 4;
+export const RAYITAS_JUGANDO = 5;
+export const ARCOS_CARGANDO = 2;
+export const CHISPAS_CARGANDO = 4;
+export const BURBUJAS_LIMPIANDO = 5;
+
+// Ritmos. Cada estado tiene el suyo: no son partículas genéricas recoloreadas.
+export const DURACION_RAYITA_MS = 700;
+export const DURACION_ARCO_MS = 1800;
+export const DURACION_BURBUJA_MS = 2200;
 
 // Un corazón tarda esto en nacer, subir en arco y apagarse.
 export const DURACION_CORAZON_MS = 2400;
@@ -378,10 +465,24 @@ export const VARS_PERSONAJE = {
   duracionParpadeo: '--duracion-parpadeo',
   colorParpado: '--color-parpado',
   mascaraOjos: '--mascara-ojos',
-  colorCorazon: '--color-corazon',
-  colorDestello: '--color-destello',
   duracionCorazon: '--duracion-corazon',
-  duracionDestello: '--duracion-destello'
+  duracionDestello: '--duracion-destello',
+  duracionRayita: '--duracion-rayita',
+  duracionArco: '--duracion-arco',
+  duracionBurbuja: '--duracion-burbuja'
+};
+
+// Las paletas de los efectos viajan por convención de nombre: cada grupo se
+// escribe como `--<grupo>-<tono>`, o sea --corazon-borde, --burbuja-brillo, etc.
+// Declarar catorce nombres a mano no agregaría nada: lo que importa es que el
+// grupo y el tono estén en config, y ahí están.
+export const GRUPOS_DE_COLOR = {
+  corazon: COLORES_CORAZON,
+  destello: COLORES_DESTELLO,
+  rayita: COLORES_RAYITA,
+  arco: COLORES_ARCO,
+  burbuja: COLORES_BURBUJA,
+  zeta: COLORES_ZETA
 };
 
 // ---- Efectos de vida ----

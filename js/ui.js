@@ -31,19 +31,26 @@ import {
   ESPERA_DOBLE_PARPADEO_MS,
   CLASE_PARPADEO,
   COLOR_PARPADO,
-  COLOR_CORAZON,
-  COLOR_DESTELLO,
+  GRUPOS_DE_COLOR,
   CORAZONES_FELIZ,
   DESTELLOS_FELIZ,
+  RAYITAS_JUGANDO,
+  ARCOS_CARGANDO,
+  CHISPAS_CARGANDO,
+  BURBUJAS_LIMPIANDO,
   DURACION_CORAZON_MS,
   ESPERA_ENTRE_CORAZONES_MS,
   DURACION_DESTELLO_MS,
+  DURACION_RAYITA_MS,
+  DURACION_ARCO_MS,
+  DURACION_BURBUJA_MS,
   CORAZONES_EXTRA_MIN,
   CORAZONES_EXTRA_MAX,
   CLASE_CELEBRANDO,
   VARS_PERSONAJE,
   POSICIONES_ANTENA,
   VARS_ANTENA,
+  VARS_LUZ,
   COLORES_BARRAS,
   VARS_BARRAS,
   PREFIJO_CLASE_ESTADO,
@@ -58,7 +65,14 @@ import { puedeJugar } from './acciones.js';
 import { obtenerSprite } from './sprites.js';
 import { objetosConEstado } from './coleccion.js';
 import { gigantesConEstado } from './gigantes.js';
-import { svgDeObjeto, svgDeGigante, svgDeCorazon } from './formas-objetos.js';
+import {
+  svgDeObjeto,
+  svgDeGigante,
+  svgDeCorazon,
+  svgDeChispa,
+  svgDeArco,
+  svgDeBurbuja
+} from './formas.js';
 
 const cajaChip = document.getElementById('chip');
 const contenedorMascota = document.getElementById('contenedor-mascota');
@@ -128,10 +142,18 @@ VARS_EFECTOS.ciclosPolvo.forEach((variable, i) => {
 raiz.style.setProperty(VARS_PERSONAJE.origenParpadeo, ORIGEN_PARPADEO);
 raiz.style.setProperty(VARS_PERSONAJE.duracionParpadeo, `${DURACION_PARPADEO_MS}ms`);
 raiz.style.setProperty(VARS_PERSONAJE.colorParpado, COLOR_PARPADO);
-raiz.style.setProperty(VARS_PERSONAJE.colorCorazon, COLOR_CORAZON);
-raiz.style.setProperty(VARS_PERSONAJE.colorDestello, COLOR_DESTELLO);
 raiz.style.setProperty(VARS_PERSONAJE.duracionCorazon, `${DURACION_CORAZON_MS}ms`);
 raiz.style.setProperty(VARS_PERSONAJE.duracionDestello, `${DURACION_DESTELLO_MS}ms`);
+raiz.style.setProperty(VARS_PERSONAJE.duracionRayita, `${DURACION_RAYITA_MS}ms`);
+raiz.style.setProperty(VARS_PERSONAJE.duracionArco, `${DURACION_ARCO_MS}ms`);
+raiz.style.setProperty(VARS_PERSONAJE.duracionBurbuja, `${DURACION_BURBUJA_MS}ms`);
+
+// Las paletas de los efectos, por convención de nombre: --<grupo>-<tono>.
+for (const [grupo, tonos] of Object.entries(GRUPOS_DE_COLOR)) {
+  for (const [tono, valor] of Object.entries(tonos)) {
+    raiz.style.setProperty(`--${grupo}-${tono}`, valor);
+  }
+}
 
 // ---- El parpadeo ----
 //
@@ -231,19 +253,25 @@ function armarCorazones(contenedor, cuantos, claseExtra = '') {
   }
 }
 
-function armarDestellos() {
-  contenedorDestellos.replaceChildren();
+// Cada efecto de estado es la misma mecánica —N nodos con una forma adentro— y
+// lo que cambia es la forma, el tamaño y la animación, que vive en el CSS.
+function armarEfecto(contenedor, cuantos, clase, svg) {
+  contenedor.replaceChildren();
 
-  for (let i = 0; i < DESTELLOS_FELIZ; i++) {
+  for (let i = 0; i < cuantos; i++) {
     const nodo = document.createElement('span');
-    nodo.className = 'destello';
-    contenedorDestellos.appendChild(nodo);
+    nodo.className = clase;
+    nodo.innerHTML = svg();
+    contenedor.appendChild(nodo);
   }
 }
 
 armarCorazones(contenedorCorazones, CORAZONES_FELIZ);
 armarCorazones(contenedorCorazonesExtra, CORAZONES_EXTRA_MAX, 'extra');
-armarDestellos();
+armarEfecto(contenedorDestellos, DESTELLOS_FELIZ, 'destello', svgDeChispa);
+armarEfecto(document.getElementById('rayitas'), RAYITAS_JUGANDO, 'rayita', svgDeChispa);
+armarEfecto(document.getElementById('arcos'), ARCOS_CARGANDO, 'arco', svgDeArco);
+armarEfecto(document.getElementById('burbujas'), BURBUJAS_LIMPIANDO, 'burbuja', svgDeBurbuja);
 
 let temporizadorCelebracion = null;
 
@@ -644,10 +672,38 @@ function pintarClaseEstado(estadoVisual) {
   contenedorMascota.style.setProperty(VARS_ANTENA.y, `${antena.y}%`);
 }
 
-// `esNoche` llega resuelto desde afuera por la misma razón que `estadoVisual`:
-// decidir qué hora es se calcula, y este módulo pinta lo que le dan.
-export function render(estado, estadoVisual, esNoche) {
+// ---- La luz del galpón ----
+//
+// La franja llega calculada desde main.js con el mismo reloj que el fondo y la
+// cadena. Acá sólo se pinta: cinco variables que el degradé de la escena lee.
+//
+// De noche la fuerza va a 0 en vez de sacar la capa: así el degradé no
+// desaparece de golpe si algún día se le pone transición.
+let franjaActual = null;
+
+function pintarLuz(franja) {
+  const nombre = franja?.nombre ?? null;
+  if (nombre === franjaActual) return;
+  franjaActual = nombre;
+
+  if (!franja) {
+    raiz.style.setProperty(VARS_LUZ.fuerza, '0');
+    return;
+  }
+
+  raiz.style.setProperty(VARS_LUZ.x, franja.x);
+  raiz.style.setProperty(VARS_LUZ.y, franja.y);
+  raiz.style.setProperty(VARS_LUZ.radio, franja.radio);
+  raiz.style.setProperty(VARS_LUZ.color, franja.color);
+  raiz.style.setProperty(VARS_LUZ.fuerza, String(franja.fuerza));
+}
+
+// `esNoche` y `luz` llegan resueltos desde afuera por la misma razón que
+// `estadoVisual`: decidir qué hora es se calcula, y este módulo pinta lo que le
+// dan.
+export function render(estado, estadoVisual, esNoche, luz = null) {
   pintarFondo(esNoche);
+  pintarLuz(luz);
   pintarClaseEstado(estadoVisual);
   dibujarMascota(estadoVisual);
   pintarOjos(estadoVisual);

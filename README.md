@@ -373,6 +373,42 @@ Ese color tampoco está elegido a ojo: es el que el artista usó para dibujar lo
 
 **El ritmo:** 130 ms en total, con el reparto interno —50 de cierre, 20 de mantener, 60 de apertura— en los porcentajes del keyframe, porque es la forma del movimiento. El párpado baja más rápido de lo que sube. El intervalo entre parpadeos se **resortea después de cada uno** (2 a 6 s): fijo leería como metrónomo, que es peor que no parpadear. Y un 15% de las veces parpadea dos veces seguidas.
 
+### Los efectos por estado
+
+Damián borró de los siete sprites los efectos que estaban dibujados. Estos los reemplazan, animados y prendidos por la clase de estado — **cada uno con su comportamiento**, no partículas genéricas recoloreadas:
+
+| Estado | Efecto | Comportamiento |
+|---|---|---|
+| feliz | corazones + chispas | los corazones flotan en arco; las chispas laten |
+| cargando | dos estelas cian | orbitan el cuerpo, desfasadas medio ciclo |
+| jugando | cinco rayitas | pulso radial, el doble de rápido que en feliz |
+| limpiando | cinco burbujas | suben y **estallan** al final |
+| standby | tres Z | flotan hacia arriba-derecha |
+| critico | **ninguno** | la ausencia es la lectura del estado |
+| idle | ninguno | |
+
+**Los tamaños, colores y posiciones no están estimados.** Salen de medir por diferencia los sprites viejos —sacados de git— contra los pelados: lo que desapareció de cada uno es exactamente el efecto que había, con su caja y su paleta. Los corazones dibujados median 24×22 px sobre 256, o sea 9,4% del alto de Chip; los arcos de cargando llegaban a 47×39; las Z a 20×25.
+
+**Todo lleva tres tonos: borde saturado, cuerpo y brillo.** Así está pintado el arte del juego, y el borde no es negro — en el corazón es rojo (`#ff2741` sobre `#ff8d90`) y en la Z es azul marino (`#00204b` sobre `#00efff`). Sin borde, cualquier forma se hunde en la pared charcoal: la primera versión de los corazones, de un tono y a la mitad del tamaño, **no se veía**. Los tamaños van en % del contenedor para acompañar a Chip en cualquier pantalla.
+
+### La luz que recorre el día
+
+El galpón tenía día y noche. Ahora tiene hora: el charco que entra por la ventana cambia de lugar, de tamaño y de temperatura.
+
+| Franja | Horas | Dónde | Color |
+|---|---|---|---|
+| amanecer | 7–11 | bajo y a la izquierda | `#ffae5e` |
+| mediodía | 11–16 | alto y centrado, tenue | `#fff2d2` |
+| tarde | 16–20 | largo y a la derecha | `#ff8a3c` |
+| anochecer | 20–23 | apagándose | `#c9683f` |
+| noche | 23–7 | sin luz | — |
+
+Es un degradé radial en `#escena::after`, **puro CSS y sin arte nuevo**, con `z-index` negativo para quedar sobre la panorámica y debajo de Chip: es luz de piso y Chip está parado encima.
+
+`franjaDeLuz()` vive en `sprites.js` al lado de `esDeNoche()` porque es la misma pregunta y tiene que contestar con el mismo reloj — si la luz dijera "tarde" mientras el fondo ya es el nocturno, el galpón se contradiría solo.
+
+**Chip no se desplaza por el taller.** El que se mueve es la luz. Es decisión de diseño cerrada: mover a Chip rompería el modelo pasivo y competiría con los eventos, que ya cuentan lo que hizo mientras no estabas.
+
 ### Los corazones y los destellos
 
 Estaban dibujados adentro de `feliz.png`. Ahora son partículas, y eso desbloquea lo que un dibujo pegado al sprite no podía hacer: **dispararse por evento**.

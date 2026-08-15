@@ -95,6 +95,30 @@ body {
   justify-content: flex-end;
 }
 
+/* La luz que entra por la ventana, a lo largo del día.
+   Un charco que cambia de lugar, de tamaño y de temperatura con la hora real:
+   amanecer bajo y cálido, mediodía alto y neutro, tarde anaranjada y larga.
+   De noche la fuerza va a 0 y desaparece.
+
+   Los cinco valores los escribe ui.js desde la tabla de franjas de config.js,
+   con el MISMO reloj que decide el fondo y la cadena de estados.
+
+   z-index negativo para que quede sobre la panorámica pero DEBAJO de Chip: es
+   luz de piso, y Chip está parado encima. */
+#escena::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse var(--luz-radio, 50%) calc(var(--luz-radio, 50%) / 2) at var(--luz-x, 40%)
+      var(--luz-y, 70%),
+    color-mix(in srgb, var(--luz-color, #ffffff) calc(var(--luz-fuerza, 0) * 100%), transparent),
+    transparent 72%
+  );
+}
+
 /* ---- Chip ----
 
    Esta caja define dónde pisa y cuánto mide, y no se anima nunca: adentro, la
@@ -244,28 +268,29 @@ body {
   height: 100%;
 }
 
-/* Tres tamaños y tres puntos de nacimiento alrededor de la cabeza. Si nacieran
-   todos del mismo lugar y del mismo tamaño se leerían como un solo corazón
-   parpadeando. */
+/* Tamaños y posiciones de los originales, medidos sobre el sprite viejo: los
+   corazones dibujados eran de 24x22 px sobre 256 —o sea 9,4% del alto de Chip—
+   y nacían pegados a los costados de la cabeza, en 17,8% y 80,3% de ancho.
+
+   La primera versión los puso en 4-7% y dispersos: a ese tamaño, sobre la pared
+   texturizada del galpón, no se leían. El tamaño va en % del contenedor para que
+   acompañe a Chip en cualquier pantalla. */
 .corazon:nth-child(1) {
-  left: 16%;
-  top: 26%;
-  width: 16px;
-  height: 16px;
+  left: 14%;
+  top: 21%;
+  width: 9.4%;
 }
 
 .corazon:nth-child(2) {
-  left: 70%;
+  left: 76%;
   top: 20%;
-  width: 20px;
-  height: 20px;
+  width: 10.5%;
 }
 
 .corazon:nth-child(3) {
-  left: 40%;
-  top: 10%;
-  width: 25px;
-  height: 25px;
+  left: 45%;
+  top: 6%;
+  width: 8%;
 }
 
 /* En feliz flotan en loop. Los delays escalonados evitan que nazcan juntos. */
@@ -317,48 +342,74 @@ body {
   display: none;
 }
 
-/* Los destellos NO flotan: laten. Cuatro trazos cortos alrededor de la cabeza
-   que aparecen y desaparecen desde el centro hacia afuera. Eso es lo que los
-   diferencia de los corazones, que son continuos y suaves. */
-.destello {
+/* ---- Las chispas: la cuña del arte ----
+
+   La misma forma sirve para el destello de feliz y para la rayita de jugando —
+   en el sprite viejo eran la misma cuña, en dos tamaños y dos amarillos. Cada
+   contenedor mapea su paleta sobre las variables de la forma. */
+
+.destello,
+.rayita {
   position: absolute;
-  width: 3px;
-  height: 8px;
-  border-radius: 1px;
-  background: var(--color-destello);
+  display: block;
   opacity: 0;
 }
 
+.destello svg,
+.rayita svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#destellos {
+  --chispa-borde: var(--destello-borde);
+  --chispa-cuerpo: var(--destello-cuerpo);
+}
+
+#rayitas {
+  --chispa-borde: var(--rayita-borde);
+  --chispa-cuerpo: var(--rayita-cuerpo);
+}
+
+/* Feliz: cuatro chispas de 5,5%, en las posiciones que tenían dibujadas. NO
+   flotan: laten desde el centro hacia afuera, y eso las diferencia de los
+   corazones, que son continuos y suaves. */
+.destello {
+  width: 6%;
+  aspect-ratio: 1;
+}
+
 .destello:nth-child(1) {
-  left: 24%;
-  top: 14%;
-  --sale-x: -4px;
-  --sale-y: -3px;
+  left: 66%;
+  top: 10%;
+  --sale-x: 4px;
+  --sale-y: -4px;
 }
 
 .destello:nth-child(2) {
-  left: 74%;
-  top: 16%;
-  --sale-x: 4px;
-  --sale-y: -3px;
+  left: 26%;
+  top: 9%;
+  --sale-x: -4px;
+  --sale-y: -4px;
 }
 
 .destello:nth-child(3) {
-  left: 15%;
-  top: 30%;
-  --sale-x: -5px;
-  --sale-y: 1px;
-}
-
-.destello:nth-child(4) {
   left: 82%;
   top: 28%;
   --sale-x: 5px;
   --sale-y: 1px;
 }
 
+.destello:nth-child(4) {
+  left: 9%;
+  top: 27%;
+  --sale-x: -5px;
+  --sale-y: 1px;
+}
+
 .estado-feliz .destello {
-  animation: latir-destello var(--duracion-destello) ease-out infinite;
+  animation: latir-chispa var(--duracion-destello) ease-out infinite;
 }
 
 .estado-feliz .destello:nth-child(2) {
@@ -373,16 +424,226 @@ body {
   animation-delay: 660ms;
 }
 
-@keyframes latir-destello {
+@keyframes latir-chispa {
   0% {
-    transform: translate(0, 0) scale(0.4);
+    transform: translate(0, 0) scale(0.4) rotate(var(--giro, 0deg));
     opacity: 0;
   }
   40% {
     opacity: 1;
   }
   100% {
-    transform: translate(var(--sale-x), var(--sale-y)) scale(1);
+    transform: translate(var(--sale-x), var(--sale-y)) scale(1) rotate(var(--giro, 0deg));
+    opacity: 0;
+  }
+}
+
+/* ---- Jugando: el pulso radial ----
+
+   La misma cuña al doble de tamaño —los originales median 26x25— y más rápida.
+   Es el estado más enérgico del juego y el efecto lo tiene que decir: donde
+   feliz late suave, esto golpea. */
+
+.rayita {
+  width: 10%;
+  aspect-ratio: 1;
+}
+
+.rayita:nth-child(1) {
+  left: 74%;
+  top: 5%;
+  --sale-x: 7px;
+  --sale-y: -6px;
+  --giro: 0deg;
+}
+
+.rayita:nth-child(2) {
+  left: 17%;
+  top: 60%;
+  --sale-x: -8px;
+  --sale-y: 5px;
+  --giro: 200deg;
+}
+
+.rayita:nth-child(3) {
+  left: 38%;
+  top: 0%;
+  --sale-x: -2px;
+  --sale-y: -8px;
+  --giro: 300deg;
+}
+
+.rayita:nth-child(4) {
+  left: 31%;
+  top: 4%;
+  --sale-x: -6px;
+  --sale-y: -6px;
+  --giro: 260deg;
+}
+
+.rayita:nth-child(5) {
+  left: 79%;
+  top: 13%;
+  --sale-x: 8px;
+  --sale-y: -2px;
+  --giro: 20deg;
+}
+
+.estado-jugando .rayita {
+  animation: latir-chispa var(--duracion-rayita) ease-out infinite;
+}
+
+.estado-jugando .rayita:nth-child(2) {
+  animation-delay: 90ms;
+}
+
+.estado-jugando .rayita:nth-child(3) {
+  animation-delay: 180ms;
+}
+
+.estado-jugando .rayita:nth-child(4) {
+  animation-delay: 270ms;
+}
+
+.estado-jugando .rayita:nth-child(5) {
+  animation-delay: 360ms;
+}
+
+/* ---- Cargando: la energía que entra ----
+
+   Dos estelas cian que orbitan el cuerpo, en el lugar donde el sprite tenía los
+   remolinos dibujados (15,2%/56,6% y 75%/48,4%, de hasta 47x39 px). El rayo del
+   pecho sigue dibujado en el sprite: esto lo acompaña, no lo reemplaza. */
+
+.arco {
+  position: absolute;
+  display: block;
+  width: 40%;
+  aspect-ratio: 1;
+  opacity: 0;
+}
+
+.arco svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.arco:nth-child(1) {
+  left: -4%;
+  top: 38%;
+}
+
+.arco:nth-child(2) {
+  left: 58%;
+  top: 28%;
+  --giro-inicial: 180deg;
+}
+
+.estado-cargando .arco {
+  animation: orbitar var(--duracion-arco) linear infinite;
+}
+
+.estado-cargando .arco:nth-child(2) {
+  animation-delay: calc(var(--duracion-arco) / -2);
+}
+
+/* La estela da la vuelta y se apaga en los extremos, así el arco parece pasar
+   por detrás del cuerpo en vez de cortarse de golpe. */
+@keyframes orbitar {
+  0% {
+    transform: rotate(var(--giro-inicial, 0deg)) scale(0.9);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.9;
+  }
+  75% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: rotate(calc(var(--giro-inicial, 0deg) + 360deg)) scale(1.05);
+    opacity: 0;
+  }
+}
+
+/* ---- Limpiando: las burbujas ----
+
+   Suben y estallan. Los originales eran redondos de 20 a 26 px, repartidos
+   alrededor del cuerpo. El estallido es lo que las hace burbujas y no globos:
+   crecen de golpe al final y desaparecen. */
+
+.burbuja {
+  position: absolute;
+  display: block;
+  opacity: 0;
+}
+
+.burbuja svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.burbuja:nth-child(1) {
+  left: 10%;
+  top: 50%;
+  width: 9.5%;
+}
+
+.burbuja:nth-child(2) {
+  left: 15%;
+  top: 20%;
+  width: 10%;
+  animation-delay: 400ms;
+}
+
+.burbuja:nth-child(3) {
+  left: 71%;
+  top: 48%;
+  width: 8%;
+  animation-delay: 800ms;
+}
+
+.burbuja:nth-child(4) {
+  left: 57%;
+  top: 12%;
+  width: 10.5%;
+  animation-delay: 1200ms;
+}
+
+.burbuja:nth-child(5) {
+  left: 8%;
+  top: 25%;
+  width: 6.5%;
+  animation-delay: 1600ms;
+}
+
+.estado-limpiando .burbuja {
+  animation-name: subir-y-estallar;
+  animation-duration: var(--duracion-burbuja);
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes subir-y-estallar {
+  0% {
+    transform: translate(0, 0) scale(0.3);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.95;
+  }
+  70% {
+    transform: translate(4px, -26px) scale(1);
+    opacity: 0.95;
+  }
+  85% {
+    transform: translate(5px, -32px) scale(1.25);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(5px, -34px) scale(1.5);
     opacity: 0;
   }
 }
@@ -492,28 +753,35 @@ body.es-noche #antena {
   top: 14%;
 }
 
+/* Tamaño y contorno de las Z dibujadas en el sprite viejo: la más grande media
+   20x25 px sobre 256 —7,8% del alto— y llevaba contorno azul marino, no negro.
+   Ahora que no compiten con las dibujadas, tienen que sostener solas la lectura
+   del estado. El tamaño va atado a --alto-chip para escalar con el personaje. */
 .zeta {
   position: absolute;
-  color: var(--color-bateria);
+  color: var(--zeta-cuerpo);
   font-family: var(--fuente-instrumento);
+  font-weight: 700;
   line-height: 1;
-  text-shadow: 0 0 6px color-mix(in srgb, var(--color-bateria) 60%, transparent);
+  -webkit-text-stroke: 2px var(--zeta-borde);
+  paint-order: stroke fill;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--zeta-cuerpo) 60%, transparent);
   /* Sin la clase de estado no existen: display:none además de esconderlas
      cancela la animación, así que no gastan nada mientras Chip está despierto. */
   display: none;
 }
 
 .zeta:nth-child(1) {
-  font-size: 14px;
+  font-size: calc(var(--alto-chip) * 0.055);
 }
 
 .zeta:nth-child(2) {
-  font-size: 19px;
+  font-size: calc(var(--alto-chip) * 0.068);
   animation-delay: calc(var(--ciclo-zeta) * 0.325); /* 1.3 s de 4 */
 }
 
 .zeta:nth-child(3) {
-  font-size: 24px;
+  font-size: calc(var(--alto-chip) * 0.082);
   animation-delay: calc(var(--ciclo-zeta) * 0.65); /* 2.6 s de 4 */
 }
 
@@ -1248,10 +1516,16 @@ body:not(.es-noche) .mota {
     animation: none;
   }
 
-  /* Los corazones y los destellos se van del todo. Son celebración, y la
-     celebración es movimiento. */
+  /* Los efectos de estado se van del todo: son celebración, energía y espuma, y
+     las tres cosas son movimiento. Lo que queda es el sprite, que ya dice el
+     estado por sí solo — para eso hay siete.
+
+     La luz del día NO se va: cambia dos veces por hora y nadie la ve moverse. */
   .estado-feliz #corazones .corazon,
   .estado-feliz .destello,
+  .estado-jugando .rayita,
+  .estado-cargando .arco,
+  .estado-limpiando .burbuja,
   #corazones-extra.celebrando .corazon {
     animation: none;
     display: none;
