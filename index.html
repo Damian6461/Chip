@@ -58,6 +58,17 @@
     </div>
   </div>
 
+  <!-- El rincón de Chip: lo que juntó, apoyado en el piso bajo su ventana.
+       El contenido lo escribe ui.js desde la colección del save. -->
+  <div id="estante" role="button" tabindex="0" aria-label="Ver la colección de Chip"></div>
+
+  <!-- La colección entera. Se abre tocando el rincón. -->
+  <div id="coleccion" hidden>
+    <p id="coleccion-titulo">Lo que juntó</p>
+    <div id="coleccion-grilla"></div>
+    <p id="coleccion-detalle"></p>
+  </div>
+
   <!-- El estado no vive en pantalla: vive en Chip. Esto aparece al tocarlo y se
        va solo, como abrir la tapa del pecho para mirar los números. -->
   <div id="estado" hidden>

@@ -160,6 +160,11 @@ export function iniciarDebug(api) {
   });
   filaHora.append(crearEtiqueta('hora'), selectHora);
 
+  // ---- Sumar un objeto ----
+  // Para ver el estante poblado sin esperar a que el sorteo traiga los hallazgos.
+  const botonObjeto = crearBoton('sumar objeto');
+  botonObjeto.addEventListener('click', () => api.sumarObjeto());
+
   // ---- Reiniciar partida ----
   const botonReiniciar = crearBoton('reiniciar partida');
   botonReiniciar.addEventListener('click', () => {
@@ -207,6 +212,7 @@ export function iniciarDebug(api) {
     botonVolver,
     filaVisual,
     filaHora,
+    botonObjeto,
     botonReiniciar,
     stats
   );

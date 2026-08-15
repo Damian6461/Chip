@@ -16,7 +16,13 @@ import { elegirEventos, horasConGarantiaDiaria, diaLocal } from './eventos.js';
 import { otorgarPorEventos } from './coleccion.js';
 import { OBJETOS } from './datos-objetos.js';
 import { cargarSprites, resolverEstadoVisual, esDeNoche } from './sprites.js';
-import { render as renderUI, mostrarEventos, conectarAcciones, animarAccion } from './ui.js';
+import {
+  render as renderUI,
+  mostrarEventos,
+  mostrarColeccion,
+  conectarAcciones,
+  animarAccion
+} from './ui.js';
 
 let estado = cargarEstado();
 
@@ -173,6 +179,7 @@ if (eventos.length > 0) {
 
 guardarEstado(estado);
 mostrarEventos(eventos);
+mostrarColeccion(estado.coleccion, hallazgos.nuevos);
 
 conectarAcciones({
   onCargar: () => ejecutar(E.cargando, cargar),
@@ -218,6 +225,19 @@ const apiDebug = {
   // Para que el panel pueda mostrar "3/8" sin importar datos-objetos.js por su
   // cuenta: todo lo que el debug sabe del juego pasa por acá.
   totalDeObjetos: () => OBJETOS.length,
+
+  // Suma el primer objeto que falte, para poder ver el estante poblado sin
+  // esperar a que el sorteo lo traiga. Pasa por el mismo camino que un hallazgo
+  // real: cambia el estado, se guarda y se repinta.
+  sumarObjeto() {
+    const falta = OBJETOS.find((objeto) => !estado.coleccion.includes(objeto.id));
+    if (!falta) return;
+
+    estado = { ...estado, coleccion: [...estado.coleccion, falta.id] };
+    guardarEstado(estado);
+    mostrarColeccion(estado.coleccion, [falta]);
+    pintar();
+  },
 
   // El multiplicador escala cuántas horas representa cada simulación, para
   // probar el decay sin esperar horas reales.

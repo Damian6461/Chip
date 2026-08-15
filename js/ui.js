@@ -18,6 +18,10 @@ import {
   TRANSICION_PANEL_MS,
   CLASE_PANEL_VISIBLE,
   ESPERA_SEGUNDO_EVENTO_MS,
+  DURACION_LLEGADA_MS,
+  ESPERA_ENTRE_LLEGADAS_MS,
+  CLASE_OBJETO_NUEVO,
+  CLASE_OBJETO_OBTENIDO,
   COLORES_BARRAS,
   VARS_BARRAS,
   PREFIJO_CLASE_ESTADO,
@@ -30,11 +34,17 @@ import {
 } from './config.js';
 import { puedeJugar } from './acciones.js';
 import { obtenerSprite } from './sprites.js';
+import { objetosConEstado } from './coleccion.js';
+import { svgDeObjeto } from './formas-objetos.js';
 
 const cajaChip = document.getElementById('chip');
 const contenedorMascota = document.getElementById('contenedor-mascota');
 const panelEstado = document.getElementById('estado');
 const lineaEvento = document.getElementById('evento');
+const estante = document.getElementById('estante');
+const panelColeccion = document.getElementById('coleccion');
+const grillaColeccion = document.getElementById('coleccion-grilla');
+const detalleColeccion = document.getElementById('coleccion-detalle');
 const canvas = document.getElementById('canvas-mascota');
 const ctx = canvas.getContext('2d');
 
@@ -61,6 +71,7 @@ raiz.style.setProperty(VARS_ANIMACION.duracionSalto, `${DURACION_SALTO_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.transicionBarra, `${TRANSICION_BARRA_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.duracionPresion, `${DURACION_PRESION_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.transicionPanel, `${TRANSICION_PANEL_MS}ms`);
+raiz.style.setProperty(VARS_ANIMACION.duracionLlegada, `${DURACION_LLEGADA_MS}ms`);
 
 // El encuadre de la escena: cuánto hay que correr la panorámica para entrar 8%
 // en ella. Es un número sin unidad porque el CSS lo multiplica por el alto de
@@ -149,6 +160,141 @@ document.addEventListener(
   },
   true
 );
+
+// ---- Abrir y cerrar la colección ----
+//
+// Mismo mecanismo que el panel de estado, con una diferencia: esta NO se cierra
+// sola. Mirar la colección es una visita, no un vistazo — se sale cuando se
+// terminó de mirar.
+
+let objetosActuales = [];
+
+function ocultarColeccion() {
+  panelColeccion.classList.remove(CLASE_PANEL_VISIBLE);
+  setTimeout(() => {
+    panelColeccion.hidden = true;
+  }, TRANSICION_PANEL_MS);
+}
+
+function mostrarPanelColeccion() {
+  panelColeccion.hidden = false;
+  detalleColeccion.replaceChildren();
+  void panelColeccion.offsetWidth; // el mismo reflow que el panel de estado
+  panelColeccion.classList.add(CLASE_PANEL_VISIBLE);
+}
+
+function alternarColeccion() {
+  if (panelColeccion.hidden) mostrarPanelColeccion();
+  else ocultarColeccion();
+}
+
+estante.addEventListener('click', alternarColeccion);
+estante.addEventListener('keydown', (evento) => {
+  if (evento.key !== 'Enter' && evento.key !== ' ') return;
+  evento.preventDefault();
+  alternarColeccion();
+});
+
+grillaColeccion.addEventListener('click', (evento) => {
+  const nodo = evento.target.closest('.objeto');
+  if (!nodo) return;
+
+  const objeto = objetosActuales.find((o) => o.id === nodo.dataset.id);
+  if (objeto) mostrarDetalle(objeto);
+});
+
+document.addEventListener(
+  'click',
+  (evento) => {
+    if (panelColeccion.hidden) return;
+    if (estante.contains(evento.target) || panelColeccion.contains(evento.target)) return;
+    ocultarColeccion();
+  },
+  true
+);
+
+// Se llama una sola vez, al arranque: la colección sólo cambia al volver, igual
+// que los eventos. `nuevos` son los de esta visita, los que entran animados.
+export function mostrarColeccion(coleccion, nuevos = []) {
+  objetosActuales = objetosConEstado(coleccion);
+  pintarEstante(objetosActuales, nuevos);
+  pintarGrilla(objetosActuales);
+
+  const titulo = document.getElementById('coleccion-titulo');
+  titulo.textContent = `Lo que juntó — ${contarObtenidos(objetosActuales)} de ${objetosActuales.length}`;
+}
+
+// ---- El estante y la colección ----
+//
+// El estante muestra el pool COMPLETO: lo obtenido a color y lo que falta en
+// silueta apagada. Una fila incompleta es lo que da ganas de completarla; una
+// fila que sólo muestra lo que ya tenés no pide nada.
+//
+// Vive en el rincón del piso bajo la ventana y no en el estante pintado de la
+// panorámica, que está en el extremo derecho de la imagen y nunca entró en
+// cuadro — ver el README para la medición.
+
+function nodoDeObjeto(objeto, tag = 'div') {
+  const nodo = document.createElement(tag);
+  nodo.className = 'objeto';
+  nodo.dataset.id = objeto.id;
+  if (objeto.obtenido) nodo.classList.add(CLASE_OBJETO_OBTENIDO);
+  nodo.innerHTML = svgDeObjeto(objeto.id);
+  return nodo;
+}
+
+function pintarEstante(objetos, nuevos) {
+  estante.replaceChildren();
+
+  const recienLlegados = new Set(nuevos.map((o) => o.id));
+  let orden = 0;
+
+  for (const objeto of objetos) {
+    const nodo = nodoDeObjeto(objeto);
+
+    // Los que llegaron en esta visita entran con su animación, escalonados para
+    // que tres hallazgos no aparezcan de golpe.
+    if (recienLlegados.has(objeto.id)) {
+      nodo.classList.add(CLASE_OBJETO_NUEVO);
+      nodo.style.animationDelay = `${orden * ESPERA_ENTRE_LLEGADAS_MS}ms`;
+      orden++;
+    }
+
+    estante.appendChild(nodo);
+  }
+}
+
+function contarObtenidos(objetos) {
+  return objetos.filter((o) => o.obtenido).length;
+}
+
+function pintarGrilla(objetos) {
+  grillaColeccion.replaceChildren();
+
+  for (const objeto of objetos) {
+    const nodo = nodoDeObjeto(objeto, 'button');
+    nodo.type = 'button';
+    // El que falta no dice su nombre: la silueta es la pregunta.
+    nodo.setAttribute('aria-label', objeto.obtenido ? objeto.nombre : 'Todavía sin encontrar');
+    grillaColeccion.appendChild(nodo);
+  }
+}
+
+// Tocar una pieza cuenta su historia. La línea es la del evento que la trajo:
+// el objeto ES la evidencia de que eso pasó.
+function mostrarDetalle(objeto) {
+  detalleColeccion.replaceChildren();
+
+  const nombre = document.createElement('strong');
+  nombre.textContent = objeto.obtenido ? objeto.nombre : 'Todavía no lo encontró';
+  detalleColeccion.appendChild(nombre);
+
+  if (objeto.obtenido && objeto.canon) {
+    const canon = document.createElement('span');
+    canon.textContent = objeto.canon;
+    detalleColeccion.appendChild(canon);
+  }
+}
 
 const barras = {
   bateria: {

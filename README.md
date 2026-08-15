@@ -16,7 +16,7 @@ http://127.0.0.1:5500/index.html
 
 ## Tests
 
-79 pruebas, mismos archivos en dos entrypoints:
+82 pruebas, mismos archivos en dos entrypoints:
 
 ```bash
 node tests/correr.mjs        # sale 0 si pasa todo, 1 si no
@@ -200,7 +200,44 @@ El día es **local** y en formato `YYYY-MM-DD`: volver a las 23:50 y de nuevo a 
 
 `coleccion` (array de ids) y `ultimoDiaConEvento` son campos nuevos, así que **la migración salió gratis**: el merge-con-defaults-primero de `estado.js` los trae solos. Una partida de meses cruza a v4 con la colección vacía y la garantía lista, sin código de puente. Es exactamente para lo que ese merge estaba escrito.
 
-El panel de debug muestra la colección cruda —`colección 2/8` y la lista de ids— y el día del último evento.
+El panel de debug muestra la colección cruda —`colección 2/8` y la lista de ids—, el día del último evento y un botón `sumar objeto` para poblar el estante sin esperar al sorteo.
+
+### El estante no está en el estante
+
+La panorámica tiene un estante de madera dibujado, con una tuerca, un cable enrollado, una arandela y un resorte pintados encima: el arte estaba hecho esperando la colección. **Pero está en x 1180-1480 de la imagen y nunca entró en cuadro** — ni siquiera en el panel cuadrado de antes, que llegaba hasta 1075.
+
+Y no puede entrar. Los números:
+
+| | |
+|---|---|
+| panorámica visible en 390×844 | 435 px de imagen |
+| ventana (validada, con el polvo y la luz) | x 150-335 |
+| estante pintado | x 1180-1480 |
+| hace falta para los dos juntos | 1330 px |
+
+Encuadrar sobre el estante tampoco sirve: Chip mide 371 de 390 y queda parado justo delante, tapándolo.
+
+Así que las piezas van **al alféizar de la ventana**, que es la única superficie visible que queda libre de Chip. Medido sobre el sprite, la franja libre a la izquierda de Chip por altura de escena:
+
+| y 340-380 | y 460-500 | y 570-680 (piso) |
+|---|---|---|
+| 0-179 px | 0-73 px | 0-72 px |
+
+Entran cuatro piezas de 16 px por fila, y las filas se apilan hacia arriba desde la línea del alféizar.
+
+**Se probó primero en el rincón del piso y se descartó con la captura a la vista:** sobre el piso oscuro las siluetas de lo que falta desaparecían, y ahí está justamente su trabajo. Contra el cielo del atardecer se recortan solas. Por la misma razón la silueta no es "opacidad baja" sino **sombra** (`brightness(0.3)`): oscura contra la ventana iluminada, que es donde está.
+
+El alféizar además es canon — "Miró la lluvia por la ventana del fondo. Es su ventana" — y es una superficie de verdad: las piezas se apoyan, no flotan.
+
+### Las formas
+
+Los sprites de los objetos **se dibujan por código** (`js/formas-objetos.js`): siluetas SVG simples con la paleta del juego, todas en un `viewBox` de 24×24 para que el tamaño lo decida el CSS. No pretenden ser arte — pretenden ser reconocibles a 16 px mientras el arte ilustrado no exista. Hay una prueba que verifica que cada objeto del catálogo tenga la suya y no caiga al casillero genérico.
+
+### El estado sin números
+
+El panel que aparece al tocar a Chip perdió las cifras: el nivel se lee del largo, con **marcas de referencia a 25 / 50 / 75%** para tener contra qué leerlo. Es lo que tiene un instrumento analógico y no tiene una barra de progreso web. Los decimales siguen en el panel de debug.
+
+**El número se fue de la vista, no del DOM.** Las barras son puro CSS: borrar el dígito dejaría a un lector de pantalla sin ninguna forma de saber cómo está Chip. Se esconde con `clip-path` y sigue disponible para quien lo necesita.
 
 ---
 

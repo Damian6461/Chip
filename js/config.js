@@ -226,7 +226,8 @@ export const VARS_ANIMACION = {
   duracionSalto: '--duracion-salto',
   transicionBarra: '--transicion-barra',
   duracionPresion: '--duracion-presion',
-  transicionPanel: '--transicion-panel'
+  transicionPanel: '--transicion-panel',
+  duracionLlegada: '--duracion-llegada'
 };
 
 // Clase que dispara el salto. La declara style.css, la pone y la saca ui.js.
@@ -244,6 +245,19 @@ export const DURACION_PANEL_ESTADO_MS = 4000;
 export const TRANSICION_PANEL_MS = 150;
 
 export const CLASE_PANEL_VISIBLE = 'visible';
+
+// ---- El estante y la vista de colección ----
+
+// Cuánto dura la llegada de un objeto nuevo al estante: escala de 0 a 1 con un
+// rebotecito. Corta — es un "apareció", no una ceremonia.
+export const DURACION_LLEGADA_MS = 400;
+
+// Escalonado entre objetos cuando llegan varios en la misma visita, para que no
+// aparezcan los tres de golpe.
+export const ESPERA_ENTRE_LLEGADAS_MS = 120;
+
+export const CLASE_OBJETO_NUEVO = 'llegando';
+export const CLASE_OBJETO_OBTENIDO = 'obtenido';
 
 // Cuánto tarda el segundo evento de la visita en reemplazar al primero. Se ve
 // uno por vez: son dos líneas sueltas en el mundo, no una lista.

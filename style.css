@@ -472,6 +472,177 @@ body:not(.es-noche) .mota {
   animation: saltar var(--duracion-salto) ease-out;
 }
 
+/* ============================================================================
+   EL RINCÓN Y LA COLECCIÓN
+
+   Lo que Chip juntó, apoyado en el piso bajo su ventana. NO está en el estante
+   pintado de la panorámica: ese está en x 1180-1480 de la imagen y nunca entró
+   en cuadro —tampoco en el panel cuadrado de antes, que llegaba hasta 1075—, y
+   no puede entrar: en un teléfono se ven 435 px de panorámica y meter la ventana
+   y el estante juntos pide 1330. Encuadrar sobre el estante, además, deja a Chip
+   parado justo delante y lo tapa.
+
+   Van en el alféizar de la ventana, y no en el piso, por contraste: sobre el
+   piso oscuro las siluetas de lo que falta desaparecen, y ahí justamente está el
+   trabajo de las siluetas. Contra el cielo del atardecer se recortan solas.
+   Además el alféizar es una superficie de verdad —las piezas se apoyan, no
+   flotan— y es su ventana: "Miró la lluvia por la ventana del fondo. Es su
+   ventana."
+
+   La franja libre de Chip a esa altura es de 0 a 73 px, medida sobre el sprite:
+   entran cuatro piezas por fila. Las filas se apilan hacia arriba desde la
+   línea del alféizar, como un estante de dos niveles visto de frente.
+   ============================================================================ */
+
+#estante {
+  position: absolute;
+  left: 1.5%;
+  /* La línea del alféizar cae en y 493 de 844. */
+  bottom: 41.6%;
+  width: 18.5%;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-end;
+  gap: 3px;
+  padding: 3px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#estante:focus-visible,
+#coleccion .objeto:focus-visible {
+  outline: 2px solid var(--color-humor);
+  outline-offset: 2px;
+}
+
+/* Una pieza. El SVG de adentro trae su forma; los colores salen de acá, así el
+   estante y la grilla usan el mismo tratamiento con tamaños distintos. */
+.objeto {
+  --metal: #9aa3b2;
+  --filo: #05070a;
+  --hueco: #14181f;
+  --acento: var(--color-humor);
+  --raro: var(--color-bateria);
+
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  /* Lo que falta: la misma forma, en sombra. No es "apagado" sino oscuro, que
+     es lo que se lee contra la ventana iluminada — con opacidad sola se
+     desvanecía y la silueta no preguntaba nada. */
+  opacity: 0.38;
+  filter: grayscale(1) brightness(0.3);
+}
+
+.objeto.obtenido {
+  opacity: 1;
+  filter: none;
+  /* Un brillo mínimo para despegarlas del piso del galpón. */
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.8));
+}
+
+.objeto svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
+/* La llegada: aparece del nada con un rebotecito y se queda. */
+.objeto.llegando {
+  animation: llegar var(--duracion-llegada) cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+}
+
+@keyframes llegar {
+  0% {
+    transform: scale(0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ---- La vista de colección ---- */
+
+#coleccion {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  width: min(340px, calc(100% - var(--esp-3)));
+  max-height: 70%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+  padding: var(--esp-2);
+
+  background: rgba(10, 12, 17, 0.95);
+  border: 1px solid #363c49;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 30px rgba(0, 0, 0, 0.6);
+
+  opacity: 0;
+  transform: translate(-50%, -48%);
+  transition:
+    opacity var(--transicion-panel) ease-out,
+    transform var(--transicion-panel) ease-out;
+}
+
+#coleccion.visible {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
+
+#coleccion[hidden] {
+  display: none;
+}
+
+#coleccion-titulo {
+  margin: 0;
+  font-family: var(--fuente-instrumento);
+  font-size: 12px;
+  color: #b8bec8;
+}
+
+#coleccion-grilla {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--esp-1);
+}
+
+/* En la grilla las piezas son botones y se ven más grandes que en el rincón. */
+#coleccion-grilla .objeto {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #262b36;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+#coleccion-detalle {
+  margin: 0;
+  min-height: 3.4em;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: var(--fuente-instrumento);
+  font-size: 11px;
+  line-height: 1.5;
+  color: #9aa0ab;
+}
+
+#coleccion-detalle strong {
+  color: var(--color-mantenimiento);
+  font-weight: 400;
+}
+
 /* ---- El estado, que aparece al tocar a Chip ----
 
    No hay barras permanentes: el estado se lee del mundo —la pose, el sprite, la
@@ -541,6 +712,7 @@ body:not(.es-noche) .mota {
    instrumento, no pastilla web. */
 
 .barra-pista {
+  position: relative;
   flex: 1;
   height: 14px;
   background: #0a0c11;
@@ -592,14 +764,37 @@ body:not(.es-noche) .mota {
   --color-barra: var(--color-mantenimiento);
 }
 
-/* Lectura de instrumento: monoespaciada y de ancho fijo, para que el número no
-   baile al pasar de 100 a 99. */
+/* Marcas de referencia a 25 / 50 / 75%, arriba del fill: sin número, el largo
+   necesita contra qué leerse. Es lo que tiene un instrumento analógico y no
+   tiene una barra de progreso web. */
+.barra-pista::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to right,
+    transparent 0 calc(25% - 1px),
+    rgba(0, 0, 0, 0.5) calc(25% - 1px) 25%
+  );
+}
+
+/* El número se va de la vista, no del DOM.
+   La dirección es que el nivel se lea del largo, como un instrumento: los
+   dígitos quedan sólo en el panel de debug. Pero borrarlos del DOM dejaría a un
+   lector de pantalla sin ninguna forma de saber cómo está Chip —las barras son
+   puro CSS—, así que se esconden a la vista y siguen ahí para quien los
+   necesita. */
 .barra-valor {
-  font-family: var(--fuente-instrumento);
-  font-size: 13px;
-  min-width: 34px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ---- Botonera industrial, en el piso de la pantalla ----
@@ -769,5 +964,16 @@ body:not(.es-noche) .mota {
 
   #estado.visible {
     transform: translateX(-50%);
+  }
+
+  /* La colección aparece igual, sin viaje. */
+  #coleccion {
+    transition: none;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Y el objeto nuevo simplemente está: sin llegada, pero está. */
+  .objeto.llegando {
+    animation: none;
   }
 }

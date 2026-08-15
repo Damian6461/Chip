@@ -13,6 +13,7 @@ import {
 import { OBJETOS, objetosDelEvento, objetoPorId } from '../js/datos-objetos.js';
 import { EVENTOS } from '../js/datos-eventos.js';
 import { otorgarPorEventos, tiene, objetosConEstado } from '../js/coleccion.js';
+import { svgDeObjeto, tieneForma } from '../js/formas-objetos.js';
 import { diaLocal, horasConGarantiaDiaria } from '../js/eventos.js';
 import { cargarEstado, guardarEstado } from '../js/estado.js';
 
@@ -309,4 +310,24 @@ prueba('migración v1 -> v4: un save prehistórico llega entero', () => {
   verdadero(Array.isArray(migrado.ultimosEventosIds), 'tiene los campos de v3');
   verdadero(Array.isArray(migrado.coleccion), 'y los de v4');
   igual(migrado.bateria, 30, 'con los stats de siempre');
+});
+
+// ---- Las formas ----
+
+prueba('formas: todos los objetos del catálogo tienen la suya', () => {
+  for (const objeto of OBJETOS) {
+    verdadero(tieneForma(objeto.id), `${objeto.id} tiene forma propia y no cae al casillero vacío`);
+  }
+});
+
+prueba('formas: el SVG sale armado y con el viewBox compartido', () => {
+  const svg = svgDeObjeto('tuerca-cabeza');
+  verdadero(svg.startsWith('<svg viewBox="0 0 24 24"'), 'mismo viewBox para todas, la escala la da el CSS');
+  verdadero(svg.includes('aria-hidden'), 'la forma no habla: el nombre lo pone el aria-label del nodo');
+});
+
+prueba('formas: un id desconocido devuelve el casillero vacío y no rompe', () => {
+  const svg = svgDeObjeto('no-existe');
+  verdadero(svg.includes('<svg'), 'devuelve algo dibujable igual');
+  verdadero(!tieneForma('no-existe'), 'y avisa que no era propia');
 });
