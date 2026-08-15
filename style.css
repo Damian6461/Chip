@@ -17,10 +17,26 @@
   --esp-2: 16px;
   --esp-3: 24px;
 
-  /* Ancho de columna único: los 320 del canvas más los 2 px de marco de cada
-     lado. El panel del juego manda y todo lo demás se alinea con él; antes las
-     barras y los botones median 320 y quedaban 2 px adentro de cada borde. */
-  --ancho-columna: 324px;
+  /* La escena es un objeto vertical, con proporción de teléfono. En mobile es
+     la pantalla entera; en desktop se limita a esta columna y el resto queda en
+     negro, como un juego de teléfono abierto en una compu. */
+  --ancho-escena: 480px;
+
+  /* Alto de la escena. dvh y no vh: en mobile la barra del navegador aparece y
+     desaparece, y con vh la escena queda cortada o sobra por abajo. Se guarda en
+     una variable porque el encuadre del fondo se calcula a partir de ella. */
+  --alto-escena: 100vh;
+
+  /* Chip mide ~44% del alto de la pantalla y pisa acá arriba del borde. Es el
+     protagonista: todo lo demás está para dejarlo protagonizar. */
+  --alto-chip: calc(var(--alto-escena) * 0.44);
+  --piso-chip: 18%;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --alto-escena: 100dvh;
+  }
 }
 
 * {
@@ -33,86 +49,91 @@ html, body {
 }
 
 body {
-  /* Base y red de contención: es lo que se ve si la panorámica no cargó. */
-  background: #0d0f14;
+  /* El negro alrededor de la escena en desktop. En mobile no se ve nunca. */
+  background: #05070a;
   color: #e6e6e6;
   font-family: system-ui, sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-/* ---- El ambiente ----
+/* ============================================================================
+   LA ESCENA
 
-   El galpón entero detrás de la interfaz, difuminado y bajado de luz para que
-   no compita con la UI. El panel de Chip mantiene la misma panorámica nítida:
-   ese es el punto de foco y el resto es atmósfera.
+   El galpón no es el fondo de una interfaz: es la pantalla. Acá no hay panel,
+   ni tarjeta, ni marco — Chip está parado adentro del galpón y todo lo demás
+   flota sobre él.
 
-   Va en un ::before y no en el body porque el filtro tiene que caer sobre la
-   imagen y sobre nada más: un filter en el body difuminaría también las barras,
-   los botones y el log. No es un elemento nuevo — el DOM no cambia.
+   La imagen va nítida y sin filtro. La capa difuminada de antes existía para
+   que el fondo no compitiera con un dashboard; ahora no hay dashboard.
 
-   Es `fixed` y se pasa 12 px del viewport por los cuatro lados: el blur samplea
-   más allá del borde y, si la capa midiera exactamente la pantalla, chuparía
-   transparencia y dejaría un halo claro en el marco.
+   El encuadre conserva la lógica del recorte validado: entrar 8% dentro de la
+   panorámica. Con background-size: auto 100% la imagen escalada mide
+   alto x 1,7768, así que entrar 8% es correrla ese tanto hacia la izquierda —
+   el calc lo resuelve para cualquier pantalla. Un porcentaje fijo NO sirve acá:
+   background-position en % mide sobre el sobrante y cambia con cada viewport.
+   ============================================================================ */
 
-   La imagen sale de --fondo-actual, la misma que usa el panel: las dos capas
-   cambian de día a noche con una sola escritura de ui.js. */
-body::before {
-  content: '';
-  position: fixed;
-  inset: -12px;
-  z-index: -1;
-  background-image: var(--fondo-actual);
-  background-size: cover;
-  background-position: center;
-  /* Si en un celular real esto tironea, el reemplazo es sacar el blur y bajar
-     el brightness a 0.22 — el ambiente queda igual de discreto y el contraste
-     sólo mejora. La capa es estática: no se anima nada, así que el navegador la
-     rasteriza una vez y después sólo la compone. */
-  filter: blur(3px) brightness(0.3);
-}
-
-/* El gap de la columna es el chico, y los saltos grandes se hacen con márgenes
-   en las piezas que abren bloque. Es la única forma de tener tres separaciones
-   distintas en un solo flex sin envolver las barras en un contenedor — y sumar
-   un contenedor está prohibido en este rediseño. */
-#escenario {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--esp-1);
-}
-
-
-/* El marco pasó del canvas a este panel: el fondo del galpón tiene que quedar
-   DETRÁS de Chip, y el canvas ya no puede tener color propio o lo taparía.
-
-   No lleva overflow: hidden a propósito. La imagen de fondo se recorta sola
-   contra el border-radius —es un background, se pinta dentro del border box—,
-   mientras que recortar el panel entero le cortaría la cabeza a Chip: el sprite
-   de `jugando` tiene 1,3 px de margen transparente arriba y el salto de acción
-   sube 8 px. Que Chip se salga un instante del cuadro al saltar es la opción
-   buena; que se le corte la antena no.
-
-   El tamaño no se declara: lo fija el canvas de adentro (320x320 en index.html),
-   así el marco y el recorte del fondo siguen al canvas si algún día cambia. */
-#panel-juego {
+#escena {
   position: relative;
-  margin-bottom: var(--esp-1); /* + el gap de la columna = 16 hasta la primera barra */
-  background-color: #14161d;
+  width: 100%;
+  max-width: var(--ancho-escena);
+  height: var(--alto-escena);
+  margin: 0 auto;
+  overflow: hidden;
+
+  background-color: #0d0f14;
   background-image: var(--fondo-actual);
   background-repeat: no-repeat;
   background-size: auto 100%;
-  border: 2px solid #2a2d38;
-  border-radius: 8px;
+  background-position-x: calc(var(--alto-escena) * var(--fondo-corrimiento) * -1);
+
+  /* Lo que va en el flujo son las dos piezas de abajo —el evento y la botonera—
+     apiladas contra el borde inferior. Chip, el polvo y el panel de estado están
+     posicionados y no participan. Así el evento siempre queda justo arriba de la
+     botonera sin tener que adivinar cuánto mide. */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
 
-/* La imagen y su posición horizontal las pone ui.js desde config.js
-   (RUTAS_FONDOS y FONDO_POSICION_X): son datos del juego, no estilo. */
+/* ---- Chip ----
 
+   Esta caja define dónde pisa y cuánto mide, y no se anima nunca: adentro, la
+   sombra queda quieta y el contenedor rebota. Por eso al saltar Chip se despega
+   y la sombra se queda en el piso.
+
+   Se centra con margin y no con transform porque el transform es del rebote:
+   un translateX acá lo pisaría entero. */
+#chip {
+  position: absolute;
+  left: 50%;
+  bottom: var(--piso-chip);
+  width: var(--alto-chip);
+  height: var(--alto-chip);
+  margin-left: calc(var(--alto-chip) / -2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#chip:focus-visible {
+  outline: 2px solid var(--color-humor);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+#contenedor-mascota {
+  position: absolute;
+  inset: 0;
+}
+
+/* El canvas dibuja a tamaño nativo del sprite (256) y el CSS lo lleva al tamaño
+   de la escena. Ese escalado lo hace el navegador, no el contexto 2D, así que
+   imageSmoothingEnabled no lo cubre: hace falta pixelated o el pixel art se
+   emborrona igual que antes de que existiera el arte. */
 #canvas-mascota {
   display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
 }
 
 /* ============================================================================
@@ -154,13 +175,13 @@ body::before {
   position: absolute;
   left: 50%;
   top: 8%;
-  width: 10px;
-  height: 10px;
-  margin: -5px 0 0 -5px;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
   border-radius: 50%;
   /* Dos capas: una difusa amplia que es el halo y una compacta que es el foco. */
   box-shadow:
-    0 0 12px 5px color-mix(in srgb, var(--color-bateria) 45%, transparent),
+    0 0 15px 6px color-mix(in srgb, var(--color-bateria) 45%, transparent),
     0 0 4px 1px color-mix(in srgb, var(--color-bateria) 85%, transparent);
   animation: latir var(--ciclo-antena) ease-in-out infinite;
 }
@@ -234,16 +255,16 @@ body.es-noche #antena {
 }
 
 .zeta:nth-child(1) {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .zeta:nth-child(2) {
-  font-size: 16px;
+  font-size: 19px;
   animation-delay: calc(var(--ciclo-zeta) * 0.325); /* 1.3 s de 4 */
 }
 
 .zeta:nth-child(3) {
-  font-size: 20px;
+  font-size: 24px;
   animation-delay: calc(var(--ciclo-zeta) * 0.65); /* 2.6 s de 4 */
 }
 
@@ -261,7 +282,7 @@ body.es-noche #antena {
     opacity: 0.8;
   }
   100% {
-    transform: translate(14px, -34px);
+    transform: translate(17px, -41px);
     opacity: 0;
   }
 }
@@ -281,8 +302,8 @@ body.es-noche #antena {
 
 .chispa {
   position: absolute;
-  width: 3px;
-  height: 3px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   background: var(--color-bateria);
   box-shadow: 0 0 4px 1px color-mix(in srgb, var(--color-bateria) 70%, transparent);
@@ -332,14 +353,15 @@ body.es-noche #antena {
 
 /* ---- 5. Polvo en el haz de luz ---- */
 
-/* Sobre la ventana: con el encuadre del 18.3% cae en el tercio izquierdo del
-   panel, entre el 41% y el 58% de alto. El contenedor recorta para que ninguna
-   mota se escape al portón. */
+/* Sobre la ventana. Con la escena a altura completa la panorámica se ve entera
+   de arriba abajo, así que la ventana cae entre el 41% y el 58% del alto, y con
+   el encuadre del 8% arranca casi pegada al borde izquierdo. El contenedor
+   recorta para que ninguna mota se escape al portón. */
 #polvo {
   left: 0;
-  top: 30%;
-  width: 30%;
-  height: 42%;
+  top: 35%;
+  width: 46%;
+  height: 30%;
   overflow: hidden;
 }
 
@@ -413,7 +435,7 @@ body:not(.es-noche) .mota {
     opacity: 0.16;
   }
   100% {
-    transform: translate(20px, 14px);
+    transform: translate(24px, 17px);
     opacity: 0;
   }
 }
@@ -450,11 +472,55 @@ body:not(.es-noche) .mota {
   animation: saltar var(--duracion-salto) ease-out;
 }
 
+/* ---- El estado, que aparece al tocar a Chip ----
+
+   No hay barras permanentes: el estado se lee del mundo —la pose, el sprite, la
+   pantallita del pecho— y los números están cuando se los pide. Esto es la tapa
+   que se abre, y se cierra sola.
+
+   Va arriba de la cabeza de Chip para no taparlo. Se centra con transform, que
+   acá sí se puede porque este elemento no rebota; por eso el translateX -50% se
+   repite en los dos estados de la transición. */
+#estado {
+  position: absolute;
+  left: 50%;
+  top: 9%;
+  z-index: 2;
+  width: min(280px, calc(100% - var(--esp-3) * 2));
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-1);
+  padding: var(--esp-2);
+
+  background: rgba(10, 12, 17, 0.93);
+  border: 1px solid #363c49;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.55);
+
+  opacity: 0;
+  transform: translateX(-50%) translateY(-6px);
+  transition:
+    opacity var(--transicion-panel) ease-out,
+    transform var(--transicion-panel) ease-out;
+}
+
+#estado.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Igual que con #eventos: el display:flex de arriba pisa el [hidden] nativo. */
+#estado[hidden] {
+  display: none;
+}
+
 .barra {
   display: flex;
   align-items: center;
   gap: var(--esp-1);
-  width: var(--ancho-columna);
+  width: 100%;
 }
 
 /* Más claro que el gris de antes (#9aa0ab) por contraste, no por gusto: la
@@ -536,27 +602,43 @@ body:not(.es-noche) .mota {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- Botonera industrial ----
+/* ---- Botonera industrial, en el piso de la pantalla ----
 
    Teclas rectangulares con borde visible y un canto duro abajo que las levanta
    del fondo. Al apretarlas bajan 1 px y el canto se achica a la mitad: la tecla
-   se hunde contra el chasis en vez de "resaltarse". */
+   se hunde contra el chasis en vez de "resaltarse".
+
+   Anclada abajo y al alcance del pulgar. El degradé de atrás la despega del
+   piso del galpón sin ponerle un marco: el mundo sigue ahí abajo, apenas más
+   oscuro. */
 
 #acciones {
   display: flex;
   gap: var(--esp-1);
-  width: var(--ancho-columna);
-  margin-top: var(--esp-2); /* + el gap de la columna = 24 desde la última barra */
+  padding: var(--esp-1) var(--esp-2);
+  /* La barra de gestos de Android y el borde inferior del iPhone se comen lo
+     que haya acá abajo. viewport-fit=cover en index.html deja que la escena
+     llegue al borde físico; esto evita que las teclas queden abajo de todo. */
+  padding-bottom: calc(var(--esp-1) + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, rgba(5, 7, 10, 0.94), rgba(5, 7, 10, 0.55) 65%, transparent);
 }
 
 #acciones button {
   flex: 1;
-  padding: var(--esp-1) 0;
+  /* Target de pulgar: 44 px es el mínimo cómodo, y con el ícono arriba del
+     texto la tecla queda más alta que eso igual. */
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 0;
   background: linear-gradient(180deg, #242a35 0%, #191d26 100%);
   border: 1px solid #3a4150;
   border-radius: 2px;
   color: #e6e6e6;
-  font-size: 14px;
+  font-size: 12px;
   cursor: pointer;
   box-shadow:
     0 2px 0 rgba(0, 0, 0, 0.5),
@@ -591,45 +673,44 @@ body:not(.es-noche) .mota {
   cursor: not-allowed;
 }
 
-/* ---- El log de mantenimiento del galpón ----
-
-   Panel propio, apenas más claro que el fondo, con la misma tipografía de
-   instrumento que los números de las barras. Sin timestamps: Chip no lleva la
-   hora, lleva lo que hizo. */
-
-#eventos {
-  display: flex;
-  flex-direction: column;
-  gap: var(--esp-1);
-  width: var(--ancho-columna);
-  margin-top: var(--esp-2); /* + el gap de la columna = 24 desde los botones */
-  padding: var(--esp-2);
-  background: #12151c;
-  border: 1px solid #262b36;
-  border-radius: 2px;
+/* Los íconos son tres trazos cada uno y no llevan significado propio: el texto
+   de abajo es el que nombra la acción, y por eso van aria-hidden. */
+#acciones button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-/* Imprescindible: sin esta regla el display:flex de arriba pisa el
-   comportamiento nativo de [hidden] y el contenedor vacío ocupa lugar. */
-#eventos[hidden] {
-  display: none;
-}
+/* ---- El evento, apoyado en el piso del galpón ----
 
+   No es un panel: es una línea de texto en el mundo. Sin borde, con apenas la
+   sombra necesaria para leerse contra el piso, que ahora va a plena luz.
+
+   Se ve uno por vez. Si la visita trajo dos, ui.js reemplaza el texto a los
+   4 s: son dos frases sueltas, no una lista de notificaciones. */
 .evento {
-  margin: 0;
+  margin: 0 var(--esp-2) var(--esp-1);
+  padding: var(--esp-1) 10px;
+  background: rgba(6, 8, 12, 0.72);
+  border-radius: 2px;
   font-family: var(--fuente-instrumento);
   font-size: 12px;
   line-height: 1.5;
-  color: #9aa0ab;
+  color: #c9ced7;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
   /* Sangría francesa: la segunda línea arranca bajo el texto y no bajo el
      prefijo, como una entrada de log de verdad. 2ch es exactamente el ancho de
      "> " porque la fuente es monoespaciada. */
-  padding-left: 2ch;
+  padding-left: calc(10px + 2ch);
   text-indent: -2ch;
 }
 
-/* El prefijo es un ::before y no un elemento: la restricción del rediseño es no
-   sumar nodos, y ui.js sigue escribiendo únicamente el texto del evento. */
+/* El prefijo es un ::before y no un elemento: ui.js escribe únicamente el texto
+   del evento, así que el `>` no puede terminar copiado adentro del contenido. */
 .evento::before {
   content: '> ';
   color: var(--color-humor);
@@ -676,5 +757,17 @@ body:not(.es-noche) .mota {
     animation: none;
     transform: scaleX(0.94);
     opacity: 0.3;
+  }
+
+  /* El panel de estado aparece y desaparece igual: lo que se va es el viaje.
+     Sin esto, la única forma de ver los números tendría una animación que el
+     sistema pidió no tener. */
+  #estado {
+    transition: none;
+    transform: translateX(-50%);
+  }
+
+  #estado.visible {
+    transform: translateX(-50%);
   }
 }

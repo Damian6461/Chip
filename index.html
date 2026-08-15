@@ -2,7 +2,10 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- viewport-fit=cover: la escena llega hasta el borde físico de la pantalla,
+     por debajo del notch y de la barra de gestos. Lo que no puede quedar tapado
+     es la botonera, que se protege con env(safe-area-inset-*) en style.css. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Chip</title>
 <meta name="theme-color" content="#0d0f14">
 <link rel="manifest" href="manifest.json">
@@ -10,41 +13,32 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="escenario">
-  <!-- El panel lleva el marco y el fondo del galpón (background-image, que ui.js
-       cambia entre día y noche). Es la capa de atrás y no se mueve nunca.
+<!-- La escena ES el juego. No hay panel, no hay tarjeta, no hay marco: el
+     galpón ocupa la pantalla y todo lo demás vive adentro de él. En desktop se
+     limita a una columna vertical de teléfono; en mobile es la pantalla entera. -->
+<div id="escena">
 
-       El contenedor de adentro existe para animar: lleva el rebote permanente, y
-       el canvas lleva el salto de acción. Ver el bloque de animaciones en
-       style.css: dos transforms en elementos anidados se componen; dos
-       animaciones en el mismo elemento se pisan. -->
-  <div id="panel-juego">
-    <!-- Efectos de vida. Todo lo de acá es decoración superpuesta: ninguno toca
-         el canvas ni los PNG, ninguno recibe el mouse y ninguno existe para un
-         lector de pantalla. Los que dependen del estado de Chip se prenden por
-         la clase que ui.js pone en el contenedor, derivada de la cadena: no hay
-         un solo timer nuevo en el JS. -->
+  <!-- Polvo en el haz de la ventana, al fondo de todo. -->
+  <div id="polvo" aria-hidden="true">
+    <div class="mota"></div>
+    <div class="mota"></div>
+    <div class="mota"></div>
+    <div class="mota"></div>
+    <div class="mota"></div>
+    <div class="mota"></div>
+  </div>
 
-    <!-- Polvo en el haz de la ventana. Al fondo de todo y sólo de día. -->
-    <div id="polvo" aria-hidden="true">
-      <div class="mota"></div>
-      <div class="mota"></div>
-      <div class="mota"></div>
-      <div class="mota"></div>
-      <div class="mota"></div>
-      <div class="mota"></div>
-    </div>
-
-    <!-- La sombra vive afuera del contenedor que rebota, a propósito: cuando
-         Chip salta por una acción, la sombra se queda en el piso. Eso es lo que
-         vende el despegue. -->
+  <!-- La caja de Chip: define dónde pisa y cuánto mide, y NO se anima nunca.
+       Adentro, la sombra queda quieta y el contenedor rebota; por eso al saltar
+       Chip se despega y la sombra se queda en el piso. -->
+  <div id="chip" role="button" tabindex="0" aria-label="Ver el estado de Chip">
     <div id="sombra" aria-hidden="true"></div>
 
     <div id="contenedor-mascota">
-      <canvas id="canvas-mascota" width="320" height="320"></canvas>
+      <!-- 256x256 = el tamaño nativo de los sprites. El canvas no reescala
+           nada: dibuja 1 a 1 y el CSS lo lleva al tamaño de la escena. -->
+      <canvas id="canvas-mascota" width="256" height="256"></canvas>
 
-      <!-- Estos van adentro del contenedor porque tienen que moverse CON Chip:
-           si el glow no rebotara, se despegaría de la antena. -->
       <div id="efectos" aria-hidden="true">
         <div id="antena"></div>
 
@@ -64,39 +58,54 @@
     </div>
   </div>
 
-  <div id="barra-bateria" class="barra">
-    <span class="barra-etiqueta">Batería</span>
-    <div class="barra-pista">
-      <div id="barra-bateria-fill" class="barra-fill"></div>
+  <!-- El estado no vive en pantalla: vive en Chip. Esto aparece al tocarlo y se
+       va solo, como abrir la tapa del pecho para mirar los números. -->
+  <div id="estado" hidden>
+    <div id="barra-bateria" class="barra">
+      <span class="barra-etiqueta">Batería</span>
+      <div class="barra-pista">
+        <div id="barra-bateria-fill" class="barra-fill"></div>
+      </div>
+      <span id="barra-bateria-valor" class="barra-valor">100</span>
     </div>
-    <span id="barra-bateria-valor" class="barra-valor">100</span>
+
+    <div id="barra-humor" class="barra">
+      <span class="barra-etiqueta">Humor</span>
+      <div class="barra-pista">
+        <div id="barra-humor-fill" class="barra-fill"></div>
+      </div>
+      <span id="barra-humor-valor" class="barra-valor">100</span>
+    </div>
+
+    <div id="barra-mantenimiento" class="barra">
+      <span class="barra-etiqueta">Mant.</span>
+      <div class="barra-pista">
+        <div id="barra-mantenimiento-fill" class="barra-fill"></div>
+      </div>
+      <span id="barra-mantenimiento-valor" class="barra-valor">100</span>
+    </div>
   </div>
 
-  <div id="barra-humor" class="barra">
-    <span class="barra-etiqueta">Humor</span>
-    <div class="barra-pista">
-      <div id="barra-humor-fill" class="barra-fill"></div>
-    </div>
-    <span id="barra-humor-valor" class="barra-valor">100</span>
-  </div>
+  <!-- El evento es texto en el mundo, apoyado sobre el piso del galpón. -->
+  <p id="evento" class="evento" hidden></p>
 
-  <div id="barra-mantenimiento" class="barra">
-    <span class="barra-etiqueta">Mant.</span>
-    <div class="barra-pista">
-      <div id="barra-mantenimiento-fill" class="barra-fill"></div>
-    </div>
-    <span id="barra-mantenimiento-valor" class="barra-valor">100</span>
-  </div>
-
+  <!-- La botonera vive en el piso de la pantalla, al alcance del pulgar. -->
   <div id="acciones">
-    <button id="btn-cargar" type="button">Cargar</button>
-    <button id="btn-jugar" type="button">Jugar</button>
-    <button id="btn-limpiar" type="button">Limpiar</button>
+    <button id="btn-cargar" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
+      <span>Cargar</span>
+    </button>
+    <button id="btn-jugar" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M6 8c4 2 8 2 12 0M6 16c4-2 8-2 12 0"/></svg>
+      <span>Jugar</span>
+    </button>
+    <button id="btn-limpiar" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3 8 9M17 6l-6 6M6 13l5 5-4 3-4-4z"/></svg>
+      <span>Limpiar</span>
+    </button>
   </div>
 
-  <div id="eventos" hidden></div>
 </div>
-
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

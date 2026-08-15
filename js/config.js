@@ -96,19 +96,24 @@ export const RUTAS_FONDOS = {
   noche: 'sprites/fondo-noche.png'
 };
 
-// Recorte validado de la panorámica: cuadrado de altura completa, entrando 8%
-// DENTRO de la imagen desde su borde izquierdo.
+// Encuadre de la escena: se entra 8% DENTRO de la panorámica desde su borde
+// izquierdo. Con eso la ventana del galpón queda a la izquierda del cuadro y
+// detrás de Chip pasa la pared lisa del portón.
 //
-// El valor no es 8% porque background-position en porcentaje no mide lo que
-// parece: no es "8% del ancho de la imagen", es 8% del SOBRANTE entre la imagen
-// escalada y el panel. Con la panorámica de 1672x941 escalada a un panel de 320
-// de alto, la imagen mide 569 px de ancho y sobran 249. Entrar 8% en la imagen
-// son 0,08 x 569 = 45,5 px, y esos 45,5 px sobre los 249 de sobrante dan 18,3%.
+// Antes esto era un `background-position-x: 18.3%` calculado para el panel
+// cuadrado de 320. Ese 18,3% NO se puede reusar: el porcentaje de
+// background-position mide sobre el sobrante entre la imagen escalada y el
+// contenedor, así que cambia con cada viewport — en un teléfono de 390x844 el
+// mismo encuadre son 10,8%, no 18,3%. Puesto fijo, el 18,3% le comería la
+// ventana por la izquierda.
 //
-// Con este encuadre la ventana del galpón cae en el tercio izquierdo del panel y
-// detrás de Chip queda la pared lisa del portón. Con 8% literal entraban los
-// caños y el aparatito de la punta izquierda, y la ventana se le iba atrás.
-export const FONDO_POSICION_X = '18.3%';
+// Lo que se conserva es la lógica, no el número. Con `background-size: auto
+// 100%` la imagen escalada mide alto x (1672/941), así que entrar 8% en ella es
+// correrla `alto * 0,08 * 1,7768` hacia la izquierda, sea cual sea la pantalla.
+// El CSS hace ese calc con la constante de acá.
+export const FONDO_ENTRADA = 0.08;
+export const FONDO_PROPORCION = 1672 / 941;
+export const FONDO_CORRIMIENTO = FONDO_ENTRADA * FONDO_PROPORCION;
 
 // La panorámica se usa en DOS capas: el panel de Chip, nítido y recortado, y el
 // ambiente de pantalla completa del body, difuminado y oscurecido. Las dos leen
@@ -119,7 +124,8 @@ export const FONDO_POSICION_X = '18.3%';
 // y eso no se ve hasta que alguien cruza las 23:00 con la app abierta. Así es
 // estructuralmente imposible.
 export const VARS_FONDO = {
-  actual: '--fondo-actual'
+  actual: '--fondo-actual',
+  corrimiento: '--fondo-corrimiento'
 };
 
 // Marca en el <body> que es de noche. La imagen ya viaja por la custom property
@@ -218,11 +224,29 @@ export const VARS_ANIMACION = {
   cicloRebote: '--ciclo-rebote',
   duracionSalto: '--duracion-salto',
   transicionBarra: '--transicion-barra',
-  duracionPresion: '--duracion-presion'
+  duracionPresion: '--duracion-presion',
+  transicionPanel: '--transicion-panel'
 };
 
 // Clase que dispara el salto. La declara style.css, la pone y la saca ui.js.
 export const CLASE_SALTO = 'saltando';
+
+// ---- El estado que aparece al tocar a Chip ----
+
+// El estado no vive en pantalla: vive en Chip. Se abre tocándolo y se cierra
+// solo, sin que el jugador tenga que cerrar nada. Cuatro segundos alcanzan para
+// leer tres números y no tanto como para que la escena quede tapada.
+export const DURACION_PANEL_ESTADO_MS = 4000;
+
+// Entrada y salida del panel. Corta: es una tapa que se abre, no una pantalla
+// que navega.
+export const TRANSICION_PANEL_MS = 150;
+
+export const CLASE_PANEL_VISIBLE = 'visible';
+
+// Cuánto tarda el segundo evento de la visita en reemplazar al primero. Se ve
+// uno por vez: son dos líneas sueltas en el mundo, no una lista.
+export const ESPERA_SEGUNDO_EVENTO_MS = 4000;
 
 // ---- Efectos de vida ----
 

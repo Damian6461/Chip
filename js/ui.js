@@ -11,9 +11,13 @@ import {
   VARS_ANIMACION,
   CLASE_SALTO,
   RUTAS_FONDOS,
-  FONDO_POSICION_X,
+  FONDO_CORRIMIENTO,
   VARS_FONDO,
   CLASE_NOCHE,
+  DURACION_PANEL_ESTADO_MS,
+  TRANSICION_PANEL_MS,
+  CLASE_PANEL_VISIBLE,
+  ESPERA_SEGUNDO_EVENTO_MS,
   COLORES_BARRAS,
   VARS_BARRAS,
   PREFIJO_CLASE_ESTADO,
@@ -27,17 +31,23 @@ import {
 import { puedeJugar } from './acciones.js';
 import { obtenerSprite } from './sprites.js';
 
-const panelJuego = document.getElementById('panel-juego');
+const cajaChip = document.getElementById('chip');
 const contenedorMascota = document.getElementById('contenedor-mascota');
+const panelEstado = document.getElementById('estado');
+const lineaEvento = document.getElementById('evento');
 const canvas = document.getElementById('canvas-mascota');
 const ctx = canvas.getContext('2d');
 
-// Los sprites son pixel art y el canvas los escala: con el suavizado bilineal
-// que el navegador trae por defecto, salen borrosos.
+// Los sprites son pixel art. El canvas ahora mide 256x256, exactamente lo que
+// miden ellos, así que acá adentro no hay escalado: se dibuja 1 a 1 y el CSS
+// lleva el canvas al tamaño que tenga la escena. El flag se deja igual, porque
+// es la garantía de que si algún día el canvas y el sprite dejan de coincidir,
+// el resultado sea nítido y no borroso. El escalado a pantalla lo resuelve
+// `image-rendering: pixelated` en style.css.
 //
 // Se setea una sola vez, acá: es estado del contexto, no un parámetro de
 // drawImage, y sobrevive a clearRect. Lo único que lo resetea a `true` es
-// cambiar el tamaño del canvas — hoy nadie lo cambia, está fijo en index.html.
+// cambiar el tamaño del canvas.
 ctx.imageSmoothingEnabled = false;
 
 // Las duraciones de las animaciones viven en config.js y se usan en style.css,
@@ -50,6 +60,12 @@ raiz.style.setProperty(VARS_ANIMACION.cicloRebote, `${CICLO_REBOTE_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.duracionSalto, `${DURACION_SALTO_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.transicionBarra, `${TRANSICION_BARRA_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.duracionPresion, `${DURACION_PRESION_MS}ms`);
+raiz.style.setProperty(VARS_ANIMACION.transicionPanel, `${TRANSICION_PANEL_MS}ms`);
+
+// El encuadre de la escena: cuánto hay que correr la panorámica para entrar 8%
+// en ella. Es un número sin unidad porque el CSS lo multiplica por el alto de
+// la escena — así el mismo encuadre vale en cualquier pantalla.
+raiz.style.setProperty(VARS_FONDO.corrimiento, String(FONDO_CORRIMIENTO));
 
 // Los colores de las barras viajan por el mismo puente. Salen del sprite de
 // Chip (ver COLORES_BARRAS): la piel del instrumento la define el personaje.
@@ -71,9 +87,68 @@ VARS_EFECTOS.ciclosPolvo.forEach((variable, i) => {
 // dispara este evento nunca, porque es infinito.
 canvas.addEventListener('animationend', () => canvas.classList.remove(CLASE_SALTO));
 
-// El encuadre del fondo es fijo y se escribe una sola vez. La imagen sí cambia,
-// pero el recorte validado es el mismo de día y de noche.
-panelJuego.style.backgroundPositionX = FONDO_POSICION_X;
+// ---- El estado, que aparece al tocar a Chip ----
+//
+// El juego no muestra barras permanentes: el estado se lee del mundo —la pose,
+// el sprite, la pantalla del pecho— y los números están cuando se los pide.
+// Este panel es la tapa que se abre.
+
+let temporizadorEstado = null;
+
+function ocultarEstado() {
+  clearTimeout(temporizadorEstado);
+  temporizadorEstado = null;
+  panelEstado.classList.remove(CLASE_PANEL_VISIBLE);
+
+  // `hidden` se pone recién cuando terminó la transición de salida: puesto
+  // antes, el panel desaparecería de golpe y no habría nada que animar.
+  temporizadorEstado = setTimeout(() => {
+    panelEstado.hidden = true;
+  }, TRANSICION_PANEL_MS);
+}
+
+function mostrarEstado() {
+  clearTimeout(temporizadorEstado);
+  panelEstado.hidden = false;
+
+  // Forzar reflow entre quitar `hidden` y poner la clase: sin eso el navegador
+  // junta las dos mutaciones y no ve ninguna transición que correr. Es el mismo
+  // truco que animarAccion, y a propósito no es requestAnimationFrame: rAF no
+  // corre en una pestaña de segundo plano, así que el panel podía quedar en
+  // opacidad 0 esperando un frame que no llegaba.
+  void panelEstado.offsetWidth;
+  panelEstado.classList.add(CLASE_PANEL_VISIBLE);
+
+  // Se cierra solo. Nadie tiene que cerrar nada.
+  temporizadorEstado = setTimeout(ocultarEstado, DURACION_PANEL_ESTADO_MS);
+}
+
+function alternarEstado() {
+  if (panelEstado.hidden) mostrarEstado();
+  else ocultarEstado();
+}
+
+cajaChip.addEventListener('click', alternarEstado);
+
+// Chip es un div con role=button: sin esto, con teclado no habría manera de ver
+// los números, que es la única forma de leerlos que queda en el juego.
+cajaChip.addEventListener('keydown', (evento) => {
+  if (evento.key !== 'Enter' && evento.key !== ' ') return;
+  evento.preventDefault();
+  alternarEstado();
+});
+
+// Tocar afuera cierra. Se escucha en captura para que el toque en un botón de
+// acción también cierre, sin que importe el orden de los handlers.
+document.addEventListener(
+  'click',
+  (evento) => {
+    if (panelEstado.hidden) return;
+    if (cajaChip.contains(evento.target) || panelEstado.contains(evento.target)) return;
+    ocultarEstado();
+  },
+  true
+);
 
 const barras = {
   bateria: {
@@ -93,8 +168,6 @@ const barras = {
 const btnCargar = document.getElementById('btn-cargar');
 const btnJugar = document.getElementById('btn-jugar');
 const btnLimpiar = document.getElementById('btn-limpiar');
-
-const contenedorEventos = document.getElementById('eventos');
 
 function clampVisual(valor) {
   return Math.min(STAT_MAX, Math.max(STAT_MIN, valor));
@@ -192,16 +265,21 @@ export function render(estado, estadoVisual, esNoche) {
 // Separada de render() a propósito: los eventos se pintan una sola vez, al
 // arranque, mientras que render() corre en cada acción y en cada tick.
 // Recibe los eventos ya elegidos: acá no se decide cuáles ni cuántos.
+//
+// Se ve UNO por vez, apoyado sobre el piso del galpón. Si la visita trajo dos,
+// el segundo reemplaza al primero: son dos líneas sueltas en el mundo, no una
+// lista de notificaciones.
 export function mostrarEventos(eventos) {
-  contenedorEventos.replaceChildren();
-  contenedorEventos.hidden = eventos.length === 0;
+  lineaEvento.hidden = eventos.length === 0;
+  if (eventos.length === 0) return;
 
-  for (const evento of eventos) {
-    const parrafo = document.createElement('p');
-    parrafo.className = 'evento';
-    parrafo.textContent = evento.texto;
-    contenedorEventos.appendChild(parrafo);
-  }
+  lineaEvento.textContent = eventos[0].texto;
+
+  eventos.slice(1).forEach((evento, i) => {
+    setTimeout(() => {
+      lineaEvento.textContent = evento.texto;
+    }, ESPERA_SEGUNDO_EVENTO_MS * (i + 1));
+  });
 }
 
 // Salto de feedback, separado de render() por la misma razón que mostrarEventos:

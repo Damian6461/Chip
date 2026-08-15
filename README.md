@@ -112,18 +112,22 @@ Arista abierta: el canvas mide **320** y los sprites **256**, así que se dibuja
 
 ## El fondo del galpón
 
-Dos panorámicas de 1672×941 en `/sprites/`: `fondo-dia.png` y `fondo-noche.png`. No son sprites de estado — no entran en `RUTAS_SPRITES` ni pasan por el loader con fallback. Las rutas viven en `RUTAS_FONDOS` (`config.js`) y las aplica `ui.js` como `background-image` de `#panel-juego`.
+Dos panorámicas de 1672×941 en `/sprites/`: `fondo-dia.png` y `fondo-noche.png`. No son sprites de estado — no entran en `RUTAS_SPRITES` ni pasan por el loader con fallback. Las rutas viven en `RUTAS_FONDOS` (`config.js`) y `ui.js` las escribe en `--fondo-actual`, la custom property que pinta la escena.
+
+**La panorámica no es el fondo de una interfaz: es la pantalla.** Va nítida y sin filtro, a altura completa, y todo lo demás flota encima.
 
 ### El encuadre
 
 ```
-background-size: auto 100%;      /* la panorámica se escala a la altura del panel */
-background-position-x: 18.3%;    /* FONDO_POSICION_X */
+background-size: auto 100%;
+background-position-x: calc(var(--alto-escena) * var(--fondo-corrimiento) * -1);
 ```
 
-El encuadre buscado es entrar **8% dentro de la panorámica** desde su borde izquierdo. El valor CSS no es 8% porque `background-position` en porcentaje no mide lo que parece: no es "8% del ancho de la imagen", es 8% del **sobrante** entre la imagen escalada y el panel. Escalada a 320 de alto, la panorámica mide 569 px de ancho contra un panel de 320: sobran 249. Entrar 8% en la imagen son 45,5 px, y 45,5 sobre 249 dan **18,3%**.
+El encuadre buscado es entrar **8% dentro de la panorámica** desde su borde izquierdo: con eso la ventana del galpón queda a la izquierda del cuadro y detrás de Chip pasa la pared lisa del portón.
 
-Con eso la ventana del galpón cae en el tercio izquierdo del panel y detrás de Chip queda la pared lisa del portón. Con `8%` literal el cuadro empezaba 20 px antes: entraban los caños y el aparatito de la punta izquierda, y la ventana se le iba atrás a Chip.
+**Ese 8% no se puede escribir como `background-position-x: 8%`.** El porcentaje de `background-position` no mide sobre la imagen, mide sobre el **sobrante** entre la imagen escalada y el contenedor, así que el valor equivalente cambia con cada viewport: en el panel cuadrado de 320 que hubo antes eran 18,3%, y en un teléfono de 390×844 son 10,8%. Un número fijo le come la ventana por la izquierda en cuanto cambia la pantalla.
+
+Lo que se conserva es la lógica, no el número. Con `background-size: auto 100%` la imagen escalada mide `alto × 1,7768`, así que entrar 8% en ella es correrla `alto × 0,08 × 1,7768` hacia la izquierda — un `calc` que da el mismo encuadre en cualquier pantalla. `FONDO_CORRIMIENTO` (`config.js`) es ese factor, derivado en el código de `FONDO_ENTRADA` y `FONDO_PROPORCION` para que la cuenta quede a la vista.
 
 ### Día y noche
 
@@ -131,34 +135,23 @@ El swap usa `esDeNoche()` de `sprites.js`, que es **la misma franja que el stand
 
 `main.js` la resuelve con el mismo `relojEfectivo()` que la cadena, así el sprite y el fondo no pueden discrepar. El tick de 60 s evalúa **las dos cosas sin cortocircuito**: con la batería en `critico`, cruzar las 23:00 no cambia el sprite —`critico` le gana a `standby`— pero el galpón igual se tiene que hacer de noche.
 
-### El ambiente de pantalla completa
+La clase `es-noche` del `body` sale del mismo dato, para lo que cambia de ritmo y no de imagen: el latido de la antena y el polvo del haz.
 
-La misma panorámica llena la pantalla detrás de la interfaz, en `body::before`: `cover`, centrada, con `filter: blur(3px) brightness(0.3)`. El panel de Chip muestra la misma imagen **nítida**, y ese contraste es el punto: el panel es el foco y el resto es atmósfera.
+### Contraste sobre la escena
 
-Va en un `::before` y no en el `body` porque el filtro tiene que caer sobre la imagen y sobre nada más — un `filter` en el `body` difuminaría también las barras, los botones y el log. La capa es `fixed` y se pasa 12 px del viewport por los cuatro lados: el blur samplea más allá del borde y, ajustada al pixel, chuparía transparencia y dejaría un halo claro en el marco de la pantalla.
+La escena va a plena luz, así que **ningún texto se apoya directamente sobre ella**: cada pieza trae su propio fondo. Medido contra el píxel más claro de cada panorámica —el peor caso, en cualquier viewport:
 
-**Las dos capas leen la misma custom property** (`--fondo-actual`, `VARS_FONDO`), que `ui.js` escribe una sola vez. Con una asignación por capa podrían quedar en fondos distintos —galpón de día atrás y de noche adelante— y eso no se descubre hasta que alguien cruza las 23:00 con la app abierta. Así es estructuralmente imposible. La clase `es-noche` del `body` sale del mismo dato, para lo que cambia de ritmo y no de imagen.
-
-### Contraste sobre el ambiente
-
-El único texto apoyado directamente sobre el ambiente son las etiquetas y los números de las barras; el log y los botones tienen su propio fondo opaco.
-
-Medido contra **el píxel más claro de cada panorámica ya oscurecida** —el peor caso posible, en cualquier viewport y cualquier recorte de `cover`:
-
-| Texto | Antes | Ahora | AA (4.5:1) |
+| Texto | Sobre | Día | Noche |
 |---|---|---|---|
-| etiqueta `#9aa0ab` → `#b8bec8` | 3.50:1 | **4.93:1** | pasa |
-| número `#e6e6e6` | 7.38:1 | 7.38:1 | pasa |
+| evento `#c9ced7` | `rgba(6,8,12,.72)` | 5.75:1 | 6.58:1 |
+| etiqueta `#b8bec8` | `rgba(10,12,17,.93)` | 9.14:1 | 9.36:1 |
+| número `#e6e6e6` | `rgba(10,12,17,.93)` | 13.69:1 | 14.01:1 |
 
-La etiqueta se aclaró por eso y no por gusto: con el gris viejo **no llegaba a AA con ningún valor del rango de oscurecimiento** (a `brightness(0.25)`, el más oscuro razonable, daba 4.22:1). El píxel culpable es el cielo de la ventana, que con `cover` centrado cae justo a la izquierda del centro — es decir, detrás de las etiquetas. El log conserva el gris apagado porque tiene panel propio.
+Los tres pasan AA (4,5:1) con margen. Las teclas deshabilitadas quedan al 28% y no llegan: WCAG exime a los controles deshabilitados, y que se lean apagadas es justamente el punto.
 
-Las teclas deshabilitadas quedan al 28% sobre el ambiente y no llegan a AA: WCAG exime a los controles deshabilitados, y que se lean apagadas es justamente el punto.
+### Por qué la escena recorta y Chip no
 
-### Por qué el panel no recorta
-
-`#panel-juego` **no** lleva `overflow: hidden`. La imagen de fondo se recorta sola contra el `border-radius`, y recortar el panel entero le cortaría la cabeza a Chip: el sprite de `jugando` tiene 1,3 px de margen transparente arriba y el salto de acción sube 8 px. Chip saliéndose un instante del cuadro es la opción buena; la antena cortada no.
-
-El marco (borde, radio, color) pasó del canvas al panel. **El canvas ya no puede tener color de fondo propio** o taparía la panorámica.
+`#escena` lleva `overflow: hidden` —es la pantalla, nada se le escapa— pero Chip vive adentro con aire de sobra arriba: el sprite de `jugando` tiene 1,3 px de margen transparente y el salto sube 8, y a 371 px de alto le quedan más de 100 px de galpón por encima de la antena. El recorte que antes había que evitar era el del panel de 320, que ya no existe.
 
 ### Peso
 
@@ -206,15 +199,48 @@ La interfaz pertenece al galpón: es un instrumento, no una página.
 
 **Los tres son colores de luz, y ahí está el criterio.** El primer candidato para Mant. fue `#c2a593`, la placa del torso: al 100% se leía apagado al lado de los otros dos, porque es color de superficie —luz reflejada— y las barras son indicadores encendidos. El naranja del hover de los botones y el `>` del log son el mismo `--color-humor`: el acento del aparato es el del personaje.
 
-**Una sola columna de 324 px** (`--ancho-columna`): los 320 del canvas más los 2 px de marco de cada lado. Panel, barras, botones y log se alinean con eso. Antes las barras median 320 y quedaban 2 px adentro de cada borde del panel.
-
-**Escala de espaciado 8 / 16 / 24** (`--esp-1/2/3`), y nada fuera de esa escala. El `gap` de la columna es el chico y los saltos grandes se hacen con márgenes en las piezas que abren bloque — es la única forma de tener tres separaciones distintas en un solo flex sin envolver las barras en un contenedor, y sumar elementos estaba prohibido en el rediseño.
+**Escala de espaciado 8 / 16 / 24** (`--esp-1/2/3`), y nada fuera de esa escala.
 
 **La fuente de instrumento** (`--fuente-instrumento`) es el stack monoespaciado del sistema, sin archivo. Cualquier fuente externa rompería el offline. Si algún día entra una propia, se declara en el mismo lugar y va a `ARCHIVOS_CACHE` con su bump.
 
-**El prefijo `>` del log es un `::before`**, no un elemento: `ui.js` sigue escribiendo únicamente el texto del evento. La sangría francesa de `2ch` alinea la segunda línea bajo el texto y no bajo el prefijo, que es exactamente el ancho de `"> "` porque la fuente es monoespaciada.
+**El prefijo `>` del evento es un `::before`**, no un elemento: `ui.js` escribe únicamente el texto. La sangría francesa de `2ch` alinea la segunda línea bajo el texto y no bajo el prefijo, que es exactamente el ancho de `"> "` porque la fuente es monoespaciada.
 
 **Los tres estados de una tecla** tienen que distinguirse sin leer: normal con borde y canto duro abajo, apretada 1 px más abajo con el canto a la mitad, y deshabilitada sin borde, sin canto y al 28% — una tecla que no está no se puede confundir con una que sí.
+
+---
+
+## La escena es la pantalla
+
+El juego no es un panel de control con un dibujo arriba: es un lugar. Abrirlo es entrar al galpón.
+
+```
+#escena  ← la panorámica a pantalla completa, nítida
+├── #polvo          motitas en el haz de la ventana
+├── #chip           posición y tamaño; NO se anima
+│   ├── #sombra     quieta: cuando Chip salta, se queda en el piso
+│   └── #contenedor-mascota   rebota
+│       ├── canvas 256×256
+│       └── #efectos          glow, Z, chispas
+├── #estado         los números, sólo al tocar a Chip
+├── #evento         una línea apoyada en el piso
+└── #acciones       la botonera, en el piso de la pantalla
+```
+
+**Mobile-first.** En un teléfono la escena es la pantalla entera; en desktop se limita a `--ancho-escena` (480 px) y el resto queda en negro. El juego es un objeto vertical.
+
+**Chip mide 44% del alto** (`--alto-chip`) y pisa al 18% del borde inferior. Es el protagonista: el tamaño no es decorativo, es la jerarquía.
+
+**El canvas pasó de 320 a 256**, que es el tamaño nativo de los sprites: el contexto 2D ya no reescala nada y el CSS lleva el canvas al tamaño de la escena. Eso cierra de paso la arista del ×1,25 irregular que quedaba anotada. Ojo: ese escalado lo hace el navegador, no el contexto, así que `imageSmoothingEnabled` no lo cubre — hace falta `image-rendering: pixelated`.
+
+**El estado vive en Chip.** No hay barras permanentes: se leen la pose, el sprite y la pantallita del pecho, y los números aparecen al tocarlo (`DURACION_PANEL_ESTADO_MS`, 4 s) o al darle Enter con el teclado. `#chip` es `role="button"` con `tabindex` porque, sin eso, con teclado no habría forma de leerlos.
+
+**El evento es texto en el mundo**, no un panel: apoyado sobre el piso, arriba de la botonera. Se ve uno por vez; si la visita trajo dos, el segundo reemplaza al primero a los `ESPERA_SEGUNDO_EVENTO_MS`.
+
+**El evento y la botonera son lo único en el flujo** de `#escena`, apilados contra el borde inferior con `justify-content: flex-end`. Chip, el polvo y el panel de estado están posicionados y no participan. Así el evento queda siempre justo arriba de la botonera sin tener que adivinar cuánto mide.
+
+**Safe areas.** `viewport-fit=cover` deja que la escena llegue al borde físico, y la botonera se protege con `env(safe-area-inset-bottom)` para no quedar abajo de la barra de gestos. Las teclas miden 48 px de alto, arriba del mínimo de 44 para el pulgar.
+
+**El alto va en `dvh`**, no en `vh`: en mobile la barra del navegador aparece y desaparece, y con `vh` la escena queda cortada o sobra por abajo. `--alto-escena` existe como variable porque el encuadre del fondo se calcula a partir de ella.
 
 ### Efectos de vida
 
@@ -250,7 +276,7 @@ En idle diurno corren **9 animaciones** (6 motas + glow + rebote + sombra); el p
 
 ### prefers-reduced-motion
 
-Un bloque al final de `style.css` apaga el rebote, el salto, el viaje de las barras y la transición de las teclas. No es opcional y no tiene interruptor propio: quién puede moverse lo decide el CSS. `ui.js` pone la clase del salto igual, y con reduced-motion la clase no hace nada.
+Un bloque al final de `style.css` apaga el rebote, el salto, el viaje de las barras, la transición de las teclas y la del panel de estado. **El panel igual aparece**: se le va el viaje, no la función — es la única forma de leer los números. No es opcional y no tiene interruptor propio: quién puede moverse lo decide el CSS. `ui.js` pone la clase del salto igual, y con reduced-motion la clase no hace nada.
 
 La tecla apretada **sigue avisando** con reduced-motion: se le apaga el viaje de 1 px y la transición, pero el canto se achica igual. Eso es cambio de estado, no movimiento.
 
