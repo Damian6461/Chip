@@ -200,6 +200,15 @@ body {
      por el medio de la toma. */
   margin-bottom: calc(var(--alto-chip) * var(--toma-alto-caja) / -2);
   pointer-events: none;
+
+  /* EN PERSPECTIVA, no plana. Una chapa recta sobre un piso con fuga se lee como
+     sticker pegado a la pantalla. El pivote va en la base porque es donde la
+     toma toca el piso: inclinarla desde el centro la hundiría.
+     Los tres números están medidos sobre la panorámica en el punto exacto donde
+     cae la toma — ver PERSPECTIVA_TOMA en config.js. */
+  transform-origin: 50% 100%;
+  transform: rotate(var(--toma-giro)) perspective(var(--toma-fuga))
+    rotateX(var(--toma-inclinacion));
 }
 
 #toma svg {
@@ -408,6 +417,93 @@ body.es-noche #toma {
   height: 15cqh;
   width: auto;
   filter: drop-shadow(0 0 2px color-mix(in srgb, var(--color-bateria) 55%, transparent));
+}
+
+
+/* ---- El rayo del pecho, encendido ----
+
+   Estaba dibujado al lado de las barritas y era lo único de la pantalla que no
+   hacía nada. Ahora comunica estado solo: late lento en reposo, destella al
+   cargar, titila mal en critico y casi no se ve de noche.
+
+   `mix-blend-mode: screen` es la decisión importante: la capa SUMA luz sobre el
+   rayo que ya está pintado en el sprite en vez de taparlo. Con opacidad 0 se ve
+   el arte tal cual; subiendo, el mismo rayo se enciende. Por eso no hace falta
+   que la silueta calce al píxel — y por eso el arte sigue siendo el arte. */
+#rayo {
+  position: absolute;
+  left: var(--rayo-x);
+  top: var(--rayo-y);
+  width: var(--rayo-ancho);
+  height: var(--rayo-alto);
+  --rayo-color: var(--color-bateria);
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#rayo svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 3px var(--rayo-color));
+}
+
+/* Reposo: el corazón eléctrico latiendo. Más lento que la antena y fuera de
+   fase, porque dos latidos del mismo largo se sincronizan y el conjunto se
+   vuelve mecánico. */
+#rayo {
+  animation: latir-rayo-suave var(--ciclo-rayo) ease-in-out infinite;
+}
+
+@keyframes latir-rayo-suave {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.34; }
+}
+
+/* Cargando: destella fuerte, en el MISMO ciclo y la MISMA fase que el latido
+   del display. Primero llega la energía por el cable, después prende el rayo —
+   el pico va al final del ciclo, igual que en `latir-rayo`. */
+.estado-cargando #rayo {
+  animation: destellar-rayo var(--duracion-pulso) ease-out infinite;
+}
+
+@keyframes destellar-rayo {
+  0%, 55% { opacity: 0.15; }
+  85% { opacity: 1; }
+  100% { opacity: 0.15; }
+}
+
+/* Critico: una luz que se está quedando sin batería. Los cortes del keyframe
+   son IRREGULARES a propósito — un titileo parejo se lee como decoración, y uno
+   desparejo se lee como una falla. Es el estado que más comunica de los cuatro. */
+.estado-critico #rayo {
+  --rayo-color: #ff3b30;
+  animation: titilar-rayo var(--ciclo-rayo-critico) linear infinite;
+}
+
+@keyframes titilar-rayo {
+  0% { opacity: 0.06; }
+  7% { opacity: 0.55; }
+  11% { opacity: 0.08; }
+  14% { opacity: 0.42; }
+  22% { opacity: 0.05; }
+  58% { opacity: 0.07; }
+  62% { opacity: 0.6; }
+  66% { opacity: 0.06; }
+  100% { opacity: 0.06; }
+}
+
+/* Standby y de noche: apenas visible, latiendo muy lento. Chip duerme y el
+   sistema queda en mínimos. */
+.estado-standby #rayo,
+body.es-noche #rayo {
+  animation: latir-rayo-tenue var(--ciclo-rayo-noche) ease-in-out infinite;
+}
+
+@keyframes latir-rayo-tenue {
+  0%, 100% { opacity: 0.04; }
+  50% { opacity: 0.14; }
 }
 
 /* ============================================================================
@@ -2110,6 +2206,17 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   #fondo-anterior.cruzando-fondo {
     display: none;
     animation: none;
+  }
+
+  /* El rayo queda ESTÁTICO en su estado medio: visible pero quieto. No se
+     esconde, porque es un indicador y sigue diciendo que Chip está encendido. */
+  #rayo,
+  .estado-cargando #rayo,
+  .estado-critico #rayo,
+  .estado-standby #rayo,
+  body.es-noche #rayo {
+    animation: none;
+    opacity: 0.22;
   }
 
   /* Chip no parpadea: los ojos quedan abiertos y quietos. La capa NO se

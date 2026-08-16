@@ -59,6 +59,11 @@ import {
   APOYO_ORUGAS,
   VARS_SOMBRA,
   PANTALLAS_PECHO,
+  RECUADROS_RAYO,
+  CICLO_RAYO_MS,
+  CICLO_RAYO_CRITICO_MS,
+  CICLO_RAYO_NOCHE_MS,
+  VARS_RAYO,
   ESTADOS_CON_PANTALLA_VIVA,
   SEGMENTOS_PANTALLA,
   CAJA_SEGMENTOS,
@@ -66,6 +71,7 @@ import {
   VARS_PANTALLA,
   PUNTA_DEL_CABLE,
   TAMANO_TOMA,
+  PERSPECTIVA_TOMA,
   VARS_TOMA,
   COLORES_TOMA,
   VARS_LUZ,
@@ -91,6 +97,7 @@ import {
   svgDePulso,
   svgDeBurbuja,
   svgDeToma,
+  svgDeRayo,
   svgDeNumero
 } from './formas.js';
 
@@ -141,6 +148,9 @@ raiz.style.setProperty(VARS_ANIMACION.duracionPresion, `${DURACION_PRESION_MS}ms
 raiz.style.setProperty(VARS_ANIMACION.transicionPanel, `${TRANSICION_PANEL_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.duracionLlegada, `${DURACION_LLEGADA_MS}ms`);
 raiz.style.setProperty(VARS_CAMBIO.duracionSquash, `${DURACION_SQUASH_MS}ms`);
+raiz.style.setProperty(VARS_RAYO.ciclo, `${CICLO_RAYO_MS}ms`);
+raiz.style.setProperty(VARS_RAYO.cicloCritico, `${CICLO_RAYO_CRITICO_MS}ms`);
+raiz.style.setProperty(VARS_RAYO.cicloNoche, `${CICLO_RAYO_NOCHE_MS}ms`);
 
 // El encuadre de la escena: cuánto hay que correr la panorámica para entrar 8%
 // en ella. Es un número sin unidad porque el CSS lo multiplica por el alto de
@@ -198,6 +208,9 @@ if (toma) {
   raiz.style.setProperty(VARS_TOMA.y, String(PUNTA_DEL_CABLE.y / 100));
   raiz.style.setProperty(VARS_TOMA.ancho, String(TAMANO_TOMA.ancho / 100));
   raiz.style.setProperty(VARS_TOMA.alto, String(TAMANO_TOMA.alto / 100));
+  raiz.style.setProperty(VARS_TOMA.giro, `${PERSPECTIVA_TOMA.giro}deg`);
+  raiz.style.setProperty(VARS_TOMA.inclinacion, `${PERSPECTIVA_TOMA.inclinacion}deg`);
+  raiz.style.setProperty(VARS_TOMA.fuga, `${PERSPECTIVA_TOMA.fuga}px`);
 
   for (const [tono, valor] of Object.entries(COLORES_TOMA)) {
     raiz.style.setProperty(`--toma-${tono}`, valor);
@@ -213,6 +226,22 @@ if (toma) {
 // dibujados en el arte, y lo que cambia en cada render es cuáles están
 // encendidos. Crearlos de nuevo en cada tick sería tirar y rehacer seis nodos
 // varias veces por segundo para no cambiar nada.
+const rayoPecho = document.getElementById('rayo');
+if (rayoPecho) rayoPecho.innerHTML = svgDeRayo();
+
+// La caja del rayo cambia con la pose igual que la de la pantalla y la de la
+// antena: es otra medida del arte, no una posición inventada.
+function pintarRayo(claveSprite) {
+  if (!rayoPecho) return;
+  const caja = RECUADROS_RAYO[claveSprite];
+  rayoPecho.hidden = !caja;
+  if (!caja) return;
+  rayoPecho.style.setProperty(VARS_RAYO.x, `${caja.x}%`);
+  rayoPecho.style.setProperty(VARS_RAYO.y, `${caja.y}%`);
+  rayoPecho.style.setProperty(VARS_RAYO.ancho, `${caja.ancho}%`);
+  rayoPecho.style.setProperty(VARS_RAYO.alto, `${caja.alto}%`);
+}
+
 const pantalla = document.getElementById('pantalla');
 const segmentosPantalla = document.getElementById('pantalla-segmentos');
 const numeroPantalla = document.getElementById('pantalla-numero');
@@ -889,6 +918,7 @@ export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = 
   dibujarMascota(claveSprite, !ESTADOS_DE_ACCION.includes(estadoVisual));
   pintarOjos(claveSprite);
   pintarPantalla(estado, claveSprite);
+  pintarRayo(claveSprite);
   actualizarBarras(estado);
 }
 

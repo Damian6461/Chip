@@ -200,6 +200,17 @@ export function svgDeNumero(texto) {
     fill="currentColor">${px}</svg>`;
 }
 
+// El rayo del pecho. Es la MISMA silueta que el ícono del botón Cargar: el
+// símbolo de energía del juego es uno solo, y que el botón y el pecho usen
+// formas distintas sería inventar un segundo idioma.
+//
+// No reemplaza al rayo dibujado en el sprite: se apoya encima con mezcla
+// `screen`, así que lo ENCIENDE en vez de taparlo. Por eso no hace falta que
+// calce al píxel — la mezcla aditiva perdona el corrimiento, y el arte sigue
+// siendo el arte.
+const RAYO = `
+  <path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="var(--rayo-color)"/>`;
+
 // ---- La toma de corriente del galpón ----
 //
 // No es un efecto ni un objeto de la colección: es MOBILIARIO. Está siempre, en
@@ -263,6 +274,10 @@ export function svgDeBurbuja() {
 }
 
 // Su propio envoltorio: es la única forma con caja no cuadrada.
+export function svgDeRayo() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${RAYO}</svg>`;
+}
+
 export function svgDeToma() {
   return `<svg viewBox="0 0 20 24" aria-hidden="true">${TOMA}</svg>`;
 }

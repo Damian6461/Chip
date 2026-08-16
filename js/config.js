@@ -616,6 +616,47 @@ export const SEGMENTOS_PANTALLA = 6;
 export const CAJA_SEGMENTOS = { x: 16, y: 22, ancho: 68, alto: 31 };
 export const CAJA_NUMERO = { y: 66, alto: 20 };
 
+// ---- El rayo del pecho ----
+//
+// Estaba dibujado al lado de las barritas y era el único elemento de la
+// pantalla que no hacía nada. Es el símbolo de energía: puede comunicar estado
+// por sí solo.
+//
+// El recuadro del rayo vive a la DERECHA del cristal y adentro de la placa, en
+// su propio hueco. Medido con la misma firma de color del vidrio, acotada a esa
+// zona. En standby el hueco muestra una luna en vez de un rayo, pero está y
+// late igual: lo que se enciende es el indicador, no el símbolo.
+export const RECUADROS_RAYO = {
+  idle: { x: 55.9, y: 59.4, ancho: 15.2, alto: 16.4 },
+  feliz: { x: 55.1, y: 59.0, ancho: 15.6, alto: 16.8 },
+  critico: { x: 52.0, y: 64.5, ancho: 11.3, alto: 14.1 },
+  standby: { x: 59.0, y: 61.7, ancho: 12.5, alto: 16.4 },
+  cargando: { x: 61.7, y: 60.2, ancho: 16.0, alto: 15.6 },
+  jugando: { x: 57.4, y: 55.1, ancho: 16.0, alto: 18.0 },
+  limpiando: { x: 55.5, y: 59.0, ancho: 14.8, alto: 17.2 },
+  'idle-manitos': { x: 57.0, y: 58.2, ancho: 15.6, alto: 15.2 }
+};
+
+// Los cuatro ritmos. El de reposo es más lento que el de la antena y fuera de
+// fase: dos latidos del mismo largo se sincronizan y el conjunto se vuelve
+// mecánico. El de critico es el que más comunica —un rayo que titila mal se lee
+// al instante— y por eso su keyframe es irregular a propósito.
+export const CICLO_RAYO_MS = 3700;
+export const CICLO_RAYO_CRITICO_MS = 1300;
+export const CICLO_RAYO_NOCHE_MS = 6200;
+
+// El cian del display, que es el mismo de la batería. El rayo no tiene color
+// propio: es el mismo sistema eléctrico.
+export const VARS_RAYO = {
+  x: '--rayo-x',
+  y: '--rayo-y',
+  ancho: '--rayo-ancho',
+  alto: '--rayo-alto',
+  ciclo: '--ciclo-rayo',
+  cicloCritico: '--ciclo-rayo-critico',
+  cicloNoche: '--ciclo-rayo-noche'
+};
+
 export const VARS_PANTALLA = {
   x: '--pantalla-x',
   y: '--pantalla-y',
@@ -644,11 +685,28 @@ export const PUNTA_DEL_CABLE = { x: 79.7, y: 98.6 };
 // Más alta que ancha, como una toma de verdad.
 export const TAMANO_TOMA = { ancho: 11, alto: 13 }; // % del alto de Chip
 
+// La toma está en el PISO, y un rectángulo plano en un piso con fuga se lee
+// como sticker. Estos tres números salen de medir la panorámica en el punto
+// exacto donde cae la toma, no de estimar:
+//
+//   giro         -1,6°  la costura del piso en esa zona sube hacia la derecha.
+//                       Medido siguiendo la fila de mayor gradiente a izquierda
+//                       y derecha de la toma: y=812 en x=430, y=808 en x=570.
+//   inclinacion   14°   cuánto se acuesta la cara hacia atrás. El histograma de
+//                       orientaciones del piso da las costuras de fuga en ±8°,
+//                       y una caja parada en ese plano se ve con esa cara.
+//   fuga         160px  la distancia de perspectiva. Más corta exagera; más
+//                       larga la vuelve plana otra vez.
+export const PERSPECTIVA_TOMA = { giro: -1.6, inclinacion: 14, fuga: 160 };
+
 export const VARS_TOMA = {
   x: '--toma-x',
   y: '--toma-y',
   ancho: '--toma-ancho',
-  alto: '--toma-alto-caja'
+  alto: '--toma-alto-caja',
+  giro: '--toma-giro',
+  inclinacion: '--toma-inclinacion',
+  fuga: '--toma-fuga'
 };
 
 // La chapa sale de la paleta del galpón, no inventada: el gris del metal de las
