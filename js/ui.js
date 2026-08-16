@@ -4,30 +4,19 @@ import {
   STAT_MIN,
   STAT_MAX,
   PLACEHOLDER,
-  CICLO_REBOTE_MS,
-  DURACION_SALTO_MS,
-  TRANSICION_BARRA_MS,
-  DURACION_PRESION_MS,
-  VARS_ANIMACION,
   CLASE_SALTO,
   DURACION_ESTOY_BIEN_MS,
   CLASE_ESTOY_BIEN,
   SECCIONES_MENU,
-  COLORES_PANEL,
-  VERSION_JUEGO,
   CLASE_SIN_MOVIMIENTO,
-  CICLO_LED_MS,
   ESTADOS_DE_ACCION,
-  DURACION_SQUASH_MS,
   CLASE_CAMBIO,
-  VARS_CAMBIO,
   // Las duraciones de cruce NO se importan acá: llegan como argumento `cruce` de
   // render(). Quién decide cuánto dura una transición es la sesión, no el módulo
   // que la pinta — y tenerlas importadas de más era la puerta para que alguien
   // volviera a decidirlo desde acá.
   VARS_CRUCE_FONDO,
   CLASE_CRUCE_FONDO,
-  FONDO_CORRIMIENTO,
   VARS_FONDO,
   CLASE_NOCHE,
   DURACION_PANEL_ESTADO_MS,
@@ -39,7 +28,6 @@ import {
   CLASE_OBJETO_NUEVO,
   CLASE_OBJETO_OBTENIDO,
   RUTAS_OJOS,
-  ORIGEN_PARPADEO,
   DURACION_PARPADEO_MS,
   MARGEN_FIN_PARPADEO_MS,
   PARPADEO_INTERVALO_MIN_MS,
@@ -47,8 +35,6 @@ import {
   PROBABILIDAD_DOBLE_PARPADEO,
   ESPERA_DOBLE_PARPADEO_MS,
   CLASE_PARPADEO,
-  COLOR_PARPADO,
-  GRUPOS_DE_COLOR,
   CORAZONES_FELIZ,
   DESTELLOS_FELIZ,
   RAYITAS_JUGANDO,
@@ -56,10 +42,6 @@ import {
   BURBUJAS_LIMPIANDO,
   DURACION_CORAZON_MS,
   ESPERA_ENTRE_CORAZONES_MS,
-  DURACION_DESTELLO_MS,
-  DURACION_RAYITA_MS,
-  DURACION_PULSO_MS,
-  DURACION_BURBUJA_MS,
   CORAZONES_EXTRA_MIN,
   CORAZONES_EXTRA_MAX,
   CLASE_CELEBRANDO,
@@ -70,16 +52,8 @@ import {
   VARS_SOMBRA,
   PANTALLAS_PECHO,
   RECUADROS_RAYO,
-  ABERTURA_VENTANA,
-  CICLO_NUBES_MS,
-  CICLO_NUBES_NOCHE_MS,
-  CICLO_NUBES_LEJANAS_MS,
-  CICLO_NUBES_LEJANAS_NOCHE_MS,
   COLORES_NUBE,
   VARS_NUBES,
-  CICLO_RAYO_MS,
-  CICLO_RAYO_CRITICO_MS,
-  CICLO_RAYO_NOCHE_MS,
   VARS_RAYO,
   ESTADOS_CON_PANTALLA_VIVA,
   SEGMENTOS_PANTALLA,
@@ -87,32 +61,10 @@ import {
   ALTO_NUMERO,
   CAJA_NUMERO,
   VARS_PANTALLA,
-  PUNTA_DEL_CABLE,
-  TAMANO_TOMA,
-  ANCLA_TOMA,
-  VARS_TOMA,
-  VARS_REPISA,
-  VARS_APERTURA,
-  COLOR_APERTURA,
-  DURACION_APERTURA_MS,
-  RETARDO_CHIP_APERTURA_MS,
-  DURACION_ENTRADA_CHIP_MS,
-  REPISA,
-  ACHATADO_REPISA,
-  COLORES_REPISA,
   FILOS_OBJETO,
   FILO_OBJETO_POR_DEFECTO,
-  COLORES_TOMA,
   VARS_LUZ,
-  COLORES_BARRAS,
-  VARS_BARRAS,
-  PREFIJO_CLASE_ESTADO,
-  CICLO_ANTENA_MS,
-  CICLO_ANTENA_NOCHE_MS,
-  CICLO_ZETA_MS,
-  CICLO_CHISPA_MS,
-  CICLOS_POLVO_MS,
-  VARS_EFECTOS
+  PREFIJO_CLASE_ESTADO
 } from './config.js';
 import { aplica, puedeJugar } from './acciones.js';
 import { obtenerSprite, cajaDeContenidoPantalla } from './sprites.js';
@@ -125,190 +77,43 @@ import {
   svgDeChispa,
   svgDePulso,
   svgDeBurbuja,
-  svgDeToma,
-  svgDeRepisa,
-  svgDePanel,
   svgDeTilde,
   svgDeRayo,
   svgDeNumero
 } from './formas.js';
 
-const cajaChip = document.getElementById('chip');
-const contenedorMascota = document.getElementById('contenedor-mascota');
-const capaOjos = document.getElementById('ojos');
-const capaParpado = document.getElementById('parpado');
-const contenedorCorazones = document.getElementById('corazones');
-const contenedorDestellos = document.getElementById('destellos');
-const contenedorCorazonesExtra = document.getElementById('corazones-extra');
-const panelEstado = document.getElementById('estado');
-const lineaEvento = document.getElementById('evento');
-const estante = document.getElementById('estante');
-const panelColeccion = document.getElementById('coleccion');
-const grillaColeccion = document.getElementById('coleccion-grilla');
-const detalleColeccion = document.getElementById('coleccion-detalle');
-const grillaGigantes = document.getElementById('gigantes-grilla');
-const detalleGigantes = document.getElementById('gigantes-detalle');
-const canvas = document.getElementById('canvas-mascota');
-// El salto va en #cuerpo y no en el canvas: es el envoltorio que contiene TODAS
-// las capas de Chip, así que saltan juntas. Ver el bloque del rebote en
-// style.css.
-const cuerpo = document.getElementById('cuerpo');
-const ctx = canvas.getContext('2d');
-
-// Los sprites son pixel art. El canvas ahora mide 256x256, exactamente lo que
-// miden ellos, así que acá adentro no hay escalado: se dibuja 1 a 1 y el CSS
-// lleva el canvas al tamaño que tenga la escena. El flag se deja igual, porque
-// es la garantía de que si algún día el canvas y el sprite dejan de coincidir,
-// el resultado sea nítido y no borroso. El escalado a pantalla lo resuelve
-// `image-rendering: pixelated` en style.css.
-//
-// Se setea una sola vez, acá: es estado del contexto, no un parámetro de
-// drawImage, y sobrevive a clearRect. Lo único que lo resetea a `true` es
-// cambiar el tamaño del canvas.
-ctx.imageSmoothingEnabled = false;
-
-// Las duraciones de las animaciones viven en config.js y se usan en style.css,
-// que no puede importar un módulo. El puente son estas custom properties: se
-// escriben una sola vez, acá, y la hoja las lee con var(). Duplicar los números
-// en el CSS sería un carve-out más de la regla de config.js, y este no hace
-// falta.
-const raiz = document.documentElement;
-raiz.style.setProperty(VARS_ANIMACION.cicloRebote, `${CICLO_REBOTE_MS}ms`);
-raiz.style.setProperty(VARS_ANIMACION.duracionSalto, `${DURACION_SALTO_MS}ms`);
-raiz.style.setProperty(VARS_ANIMACION.transicionBarra, `${TRANSICION_BARRA_MS}ms`);
-raiz.style.setProperty(VARS_ANIMACION.duracionPresion, `${DURACION_PRESION_MS}ms`);
-raiz.style.setProperty('--ciclo-led', `${CICLO_LED_MS}ms`);
-raiz.style.setProperty(VARS_ANIMACION.transicionPanel, `${TRANSICION_PANEL_MS}ms`);
-raiz.style.setProperty(VARS_ANIMACION.duracionLlegada, `${DURACION_LLEGADA_MS}ms`);
-raiz.style.setProperty(VARS_CAMBIO.duracionSquash, `${DURACION_SQUASH_MS}ms`);
-raiz.style.setProperty(VARS_APERTURA.color, COLOR_APERTURA);
-raiz.style.setProperty(VARS_APERTURA.duracion, `${DURACION_APERTURA_MS}ms`);
-raiz.style.setProperty(VARS_APERTURA.retardoChip, `${RETARDO_CHIP_APERTURA_MS}ms`);
-raiz.style.setProperty(VARS_APERTURA.duracionChip, `${DURACION_ENTRADA_CHIP_MS}ms`);
-raiz.style.setProperty(VARS_RAYO.ciclo, `${CICLO_RAYO_MS}ms`);
-raiz.style.setProperty(VARS_NUBES.x, `${ABERTURA_VENTANA.x}%`);
-raiz.style.setProperty(VARS_NUBES.y, `${ABERTURA_VENTANA.y}%`);
-raiz.style.setProperty(VARS_NUBES.ancho, `${ABERTURA_VENTANA.ancho}%`);
-raiz.style.setProperty(VARS_NUBES.alto, `${ABERTURA_VENTANA.alto}%`);
-raiz.style.setProperty(VARS_NUBES.ciclo, `${CICLO_NUBES_MS}ms`);
-raiz.style.setProperty(VARS_NUBES.cicloNoche, `${CICLO_NUBES_NOCHE_MS}ms`);
-raiz.style.setProperty(VARS_NUBES.cicloLejanas, `${CICLO_NUBES_LEJANAS_MS}ms`);
-raiz.style.setProperty(VARS_NUBES.cicloLejanasNoche, `${CICLO_NUBES_LEJANAS_NOCHE_MS}ms`);
-raiz.style.setProperty(VARS_RAYO.cicloCritico, `${CICLO_RAYO_CRITICO_MS}ms`);
-raiz.style.setProperty(VARS_RAYO.cicloNoche, `${CICLO_RAYO_NOCHE_MS}ms`);
-
-// El encuadre de la escena: cuánto hay que correr la panorámica para entrar 8%
-// en ella. Es un número sin unidad porque el CSS lo multiplica por el alto de
-// la escena — así el mismo encuadre vale en cualquier pantalla.
-raiz.style.setProperty(VARS_FONDO.corrimiento, String(FONDO_CORRIMIENTO));
-
-// Los colores de las barras viajan por el mismo puente. Salen del sprite de
-// Chip (ver COLORES_BARRAS): la piel del instrumento la define el personaje.
-for (const [stat, variable] of Object.entries(VARS_BARRAS)) {
-  raiz.style.setProperty(variable, COLORES_BARRAS[stat]);
-}
-
-// Y los ciclos de los efectos de vida, por el mismo puente otra vez.
-raiz.style.setProperty(VARS_EFECTOS.cicloAntena, `${CICLO_ANTENA_MS}ms`);
-raiz.style.setProperty(VARS_EFECTOS.cicloAntenaNoche, `${CICLO_ANTENA_NOCHE_MS}ms`);
-raiz.style.setProperty(VARS_EFECTOS.cicloZeta, `${CICLO_ZETA_MS}ms`);
-raiz.style.setProperty(VARS_EFECTOS.cicloChispa, `${CICLO_CHISPA_MS}ms`);
-VARS_EFECTOS.ciclosPolvo.forEach((variable, i) => {
-  raiz.style.setProperty(variable, `${CICLOS_POLVO_MS[i]}ms`);
-});
-
-// Y lo del personaje: el pivote del parpadeo, sus tiempos, y los dos colores
-// que salieron muestreados del sprite viejo de feliz.
-raiz.style.setProperty(VARS_PERSONAJE.origenParpadeo, ORIGEN_PARPADEO);
-raiz.style.setProperty(VARS_PERSONAJE.duracionParpadeo, `${DURACION_PARPADEO_MS}ms`);
-raiz.style.setProperty(VARS_PERSONAJE.colorParpado, COLOR_PARPADO);
-raiz.style.setProperty(VARS_PERSONAJE.duracionCorazon, `${DURACION_CORAZON_MS}ms`);
-raiz.style.setProperty(VARS_PERSONAJE.duracionDestello, `${DURACION_DESTELLO_MS}ms`);
-raiz.style.setProperty(VARS_PERSONAJE.duracionRayita, `${DURACION_RAYITA_MS}ms`);
-raiz.style.setProperty(VARS_PERSONAJE.duracionPulso, `${DURACION_PULSO_MS}ms`);
-raiz.style.setProperty(VARS_PERSONAJE.duracionBurbuja, `${DURACION_BURBUJA_MS}ms`);
-
-// Las paletas de los efectos, por convención de nombre: --<grupo>-<tono>.
-for (const [grupo, tonos] of Object.entries(GRUPOS_DE_COLOR)) {
-  for (const [tono, valor] of Object.entries(tonos)) {
-    raiz.style.setProperty(`--${grupo}-${tono}`, valor);
-  }
-}
-
-// ---- La toma de corriente ----
-//
-// Mobiliario del galpón, no un accesorio de `cargando`: se dibuja una vez, está
-// en todos los estados y lo único que le cambia por estado es el brillo de las
-// ranuras.
-//
-// La posición sale de PUNTA_DEL_CABLE, que está medida sobre el lienzo del
-// sprite. El CSS la convierte a la escena con los mismos anclajes que usa #chip
-// —el 50% de ancho y el piso— así que no hay ningún porcentaje de la escena de
-// por medio y el encastre aguanta cualquier viewport.
-const toma = document.getElementById('toma');
-
-if (toma) {
-  toma.innerHTML = svgDeToma();
-  raiz.style.setProperty(VARS_TOMA.x, String(PUNTA_DEL_CABLE.x / 100));
-  raiz.style.setProperty(VARS_TOMA.y, String(PUNTA_DEL_CABLE.y / 100));
-  raiz.style.setProperty(VARS_TOMA.ancho, String(TAMANO_TOMA.ancho / 100));
-  raiz.style.setProperty(VARS_TOMA.alto, String(TAMANO_TOMA.alto / 100));
-  raiz.style.setProperty(VARS_TOMA.anclaX, String(ANCLA_TOMA.x));
-  raiz.style.setProperty(VARS_TOMA.anclaY, String(ANCLA_TOMA.y));
-
-  for (const [tono, valor] of Object.entries(COLORES_TOMA)) {
-    raiz.style.setProperty(`--toma-${tono}`, valor);
-  }
-}
-
-
-// ---- La repisa alta ----
-//
-// Se dibuja una vez y no cambia nunca: es mobiliario del galpón, como la toma.
-// Su geometría entera vive en REPISA, así que mover el estante es tocar cuatro
-// números en config y nada más.
-const repisa = document.getElementById('repisa');
-
-if (repisa) {
-  repisa.innerHTML = svgDeRepisa();
-  raiz.style.setProperty(VARS_REPISA.x, `${REPISA.x}%`);
-  raiz.style.setProperty(VARS_REPISA.y, `${REPISA.y}%`);
-  raiz.style.setProperty(VARS_REPISA.ancho, `${REPISA.ancho}%`);
-  raiz.style.setProperty(VARS_REPISA.alto, `${REPISA.alto}%`);
-  raiz.style.setProperty(VARS_REPISA.achatado, String(ACHATADO_REPISA));
-
-  for (const [tono, valor] of Object.entries(COLORES_REPISA)) {
-    raiz.style.setProperty(`--repisa-${tono}`, valor);
-  }
-}
-
+// Los nodos, el puente de custom properties y los SVG del mobiliario están en
+// ui-montaje.js. Este módulo pinta; aquel deja el galpón puesto.
+import {
+  raiz,
+  cajaChip,
+  contenedorMascota,
+  capaOjos,
+  capaParpado,
+  contenedorCorazones,
+  contenedorDestellos,
+  contenedorCorazonesExtra,
+  panelEstado,
+  lineaEvento,
+  estante,
+  panelColeccion,
+  grillaColeccion,
+  detalleColeccion,
+  grillaGigantes,
+  detalleGigantes,
+  canvas,
+  cuerpo,
+  ctx,
+  menuBoton,
+  menu,
+  solapas,
+  secciones
+} from './ui-montaje.js';
 
 // ---- El menú ----
 //
-// Tres secciones y sólo tres. La colección no se rehace: se MUEVE, tal cual
-// está, al cuerpo del panel. Rehacerla habría creado una segunda vista de lo
-// mismo, que es la forma más rápida de que las dos se desincronicen.
-const menuBoton = document.getElementById('menu-boton');
-const menu = document.getElementById('menu');
-const solapas = menu ? [...menu.querySelectorAll('#menu-solapas button')] : [];
-const secciones = menu ? [...menu.querySelectorAll('.menu-seccion')] : [];
-
-if (menuBoton) {
-  menuBoton.innerHTML = svgDePanel();
-  for (const [tono, valor] of Object.entries(COLORES_PANEL)) {
-    raiz.style.setProperty(`--panel-${tono}`, valor);
-  }
-}
-
-if (menu) {
-  // La vista de colección se muda acá adentro. Es el MISMO nodo que ya llena
-  // mostrarColeccion: no hay una copia que mantener.
-  document.getElementById('menu-coleccion').appendChild(panelColeccion);
-  panelColeccion.hidden = false;
-
-  document.querySelector('.acerca-version').textContent = `Versión ${VERSION_JUEGO}`;
-}
-
+// Tres secciones y sólo tres. La mudanza de la colección al cuerpo del panel la
+// hace ui-montaje.js; acá queda su comportamiento.
 function mostrarSeccion(nombre) {
   for (const solapa of solapas) {
     solapa.setAttribute('aria-selected', String(solapa.dataset.seccion === nombre));

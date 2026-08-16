@@ -20,7 +20,7 @@ http://127.0.0.1:5500/index.html
 
 ## Tests
 
-157 pruebas, mismos archivos en dos entrypoints:
+163 pruebas, mismos archivos en dos entrypoints:
 
 ```bash
 node tests/correr.mjs        # sale 0 si pasa todo, 1 si no
@@ -33,6 +33,8 @@ http://127.0.0.1:5500/tests/   # verde/rojo en la página, resumen en el <title>
 No hace falta `package.json`: Node detecta la sintaxis de módulo sola. Los dos entrypoints instalan un `localStorage` en memoria antes de importar nada del juego, así que **la suite nunca toca tu partida**, ni siquiera en el navegador donde el origen es el mismo.
 
 Se corren después de cualquier cambio que toque estado, decay o persistencia.
+
+`tests/tema.test.js` cruza el puente de `config.js` a `style.css` en las dos direcciones: que ningún `var()` que la hoja no defina se quede sin escritor, y que nada de lo que el tema escribe quede sin lector. Ver abajo por qué eso hacía falta.
 
 `tests/composicion.test.js` hace cumplir las dos reglas de composición de los efectos: que ninguna partícula se salga de `FRANJA_EFECTOS` y que ninguna entre en el círculo de `RADIO_EXCLUSION_ANTENA`. Las dos constantes existían hace rato y **no las leía nadie** — aparecían sólo en un comentario de `style.css` contando que las posiciones se habían verificado a mano. Los números que mandan viven en el CSS como literales, así que mover un corazón al 92% no rompía nada y nadie se enteraba. Mismo patrón que el guardián de las poses: una regla sostenida por disciplina, no por construcción.
 
@@ -76,7 +78,8 @@ La lectura de stats de abajo sigue **también** a los botones del juego: `inicia
 Se rompen y el proyecto se degrada rápido.
 
 - **`estado.js` es el único que toca `localStorage`.**
-- **`ui.js` es el único que toca el DOM del juego** (lo declarado en `index.html`). Recibe y pinta: no calcula. Excepción declarada: `debug.js` crea su propio subárbol, lo appendea a `document.body` y no lee ni modifica nada que no haya creado él.
+- **`ui.js` y `ui-montaje.js` son los únicos que tocan el DOM del juego** (lo declarado en `index.html`). Reciben y pintan: no calculan. Excepción declarada: `debug.js` crea su propio subárbol, lo appendea a `document.body` y no lee ni modifica nada que no haya creado él.
+- **`tema.js` es puro.** Arma el mapa de custom properties y no lo escribe: quien lo escribe es `ui-montaje.js`.
 - **`decay.js` es puro.** No guarda, no lee `localStorage`, no toca el DOM, no muta lo que recibe.
 - **`acciones.js` es puro.** Señala "no apliqué" devolviendo la misma referencia.
 - **`config.js` es el único hogar de las constantes del juego.** Tres carve-outs documentados en el propio archivo: `sw.js`, `manifest.json` y `tests/config.pruebas.js`.
@@ -115,6 +118,26 @@ Las dos primeras pruebas de integración que corrieron encontraron dos cosas que
 **Cada clic tiraba una excepción.** Un handler de "clic afuera para cerrar la colección" llamaba a `ocultarColeccion()`, que se borró cuando la colección se mudó adentro del menú. Parecía protegido por `if (panelColeccion.hidden) return`, pero mudar el panel al menú lo deja con `hidden = false` para siempre, así que el guard nunca cortaba. No era código muerto: era código que corría y fallaba, en silencio, en cada toque del galpón.
 
 Ninguno de los dos rompía nada visible. Los dos llevaban meses.
+
+### El módulo que pinta son tres archivos
+
+Mismo corte que el del orquestador y por la misma razón: no por tamaño, sino por qué necesita cada parte para correr.
+
+De las 779 líneas de código de `ui.js`, **310 se ejecutaban una sola vez al importarse** — los veinte `getElementById`, el puente de custom properties y los tres SVG del mobiliario. Estaban ahí porque tenían que correr antes que todo lo demás, no porque pertenecieran al módulo que pinta.
+
+| archivo | qué es | qué necesita |
+|---|---|---|
+| `tema.js` | el mapa de custom properties que sale de config | nada. Función pura |
+| `ui-montaje.js` | los nodos, el puente aplicado, el mobiliario dibujado | un DOM, al importarse |
+| `ui.js` | las once funciones que pintan, y sus auxiliares | un DOM, al llamarlas |
+
+**Lo que se gana es `tema.js`.** Una custom property sin escritor no se rompe: `var(--x)` sin valor se cae al fallback y la página sigue andando. Un `--duracion` que nadie escribe deja una animación en su default; un `--color` que nadie escribe deja un elemento transparente. Nada tira error, nada llega a la consola. Mientras el puente vivió en noventa líneas de `raiz.style.setProperty(...)` adentro de `ui.js`, la única forma de verificarlo era abrir el navegador y fijarse si algo se veía raro.
+
+**Lo que NO se gana, dicho claro:** `ui.js` sigue sin poder importarse desde Node. Importa `ui-montaje.js`, que toca el DOM al cargarse. Para que fuera importable habría que inyectarle los nodos, como se hizo con `sesion.js`, y eso es tocar las cuarenta y seis funciones. Hoy no vale la pena; el día que valga, la costura ya está.
+
+**Lo que quedó del lado del pintado a propósito:** el cableado de listeners del menú y del alféizar. También corre al importar, pero engancha funciones de `ui.js` —`abrirMenu`, `cerrarMenu`, `irAColeccion`—, así que mudarlo daría una dependencia circular a cambio de nada. Montaje es "dejar el galpón puesto", no "conectar los botones".
+
+---
 
 ### La regla del shorthand `animation`
 

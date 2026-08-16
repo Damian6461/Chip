@@ -19,6 +19,7 @@ await import('./orquestador.test.js');
 // tests/index.html.
 await import('./assets.test.js');
 await import('./composicion.test.js');
+await import('./tema.test.js');
 
 const VERDE = '\x1b[32m';
 const ROJO = '\x1b[31m';
