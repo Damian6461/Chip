@@ -674,8 +674,19 @@ function pintarEstante(objetos, nuevos) {
     // que tres hallazgos no aparezcan de golpe.
     if (recienLlegados.has(objeto.id)) {
       nodo.classList.add(CLASE_OBJETO_NUEVO);
-      nodo.style.animationDelay = `${orden * ESPERA_ENTRE_LLEGADAS_MS}ms`;
+      const espera = orden * ESPERA_ENTRE_LLEGADAS_MS;
+      nodo.style.animationDelay = `${espera}ms`;
       orden++;
+
+      // Red de contención. Mientras dura el escalonado la pieza está en scale(0)
+      // por el `backwards`, que es lo correcto —todavía no llegó—, pero si el
+      // animationend no llega nunca (pestaña en segundo plano, animación
+      // cancelada) quedaría invisible para siempre. Este timer la devuelve a su
+      // tamaño pase lo que pase.
+      setTimeout(() => {
+        nodo.classList.remove(CLASE_OBJETO_NUEVO);
+        nodo.style.animationDelay = '';
+      }, espera + DURACION_LLEGADA_MS + 200);
     }
 
     estante.appendChild(nodo);

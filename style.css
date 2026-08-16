@@ -1755,15 +1755,26 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 
 #estante {
   position: absolute;
-  left: 1.5%;
-  /* La línea del alféizar cae en y 493 de 844. */
-  bottom: 41.6%;
-  width: 18.5%;
+  left: 2.5%;
+  /* EL ALFÉIZAR SE MOVIÓ. Con la ventana nueva —mucho más alta— la línea
+     quedó en el 63,5% del alto de la escena, no en el 58,4% donde estaba el
+     estante: las piezas flotaban adentro de la abertura, sobre el cielo.
+
+     El 63,5% no es una estimación: es el borde horizontal más fuerte que hay
+     adentro de la columna de la abertura, y da EXACTAMENTE el mismo valor en
+     las cuatro panorámicas —598 px de 941— porque las cuatro comparten
+     composición. Que las cuatro coincidan al píxel es la prueba de que el
+     detector encontró el alféizar y no un reflejo. */
+  bottom: 36.5%;
+  width: 24%;
   display: flex;
   flex-wrap: wrap;
   align-content: flex-end;
   gap: 3px;
-  padding: 3px;
+  /* Sin padding abajo: la base de las piezas TIENE que ser la línea del
+     alféizar, no la de una caja con aire adentro. Con 3 px de padding las
+     piezas terminaban 30 px por encima y volvían a flotar. */
+  padding: 3px 3px 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1783,21 +1794,27 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   --acento: var(--color-humor);
   --raro: var(--color-bateria);
 
-  width: 16px;
-  height: 16px;
+  /* 16 px fijos eran ilegibles: en un teléfono de 390 de ancho había que ir a
+     buscarlas. Atado al alto de la escena escala con el aparato y da 24 px en
+     944 y 22 en 844, que es donde una silueta de 24x24 se empieza a leer. */
+  width: calc(var(--alto-escena) * 0.026);
+  height: calc(var(--alto-escena) * 0.026);
   flex: 0 0 auto;
   /* Lo que falta: la misma forma, en sombra. No es "apagado" sino oscuro, que
      es lo que se lee contra la ventana iluminada — con opacidad sola se
      desvanecía y la silueta no preguntaba nada. */
-  opacity: 0.38;
-  filter: grayscale(1) brightness(0.3);
+  opacity: 0.34;
+  filter: grayscale(1) brightness(0.28);
 }
 
+/* LO OBTENIDO VA EN COLOR PLENO. Es una regla aparte y no un matiz de la de
+   arriba: lo que falta es una pregunta y lo que está es un objeto. Si las dos
+   cosas comparten tratamiento, la colección no comunica nada. */
 .objeto.obtenido {
   opacity: 1;
-  filter: none;
-  /* Un brillo mínimo para despegarlas del piso del galpón. */
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.8));
+  /* Una sola declaración de filter: dos seguidas no se suman, gana la última,
+     y la primera era ruido que hacía pensar que el grayscale seguía puesto. */
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
 }
 
 .objeto svg {
@@ -1808,7 +1825,17 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   stroke-linejoin: round;
 }
 
-/* La llegada: aparece del nada con un rebotecito y se queda. */
+/* La llegada: aparece de la nada con un rebotecito y se queda.
+
+   El `backwards` es correcto y se queda: mientras corre el escalonado, la pieza
+   que todavía no llegó está en scale(0) y NO SE VE, que es exactamente lo que
+   tiene que pasar. Con forwards estaría a tamaño completo hasta que le toca y
+   después pegaría un salto a cero para volver a crecer.
+
+   Eso explica el "ocho de veinte computan tamaño 0" de la auditoría: no es un
+   bug de layout, es el escalonado medido en el momento justo. Lo que sí era un
+   riesgo real —que animationend no llegue y la pieza quede en cero para
+   siempre— lo cierra ui.js sacando la clase por temporizador. */
 .objeto.llegando {
   animation: llegar var(--duracion-llegada) cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
 }
