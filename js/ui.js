@@ -115,7 +115,8 @@ import {
   svgDeTilde,
   svgDeRayo,
   svgDeNumero,
-  caminoDelCable,
+  cintaDelCable,
+  fichaDelPuerto,
   caminoDeVuelo,
   reflejoDeAro
 } from './formas.js';
@@ -772,32 +773,17 @@ export function dibujarCable() {
     llegada: aPx(RECORRIDO_CABLE.llegada)
   };
 
-  const { completo, tramos } = caminoDelCable(desde, enPx);
+  // LA PUNTA ENTRA AL PUERTO, no llega hasta él. El cable arranca un poco
+  // ADENTRO del cuerpo y la boca se dibuja encima, así que el extremo queda
+  // tapado por la pieza. Un cable que termina contra el borde del conector se ve
+  // apoyado al lado; uno que se mete detrás del borde se ve enchufado.
+  const haciaAdentro = { x: enPx.apoyo.x - desde.x, y: enPx.apoyo.y - desde.y };
+  const ficha = fichaDelPuerto(desde, haciaAdentro, CABLE);
+
+  const { completo, cuerpo, lomo, grosorLomo } = cintaDelCable(ficha.punta, enPx, CABLE);
 
   nodoCable.setAttribute('viewBox', `0 0 ${Math.round(escena.width)} ${Math.round(escena.height)}`);
   nodoCable.style.setProperty(VARS_CABLE.camino, `path("${completo}")`);
-
-  // EL TRAZO SE AFINA CON LA DISTANCIA, y NO en línea recta. El tamaño aparente
-  // va como 1/distancia: con una interpolación lineal —lo que había— el afinado
-  // se reparte parejo y en pantalla se lee como un cable de grosor constante que
-  // se adelgaza de golpe al final. Con la curva, a media profundidad ya mide un
-  // 40% de lo que medía cerca, que es lo que hace una perspectiva de verdad.
-  const grosorDe = (z) =>
-    Math.max(CABLE.grosorMinimo, CABLE.grosor / (1 + CABLE.caidaGrosor * z));
-
-  const cuerpo = tramos
-    .map(
-      (t) =>
-        `<path class="cable-cuerpo" d="${t.d}" style="stroke-width: ${grosorDe(t.z).toFixed(2)}px"/>`
-    )
-    .join('');
-
-  const filo = tramos
-    .map(
-      (t) =>
-        `<path class="cable-brillo" d="${t.d}" style="stroke-width: ${(grosorDe(t.z) * 0.22).toFixed(2)}px; translate: 0 ${(grosorDe(t.z) * -0.26).toFixed(2)}px"/>`
-    )
-    .join('');
 
   const pulsos = Array.from(
     { length: PULSOS_CABLE.cuantos },
@@ -805,7 +791,21 @@ export function dibujarCable() {
       `<circle class="pulso-cable" r="${PULSOS_CABLE.radio}" style="animation-delay: ${Math.round((i * PULSOS_CABLE.ciclo) / PULSOS_CABLE.cuantos)}ms"/>`
   ).join('');
 
-  nodoCable.innerHTML = cuerpo + filo + pulsos;
+  // EL ORDEN DE PINTADO ES LA UNIÓN. La sombra primero, después la cinta —que
+  // llega hasta adentro del puerto—, después los pulsos, y la ficha ÚLTIMA,
+  // tapándole la punta al cable. Con la ficha antes que la cinta no taparía nada
+  // y el cable volvería a terminar a la vista, que es como se veía apoyado.
+  const eje = `translate(${desde.x.toFixed(1)} ${desde.y.toFixed(1)}) rotate(${ficha.giro.toFixed(1)})`;
+
+  nodoCable.innerHTML =
+    `<ellipse class="cable-sombra-puerto" transform="${eje}" rx="${(ficha.ancho * 0.78).toFixed(1)}" ry="${(ficha.ancho * 0.62).toFixed(1)}"/>` +
+    `<path class="cable-cuerpo" d="${cuerpo}"/>` +
+    `<path class="cable-lomo" d="${lomo}" style="stroke-width:${grosorLomo.toFixed(2)}px"/>` +
+    pulsos +
+    `<g class="cable-ficha" transform="${eje}">` +
+    `<rect class="cable-ficha-cuerpo" x="${(-ficha.largoFicha * 0.18).toFixed(1)}" y="${(-ficha.ancho / 2).toFixed(1)}" width="${ficha.largoFicha.toFixed(1)}" height="${ficha.ancho.toFixed(1)}" rx="${ficha.radio.toFixed(1)}"/>` +
+    `<rect class="cable-ficha-filo" x="${(-ficha.largoFicha * 0.18).toFixed(1)}" y="${(-ficha.ancho / 2).toFixed(1)}" width="${(ficha.largoFicha * 0.26).toFixed(1)}" height="${ficha.ancho.toFixed(1)}" rx="${(ficha.radio * 0.8).toFixed(1)}"/>` +
+    `</g>`;
 }
 
 // ---- La nube que pasa una vez ----
@@ -1411,6 +1411,12 @@ function pintarEstante(objetos, nuevos) {
     nodo.style.setProperty(
       VARS_OBJETO.base,
       `${(((LIENZO_OBJETO - base) / LIENZO_OBJETO) * 100).toFixed(2)}%`
+    );
+    // Y dónde queda esa línea DENTRO de la caja, que es el pivote de todo lo que
+    // escale a esta pieza. Ver transform-origin en .estante .objeto.
+    nodo.style.setProperty(
+      VARS_OBJETO.apoyo,
+      `${((base / LIENZO_OBJETO) * 100).toFixed(2)}%`
     );
 
     // Los que llegaron en esta visita entran con su animación, escalonados para

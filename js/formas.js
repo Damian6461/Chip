@@ -489,33 +489,195 @@ export function svgDeToma() {
 // Se devuelven los tramos por separado para poder AFINAR el trazo con la
 // distancia: cada tramo trae su profundidad y el que lo dibuja le da su grosor.
 // Un cable del mismo grosor de punta a punta aplana la escena entera.
-export function caminoDelCable(conector, r) {
-  const n = (v) => Math.round(v * 100) / 100;
-  const P = (p) => `${n(p.x)} ${n(p.y)}`;
+// ---- EL CABLE, COMO CINTA Y NO COMO TRAZO ----
+//
+// Se dibujaba con un <path> por tramo y `stroke`. Eso trajo tres problemas que
+// no se arreglan tocando números:
+//
+// 1. NODOS BRILLANTES EN LOS QUIEBRES. Cada tramo era su propio path con
+//    `stroke-linecap: round`, así que en cada vértice se apilaban dos casquetes
+//    redondos — y encima el path del brillo ponía otros dos. Un cable que se
+//    dobla no tiene un punto de luz en el vértice: tiene el mismo grosor y la luz
+//    le corre por el lomo.
+// 2. NO SE PODÍA AFINAR DE VERDAD. Un `stroke` tiene un ancho por path, así que
+//    la perspectiva se aproximaba con un ancho distinto por tramo y el salto
+//    entre tramos se veía.
+// 3. NO TENÍA CUERPO. Un trazo con brillo encima se lee como una línea de luz.
+//
+// La cinta resuelve los tres: se muestrea la línea media, cada muestra lleva su
+// profundidad y de ahí su semiancho, y se emite un polígono cerrado que sube por
+// un borde y vuelve por el otro. Los quiebres se redondean con Chaikin sobre la
+// línea media, así que el doblez es un doblez y no una junta.
 
-  // La caída: catenaria asimétrica, con la panza corrida hacia el extremo bajo.
-  const apoyo = r.apoyo;
+// Corner-cutting de Chaikin: cada vértice interior se reemplaza por dos puntos
+// al cuarto y a los tres cuartos de sus segmentos. Los extremos no se tocan —el
+// cable tiene que seguir naciendo en el conector y muriendo en la caja.
+//
+// Una sola pasada, y a propósito: dos ya redondean tanto que los quiebres dejan
+// de leerse como quiebres, y el pedido original pedía ángulos que se notaran.
+function suavizar(puntos) {
+  if (puntos.length < 3) return puntos;
+
+  const salida = [puntos[0]];
+
+  for (let i = 0; i < puntos.length - 1; i++) {
+    const a = puntos[i];
+    const b = puntos[i + 1];
+    const mezcla = (t) => ({
+      x: a.x + (b.x - a.x) * t,
+      y: a.y + (b.y - a.y) * t,
+      z: a.z + (b.z - a.z) * t
+    });
+
+    if (i > 0) salida.push(mezcla(0.25));
+    if (i < puntos.length - 2) salida.push(mezcla(0.75));
+  }
+
+  salida.push(puntos[puntos.length - 1]);
+  return salida;
+}
+
+// La caída del conector al piso: catenaria asimétrica, con la panza corrida
+// hacia el extremo bajo. Se muestrea para poder darle grosor variable como al
+// resto.
+function muestrasDeLaCaida(conector, apoyo, pasos) {
   const largo = Math.hypot(apoyo.x - conector.x, apoyo.y - conector.y);
   const cuelga = largo * apoyo.caida;
   const c1 = { x: conector.x + (apoyo.x - conector.x) * 0.24, y: conector.y + cuelga * 0.72 };
   const c2 = { x: conector.x + (apoyo.x - conector.x) * 0.7, y: apoyo.y + cuelga * 0.3 };
 
-  const caida = `M ${P(conector)} C ${P(c1)}, ${P(c2)}, ${P(apoyo)}`;
+  const en = (t) => {
+    const u = 1 - t;
+    return {
+      x: u * u * u * conector.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * apoyo.x,
+      y: u * u * u * conector.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * apoyo.y,
+      // La caída entera está en el plano de adelante: no se afina.
+      z: 0
+    };
+  };
 
-  const tramos = [{ d: caida, z: 0 }];
-  let previo = apoyo;
-
-  for (const q of [...r.quiebres, r.llegada]) {
-    tramos.push({ d: `M ${P(previo)} L ${P(q)}`, z: q.z });
-    previo = q;
-  }
-
-  // Y el camino completo, de una sola pieza, para que los pulsos lo recorran.
-  const completo =
-    caida + [...r.quiebres, r.llegada].map((q) => ` L ${P(q)}`).join('');
-
-  return { completo, tramos };
+  return Array.from({ length: pasos + 1 }, (_, i) => en(i / pasos));
 }
+
+// La normal de cada muestra, promediando la dirección de sus dos vecinos. Sin el
+// promedio, el borde de la cinta pega un salto en cada quiebre y vuelve a
+// aparecer la junta que vinimos a sacar.
+function normales(linea) {
+  return linea.map((p, i) => {
+    const a = linea[Math.max(0, i - 1)];
+    const b = linea[Math.min(linea.length - 1, i + 1)];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const largo = Math.hypot(dx, dy) || 1;
+    return { x: -dy / largo, y: dx / largo };
+  });
+}
+
+// EL GROSOR NO CAE EN LÍNEA RECTA. El tamaño aparente va como 1/distancia, así
+// que el afinado usa grosor / (1 + caida * z). Con interpolación lineal el
+// afinado se reparte parejo y en pantalla se lee como un cable de grosor
+// constante que se adelgaza de golpe al final.
+//
+// Y tiene PISO. Sin él, el tramo que sube a la caja terminaba en un pelo de un
+// píxel y medio contra una pared oscura: desaparecía. Un cable que se va al
+// fondo se ve más fino, no se ve menos.
+export function grosorDelCable(z, cable) {
+  return Math.max(cable.grosorMinimo, cable.grosor / (1 + cable.caidaGrosor * z));
+}
+
+export function cintaDelCable(conector, r, cable) {
+  const n = (v) => Math.round(v * 100) / 100;
+
+  const quiebres = [...r.quiebres, r.llegada];
+
+  // La línea media: la caída muestreada, y después los quiebres.
+  let linea = muestrasDeLaCaida(conector, r.apoyo, 14);
+  linea.push(...quiebres.map((q) => ({ x: q.x, y: q.y, z: q.z })));
+  linea = suavizar(linea);
+
+  // El camino de la línea media, que es por donde viajan los pulsos.
+  const completo = linea
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${n(p.x)} ${n(p.y)}`)
+    .join(' ');
+
+  const nor = normales(linea);
+  const semi = linea.map((p) => grosorDelCable(p.z, cable) / 2);
+
+  const unLado = linea.map((p, i) => ({ x: p.x + nor[i].x * semi[i], y: p.y + nor[i].y * semi[i] }));
+  const elOtro = linea.map((p, i) => ({ x: p.x - nor[i].x * semi[i], y: p.y - nor[i].y * semi[i] }));
+
+  const cuerpo =
+    unLado.map((p, i) => `${i === 0 ? 'M' : 'L'} ${n(p.x)} ${n(p.y)}`).join(' ') +
+    ' ' +
+    elOtro
+      .slice()
+      .reverse()
+      .map((p) => `L ${n(p.x)} ${n(p.y)}`)
+      .join(' ') +
+    ' Z';
+
+  // EL LOMO: la arista iluminada de arriba, como los caños de la panorámica. No
+  // es un contorno ni un segundo cable: es una franja angosta corrida hacia el
+  // lado del que viene la luz —la ventana, o sea arriba— así que se calcula sobre
+  // la normal y no como un trazo paralelo.
+  //
+  // Va como polilínea de un solo path: un stroke continuo no tiene juntas
+  // interiores, que es de donde salían los puntos brillantes.
+  const lomo = linea
+    .map((p, i) => {
+      const arriba = nor[i].y < 0 ? 1 : -1;
+      const x = p.x + nor[i].x * semi[i] * 0.46 * arriba;
+      const y = p.y + nor[i].y * semi[i] * 0.46 * arriba;
+      return `${i === 0 ? 'M' : 'L'} ${n(x)} ${n(y)}`;
+    })
+    .join(' ');
+
+  // Los anchos del lomo, tramo por tramo, no se pueden variar en un solo stroke,
+  // así que se usa el del extremo más cerca —que es donde el lomo se ve— y el
+  // resto queda cubierto por la cinta.
+  const grosorLomo = Math.max(1, grosorDelCable(0, cable) * 0.2);
+
+  return { completo, cuerpo, lomo, grosorLomo };
+}
+
+
+// LA FICHA, que es lo que hace que la unión se lea.
+//
+// El cable no termina CONTRA el conector: entra. Y "entra" no se dibuja
+// alargando el cable, se dibuja tapándole la punta con la pieza que va encima —
+// igual que en la realidad, donde lo que ves es la ficha y no el extremo del
+// cable.
+//
+// Tres piezas, y el ORDEN de pintado es el efecto:
+//
+//   1. la sombra, difusa y debajo de todo: el oscurecimiento alrededor de donde
+//      entra. Sin ella la ficha flota sobre el pecho.
+//   2. el cable, que llega hasta ADENTRO del puerto.
+//   3. la ficha, encima, tapando el extremo.
+//
+// La primera versión dibujaba un óvalo negro sólido en vez de una ficha. A
+// tamaño real eso no se lee como un conector: se lee como un agujero en el
+// pecho de Chip.
+export function fichaDelPuerto(conector, direccion, cable) {
+  const g = grosorDelCable(0, cable);
+  const largo = Math.hypot(direccion.x, direccion.y) || 1;
+  const ux = direccion.x / largo;
+  const uy = direccion.y / largo;
+
+  return {
+    // Hasta dónde llega la punta del cable: bien adentro, para que la ficha la
+    // tape entera aunque el balanceo la mueva un pixel.
+    punta: { x: conector.x + ux * g * 0.9, y: conector.y + uy * g * 0.9 },
+    // La ficha: un poco más ancha que el cable y más corta que ancha, que es la
+    // proporción de una ficha de alimentación vista de costado.
+    ancho: g * 1.34,
+    largoFicha: g * 1.05,
+    radio: g * 0.22,
+    // Y el ángulo, para que la ficha acompañe la dirección de entrada.
+    giro: (Math.atan2(uy, ux) * 180) / Math.PI
+  };
+}
+
 
 // EL RECORRIDO DEL REFLEJO sobre un aro. Función pura: recibe el aro medido y
 // devuelve la elipse por la que corre la luz.

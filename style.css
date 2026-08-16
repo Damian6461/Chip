@@ -2540,9 +2540,22 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   left: calc(var(--repisa-x) + var(--repisa-ancho) * 0.06);
   bottom: calc(100% - var(--repisa-y) - var(--repisa-nivel, 0) * var(--repisa-separacion));
   width: calc(var(--repisa-ancho) * 0.88);
-  display: flex;
-  align-items: flex-end;
-  gap: calc(var(--alto-escena) * 0.008);
+
+  /* GRILLA Y NO FLEX, y no es cosmético: era `display: flex` con las piezas en
+     `flex: 0 0 auto`, o sea una fila que NO ENCOGE. Con cuatro piezas de 30 px
+     en 105 px de tabla, la cuarta se iba del cuadro — medido, su borde derecho
+     caía en 101,1% de la escena.
+
+     `minmax(0, 1fr)` reparte el ancho disponible entre las que haya, y el
+     `min()` del ancho de la pieza la deja achicarse cuando la fila se llena. Con
+     eso la fila no se puede desbordar: ni con ocho piezas, ni en 390 px de
+     viewport, ni con una tabla más angosta. Un número mágico ajustado a mano
+     habría arreglado este caso y roto el siguiente. */
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  justify-items: center;
+  align-items: end;
   /* Bajarlas un pelo mete la base debajo del filo de la tabla. Ese solapamiento
      de dos píxeles es lo que hace que apoyen en vez de posarse encima: sin él
      la fila queda perfectamente alineada con el borde y vuelve a leerse como
@@ -2592,7 +2605,7 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 
 .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
   rotate: -4deg;
-  translate: 0 calc(var(--base-objeto, 13%) - 3px);
+  translate: 0 calc(var(--base-objeto, 13%) - 1.5px);
   scale: 0.86 calc(var(--repisa-achatado) * 0.86);
   filter: saturate(0.7) brightness(0.66) drop-shadow(0 1px 2px rgb(0 0 0 / 0.9));
   /* Detrás de sus dos vecinas, no sólo más oscura: si la de atrás pinta encima
@@ -2616,15 +2629,24 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 }
 
 .estante .objeto {
-  width: calc(var(--alto-escena) * 0.034);
-  height: calc(var(--alto-escena) * 0.034);
+  /* El min() es lo que le permite encoger cuando la fila se llena. Sin él la
+     grilla reparte las columnas pero la pieza se sale de la suya. */
+  width: min(calc(var(--alto-escena) * 0.034), 100%);
+  height: auto;
+  aspect-ratio: 1;
   /* PERSPECTIVA. La repisa está en el 19,5% del alto y el horizonte —el borde
      del alféizar— en el 63%: la estamos mirando desde bastante abajo. A esa
      altura de una cosa chica se ve la cara de adelante y casi nada de la de
      arriba, o sea que se acorta en vertical. El achatado es leve a propósito:
      de más, las piezas se leen como aplastadas y no como vistas desde abajo. */
   scale: 1 var(--repisa-achatado);
-  transform-origin: bottom center;
+  /* EL PIVOTE ES LA LÍNEA DE APOYO, no el borde de la caja. Entre la tinta de la
+     silueta y el borde de abajo de su caja hay entre 2,5 y 5,5 unidades de
+     viewBox de aire, así que achatar o achicar alrededor de `bottom` levanta la
+     base de la pieza de la tabla — poco, pero justo en el único punto donde se
+     nota, que es el contacto. Con el origen en la línea de apoyo, escalar la
+     pieza la deja apoyada pase lo que pase. */
+  transform-origin: center var(--apoyo-objeto, 100%);
   position: relative;
 
   /* LA BASE DE LA FORMA NO ES LA BASE DE LA CAJA. Las ocho siluetas están
@@ -2659,8 +2681,11 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 .estante .objeto:nth-child(3n) {
   rotate: 4deg;
   /* Un poco más atrás en la tabla: más arriba, más chica y más apagada. Es el
-     mismo truco de profundidad que usa el polvo, aplicado a tres píxeles. */
-  translate: 0 calc(var(--base-objeto, 13%) - 2px);
+     mismo truco de profundidad que usa el polvo, aplicado a un píxel.
+     Eran 2 px, y sobre una pieza de 27 px eso ya no se leía como "más atrás"
+     sino como "despegada de la tabla". La escala y el apagado alcanzan para el
+     efecto; el que rompe el apoyo es el corrimiento. */
+  translate: 0 calc(var(--base-objeto, 13%) - 1px);
   scale: 0.92 calc(var(--repisa-achatado) * 0.92);
   filter: saturate(0.82) brightness(0.82) drop-shadow(0 1px 2px rgb(0 0 0 / 0.85));
 }
@@ -3651,35 +3676,73 @@ body.sin-movimiento *::after {
 /* Sin `vector-effect: non-scaling-stroke`: existía para anular la distorsión de
    un viewBox cuadrado sobre una escena que no lo es. Ahora el viewBox está en
    píxeles reales y el trazo ya mide lo que dice. */
-.cable-cuerpo,
-.cable-brillo {
-  fill: none;
-  stroke-linecap: round;
-}
+/* EL CABLE ES UNA CINTA RELLENA, no un trazo.
 
-/* GRUESO Y OSCURO. Era 3,4 px de cian pálido y se leía como un hilo. Es un
-   cable de energía industrial: el trazo base va apagado y lo que brilla son los
-   pulsos. Ese contraste entre el cable muerto y la energía que lo recorre ES el
-   efecto — con el cable ya brillante, los pulsos no tienen contra qué destacar. */
-/* El grosor lo pone ui.js por tramo, con la profundidad de cada uno: cerca es
-   grueso y lejos es fino. Acá sólo queda el color y las puntas. */
+   Se dibujaba con un path por tramo y `stroke`, y de ahí salían los tres
+   problemas que se veían en pantalla:
+
+   - Cada tramo era su propio path con `stroke-linecap: round`, así que en cada
+     quiebre se apilaban dos casquetes redondos, más otros dos del path del
+     brillo. Eso son los NODOS BRILLANTES: puntos de luz en los vértices. Un
+     cable que se dobla no tiene un punto de luz en el doblez.
+   - Un stroke tiene un ancho por path, así que la perspectiva se aproximaba con
+     un ancho por tramo y el salto entre tramos se veía.
+   - Un trazo con un brillo encima se lee como una línea de luz, no como un
+     objeto.
+
+   Ahora la línea media se muestrea, cada muestra lleva su profundidad y su
+   semiancho, y sale un polígono cerrado. Los quiebres se redondean sobre la
+   línea media, así que el doblez es un doblez. Ver cintaDelCable en formas.js. */
 .cable-cuerpo {
-  stroke: var(--cable-color);
-  stroke-linejoin: round;
+  fill: var(--cable-color);
+  stroke: none;
 }
 
-/* La línea de brillo en el borde de arriba, como los caños de la panorámica: no
-   es un contorno, es la luz de la ventana pegándole por encima. Se consigue con
-   un trazo más fino corrido hacia arriba, no con un segundo path. */
-.cable-brillo {
+/* EL LOMO: la arista iluminada de arriba, como los caños de la panorámica. Es la
+   luz de la ventana pegándole por encima, no un contorno.
+
+   Va como UN SOLO path continuo y con `stroke-linecap: butt`. Las dos cosas son
+   el arreglo del mismo bug: un stroke continuo no tiene juntas interiores donde
+   apilar casquetes, y sin `round` tampoco los tiene en las puntas. */
+.cable-lomo {
+  fill: none;
   stroke: var(--cable-brillo);
+  stroke-linecap: butt;
+  stroke-linejoin: round;
+  opacity: 0.42;
+}
+
+/* LA FICHA Y SU SOMBRA. Es lo que hace que la union se lea.
+
+   Se dibujaba un ovalo negro solido encima de la punta del cable. A tamano real
+   eso no se lee como un conector: se lee como un agujero en el pecho de Chip.
+   Una ficha es una PIEZA, con su propio color y su propio filo, y lo que hace es
+   TAPAR el extremo del cable — igual que en la realidad, donde lo que ves es la
+   ficha y no la punta del cable.
+
+   La sombra va primero y difusa: el oscurecimiento del plastico alrededor de
+   donde entra. Sin ella la ficha flota sobre el pecho en vez de meterse. */
+.cable-sombra-puerto {
+  fill: var(--cable-sombra-puerto);
   opacity: 0.5;
+  filter: blur(2px);
+}
+
+.cable-ficha-cuerpo {
+  fill: var(--cable-ficha);
+}
+
+/* El filo del lado del puerto, mas oscuro: es la cara que entra, y en sombra. */
+.cable-ficha-filo {
+  fill: var(--cable-sombra-puerto);
+  opacity: 0.75;
 }
 
 /* EL BALANCEO. Muy leve y muy lento: algo que apenas se mueve por su propio
-   peso, no algo que serpentea. Va sobre el grupo entero y no sobre la panza,
-   porque un cable colgado se mueve como una pieza. */
-#cable path {
+   peso, no algo que serpentea. Va sobre las piezas del cable y NO sobre la boca,
+   que está atornillada al pecho de Chip y no se mueve con el cable. */
+#cable .cable-cuerpo,
+#cable .cable-lomo {
   animation: colgar var(--cable-balanceo-ciclo) ease-in-out infinite;
   transform-origin: 0% 0%;
 }

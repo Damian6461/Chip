@@ -1080,7 +1080,20 @@ export const PANTALLAS_PECHO = {
   // lienzo— así que el 2,5 estaba inclinando el contenido adentro de un marco
   // recto. El número venía de suponer que el torso en tres cuartos arrastraba al
   // display, y no: el display está pintado de frente.
-  cargando: { x: 41.8, y: 60.6, ancho: 18.7, alto: 12.9, giro: 0, vidrio: '#002137' },
+  //
+  // REMEDIDO OTRA VEZ, y esta vez contra el bisel. Sacado el giro, lo que
+  // quedaba mal era la caja: 41,8/60,6/18,7x12,9 tomaba el borde EXTERNO del
+  // bisel arriba y a la izquierda, y se pasaba tres puntos y medio por abajo del
+  // cristal. Un recuadro que tapa su propio marco y desborda hacia el torso se
+  // lee como una pantalla chueca aunque esté perfectamente derecha.
+  //
+  // El método: perfiles de luminancia sobre el sprite limpio, que dan las dos
+  // aristas verticales sin discusión —el vidrio corre de 43 a 60,2 con los
+  // brillos del bisel en 41-41,8 y 60,5-61,3— y después el recuadro magenta
+  // encima del sprite al 900% para las cuatro aristas juntas. Los detectores
+  // automáticos no sirvieron acá: "oscuro y azulado" agarra medio torso, y el
+  // contenido cian agarra la antena, el rayo y los hombros.
+  cargando: { x: 43.5, y: 61.9, ancho: 17.1, alto: 9.5, giro: 0, vidrio: '#002137' },
   jugando: { x: 39.5, y: 57.0, ancho: 17.6, alto: 14.1, giro: 7.4, vidrio: '#001c2e' },
   limpiando: { x: 37.9, y: 60.9, ancho: 16.4, alto: 13.3, giro: 0, vidrio: '#001e31' },
   'idle-manitos': { x: 39.1, y: 60.2, ancho: 17.6, alto: 11.3, giro: 4.5, vidrio: '#002a3c' }
@@ -1347,7 +1360,15 @@ export const CLASE_ESTOY_BIEN = 'estoy-bien';
 // conductos verticales de la pared, que bajan por x 52-58% y x 63-68%: su
 // tercio izquierdo quedaba montado encima de ellos. Corrida a 70-95% apoya en
 // pared limpia y la altura se queda donde estaba.
-export const REPISA = { x: 70, y: 29.5, ancho: 25, alto: 3.4 };
+// TERMINA EN 90% Y NO EN 95%. Con la tabla llegando al 95 las piezas de las
+// últimas posiciones se salían del cuadro —medido: el borde derecho de la cuarta
+// caía en 101,1% de la escena—, y una pieza cortada por el borde de la pantalla
+// no se lee como una pieza al fondo, se lee como un error de encuadre.
+//
+// Correrla a la izquierda es la mitad del arreglo; la otra mitad está en el CSS,
+// donde la fila dejó de ser un flex que no encoge para pasar a ser una grilla que
+// reparte el ancho disponible. Ver .estante.
+export const REPISA = { x: 64, y: 29.5, ancho: 26, alto: 3.4 };
 
 // DOS ESTANTES. La separación va en % de la escena, igual que el resto de la
 // geometría de la pared, para que el hueco entre tablas no cambie con el
@@ -1366,25 +1387,29 @@ export const ACHATADO_REPISA = 0.88;
 // la regla que salió de los corazones: el negro hunde la forma, y un tono
 // oscuro del mismo tinte la despega sin ensuciarla. Las piezas de metal comparten
 // el azul-gris; las dos de acento tienen el suyo.
-// DÓNDE APOYA CADA SILUETA dentro de su viewBox de 24.
+// DÓNDE TERMINA LA TINTA DE CADA SILUETA, en unidades del viewBox de 24.
 //
-// Ninguna llega hasta abajo del todo, y NO todas terminan en el mismo lugar: el
-// hueco que dejan abajo va del 10,4% (la arandela) al 20,8% (la-cosa). El código
-// corregía eso con un corrimiento único del 13%, calculado sobre el promedio —y
-// un promedio deja a las dos puntas mal: la arandela se hundía en la tabla y la
-// cosa y el cable flotaban dos píxeles por encima.
+// Ninguna llega hasta abajo del todo y NO todas terminan en el mismo lugar, así
+// que un corrimiento único —lo que había al principio, el promedio— deja a las
+// dos puntas mal: unas hundidas en la tabla y otras flotando por encima.
 //
-// Medido rasterizando cada silueta a 240 px y buscando su última fila con tinta.
-// Con la tabla, cada pieza se corre lo suyo y las ocho apoyan igual.
+// Remedida con `getBBox()` sobre el SVG ya montado, más la mitad del ancho de
+// trazo, que es tinta y el bbox de geometría no la cuenta. La tabla anterior
+// estaba a ojo en seis de las ocho —hasta 0,7 unidades, que a 30 px de pieza son
+// 0,9 px— y ese error es exactamente el síntoma que se ve: unas hundidas y otras
+// flotando, sin patrón.
+//
+// La medición vieja fallaba por circular: se verificaba con el mismo detector
+// que la había producido. getBBox no sabe nada de esta tabla.
 export const BASES_OBJETO = {
   'tuerca-cabeza': 20.5,
-  'cable-enrollado': 19.2,
-  resorte: 21,
+  'cable-enrollado': 18.5,
+  resorte: 20.5,
   'arandela-dorada': 21.5,
-  'cosa-sin-nombre': 19,
-  'tornillo-perfecto': 21,
-  'nota-tanque': 21,
-  'marca-derrape': 21.2
+  'cosa-sin-nombre': 18.98,
+  'tornillo-perfecto': 21.5,
+  'nota-tanque': 21.5,
+  'marca-derrape': 20.5
 };
 
 // El alto del viewBox de las siluetas. Vive acá porque la cuenta de la base lo
@@ -1393,7 +1418,7 @@ export const LIENZO_OBJETO = 24;
 
 // Va en una tabla VARS_* y no como string suelto: el test del puente recolecta
 // los nombres de custom property de ahí, y suelto quedaba invisible para él.
-export const VARS_OBJETO = { base: '--base-objeto' };
+export const VARS_OBJETO = { base: '--base-objeto', apoyo: '--apoyo-objeto' };
 
 export const FILOS_OBJETO = {
   'arandela-dorada': '#5a3a10',
@@ -1600,7 +1625,17 @@ export const VARS_PANTALLA = {
 // La boca es la abertura cian de ABAJO, que se ve ampliando la pieza al 1200%:
 // el conector es un puerto con el reborde encendido arriba y la abertura abajo.
 // Un cable sale de la abertura, no del reborde.
-export const CONECTOR_PECHO = { x: 53.2, y: 85.8 };
+// DÓNDE SE ENCHUFA, en % del lienzo del sprite.
+//
+// Es el módulo cian que está DEBAJO de la pantalla del pecho —medido sobre el
+// sprite de `cargando`: x 48,4-57,0, y 75,4-86,7— y el punto de entrada va en su
+// mitad de abajo, no en su borde.
+//
+// Estaba en y 85,8, que es el labio inferior del módulo: el cable llegaba
+// pegado al canto y la unión se leía como un cable apoyado al lado del puerto.
+// Entrando en 83 el extremo queda ADENTRO de la pieza y la ficha lo tapa, que es
+// la diferencia entre "llega hasta" y "está enchufado".
+export const CONECTOR_PECHO = { x: 52.7, y: 83 };
 
 // EL CABLE, dibujado y animado por código.
 //
@@ -1634,15 +1669,32 @@ export const CABLE = {
   //
   // Con la curva, a media profundidad el cable ya mide un 40% de lo que medía
   // cerca, que es lo que hace una perspectiva de verdad.
-  grosor: 8,
+  // 13 y no 8. A 8 el cable era un hilo en TODO el recorrido, no sólo al final:
+  // un cable de energía industrial tiene cuerpo, y el de la panorámica —los caños
+  // de la pared— es la referencia de escala que tiene al lado.
+  grosor: 13,
   caidaGrosor: 3,
-  grosorMinimo: 1.6,
-  color: '#16323d',
+  // Y el afinado tiene PISO. A 1,6 el tramo que sube a la caja terminaba en un
+  // pelo contra una pared oscura y desaparecía. Un cable que se va al fondo se ve
+  // más fino; no se ve menos.
+  grosorMinimo: 4,
+  // GRIS INDUSTRIAL, no azul. El tono de antes era un teal oscuro que con el
+  // lomo encima leía como una línea de luz apagada. Este sale de los caños de la
+  // panorámica, que es lo que el cable tiene que parecer.
+  color: '#2b3138',
   // El filo de arriba: la luz de la ventana pegándole por encima. No es un
-  // contorno, es una arista iluminada, como los caños de la panorámica.
-  brillo: '#3d7f93',
-  // El azul eléctrico es SÓLO de los pulsos.
+  // contorno ni un segundo cable, es una arista iluminada.
+  brillo: '#7b858f',
+  // El azul eléctrico es SÓLO de los pulsos, y ese contraste —cuerpo apagado,
+  // energía viva— es todo el efecto. Si el cable también fuera cian, los pulsos
+  // no tendrían contra qué destacarse.
   energia: '#5fe6ff',
+  // La sombra donde entra al puerto: sin ella el cable se apoya, no se enchufa.
+  sombraPuerto: '#050a0e',
+  // La ficha: un gris de plástico, más claro que el cable. Tiene que leerse como
+  // OTRA pieza, no como el cable engordado — si comparte color con el cable, la
+  // unión vuelve a ser un extremo y no un enchufe.
+  ficha: '#4a525a',
   balanceo: { ciclo: 4600, amplitud: 2.2 }
 };
 
@@ -1678,25 +1730,35 @@ export const RECORRIDO_CABLE = {
   // por detrás. La banda útil del piso va de 66% —donde el piso encuentra la
   // pared— a 82%, que es donde apoyan las orugas de Chip. Todo el recorrido
   // vive ahí adentro.
-  apoyo: { x: 44, y: 81.5, caida: 0.44 },
+  // y 83,2 y no 81,5. Con el cable fino no se notaba; con cuerpo de 13 px sí: el
+  // recorrido pasaba POR DELANTE de las orugas de Chip, porque la banda 74-82%
+  // es justamente donde está su cuerpo. La banda libre de verdad es la de abajo,
+  // entre el borde de Chip (82%) y el cartel de evento (86,7%), y todo el tramo
+  // horizontal vive ahí hasta salir de su silueta.
+  apoyo: { x: 42, y: 83.2, caida: 0.42 },
 
   // Los quiebres, en orden, del apoyo hasta la caja. Cada uno con su
   // PROFUNDIDAD de 0 a 1 —0 es acá, 1 es el fondo— que decide el grosor.
   // Los tramos son rectos; lo que los hace leer como cable son los ángulos
   // entre ellos, que no son suaves ni parejos.
+  // Los tres primeros corren por el piso, adelante y por debajo de Chip; recién
+  // cuando el cable sale de su silueta —que abajo llega hasta x 74,7%— empieza a
+  // subir por la pared hacia la caja.
   quiebres: [
-    { x: 50.5, y: 82.4, z: 0.08 },
-    { x: 57, y: 79.6, z: 0.26 },
-    { x: 54, y: 76.8, z: 0.42 },
-    { x: 62.5, y: 74.2, z: 0.58 },
-    { x: 68, y: 70.4, z: 0.76 },
+    { x: 50, y: 84.3, z: 0.05 },
+    { x: 58.5, y: 83.5, z: 0.11 },
+    { x: 67, y: 84.1, z: 0.18 },
+    // Sale de atrás de Chip y arranca la trepada.
+    { x: 76, y: 82.4, z: 0.3 },
+    { x: 81.5, y: 76.5, z: 0.52 },
     // El último quiebre es el pie de la pared: de ahí el cable SUBE hasta la
     // caja, que está atornillada a media altura y no apoyada en el zócalo.
-    { x: 76.5, y: 66.5, z: 0.9 }
+    { x: 84.5, y: 68, z: 0.78 }
   ],
 
-  // La boca de la caja de conexión, contra la pared del fondo.
-  llegada: { x: 80.5, y: 58.6, z: 1 }
+  // La boca de la caja de conexión, contra la pared del fondo. Sigue a
+  // TOMA_FONDO.x: si los dos números se separan, el cable llega al aire.
+  llegada: { x: 86.5, y: 58.6, z: 1 }
 };
 
 export const PULSOS_CABLE = { cuantos: 5, ciclo: 3200, radio: 4.2 };
@@ -1712,7 +1774,16 @@ export const TOMA_FONDO = {
   //
   // 58% la deja sobre la pared del fondo y por encima de la línea del piso, que
   // es donde iría en un galpón de verdad.
-  x: 80.5,
+  //
+  // x 86,5 y no 80,5: contra el borde derecho. Ahí la pared del fondo está
+  // limpia y el cable cruza todo el cuadro para llegar, que es lo que hace que el
+  // galpón se lea más grande que lo que entra en pantalla. En 80,5 la caja
+  // quedaba en el medio del paño y el recorrido se acortaba.
+  //
+  // No choca con la repisa: la repisa vive entre y 28,5% y 38%, y esto está en
+  // 58. Y RECORRIDO_CABLE.llegada.x lo acompaña — si los dos se separan, el
+  // cable termina en el aire al lado de la caja.
+  x: 86.5,
   y: 58,
 
   // 4,7% del ancho. A 3 quedaba tan sumergida que había que buscarla: el
@@ -1735,6 +1806,8 @@ export const VARS_CABLE = {
   color: '--cable-color',
   brillo: '--cable-brillo',
   energia: '--cable-energia',
+  sombraPuerto: '--cable-sombra-puerto',
+  ficha: '--cable-ficha',
   tomaX: '--toma-fondo-x',
   tomaY: '--toma-fondo-y',
   tomaAncho: '--toma-fondo-ancho',
