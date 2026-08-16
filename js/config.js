@@ -1438,15 +1438,34 @@ export const CLASE_ESTOY_BIEN = 'estoy-bien';
 // conductos verticales de la pared, que bajan por x 52-58% y x 63-68%: su
 // tercio izquierdo quedaba montado encima de ellos. Corrida a 70-95% apoya en
 // pared limpia y la altura se queda donde estaba.
-// TERMINA EN 90% Y NO EN 95%. Con la tabla llegando al 95 las piezas de las
-// últimas posiciones se salían del cuadro —medido: el borde derecho de la cuarta
-// caía en 101,1% de la escena—, y una pieza cortada por el borde de la pantalla
-// no se lee como una pieza al fondo, se lee como un error de encuadre.
+// CENTRADA EN EL HUECO QUE DEJAN LOS CONDUCTOS, no pegada a un borde.
 //
-// Correrla a la izquierda es la mitad del arreglo; la otra mitad está en el CSS,
-// donde la fila dejó de ser un flex que no encoge para pasar a ser una grilla que
-// reparte el ancho disponible. Ver .estante.
-export const REPISA = { x: 64, y: 29.5, ancho: 26, alto: 3.4 };
+// El ancho de 26 se quedó: con la tabla llegando al 95 las piezas de las últimas
+// posiciones se salían del cuadro —medido: el borde derecho de la cuarta caía en
+// 101,1%— y eso lo arregló la grilla del CSS, no el ancho.
+//
+// Lo que estaba mal era el ARRANQUE. Al alargarla se la corrió a x=64 y volvió a
+// montarse sobre los conductos verticales de la pared, que es el problema que ya
+// se había corregido una vez.
+//
+// LOS CONDUCTOS, MEDIDOS y no estimados: se calculó el gradiente vertical del
+// fondo columna por columna, en la banda de alto donde vive la repisa (26,5% a
+// 38,7%), mapeando la imagen a la escena con FONDO_CORRIMIENTO. Contra un
+// gradiente medio de 3,4, los bordes marcados caen en:
+//
+//   45-49%     el marco de la ventana (el más fuerte, pico de 28)
+//   58-62%     el primer conducto
+//   65-66,5%   el segundo
+//   77-78%     una junta de panel, mucho más suave (14 contra 28)
+//   80-100%    pared lisa: entre 0 y 1, sin un solo borde
+//
+// O sea que el hueco libre de conductos va de 66,5% a 100%: mide 33,5. Con la
+// repisa en 26, centrada quedan 3,75 de margen a cada lado, y de ahí el 70,5.
+//
+// La junta de 77-78% queda DEBAJO de la tabla y no hay forma de evitarla: una
+// repisa de 26 en un hueco de 33,5 la cruza sí o sí. Pero es una junta de chapa,
+// no un caño: no tiene volumen y la tabla no se monta sobre nada.
+export const REPISA = { x: 70.5, y: 29.5, ancho: 26, alto: 3.4 };
 
 // DOS ESTANTES. La separación va en % de la escena, igual que el resto de la
 // geometría de la pared, para que el hueco entre tablas no cambie con el
