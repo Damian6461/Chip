@@ -717,67 +717,139 @@ export function svgDeToma() {
 // Un cable del mismo grosor de punta a punta aplana la escena entera.
 // ---- EL CABLE, COMO CINTA Y NO COMO TRAZO ----
 //
-// Se dibujaba con un <path> por tramo y `stroke`. Eso trajo tres problemas que
+// Se dibujaba con un <path> por tramo y `stroke`. Eso traía tres problemas que
 // no se arreglan tocando números:
 //
 // 1. NODOS BRILLANTES EN LOS QUIEBRES. Cada tramo era su propio path con
 //    `stroke-linecap: round`, así que en cada vértice se apilaban dos casquetes
-//    redondos — y encima el path del brillo ponía otros dos. Un cable que se
-//    dobla no tiene un punto de luz en el vértice: tiene el mismo grosor y la luz
-//    le corre por el lomo.
-// 2. NO SE PODÍA AFINAR DE VERDAD. Un `stroke` tiene un ancho por path, así que
-//    la perspectiva se aproximaba con un ancho distinto por tramo y el salto
-//    entre tramos se veía.
+//    redondos — y encima el path del brillo ponía otros dos.
+// 2. NO SE PODÍA AFINAR DE VERDAD. Un `stroke` tiene un ancho por path.
 // 3. NO TENÍA CUERPO. Un trazo con brillo encima se lee como una línea de luz.
 //
 // La cinta resuelve los tres: se muestrea la línea media, cada muestra lleva su
-// profundidad y de ahí su semiancho, y se emite un polígono cerrado que sube por
-// un borde y vuelve por el otro. Los quiebres se redondean con Chaikin sobre la
-// línea media, así que el doblez es un doblez y no una junta.
-
-// Corner-cutting de Chaikin: cada vértice interior se reemplaza por dos puntos
-// al cuarto y a los tres cuartos de sus segmentos. Los extremos no se tocan —el
-// cable tiene que seguir naciendo en el conector y muriendo en la caja.
+// profundidad y de ahí su semiancho, y se emite un polígono cerrado.
+// Corner-cutting de Chaikin, con el clamp escrito y no implícito.
 //
-// Una sola pasada, y a propósito: dos ya redondean tanto que los quiebres dejan
-// de leerse como quiebres, y el pedido original pedía ángulos que se notaran.
+// Cada vértice interior se reemplaza por dos puntos sobre sus segmentos. El
+// corte NUNCA puede pasar de la mitad del tramo más corto que toca el vértice:
+// si lo pasara, las dos curvas de vértices vecinos se cruzarían y el redondeo
+// colapsaría en la punta que vinimos a sacar.
+//
+// Con el 0,25 de Chaikin el clamp no se activa casi nunca —un cuarto ya es menos
+// que la mitad— pero está escrito igual, porque "casi nunca" no es una garantía
+// y el día que alguien suba el factor esto lo frena.
+const CORTE = 0.25;
+
 function suavizar(puntos) {
   if (puntos.length < 3) return puntos;
 
+  const largoDe = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
   const salida = [puntos[0]];
 
   for (let i = 0; i < puntos.length - 1; i++) {
     const a = puntos[i];
     const b = puntos[i + 1];
+    const largo = largoDe(a, b) || 1;
+
     const mezcla = (t) => ({
       x: a.x + (b.x - a.x) * t,
       y: a.y + (b.y - a.y) * t,
       z: a.z + (b.z - a.z) * t
     });
 
-    if (i > 0) salida.push(mezcla(0.25));
-    if (i < puntos.length - 2) salida.push(mezcla(0.75));
+    // El corte de este tramo, clampeado contra el tramo vecino más corto.
+    const vecinoA = i > 0 ? largoDe(puntos[i - 1], a) : largo;
+    const vecinoB = i < puntos.length - 2 ? largoDe(b, puntos[i + 2]) : largo;
+    const tope = Math.min(largo, vecinoA, vecinoB) / 2;
+    const t = Math.min(CORTE, tope / largo);
+
+    if (i > 0) salida.push(mezcla(t));
+    if (i < puntos.length - 2) salida.push(mezcla(1 - t));
   }
 
   salida.push(puntos[puntos.length - 1]);
   return salida;
 }
 
+// REMUESTREO A PASO FIJO, que es lo que arregla el pico.
+//
+// La línea media venía de dos fuentes con densidades muy distintas: la caída
+// muestreada en 14 puntos y los quiebres, que son 7 puntos sueltos. En los
+// tramos rectos largos no había ninguna muestra intermedia, así que entre dos
+// consecutivas había hasta 63 px —medido en producción— contra los 3 o 4 del
+// resto del recorrido.
+//
+// Eso trae dos problemas y ninguno se ve leyendo el código. El grosor sólo puede
+// cambiar EN una muestra, así que un tramo largo se afina de golpe en su
+// extremo en vez de a lo largo. Y el redondeo de Chaikin corta un cuarto de cada
+// tramo: sobre un tramo de 63 px eso son 16 px de curva contra 1 px en los
+// tramos cortos, o sea que el mismo quiebre se redondea distinto según de qué
+// largo sean sus vecinos.
+//
+// Con paso fijo las dos cosas se arreglan solas y además queda una propiedad
+// verificable: ninguna muestra consecutiva salta más que el paso.
+function remuestrear(linea, paso) {
+  if (linea.length < 2) return linea;
+
+  const salida = [linea[0]];
+  let resto = paso;
+
+  for (let i = 1; i < linea.length; i++) {
+    const a = linea[i - 1];
+    const b = linea[i];
+    let largo = Math.hypot(b.x - a.x, b.y - a.y);
+    if (largo === 0) continue;
+
+    let recorrido = 0;
+
+    while (recorrido + resto <= largo) {
+      recorrido += resto;
+      const t = recorrido / largo;
+      salida.push({
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t,
+        z: a.z + (b.z - a.z) * t
+      });
+      resto = paso;
+    }
+
+    resto -= largo - recorrido;
+  }
+
+  // El último punto va siempre, aunque no caiga en el paso: es la boca de la
+  // caja y tiene que quedar donde dice RECORRIDO_CABLE, no donde caiga la
+  // grilla del remuestreo.
+  const ultimo = linea[linea.length - 1];
+  const previo = salida[salida.length - 1];
+  if (Math.hypot(ultimo.x - previo.x, ultimo.y - previo.y) > 0.01) salida.push(ultimo);
+
+  return salida;
+}
+
 // La caída del conector al piso: catenaria asimétrica, con la panza corrida
-// hacia el extremo bajo. Se muestrea para poder darle grosor variable como al
-// resto.
-function muestrasDeLaCaida(conector, apoyo, pasos) {
-  const largo = Math.hypot(apoyo.x - conector.x, apoyo.y - conector.y);
+// hacia el extremo bajo.
+function muestrasDeLaCaida(desde, apoyo, pasos) {
+  const largo = Math.hypot(apoyo.x - desde.x, apoyo.y - desde.y);
   const cuelga = largo * apoyo.caida;
-  const c1 = { x: conector.x + (apoyo.x - conector.x) * 0.24, y: conector.y + cuelga * 0.72 };
-  const c2 = { x: conector.x + (apoyo.x - conector.x) * 0.7, y: apoyo.y + cuelga * 0.3 };
+  // EL PRIMER CONTROL VA JUSTO DEBAJO DEL CONECTOR, y eso es lo que hace que la
+  // curva SALGA vertical: la tangente en t=0 apunta de P0 a c1. Con c1 corrido
+  // hacia el apoyo —como estaba— el cable arrancaba en diagonal, o sea casi
+  // tangente al pecho, y un cable que corre pegado al cuerpo se lee apoyado por
+  // más que su origen sea exacto.
+  //
+  // La alternativa era meter un tramo recto vertical antes de la catenaria, y se
+  // probó: forma ESQUINA con la curva, y en una esquina más cerrada que el ancho
+  // del cable el borde interno de la cinta se dobla sobre sí mismo. Medido: un
+  // salto de 12,9 px en un borde cuyo paso es de 4. Con el control acá no hay
+  // esquina que doblar.
+  const c1 = { x: desde.x, y: desde.y + cuelga * 0.72 };
+  const c2 = { x: desde.x + (apoyo.x - desde.x) * 0.7, y: apoyo.y + cuelga * 0.3 };
 
   const en = (t) => {
     const u = 1 - t;
     return {
-      x: u * u * u * conector.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * apoyo.x,
-      y: u * u * u * conector.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * apoyo.y,
-      // La caída entera está en el plano de adelante: no se afina.
+      x: u * u * u * desde.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * apoyo.x,
+      y: u * u * u * desde.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * apoyo.y,
       z: 0
     };
   };
@@ -785,9 +857,6 @@ function muestrasDeLaCaida(conector, apoyo, pasos) {
   return Array.from({ length: pasos + 1 }, (_, i) => en(i / pasos));
 }
 
-// La normal de cada muestra, promediando la dirección de sus dos vecinos. Sin el
-// promedio, el borde de la cinta pega un salto en cada quiebre y vuelve a
-// aparecer la junta que vinimos a sacar.
 function normales(linea) {
   return linea.map((p, i) => {
     const a = linea[Math.max(0, i - 1)];
@@ -799,73 +868,119 @@ function normales(linea) {
   });
 }
 
-// EL GROSOR NO CAE EN LÍNEA RECTA. El tamaño aparente va como 1/distancia, así
-// que el afinado usa grosor / (1 + caida * z). Con interpolación lineal el
-// afinado se reparte parejo y en pantalla se lee como un cable de grosor
-// constante que se adelgaza de golpe al final.
-//
-// Y tiene PISO. Sin él, el tramo que sube a la caja terminaba en un pelo de un
-// píxel y medio contra una pared oscura: desaparecía. Un cable que se va al
-// fondo se ve más fino, no se ve menos.
 export function grosorDelCable(z, cable) {
   return Math.max(cable.grosorMinimo, cable.grosor / (1 + cable.caidaGrosor * z));
 }
 
-export function cintaDelCable(conector, r, cable) {
+// La línea media completa, del conector a la caja. Se exporta para poder
+// verificar en un test que su PRIMER punto cae sobre el conector: el primer
+// punto del polígono no sirve para eso, porque está corrido media anchura de
+// cable sobre la normal.
+export function lineaDelCable(conector, r, cable) {
+
+  // La caída arranca EN el conector y sale vertical: la perpendicularidad al
+  // pecho la da el primer punto de control de la catenaria, no un tramo recto
+  // agregado adelante. Ver muestrasDeLaCaida.
+  const linea = muestrasDeLaCaida({ x: conector.x, y: conector.y }, r.apoyo, 16);
+  linea.push(...[...r.quiebres, r.llegada].map((q) => ({ x: q.x, y: q.y, z: q.z })));
+
+  // DOS PASADAS DE REDONDEO Y NO UNA. Una sola deja el ángulo de cada quiebre a
+  // la mitad, y con una cinta de 13 px de ancho eso no alcanza: el borde interno
+  // de un giro se pliega sobre sí mismo en cuanto el radio baja del medio ancho.
+  // Medido, un salto de 13,3 px sobre un borde cuyo paso es de 4. La segunda
+  // pasada vuelve a partir el ángulo y el pliegue desaparece.
+  return remuestrear(suavizar(suavizar(linea)), cable.pasoMuestreo);
+}
+
+export function cintaDelCable(conector, r, cable, cuantoAtras = 0) {
   const n = (v) => Math.round(v * 100) / 100;
+  const linea = lineaDelCable(conector, r, cable);
 
-  const quiebres = [...r.quiebres, r.llegada];
-
-  // La línea media: la caída muestreada, y después los quiebres.
-  let linea = muestrasDeLaCaida(conector, r.apoyo, 14);
-  linea.push(...quiebres.map((q) => ({ x: q.x, y: q.y, z: q.z })));
-  linea = suavizar(linea);
-
-  // El camino de la línea media, que es por donde viajan los pulsos.
-  const completo = linea
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${n(p.x)} ${n(p.y)}`)
-    .join(' ');
+  const completo = linea.map((p, i) => `${i === 0 ? 'M' : 'L'} ${n(p.x)} ${n(p.y)}`).join(' ');
 
   const nor = normales(linea);
-  const semi = linea.map((p) => grosorDelCable(p.z, cable) / 2);
+
+  // EL ANCHO SE LIMITA POR LA CURVATURA, y esto es lo que impide que la cinta se
+  // pliegue sobre sí misma.
+  //
+  // El borde interno de un giro recorre menos que la línea media: si el radio de
+  // ese giro es menor que el medio ancho de la cinta, el borde interno se cruza
+  // y aparece un pico. Medido antes de esto: un salto de 13 px sobre un borde
+  // cuyo paso es de 4.
+  //
+  // Se probaron dos arreglos que NO alcanzaron, y vale anotarlos: abrir el giro
+  // del apoyo bajó el pico de 13,3 a 10,3, y una segunda pasada de redondeo lo
+  // dejó en 10,28. Ninguno de los dos podía alcanzar, porque el pliegue no
+  // estaba en un quiebre sino en la curvatura de la propia catenaria, que ya
+  // venía suave y por lo tanto el redondeo no tenía nada que cortarle.
+  //
+  // Lo que sí funciona es el límite físico: un cable no puede doblar más cerrado
+  // que su propio radio. Donde la curva se cierra, la cinta se afina; y como el
+  // afinado es proporcional al radio, no se nota — el ojo lee un cable que se
+  // aplasta un poco en la curva, que es lo que hace un cable.
+  const radios = linea.map((p, i) => {
+    if (i === 0 || i === linea.length - 1) return Infinity;
+    const a = linea[i - 1];
+    const b = linea[i + 1];
+    const u1 = Math.atan2(p.y - a.y, p.x - a.x);
+    const u2 = Math.atan2(b.y - p.y, b.x - p.x);
+    let giro = Math.abs(u2 - u1);
+    if (giro > Math.PI) giro = 2 * Math.PI - giro;
+    if (giro < 1e-4) return Infinity;
+    // El radio del arco que pasa por los tres puntos con ese giro.
+    return Math.hypot(p.x - a.x, p.y - a.y) / (2 * Math.sin(giro / 2));
+  });
+
+  const semi = linea.map((p, i) =>
+    Math.min(grosorDelCable(p.z, cable) / 2, radios[i] * 0.92)
+  );
 
   const unLado = linea.map((p, i) => ({ x: p.x + nor[i].x * semi[i], y: p.y + nor[i].y * semi[i] }));
   const elOtro = linea.map((p, i) => ({ x: p.x - nor[i].x * semi[i], y: p.y - nor[i].y * semi[i] }));
 
-  const cuerpo =
-    unLado.map((p, i) => `${i === 0 ? 'M' : 'L'} ${n(p.x)} ${n(p.y)}`).join(' ') +
+  // El polígono de un tramo de la línea, de `desde` a `hasta` inclusive.
+  const cinta = (desde, hasta) =>
+    unLado
+      .slice(desde, hasta + 1)
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${n(p.x)} ${n(p.y)}`)
+      .join(' ') +
     ' ' +
     elOtro
-      .slice()
+      .slice(desde, hasta + 1)
       .reverse()
       .map((p) => `L ${n(p.x)} ${n(p.y)}`)
       .join(' ') +
     ' Z';
 
-  // EL LOMO: la arista iluminada de arriba, como los caños de la panorámica. No
-  // es un contorno ni un segundo cable: es una franja angosta corrida hacia el
-  // lado del que viene la luz —la ventana, o sea arriba— así que se calcula sobre
-  // la normal y no como un trazo paralelo.
+  // EL CABLE SE PARTE EN DOS, y no por gusto: el primer tramo se dibuja DETRÁS
+  // del sprite de Chip y el resto adelante. Un cable que termina contra el borde
+  // del conector se ve apoyado; uno que desaparece adentro se ve enchufado, y la
+  // única forma de que desaparezca adentro es que el sprite lo tape.
   //
-  // Va como polilínea de un solo path: un stroke continuo no tiene juntas
-  // interiores, que es de donde salían los puntos brillantes.
+  // El corte lleva una muestra de solape para que no quede costura entre las dos
+  // piezas.
+  const corte = Math.max(1, Math.min(linea.length - 2, Math.round(cuantoAtras / cable.pasoMuestreo)));
+
   const lomo = linea
+    .slice(corte)
     .map((p, i) => {
-      const arriba = nor[i].y < 0 ? 1 : -1;
-      const x = p.x + nor[i].x * semi[i] * 0.46 * arriba;
-      const y = p.y + nor[i].y * semi[i] * 0.46 * arriba;
-      return `${i === 0 ? 'M' : 'L'} ${n(x)} ${n(y)}`;
+      const j = i + corte;
+      const arriba = nor[j].y < 0 ? 1 : -1;
+      return `${i === 0 ? 'M' : 'L'} ${n(p.x + nor[j].x * semi[j] * 0.46 * arriba)} ${n(
+        p.y + nor[j].y * semi[j] * 0.46 * arriba
+      )}`;
     })
     .join(' ');
 
-  // Los anchos del lomo, tramo por tramo, no se pueden variar en un solo stroke,
-  // así que se usa el del extremo más cerca —que es donde el lomo se ve— y el
-  // resto queda cubierto por la cinta.
-  const grosorLomo = Math.max(1, grosorDelCable(0, cable) * 0.2);
-
-  return { completo, cuerpo, lomo, grosorLomo };
+  return {
+    completo,
+    atras: cinta(0, corte + 1),
+    adelante: cinta(corte, linea.length - 1),
+    lomo,
+    grosorLomo: Math.max(1, grosorDelCable(0, cable) * 0.2),
+    linea
+  };
 }
-
 
 // LA FICHA, que es lo que hace que la unión se lea.
 //

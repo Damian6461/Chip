@@ -70,6 +70,11 @@
        ninguno. Va antes de #chip para pasar por detrás de él, y lo llena ui.js
        con una catenaria medida entre el conector del pecho y el destino
        elegido en DESTINOS_CABLE. -->
+  <!-- El cable va en DOS capas y no en una, y el orden del DOM es el efecto: la
+       de atrás queda debajo del sprite de Chip, así que el tramo que entra al
+       puerto desaparece adentro del cuerpo en vez de terminar contra su borde.
+       Un cable que termina contra el borde se ve apoyado al lado. -->
+  <svg id="cable-atras" aria-hidden="true"></svg>
   <svg id="cable" aria-hidden="true"></svg>
 
   <!-- La caja de Chip: define dónde pisa y cuánto mide, y NO se anima nunca.

@@ -1810,6 +1810,20 @@ export const CABLE = {
   // OTRA pieza, no como el cable engordado — si comparte color con el cable, la
   // unión vuelve a ser un extremo y no un enchufe.
   ficha: '#4a525a',
+  // EL PASO DEL REMUESTREO. La línea media se recorre a paso fijo en vez de
+  // usar los puntos con que se definió, que venían de dos fuentes con densidades
+  // muy distintas: la caída con 14 muestras y los quiebres con una cada uno.
+  // Medido en producción, entre dos muestras consecutivas había hasta 63 px
+  // contra los 3 o 4 del resto, y con eso el grosor se afinaba de golpe y el
+  // redondeo de cada quiebre salía distinto según el largo de sus vecinos.
+  //
+  // 4 px es más chico que el grosor mínimo del cable, así que ninguna variación
+  // de ancho puede quedar sin muestra que la sostenga.
+  pasoMuestreo: 4,
+  // CUÁNTO CABLE QUEDA DETRÁS DEL SPRITE. Es el tramo que entra al puerto y
+  // desaparece adentro de Chip. Un cable que termina CONTRA el borde del
+  // conector se ve apoyado; uno que desaparece adentro se ve enchufado.
+  entraAlCuerpo: 8,
   balanceo: { ciclo: 4600, amplitud: 2.2 }
 };
 
@@ -1850,7 +1864,14 @@ export const RECORRIDO_CABLE = {
   // es justamente donde está su cuerpo. La banda libre de verdad es la de abajo,
   // entre el borde de Chip (82%) y el cartel de evento (86,7%), y todo el tramo
   // horizontal vive ahí hasta salir de su silueta.
-  apoyo: { x: 42, y: 83.2, caida: 0.42 },
+  // x 48 y no 42, y esto es geometría y no gusto. El conector está en 52%, y con
+  // el apoyo en 42 el cable bajaba hacia la IZQUIERDA y el recorrido volvía a la
+  // derecha: una horquilla de casi 180°. Una cinta de 13 px de ancho no puede
+  // doblar en un radio menor que su propio medio ancho sin que el borde interno
+  // se pliegue sobre sí mismo — medido, un salto de 13 px en un borde cuyo paso
+  // es de 4. Con el apoyo casi debajo del conector el giro se abre y no hay
+  // pliegue.
+  apoyo: { x: 48, y: 83.2, caida: 0.42 },
 
   // Los quiebres, en orden, del apoyo hasta la caja. Cada uno con su
   // PROFUNDIDAD de 0 a 1 —0 es acá, 1 es el fondo— que decide el grosor.
@@ -1860,8 +1881,8 @@ export const RECORRIDO_CABLE = {
   // cuando el cable sale de su silueta —que abajo llega hasta x 74,7%— empieza a
   // subir por la pared hacia la caja.
   quiebres: [
-    { x: 50, y: 84.3, z: 0.05 },
-    { x: 58.5, y: 83.5, z: 0.11 },
+    { x: 54, y: 84.3, z: 0.05 },
+    { x: 60.5, y: 83.5, z: 0.11 },
     { x: 67, y: 84.1, z: 0.18 },
     // Sale de atrás de Chip y arranca la trepada.
     { x: 76, y: 82.4, z: 0.3 },

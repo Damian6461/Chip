@@ -4143,3 +4143,34 @@ body.sin-movimiento *::after {
     translate: 0 var(--viaje);
   }
 }
+
+/* LA CAPA DE ATRÁS DEL CABLE.
+
+   Es el tramo que entra al puerto, y va DEBAJO del sprite de Chip: por eso la
+   punta desaparece adentro del cuerpo en vez de terminar contra su borde. Un
+   cable que termina contra el borde se ve apoyado al lado; uno que desaparece
+   adentro se ve enchufado.
+
+   z-index negativo lo deja arriba de la panorámica y debajo de Chip, que es la
+   misma capa donde viven la toma y la pieza del piso. */
+#cable-atras {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: -1;
+  display: none;
+}
+
+#escena:has(.estado-cargando) #cable-atras {
+  display: block;
+}
+
+/* El balanceo también, y con el MISMO ciclo: si las dos capas se movieran
+   distinto, la unión entre ellas se abriría y cerraría en cada vuelta. */
+#cable-atras .cable-cuerpo {
+  animation: colgar var(--cable-balanceo-ciclo) ease-in-out infinite;
+  transform-origin: 0% 0%;
+}

@@ -13,7 +13,9 @@ import {
   LIENZO_OBJETO,
   PIEZAS_POR_ESTANTE,
   ESTANTES,
-  VUELO_OBJETO
+  VUELO_OBJETO,
+  CABLE,
+  RECORRIDO_CABLE
 } from '../js/config.js';
 import { OBJETOS, objetosDelEvento, objetoPorId } from '../js/datos-objetos.js';
 import { EVENTOS } from '../js/datos-eventos.js';
@@ -24,7 +26,15 @@ import {
   guardarLoDelPiso,
   sortearDelPiso
 } from '../js/coleccion.js';
-import { svgDeObjeto, tieneForma, caminoDeVuelo, picoDelVuelo } from '../js/formas.js';
+import {
+  svgDeObjeto,
+  tieneForma,
+  caminoDeVuelo,
+  picoDelVuelo,
+  lineaDelCable,
+  cintaDelCable,
+  grosorDelCable
+} from '../js/formas.js';
 import { diaLocal, horasConGarantiaDiaria } from '../js/eventos.js';
 import { cargarEstado, guardarEstado } from '../js/estado.js';
 
@@ -537,4 +547,96 @@ prueba('pool: el estante no pretende mostrar las 36', () => {
   const capacidad = PIEZAS_POR_ESTANTE * ESTANTES;
   verdadero(capacidad < OBJETOS.length, `entran ${capacidad} y el pool son ${OBJETOS.length}`);
   igual(capacidad, 8, 'cuatro por tabla, dos tablas');
+});
+
+// ---- El cable: dos propiedades geométricas ----
+//
+// Las dos salieron de defectos medidos en producción y las dos se comprueban
+// solas, sin navegador: son geometría, no pintura.
+
+const ESCENA = { ancho: 480, alto: 889 };
+const enPx = (p) => ({ ...p, x: (p.x / 100) * ESCENA.ancho, y: (p.y / 100) * ESCENA.alto });
+const RUTA = {
+  apoyo: enPx(RECORRIDO_CABLE.apoyo),
+  quiebres: RECORRIDO_CABLE.quiebres.map(enPx),
+  llegada: enPx(RECORRIDO_CABLE.llegada)
+};
+const CONECTOR = { x: 250.6, y: 662.5 };
+
+prueba('cable: la línea media ARRANCA en el conector', () => {
+  // El defecto era otro: se creía que el cable nacía en el borde del canvas. No
+  // era cierto —era una confusión de sistemas de coordenadas, comparar unidades
+  // del viewBox contra píxeles de página— pero la propiedad vale igual, porque
+  // el día que alguien meta un corrimiento en el origen esto lo agarra.
+  const linea = lineaDelCable(CONECTOR, RUTA, CABLE);
+  const d = Math.hypot(linea[0].x - CONECTOR.x, linea[0].y - CONECTOR.y);
+
+  verdadero(d < 1, `arranca a ${d.toFixed(2)} px del conector, y la tolerancia es 1`);
+});
+
+prueba('cable: sale PERPENDICULAR al pecho, no tangente', () => {
+  // Un cable que corre pegado al cuerpo se lee apoyado por más que su origen sea
+  // exacto. El primer tramo tiene que bajar, no irse de costado.
+  const linea = lineaDelCable(CONECTOR, RUTA, CABLE);
+  const dx = linea[1].x - linea[0].x;
+  const dy = linea[1].y - linea[0].y;
+  const grados = (Math.atan2(dy, Math.abs(dx)) * 180) / Math.PI;
+
+  verdadero(grados > 75, `el primer tramo baja a ${grados.toFixed(1)}° de la horizontal`);
+});
+
+prueba('cable: ninguna muestra de la línea media salta más que el paso', () => {
+  // ESTE es el defecto real que se midió: la línea media venía de dos fuentes
+  // con densidades distintas y en los tramos rectos largos no había muestras
+  // intermedias. Entre dos consecutivas había hasta 63 px contra los 3 o 4 del
+  // resto, y con eso el grosor se afinaba de golpe en el extremo del tramo.
+  const linea = lineaDelCable(CONECTOR, RUTA, CABLE);
+  let max = 0;
+
+  for (let i = 1; i < linea.length; i++) {
+    max = Math.max(max, Math.hypot(linea[i].x - linea[i - 1].x, linea[i].y - linea[i - 1].y));
+  }
+
+  verdadero(
+    max <= CABLE.pasoMuestreo + 0.01,
+    `el salto máximo es ${max.toFixed(2)} px y el paso es ${CABLE.pasoMuestreo}`
+  );
+});
+
+prueba('cable: la cinta no se pliega sobre sí misma en ninguna curva', () => {
+  // El borde interno de un giro recorre menos que la línea media, y si el radio
+  // es menor que el medio ancho de la cinta, se cruza: eso es un pico. La cota
+  // es el doble del paso — el borde EXTERNO de una curva tiene que poder
+  // recorrer más que la línea media, eso es geometría y no un defecto, pero un
+  // pliegue da saltos de varias veces el ancho.
+  const { atras, adelante } = cintaDelCable(CONECTOR, RUTA, CABLE, CABLE.entraAlCuerpo);
+  const tope = CABLE.pasoMuestreo * 2;
+
+  for (const [nombre, d] of [['atrás', atras], ['adelante', adelante]]) {
+    const p = [...d.matchAll(/([ML])\s+([-\d.]+)\s+([-\d.]+)/g)].map((m) => ({
+      x: +m[2],
+      y: +m[3]
+    }));
+    const mitad = p.length / 2;
+    let max = 0;
+
+    // Se saltea la vuelta del polígono —el paso de un borde al otro— porque ahí
+    // el salto vale el ANCHO del cable por definición, no es una muestra.
+    for (let i = 1; i < p.length; i++) {
+      if (i === mitad) continue;
+      max = Math.max(max, Math.hypot(p[i].x - p[i - 1].x, p[i].y - p[i - 1].y));
+    }
+
+    verdadero(max <= tope, `${nombre}: salto máximo ${max.toFixed(2)} px, tope ${tope}`);
+  }
+});
+
+prueba('cable: el afinado tiene piso y nunca desaparece', () => {
+  for (const z of [0, 0.5, 1, 2]) {
+    verdadero(
+      grosorDelCable(z, CABLE) >= CABLE.grosorMinimo,
+      `a z=${z} mide ${grosorDelCable(z, CABLE).toFixed(1)} px`
+    );
+  }
+  verdadero(grosorDelCable(0, CABLE) === CABLE.grosor, 'y cerca mide lo que dice config');
 });

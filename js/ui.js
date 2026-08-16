@@ -160,6 +160,7 @@ import {
   contenedorLluvia,
   crearBanda,
   nodoCable,
+  nodoCableAtras,
   escena,
   nodoPiso
 } from './ui-montaje.js';
@@ -777,17 +778,34 @@ export function dibujarCable() {
     llegada: aPx(RECORRIDO_CABLE.llegada)
   };
 
-  // LA PUNTA ENTRA AL PUERTO, no llega hasta él. El cable arranca un poco
-  // ADENTRO del cuerpo y la boca se dibuja encima, así que el extremo queda
-  // tapado por la pieza. Un cable que termina contra el borde del conector se ve
-  // apoyado al lado; uno que se mete detrás del borde se ve enchufado.
-  const haciaAdentro = { x: enPx.apoyo.x - desde.x, y: enPx.apoyo.y - desde.y };
-  const ficha = fichaDelPuerto(desde, haciaAdentro, CABLE);
+  // LA LÍNEA MEDIA ARRANCA EXACTAMENTE EN EL CONECTOR. Nada de corrimientos
+  // previos: lo que hace que la punta desaparezca adentro del cuerpo es que su
+  // primer tramo se dibuja en la capa de ATRÁS, debajo del sprite, no que el
+  // origen esté desplazado. Ver lineaDelCable y `entraAlCuerpo`.
+  const { completo, atras, adelante, lomo, grosorLomo, linea } = cintaDelCable(
+    desde,
+    enPx,
+    CABLE,
+    CABLE.entraAlCuerpo
+  );
 
-  const { completo, cuerpo, lomo, grosorLomo } = cintaDelCable(ficha.punta, enPx, CABLE);
+  // La ficha sigue yendo encima, en la capa de adelante: es la pieza que se ve.
+  //
+  // Su ángulo sale del PRIMER TRAMO REAL DEL CABLE y no de la dirección al
+  // apoyo. Con la dirección al apoyo quedaba rotada en diagonal mientras el
+  // cable salía recto hacia abajo, y una ficha que apunta para otro lado que su
+  // propio cable deshace toda la unión.
+  const salida = { x: linea[1].x - linea[0].x, y: linea[1].y - linea[0].y };
+  const ficha = fichaDelPuerto(desde, salida, CABLE);
 
-  nodoCable.setAttribute('viewBox', `0 0 ${Math.round(escena.width)} ${Math.round(escena.height)}`);
+  const caja = `0 0 ${Math.round(escena.width)} ${Math.round(escena.height)}`;
+  nodoCable.setAttribute('viewBox', caja);
   nodoCable.style.setProperty(VARS_CABLE.camino, `path("${completo}")`);
+
+  if (nodoCableAtras) {
+    nodoCableAtras.setAttribute('viewBox', caja);
+    nodoCableAtras.innerHTML = `<path class="cable-cuerpo" d="${atras}"/>`;
+  }
 
   const pulsos = Array.from(
     { length: PULSOS_CABLE.cuantos },
@@ -803,7 +821,7 @@ export function dibujarCable() {
 
   nodoCable.innerHTML =
     `<ellipse class="cable-sombra-puerto" transform="${eje}" rx="${(ficha.ancho * 0.78).toFixed(1)}" ry="${(ficha.ancho * 0.62).toFixed(1)}"/>` +
-    `<path class="cable-cuerpo" d="${cuerpo}"/>` +
+    `<path class="cable-cuerpo" d="${adelante}"/>` +
     `<path class="cable-lomo" d="${lomo}" style="stroke-width:${grosorLomo.toFixed(2)}px"/>` +
     pulsos +
     `<g class="cable-ficha" transform="${eje}">` +
