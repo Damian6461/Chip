@@ -29,7 +29,7 @@ export function puedeJugar(estado) {
 //
 // Se apoya en el mismo STAT_OBJETIVO que usa cada acción, así que agregar una
 // acción nueva no pide tocar esto: alcanza con declarar qué stat sube.
-export const STAT_DE_ACCION = {
+const STAT_DE_ACCION = {
   cargar: 'bateria',
   jugar: 'humor',
   limpiar: 'mantenimiento'

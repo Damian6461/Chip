@@ -20,7 +20,7 @@ http://127.0.0.1:5500/index.html
 
 ## Tests
 
-112 pruebas, mismos archivos en dos entrypoints:
+152 pruebas, mismos archivos en dos entrypoints:
 
 ```bash
 node tests/correr.mjs        # sale 0 si pasa todo, 1 si no
@@ -33,6 +33,8 @@ http://127.0.0.1:5500/tests/   # verde/rojo en la página, resumen en el <title>
 No hace falta `package.json`: Node detecta la sintaxis de módulo sola. Los dos entrypoints instalan un `localStorage` en memoria antes de importar nada del juego, así que **la suite nunca toca tu partida**, ni siquiera en el navegador donde el origen es el mismo.
 
 Se corren después de cualquier cambio que toque estado, decay o persistencia.
+
+`tests/orquestador.test.js` es el que cubre la secuencia y no las piezas: el ciclo de visita completo, la primera visita absoluta, la ausencia larga contra los dos caps, la acción que no aplica, el cruce de tramo con la app abierta y el doble guardado. Las otras siete suites pasaban enteras mientras el lugar donde esas piezas se combinan no tenía una sola prueba — y ahí estaban los dos bugs de arriba.
 
 ---
 
@@ -81,7 +83,37 @@ Se rompen y el proyecto se degrada rápido.
 - **Todo asset nuevo entra en `ARCHIVOS_CACHE` con su bump de `CACHE_VERSION`**, y `tests/assets.test.js` lo verifica: el cruce ya no es disciplina.
 - **Nunca medir con `getBoundingClientRect` un elemento con `transform`.** Devuelve la caja del bounding box rotado, no la del elemento. Para la caja de layout van `offsetWidth` / `offsetHeight`. Ver abajo: el instrumento miente.
 
-`main.js` orquesta: mantiene el estado vivo, resuelve el reloj y es el único con timers.
+- **`main.js` es cableado y no decide nada.** Arma las piezas, les pasa el reloj real y el DOM real, y las conecta. Lo que decide vive en `visita.js` y `sesion.js`, que se prueban sin navegador.
+
+### El orquestador son tres archivos
+
+Durante mucho tiempo fue uno solo, y ese uno era el único lugar del juego sin una prueba. No por descuido: `main.js` **corre al importarse** y arrastra el DOM entero de `ui.js`, así que no había forma de cargarlo en Node. Justo la parte con más dependencias entre pasos era la que no se podía tocar sin cruzar los dedos.
+
+Ahora son tres, y el corte no es por tamaño sino por qué necesita cada uno para correr:
+
+| archivo | qué es | qué necesita |
+|---|---|---|
+| `visita.js` | qué pasa al abrir: decay, presencia, eventos, hallazgos | nada. Función pura de `(estado, ahora)` |
+| `sesion.js` | qué pasa mientras está abierta: la cadena, el debounce, las acciones, el tick | una vista, un reloj y un guardado, **inyectados** |
+| `main.js` | el cableado | un navegador |
+
+Las tres dependencias que recibe `sesion.js` son exactamente las tres cosas que no tiene derecho a hacer sola, y son las mismas reglas de siempre dichas de otra forma: `vista` porque `ui.js` es el único que toca el DOM, `guardar` porque `estado.js` es el único que toca `localStorage`, y `reloj` porque los timers de verdad los pone `main.js`.
+
+#### El reloj tiene dos lecturas y no una
+
+`reloj.mundo()` es la hora del juego —la que el panel de debug puede forzar— y la consultan la cadena de estados y el tramo del día. `reloj.real()` es el reloj de pared y lo usa **sólo** el debounce, que mide cuánto hace que cambió el sprite.
+
+No es una sutileza: si el debounce leyera el reloj forzado, mover la hora a las 23 en el panel le daría un "transcurrido" de horas y el debounce dejaría de existir. En `main.js` esto ya funcionaba así —eran `relojEfectivo()` y `Date.now()` mezclados en el mismo cuerpo— pero la distinción no estaba escrita en ningún lado y la primera persona que unificara los dos llamados rompía el debounce sin enterarse. Ahora son dos nombres y hay un test que lo dice.
+
+#### Los dos bugs que aparecieron el primer día
+
+Las dos primeras pruebas de integración que corrieron encontraron dos cosas que ninguna prueba de pieza podía encontrar, porque las piezas estaban bien y lo que fallaba era la secuencia:
+
+**El fade de apertura nunca existió.** `DURACION_CRUCE_APERTURA_MS` (1500 ms) se programaba al sembrar el tramo anterior y `actualizarNoche()`, llamada dos líneas después, la pisaba con `DURACION_CRUCE_FONDO_MS` (2600 ms) — porque la condición que hace entrar a `actualizarNoche` es exactamente la misma que hizo sembrar. La constante estaba declarada, usada, y no llegó a la pantalla ni una vez. Arreglado con un `??`: un cruce ya programado gana.
+
+**Cada clic tiraba una excepción.** Un handler de "clic afuera para cerrar la colección" llamaba a `ocultarColeccion()`, que se borró cuando la colección se mudó adentro del menú. Parecía protegido por `if (panelColeccion.hidden) return`, pero mudar el panel al menú lo deja con `hidden = false` para siempre, así que el guard nunca cortaba. No era código muerto: era código que corría y fallaba, en silencio, en cada toque del galpón.
+
+Ninguno de los dos rompía nada visible. Los dos llevaban meses.
 
 ### La regla del shorthand `animation`
 
@@ -163,7 +195,7 @@ Lo que lo prende es la **categoría `grandes`** de `datos-eventos.js` — "el mu
 
 `main.js` programa la pose para que arranque **en el instante en que ese evento aparece en pantalla** — con el mismo `ESPERA_SEGUNDO_EVENTO_MS` que usa `ui.js` para encadenar los textos — y la apaga a los `DURACION_ESPERANDO_MS` (9 s). Así el texto y la pose dicen lo mismo al mismo tiempo, y sigue habiendo una sola fuente de verdad: **el evento decide, el sprite ilustra.** Nada de un timer aparte inventando gigantes que el jugador no leyó.
 
-Los timers viven en `main.js` porque es el único módulo que los tiene. La alternativa —que `ui.js` mire la categoría al pintar el texto— pondría una decisión de estado en el módulo que sólo pinta.
+La decisión vive en `sesion.js` y los timers de verdad los pone `main.js`. La alternativa —que `ui.js` mire la categoría al pintar el texto— pondría una decisión de estado en el módulo que sólo pinta.
 
 **Dónde va en la cadena y por qué:** arriba de `feliz`, porque está pasando ahora del otro lado de la pared; abajo de `standby`, porque dormido Chip no se entera; y abajo de `critico`, porque con la batería en rojo el aviso urgente es el otro.
 
@@ -236,7 +268,7 @@ Lo que se conserva es la lógica, no el número. Con `background-size: auto 100%
 
 El swap usa `esDeNoche()` de `sprites.js`, que es **la misma franja que el standby** (23 a 7): si Chip duerme, afuera es de noche. No es una regla paralela, es la misma función — hay una prueba que lo verifica en los cuatro bordes.
 
-`main.js` la resuelve con el mismo `relojEfectivo()` que la cadena, así el sprite y el fondo no pueden discrepar. El tick de 60 s evalúa **las dos cosas sin cortocircuito**: con la batería en `critico`, cruzar las 23:00 no cambia el sprite —`critico` le gana a `standby`— pero el galpón igual se tiene que hacer de noche.
+`sesion.js` la resuelve con el mismo `reloj.mundo()` que la cadena, así el sprite y el fondo no pueden discrepar. El tick de 60 s evalúa **las dos cosas sin cortocircuito**: con la batería en `critico`, cruzar las 23:00 no cambia el sprite —`critico` le gana a `standby`— pero el galpón igual se tiene que hacer de noche.
 
 La clase `es-noche` del `body` sale del mismo dato, para lo que cambia de ritmo y no de imagen: el latido de la antena y el polvo del haz.
 

@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v45';
+const CACHE_VERSION = 'chip-cache-v46';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -54,6 +54,8 @@ const ARCHIVOS_CACHE = [
   './js/gigantes.js',
   './js/datos-gigantes.js',
   './js/sprites.js',
+  './js/visita.js',
+  './js/sesion.js',
   './js/ui.js',
   './js/main.js',
   // Los siete sprites de estado. Sin ellos, la app instalada y sin red levantaba

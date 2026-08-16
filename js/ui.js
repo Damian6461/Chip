@@ -21,8 +21,10 @@ import {
   DURACION_SQUASH_MS,
   CLASE_CAMBIO,
   VARS_CAMBIO,
-  DURACION_CRUCE_FONDO_MS,
-  DURACION_CRUCE_APERTURA_MS,
+  // Las duraciones de cruce NO se importan acá: llegan como argumento `cruce` de
+  // render(). Quién decide cuánto dura una transición es la sesión, no el módulo
+  // que la pinta — y tenerlas importadas de más era la puerta para que alguien
+  // volviera a decidirlo desde acá.
   VARS_CRUCE_FONDO,
   CLASE_CRUCE_FONDO,
   FONDO_CORRIMIENTO,
@@ -389,7 +391,7 @@ export function conectarMenu({ onMovimiento, onReiniciar, ajustesActuales }) {
 
 // El alféizar sigue abriendo la colección, pero ahora entra por la misma puerta:
 // abre el menú en su sección. Una sola vista, dos accesos.
-export function abrirColeccion() {
+function abrirColeccion() {
   if (menu) abrirMenu('coleccion');
 }
 
@@ -810,15 +812,19 @@ grillaColeccion.addEventListener('click', (evento) => {
   if (objeto) mostrarDetalle(objeto);
 });
 
-document.addEventListener(
-  'click',
-  (evento) => {
-    if (panelColeccion.hidden) return;
-    if (estante.contains(evento.target) || panelColeccion.contains(evento.target)) return;
-    ocultarColeccion();
-  },
-  true
-);
+// Acá había un handler de "clic afuera para cerrar la colección". Quedó de
+// cuando la colección era un overlay propio, y cuando se MOVIÓ adentro del menú
+// se borró ocultarColeccion() pero no el handler que la llamaba.
+//
+// No era código muerto: era código que tiraba una excepción en cada clic. El
+// guard de arriba —`if (panelColeccion.hidden) return`— parecía protegerlo, pero
+// mudar el panel al menú lo deja con hidden = false para siempre (ver
+// irAColeccion), así que nunca cortaba. Cada toque en el galpón terminaba en un
+// ReferenceError en la consola.
+//
+// No se reemplaza por "clic afuera cierra el menú": el menú nunca tuvo eso, se
+// cierra con su ✕ y con Escape, y agregárselo sería una decisión de diseño
+// disfrazada de arreglo.
 
 // ---- Los gigantes ----
 //

@@ -1,38 +1,28 @@
-// Orquestador: mantiene el estado vivo y conecta los módulos entre sí.
+// Cableado. Este módulo no decide nada del juego: arma las piezas, les pasa el
+// reloj real y el DOM real, y las conecta entre sí.
+//
+// Lo que decide vive en dos lados y los dos se pueden probar sin navegador:
+//
+// - visita.js: qué pasa al abrir. Función pura de (estado, ahora) a lo que hay
+//   que mostrar.
+// - sesion.js: qué pasa mientras está abierta. Fábrica que recibe vista, reloj
+//   y guardado.
+//
+// Acá quedan las cuatro cosas que sólo tienen sentido con un navegador delante:
+// el reloj de pared, los timers de verdad, el service worker y el panel de
+// debug. Y el estado vivo ya no vive acá: lo tiene la sesión.
 
-import {
-  MS_POR_HORA,
-  ESTADOS_VISUALES as E,
-  DURACION_ESTADO_ACCION_MS,
-  DEBOUNCE_VISUAL_MS,
-  TICK_VISUAL_MS,
-  CATEGORIA_GRANDES,
-  DURACION_ESPERANDO_MS,
-  ESPERA_SEGUNDO_EVENTO_MS,
-  DURACION_CRUCE_FONDO_MS,
-  DURACION_CRUCE_APERTURA_MS,
-  FRANJAS_DIA,
-  POSES_IDLE,
-  PARAM_DEBUG,
-  RUTA_SW
-} from './config.js';
+import { MS_POR_HORA, FRANJAS_DIA, DURACION_CRUCE_APERTURA_MS, TICK_VISUAL_MS, ESTADOS_VISUALES as E, PARAM_DEBUG, RUTA_SW } from './config.js';
 import { crearEstadoNuevo, cargarEstado, guardarEstado } from './estado.js';
-import { aplicarDecay, horasTranscurridas } from './decay.js';
-import { cargar, jugar, limpiar, aplica } from './acciones.js';
-import { elegirEventos, horasConGarantiaDiaria, diaLocal } from './eventos.js';
-import { otorgarPorEventos } from './coleccion.js';
+import { aplicarDecay } from './decay.js';
+import { cargar, jugar, limpiar } from './acciones.js';
 import { OBJETOS } from './datos-objetos.js';
 import { hitoPendiente, eventoDeHito, capaPorDias } from './gigantes.js';
+import { cargarSprites, franjaDelDia } from './sprites.js';
+import { abrirVisita } from './visita.js';
+import { crearSesion } from './sesion.js';
 import {
-  cargarSprites,
-  resolverEstadoVisual,
-  esDeNoche,
-  franjaDelDia,
-  luzDelMomento,
-  poseDeIdle
-} from './sprites.js';
-import {
-  render as renderUI,
+  render,
   sembrarFondo,
   aplicarAjustes,
   conectarMenu,
@@ -45,352 +35,113 @@ import {
   responderEstoyBien
 } from './ui.js';
 
-let estado = cargarEstado();
-
-// Estado de orquestación. Vive acá y nunca entra al objeto `estado`, así que es
-// estructuralmente imposible que guardarEstado lo persista.
-let accionEnCurso = null; // nombre del estado visual de la acción, o null
-let estadoVisualActual = null;
-let ultimoCambioVisual = 0;
-let temporizadorAccion = null;
-let temporizadorDebounce = null;
-let gigantePasando = false; // true mientras se lee un evento de la categoría grandes
-let temporizadoresGigante = [];
-// Sorteada al arrancar y estable toda la sesión. Ver POSES_IDLE en config.js.
-let poseIdle = Math.floor(Math.random() * POSES_IDLE.length);
-let visualForzado = null; // sólo lo escribe el panel de debug
-let horaForzada = null; // ídem: 0-23, o null para el reloj real
-let esNocheActual = null;
-let franjaActual = null;
-// Duración del próximo crossfade de fondo, o null para cambio seco. Se consume
-// en la pintada siguiente y se limpia: una transición es un evento, no un modo.
-let cruceFondo = null;
-let refrescarDebug = null; // lo setea debug.js si está activo
-
-// Reloj efectivo: el real, salvo que el panel de debug esté forzando una hora.
-// Lo comparten la cadena de estados y el fondo del galpón, así el sprite y la
-// hora del día no pueden discrepar: si Chip está en standby, afuera es de noche.
-function relojEfectivo() {
-  if (horaForzada === null) return Date.now();
-
-  const fecha = new Date();
-  fecha.setHours(horaForzada, 0, 0, 0);
-  return fecha.getTime();
-}
-
-function pintar() {
-  renderUI(
-    estado,
-    estadoVisualActual,
-    esNocheActual,
-    luzDelMomento(relojEfectivo()),
-    claveDeSprite(),
-    franjaActual,
-    cruceFondo
-  );
-  cruceFondo = null;
-  if (refrescarDebug) refrescarDebug();
-}
-
-// El forzado del panel de debug corta la cadena acá, no adentro: sprites.js
-// queda puro y sin saber que existe un modo debug.
-function resolverObjetivo() {
-  if (visualForzado) return visualForzado;
-  return resolverEstadoVisual({
-    estado,
-    ahora: relojEfectivo(),
-    accion: accionEnCurso,
-    gigantePasando
-  });
-}
-
-// Qué PNG le toca dibujar. El ESTADO lo resuelve la cadena; la POSE sólo existe
-// adentro de idle y no participa de ninguna condición. Los demás estados son su
-// propia clave.
-function claveDeSprite() {
-  return estadoVisualActual === E.idle ? poseDeIdle(poseIdle) : estadoVisualActual;
-}
-
-// Prende `esperando` en el momento en que cada evento de la categoría grandes
-// aparece en pantalla, y lo apaga solo. El reloj es el mismo que usa ui.js para
-// encadenar los eventos, así que la pose y el texto entran juntos: Chip cruza
-// los brazos cuando se lee que pasó un gigante, no antes ni después.
+// ---- El reloj ----
 //
-// Los timers viven acá porque main.js es el único módulo que tiene timers. La
-// alternativa —que ui.js se fije en la categoría al pintar el texto— pondría
-// una decisión de estado en el módulo que sólo pinta.
-function programarEsperando(eventos) {
-  temporizadoresGigante.forEach(clearTimeout);
-  temporizadoresGigante = [];
-
-  eventos.forEach((evento, i) => {
-    if (evento.categoria !== CATEGORIA_GRANDES) return;
-
-    const arranque = ESPERA_SEGUNDO_EVENTO_MS * i;
-
-    temporizadoresGigante.push(
-      setTimeout(() => {
-        gigantePasando = true;
-        if (actualizarVisual({ inmediato: true })) pintar();
-      }, arranque),
-      setTimeout(() => {
-        gigantePasando = false;
-        if (actualizarVisual({ inmediato: true })) pintar();
-      }, arranque + DURACION_ESPERANDO_MS)
-    );
-  });
-}
-
-// Mismo contrato que actualizarVisual: devuelve si cambió, nunca pinta.
+// `horaForzada` sólo la escribe el panel de debug. Mueve el reloj del MUNDO
+// entero, no sólo el sprite: por eso el fondo y el estado visual cambian juntos
+// y no puede quedar Chip durmiendo con el galpón de día.
 //
-// Ahora resuelve las dos cosas juntas —el tramo del día y si es de noche—
-// porque salen del mismo reloj y de la misma tabla. Separarlas era lo que
-// permitía que se contradijeran.
-function actualizarNoche() {
-  const franja = franjaDelDia(relojEfectivo());
-  const noche = esDeNoche(relojEfectivo());
-  const cambio = franja.nombre !== franjaActual?.nombre || noche !== esNocheActual;
-  if (!cambio) return false;
+// El reloj de pared NO se fuerza nunca. Es el que mide el debounce, que cuenta
+// cuánto hace que cambió el sprite; forzarlo lo rompería. Ver sesion.js.
+let horaForzada = null; // 0-23, o null para el reloj real
 
-  // Cruzar un límite con la app abierta: disolvencia de un par de segundos.
-  // Sólo si ya había un tramo — en el arranque lo decide el save.
-  if (franjaActual && franja.nombre !== franjaActual.nombre) {
-    cruceFondo = DURACION_CRUCE_FONDO_MS;
-  }
+const reloj = {
+  mundo() {
+    if (horaForzada === null) return Date.now();
 
-  franjaActual = franja;
-  esNocheActual = noche;
-  guardarFranja(franja);
-  return true;
-}
+    const fecha = new Date();
+    fecha.setHours(horaForzada, 0, 0, 0);
+    return fecha.getTime();
+  },
+  real: () => Date.now(),
+  programar: (fn, ms) => setTimeout(fn, ms),
+  cancelar: (id) => clearTimeout(id)
+};
 
-// El tramo visto se persiste para poder hacer el fade de apertura. Se guarda
-// solo cuando cambia, no en cada tick: el save no es un log.
-function guardarFranja(franja) {
-  if (estado.ultimaFranja === franja.nombre) return;
-  estado = { ...estado, ultimaFranja: franja.nombre };
-  guardarEstado(estado);
-}
+// ---- La visita ----
 
-function cancelarDebounce() {
-  clearTimeout(temporizadorDebounce);
-  temporizadorDebounce = null;
-}
+const guardado = cargarEstado();
+const visita = abrirVisita({ estado: guardado, ahora: Date.now() });
 
-// Decide si el estado visual puede cambiar ahora. Devuelve true si cambió;
-// nunca pinta, pinta el llamador. `inmediato` saltea el debounce: lo usan las
-// acciones del jugador, que tienen que responder al toque.
-function actualizarVisual({ inmediato = false } = {}) {
-  const objetivo = resolverObjetivo();
+guardarEstado(visita.estado);
 
-  if (objetivo === estadoVisualActual) {
-    cancelarDebounce();
-    return false;
-  }
+// `refrescarDebug` lo engancha el panel si está activo. Se cuelga del render y
+// no de un pintar() propio a propósito: así la lectura de stats sigue TODAS las
+// pintadas, incluidas las que dispara la sesión sola desde sus timers —el
+// vencimiento de una acción, el debounce, el gigante que pasa— y no sólo las que
+// arrancan de un botón.
+let refrescarDebug = null;
 
-  const transcurrido = Date.now() - ultimoCambioVisual;
+const sesion = crearSesion({
+  estado: visita.estado,
+  vista: {
+    render(...args) {
+      render(...args);
+      if (refrescarDebug) refrescarDebug();
+    },
+    sembrarFondo,
+    animarAccion,
+    celebrarHumor,
+    responderEstoyBien
+  },
+  reloj,
+  guardar: guardarEstado
+});
 
-  if (inmediato || transcurrido >= DEBOUNCE_VISUAL_MS) {
-    cancelarDebounce();
-    estadoVisualActual = objetivo;
-    ultimoCambioVisual = Date.now();
-    return true;
-  }
+const pintar = sesion.pintar;
 
-  // Cambio suprimido: se programa un solo timer que al vencer vuelve a resolver
-  // la cadena, en vez de reproducir este objetivo, que para entonces puede haber
-  // quedado viejo. Así el estado converge siempre y no queda repintado fantasma.
-  if (!temporizadorDebounce) {
-    temporizadorDebounce = setTimeout(() => {
-      temporizadorDebounce = null;
-      if (actualizarVisual()) pintar();
-    }, DEBOUNCE_VISUAL_MS - transcurrido);
-  }
-
-  return false;
-}
-
-// Marca el estado visual disparado por una acción y programa su vencimiento.
-function marcarAccion(nombreVisual) {
-  clearTimeout(temporizadorAccion);
-  accionEnCurso = nombreVisual;
-
-  temporizadorAccion = setTimeout(() => {
-    temporizadorAccion = null;
-    accionEnCurso = null;
-    if (actualizarVisual({ inmediato: true })) pintar();
-  }, DURACION_ESTADO_ACCION_MS);
-}
-
-// Si la acción devuelve el mismo estado, no aplicó (ej: jugar sin batería):
-// no se guarda ni se redibuja. Las tres acciones tienen estado visual propio;
-// `nombreVisual` acepta null por si alguna futura no lo tuviera.
-function ejecutar(nombreVisual, accion, nombreAccion) {
-  // Si la acción no hace falta —el stat ya está al máximo— Chip contesta en vez
-  // de no hacer nada. No es un rechazo: es "ya estoy atendido".
-  if (nombreAccion && !aplica(nombreAccion, estado)) {
-    responderEstoyBien();
-    return;
-  }
-
-  const siguiente = accion(estado);
-  if (siguiente === estado) return;
-
-  // Se mira el humor ANTES de reemplazar el estado. La celebración no se dispara
-  // por "jugar" sino por "el humor subió": con el humor en 100 la acción se
-  // aplica igual —gasta batería— pero no hay nada que festejar. Así la regla
-  // vale también para cualquier acción futura que suba humor.
-  const subioElHumor = siguiente.humor > estado.humor;
-
-  estado = siguiente;
-  guardarEstado(estado);
-
-  if (subioElHumor) celebrarHumor();
-
-  if (nombreVisual) marcarAccion(nombreVisual);
-
-  // Salta sólo si la acción se aplicó: el early return de arriba ya filtró los
-  // casos en que no pasó nada, y un salto sin efecto sería mentirle al jugador.
-  animarAccion();
-
-  actualizarVisual({ inmediato: true });
-  pintar();
-}
-
-// ---- Arranque ----
-
-// `ahora` se resuelve una sola vez y se comparte: el decay y los eventos tienen
-// que estar de acuerdo sobre cuánto tiempo pasó, si no cuentan visitas distintas.
-const ahoraArranque = Date.now();
-const horasFuera = horasTranscurridas(estado, ahoraArranque);
-
-estado = aplicarDecay(estado, ahoraArranque);
-
-// Presencia: días distintos en que se abrió el juego. Se cuenta antes que nada
-// más porque el arco de los gigantes depende de esto, y abrir tres veces el
-// mismo día tiene que contar uno solo.
-const hoy = diaLocal(ahoraArranque);
-if (estado.ultimoDiaVisitado !== hoy) {
-  estado = {
-    ...estado,
-    diasDePresencia: estado.diasDePresencia + 1,
-    ultimoDiaVisitado: hoy
-  };
-}
-
-// Qué hizo Chip mientras no estabas.
-//
-// La garantía diaria entra acá y no adentro de elegirEventos: es una decisión de
-// cadencia sobre las horas de esta visita, y elegirEventos sigue siendo una
-// función de horas a eventos, sin saber qué día es hoy.
-const horasEventos = horasConGarantiaDiaria(
-  horasFuera,
-  estado.ultimoDiaConEvento,
-  ahoraArranque
-);
-
-// Si el arco de un gigante llegó a su hito, ese es el evento de la visita y es
-// el único: es el momento en que el mundo mira a Chip y no comparte cartel con
-// "barrió el pasillo tres". Se anota como vivido para que no vuelva a pasar.
-const hito = hitoPendiente(estado.diasDePresencia, estado.hitosVistos);
-
-// Se persisten los ids de TODO lo mostrado para que nada de esta visita pueda
-// repetirse en la siguiente.
-const eventos = hito
-  ? [eventoDeHito(hito)]
-  : elegirEventos(horasEventos, estado.ultimosEventosIds);
-
-if (hito) {
-  estado = { ...estado, hitosVistos: [...estado.hitosVistos, hito.id] };
-}
-
-// Y lo que la visita haya dejado. La colección se calcula acá y se guarda con
-// el resto del estado: coleccion.js no toca localStorage, igual que decay.js.
-const hallazgos = otorgarPorEventos(estado.coleccion, eventos);
-
-if (eventos.length > 0) {
-  estado = {
-    ...estado,
-    ultimosEventosIds: eventos.map((evento) => evento.id),
-    coleccion: hallazgos.coleccion,
-    ultimoDiaConEvento: diaLocal(ahoraArranque)
-  };
-}
-
-guardarEstado(estado);
-mostrarEventos(eventos);
-programarEsperando(eventos);
-mostrarColeccion(estado.coleccion, hallazgos.nuevos);
-mostrarGigantes(estado.diasDePresencia, estado.hitosVistos);
+mostrarEventos(visita.eventos);
+sesion.programarEsperando(visita.eventos);
+mostrarColeccion(sesion.estado().coleccion, visita.hallazgos.nuevos);
+mostrarGigantes(sesion.estado().diasDePresencia, sesion.estado().hitosVistos);
 
 // Los ajustes se aplican ANTES del primer pintado: si no, el juego arranca con
 // todo moviéndose y recién después se apaga, que es peor que no tener ajuste.
-aplicarAjustes(estado.ajustes);
+aplicarAjustes(sesion.estado().ajustes);
 
 conectarMenu({
-  ajustesActuales: () => estado.ajustes,
+  ajustesActuales: () => sesion.estado().ajustes,
   onMovimiento(activado) {
-    estado = { ...estado, ajustes: { ...estado.ajustes, movimientoReducido: activado } };
-    guardarEstado(estado);
-    aplicarAjustes(estado.ajustes);
+    const e = sesion.estado();
+    sesion.establecerEstado({ ...e, ajustes: { ...e.ajustes, movimientoReducido: activado } });
+    aplicarAjustes(sesion.estado().ajustes);
   },
   onReiniciar() {
     // El mismo camino que el botón del panel de debug, pero con confirmación
     // adelante. Reiniciar borra la colección, la presencia y los stats.
-    estado = crearEstadoNuevo();
-    guardarEstado(estado);
-    aplicarAjustes(estado.ajustes);
-    mostrarColeccion(estado.coleccion);
-    mostrarGigantes(estado.diasDePresencia, estado.hitosVistos);
-    if (actualizarVisual({ inmediato: true })) pintar();
-    else pintar();
+    sesion.establecerEstado(crearEstadoNuevo());
+    aplicarAjustes(sesion.estado().ajustes);
+    mostrarColeccion(sesion.estado().coleccion);
+    mostrarGigantes(sesion.estado().diasDePresencia, sesion.estado().hitosVistos);
+    sesion.actualizarVisual({ inmediato: true });
+    pintar();
   }
 });
 
 conectarAcciones({
-  onCargar: () => ejecutar(E.cargando, cargar, 'cargar'),
-  onJugar: () => ejecutar(E.jugando, jugar, 'jugar'),
-  onLimpiar: () => ejecutar(E.limpiando, limpiar, 'limpiar')
+  onCargar: () => sesion.ejecutar(E.cargando, cargar, 'cargar'),
+  onJugar: () => sesion.ejecutar(E.jugando, jugar, 'jugar'),
+  onLimpiar: () => sesion.ejecutar(E.limpiando, limpiar, 'limpiar')
 });
 
-actualizarVisual({ inmediato: true });
+sesion.actualizarVisual({ inmediato: true });
 
-// EL FADE DE APERTURA. Casi nadie va a tener la app abierta justo en el minuto
+// El fade de apertura. Casi nadie va a tener la app abierta justo en el minuto
 // del cambio de tramo; en cambio todos abren después de horas y encuentran el
 // galpón distinto. Es la misma lógica que los eventos: lo que pasó mientras no
 // estabas se muestra, no se oculta.
-//
-// Se siembra el fondo con el del tramo ANTERIOR —el que quedó guardado en el
-// save— para que el primer pintado tenga de dónde venir, y recién ahí se
-// resuelve el tramo real. Sin sembrar, la primera pintada no tendría saliente y
-// la disolvencia no existiría.
-const franjaDeArranque = franjaDelDia(relojEfectivo());
-const franjaGuardada = FRANJAS_DIA.find((f) => f.nombre === estado.ultimaFranja);
+sesion.sembrarTramoAnterior(
+  FRANJAS_DIA.find((f) => f.nombre === guardado.ultimaFranja),
+  DURACION_CRUCE_APERTURA_MS
+);
 
-if (franjaGuardada && franjaGuardada.nombre !== franjaDeArranque.nombre) {
-  sembrarFondo(franjaGuardada.fondo);
-  franjaActual = franjaGuardada;
-  esNocheActual = franjaGuardada.nombre === 'noche';
-  cruceFondo = DURACION_CRUCE_APERTURA_MS;
-}
-
-actualizarNoche();
+sesion.actualizarNoche();
 cargarSprites().then(pintar);
 pintar();
 
-// Reevaluación periódica. Los stats sólo cambian por acción, así que el único
-// efecto real de este tick es detectar el cruce de las 23:00 y las 07:00 con la
-// app abierta. No toca stats, no aplica decay, no guarda.
-//
-// Los dos chequeos corren SIEMPRE, sin cortocircuito: el fondo puede tener que
-// cambiar aunque el estado visual no se mueva. Con la batería en critico, cruzar
-// las 23:00 no cambia el sprite —critico le gana a standby— pero el galpón sí
-// se tiene que hacer de noche.
-setInterval(() => {
-  const cambioEstado = actualizarVisual();
-  const cambioNoche = actualizarNoche();
-  if (cambioEstado || cambioNoche) pintar();
-}, TICK_VISUAL_MS);
+// Reevaluación periódica. Ver tick() en sesion.js: el único efecto real es
+// detectar el cruce de un límite de tramo con la app abierta.
+setInterval(sesion.tick, TICK_VISUAL_MS);
 
 // ---- Service worker ----
 // Se registra también en desarrollo: localhost es contexto seguro y el SW anda
@@ -402,18 +153,18 @@ if ('serviceWorker' in navigator) {
 
 // ---- Modo debug ----
 // Todo lo que el panel necesita del juego pasa por acá: debug.js no importa ni
-// estado.js ni decay.js, y el estado vivo nunca sale de este módulo.
+// estado.js ni sesion.js, y el estado vivo nunca sale de la sesión.
 const apiDebug = {
-  obtenerEstado: () => estado,
+  obtenerEstado: () => sesion.estado(),
 
   obtenerNombresVisuales: () => Object.values(E),
 
-  // Cambia la pose de idle a mano. Con la rotación real corriendo una vez por
-  // minuto y con moneda, esperar a verla es incómodo; esto la fuerza.
+  // Cambia la pose de idle a mano. Con el sorteo por sesión, verla cambiar pide
+  // recargar; esto la fuerza sin recargar.
   cambiarPose: () => {
-    poseIdle += 1;
+    const clave = sesion.cambiarPose();
     pintar();
-    return claveDeSprite();
+    return clave;
   },
 
   // Para que el panel pueda mostrar "3/8" sin importar datos-objetos.js por su
@@ -422,18 +173,18 @@ const apiDebug = {
 
   // La capa que alcanzó el arco con la presencia de hoy, para verlo avanzar en
   // el panel sin abrir la colección.
-  capaDeLaGrua: () => capaPorDias(estado.diasDePresencia),
+  capaDeLaGrua: () => capaPorDias(sesion.estado().diasDePresencia),
 
   // Suma el primer objeto que falte, para poder ver el estante poblado sin
   // esperar a que el sorteo lo traiga. Pasa por el mismo camino que un hallazgo
   // real: cambia el estado, se guarda y se repinta.
   sumarObjeto() {
+    const estado = sesion.estado();
     const falta = OBJETOS.find((objeto) => !estado.coleccion.includes(objeto.id));
     if (!falta) return;
 
-    estado = { ...estado, coleccion: [...estado.coleccion, falta.id] };
-    guardarEstado(estado);
-    mostrarColeccion(estado.coleccion, [falta]);
+    sesion.establecerEstado({ ...estado, coleccion: [...estado.coleccion, falta.id] });
+    mostrarColeccion(sesion.estado().coleccion, [falta]);
     pintar();
   },
 
@@ -441,28 +192,28 @@ const apiDebug = {
   // esperar meses. No recarga: repinta la colección en el lugar, así se puede
   // ver la capa cambiar con el panel abierto.
   sumarDias(dias) {
-    estado = { ...estado, diasDePresencia: estado.diasDePresencia + dias };
-    guardarEstado(estado);
-    mostrarGigantes(estado.diasDePresencia, estado.hitosVistos);
+    const estado = sesion.estado();
+    sesion.establecerEstado({ ...estado, diasDePresencia: estado.diasDePresencia + dias });
+    mostrarGigantes(sesion.estado().diasDePresencia, sesion.estado().hitosVistos);
     pintar();
   },
 
   // Dispara el hito que esté pendiente, si lo hay, sin esperar a la próxima
   // apertura. Devuelve el texto para poder verificarlo desde el panel.
   dispararHito() {
+    const estado = sesion.estado();
     const pendiente = hitoPendiente(estado.diasDePresencia, estado.hitosVistos);
     if (!pendiente) return null;
 
-    estado = { ...estado, hitosVistos: [...estado.hitosVistos, pendiente.id] };
-    guardarEstado(estado);
+    sesion.establecerEstado({ ...estado, hitosVistos: [...estado.hitosVistos, pendiente.id] });
 
     const evento = eventoDeHito(pendiente);
     mostrarEventos([evento]);
     // El mismo par que en el arranque. Si acá faltara, el hito de la grúa —que
     // es de la categoría `grandes`— saldría por debug sin la pose, y el panel
     // estaría probando un camino que no es el del juego.
-    programarEsperando([evento]);
-    mostrarGigantes(estado.diasDePresencia, estado.hitosVistos);
+    sesion.programarEsperando([evento]);
+    mostrarGigantes(sesion.estado().diasDePresencia, sesion.estado().hitosVistos);
     pintar();
     return pendiente.hito;
   },
@@ -470,13 +221,13 @@ const apiDebug = {
   // El multiplicador escala cuántas horas representa cada simulación, para
   // probar el decay sin esperar horas reales.
   simularHoras(horas, multiplicador) {
+    const estado = sesion.estado();
     const retrocedido = {
       ...estado,
       ultimaVisita: estado.ultimaVisita - horas * multiplicador * MS_POR_HORA
     };
-    estado = aplicarDecay(retrocedido);
-    guardarEstado(estado);
-    actualizarVisual({ inmediato: true });
+    sesion.establecerEstado(aplicarDecay(retrocedido));
+    sesion.actualizarVisual({ inmediato: true });
     pintar();
   },
 
@@ -485,6 +236,7 @@ const apiDebug = {
   // simularHoras no sirve para esto: aplica el decay en el momento, así que al
   // recargar ya no quedan horas transcurridas y los eventos nunca se disparan.
   volverTrasHoras(horas, multiplicador) {
+    const estado = sesion.estado();
     guardarEstado({
       ...estado,
       ultimaVisita: estado.ultimaVisita - horas * multiplicador * MS_POR_HORA
@@ -493,34 +245,36 @@ const apiDebug = {
   },
 
   forzarEstadoVisual(nombre) {
-    visualForzado = nombre;
-    actualizarVisual({ inmediato: true });
+    sesion.forzarVisual(nombre);
+    sesion.actualizarVisual({ inmediato: true });
     pintar();
   },
 
-  // Mueve el reloj entero, no sólo el sprite: por eso el fondo y el estado
-  // visual cambian juntos y no puede quedar Chip durmiendo con el galpón de día.
   forzarHora(hora) {
     horaForzada = hora;
-    actualizarVisual({ inmediato: true });
-    actualizarNoche();
+    sesion.actualizarVisual({ inmediato: true });
+    sesion.actualizarNoche();
     pintar();
   },
 
   // Para poder ver el fade de apertura sin esperar seis horas: deja el save
   // apuntando a otro tramo y recarga, que es exactamente el camino real.
   simularAperturaEnOtroTramo() {
-    const actual = franjaDelDia(relojEfectivo());
+    const actual = franjaDelDia(reloj.mundo());
     const otra = FRANJAS_DIA.find((f) => f.nombre !== actual.nombre);
-    estado = { ...estado, ultimaFranja: otra.nombre };
-    guardarEstado(estado);
+    sesion.establecerEstado({ ...sesion.estado(), ultimaFranja: otra.nombre });
     location.reload();
   },
 
+  // Mismo camino que el reinicio del menú, y con las mismas tres repintadas: sin
+  // ellas el save quedaba en cero pero el estante seguía mostrando los objetos
+  // de la partida anterior hasta que recargaras, que es justo la clase de mentira
+  // que un panel de debug no puede permitirse.
   reiniciarSave() {
-    estado = crearEstadoNuevo();
-    guardarEstado(estado);
-    actualizarVisual({ inmediato: true });
+    sesion.establecerEstado(crearEstadoNuevo());
+    mostrarColeccion(sesion.estado().coleccion);
+    mostrarGigantes(sesion.estado().diasDePresencia, sesion.estado().hitosVistos);
+    sesion.actualizarVisual({ inmediato: true });
     pintar();
   }
 };

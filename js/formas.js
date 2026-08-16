@@ -461,7 +461,3 @@ export function svgDeToma() {
 export function tieneForma(id) {
   return id in FORMAS;
 }
-
-export function tieneFormaDeGigante(id) {
-  return id in FORMAS_GIGANTES;
-}

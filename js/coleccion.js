@@ -13,14 +13,10 @@ import {
   PROBABILIDAD_OBJETO_RARO,
   MAX_OBJETOS_POR_VISITA
 } from './config.js';
-import { OBJETOS, objetosDelEvento, objetoPorId } from './datos-objetos.js';
+import { OBJETOS, objetosDelEvento } from './datos-objetos.js';
 
 export function tiene(coleccion, id) {
   return coleccion.includes(id);
-}
-
-export function cuantosFaltan(coleccion) {
-  return OBJETOS.length - coleccion.filter((id) => objetoPorId(id) !== null).length;
 }
 
 // El pool completo con el estado de cada pieza. Es lo que va a consumir el

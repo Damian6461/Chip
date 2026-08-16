@@ -24,7 +24,7 @@ export function capaPorDias(dias) {
   return alcanzada;
 }
 
-export function indiceDeCapa(capa) {
+function indiceDeCapa(capa) {
   return CAPAS_GIGANTE.indexOf(capa);
 }
 
