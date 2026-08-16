@@ -75,7 +75,10 @@ import {
   DURACION_DESTELLO_BULBO_MS,
   DESTELLO_BULBO,
   VARS_TOMA,
-  PUNTA_DEL_CABLE,
+  VARS_CABLE,
+  CABLE,
+  PULSOS_CABLE,
+  CONECTOR_PECHO,
   TAMANO_TOMA,
   ANCLA_TOMA,
   COLORES_TOMA,
@@ -206,13 +209,21 @@ export function variablesDeTema() {
     // lienzo del sprite; el CSS la convierte a la escena con los mismos anclajes
     // que usa #chip, así que no hay ningún porcentaje de la escena de por medio
     // y el encastre aguanta cualquier viewport.
-    [VARS_TOMA.x]: String(PUNTA_DEL_CABLE.x / 100),
-    [VARS_TOMA.y]: String(PUNTA_DEL_CABLE.y / 100),
+    [VARS_TOMA.x]: String(CONECTOR_PECHO.x / 100),
+    [VARS_TOMA.y]: String(CONECTOR_PECHO.y / 100),
     [VARS_TOMA.ancho]: String(TAMANO_TOMA.ancho / 100),
     [VARS_TOMA.alto]: String(TAMANO_TOMA.alto / 100),
     [VARS_TOMA.anclaX]: String(ANCLA_TOMA.x),
     [VARS_TOMA.anclaY]: String(ANCLA_TOMA.y),
     ...tonos('toma', COLORES_TOMA),
+
+    // EL CABLE
+    [VARS_CABLE.grosor]: String(CABLE.grosor),
+    [VARS_CABLE.color]: CABLE.color,
+    [VARS_CABLE.brillo]: CABLE.brillo,
+    [VARS_CABLE.cicloBalanceo]: ms(CABLE.balanceo.ciclo),
+    [VARS_CABLE.amplitudBalanceo]: px(CABLE.balanceo.amplitud),
+    [VARS_CABLE.cicloPulso]: ms(PULSOS_CABLE.ciclo),
 
     // La repisa alta. Su geometría entera vive en REPISA, así que mover el
     // estante es tocar cuatro números en config y nada más.

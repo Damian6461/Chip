@@ -238,15 +238,28 @@ const REPISA = `
   </defs>
   <!-- la sombra que la tabla tira sobre la pared: va primero, debajo de todo -->
   <rect x="3" y="11" width="94" height="6" fill="url(#repisa-caida)"/>
-  <!-- los dos soportes en L, atornillados a la pared. El cuerpo va más oscuro
-       que la pared —están abajo de la tabla, o sea en sombra— pero con un filo
-       encendido en el canto izquierdo, que es de donde viene la luz. Sin ese
-       filo desaparecían: 27 de luminancia contra una pared de 35 no alcanza
-       para dibujar nada a este tamaño. -->
-  <path d="M14.4 9h4v11h-4zM14.4 9h8v2.6h-8z" fill="var(--repisa-soporte)"/>
-  <path d="M14.4 9v11" stroke="var(--repisa-filo)" stroke-width="0.7" opacity="0.5"/>
-  <path d="M81 9h4v11h-4zM77 9h8v2.6h-8z" fill="var(--repisa-soporte)"/>
-  <path d="M81 9v11" stroke="var(--repisa-filo)" stroke-width="0.7" opacity="0.5"/>
+  <!-- LAS DOS ESCUADRAS. Antes eran dos L finas y no se leían: la tabla parecía
+       flotar contra la pared. Ahora son escuadras de galpón —montante vertical,
+       ala horizontal bajo la tabla y TIRANTE DIAGONAL—, que es lo que dice que
+       algo está sujeto y no apoyado en el aire.
+
+       La diagonal es la pieza que más aporta y la que faltaba: una L sola puede
+       leerse como una sombra, un triángulo no. Van más claras que antes por la
+       misma razón por la que se les puso filo en su momento: contra una pared de
+       35 de luminancia, 27 no dibuja nada a este tamaño. -->
+  <g fill="var(--repisa-soporte)">
+    <path d="M15.5 9h3.4v10.5h-3.4z"/>
+    <path d="M15.5 9h7.5v2.4h-7.5z"/>
+    <path d="M80.5 9h3.4v10.5h-3.4z"/>
+    <path d="M76.4 9h7.5v2.4h-7.5z"/>
+  </g>
+  <!-- los tirantes -->
+  <path d="M18.9 11.4 22.6 11.4 18.9 18.2z" fill="var(--repisa-soporte)" opacity="0.92"/>
+  <path d="M80.5 11.4 76.8 11.4 80.5 18.2z" fill="var(--repisa-soporte)" opacity="0.92"/>
+  <!-- el filo iluminado de cada montante, del lado de la ventana -->
+  <path d="M15.5 9v10.5" stroke="var(--repisa-filo)" stroke-width="0.8" opacity="0.62"/>
+  <path d="M80.5 9v10.5" stroke="var(--repisa-filo)" stroke-width="0.8" opacity="0.62"/>
+  <path d="M18.9 11.4 18.9 18.2" stroke="var(--repisa-filo)" stroke-width="0.5" opacity="0.4"/>
   <!-- la cara de arriba, en trapecio: el borde de atrás es más corto -->
   <path d="M4 5.6h92l2 2H2z" fill="var(--repisa-cara)"/>
   <!-- el canto frontal, que es lo que más se ve desde acá abajo -->
@@ -456,6 +469,27 @@ export function svgDeToma() {
   // arriba y su lateral, así que ocupa más ancho que alto y necesita lugar
   // abajo para la sombra.
   return `<svg viewBox="0 0 40 38" aria-hidden="true">${TOMA}</svg>`;
+}
+
+// LA CATENARIA. Función PURA: dos puntos y cuánto cuelga, devuelve el `d` de
+// una cúbica. Vive acá con el resto de la geometría dibujable y no en ui.js
+// porque es una cuenta, no un pintado — y porque así se puede probar.
+//
+// Los dos puntos de control van tirados hacia abajo, pero NO a la misma altura:
+// el segundo cuelga más que el primero. Una cúbica simétrica da un arco de
+// puente; una catenaria tiene la panza corrida hacia el extremo más bajo, y esa
+// asimetría es lo que la hace leer como peso y no como diseño.
+export function caminoDelCable(desde, hasta, caida) {
+  const dx = hasta.x - desde.x;
+  const dy = hasta.y - desde.y;
+  const largo = Math.hypot(dx, dy);
+  const cuelga = largo * caida;
+
+  const c1 = { x: desde.x + dx * 0.28, y: desde.y + dy * 0.16 + cuelga * 0.82 };
+  const c2 = { x: desde.x + dx * 0.66, y: desde.y + dy * 0.62 + cuelga };
+
+  const n = (v) => Math.round(v * 100) / 100;
+  return `M ${n(desde.x)} ${n(desde.y)} C ${n(c1.x)} ${n(c1.y)}, ${n(c2.x)} ${n(c2.y)}, ${n(hasta.x)} ${n(hasta.y)}`;
 }
 
 export function tieneForma(id) {

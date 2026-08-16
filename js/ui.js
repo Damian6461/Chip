@@ -67,7 +67,13 @@ import {
   PREFIJO_CLASE_ESTADO,
   CLASE_DESTELLO_BULBO,
   DURACION_DESTELLO_BULBO_MS,
-  NUBE_RAPIDA
+  NUBE_RAPIDA,
+  CABLE,
+  PULSOS_CABLE,
+  CONECTOR_PECHO,
+  DESTINOS_CABLE,
+  DESTINO_CABLE_ACTUAL,
+  VARS_CABLE
 } from './config.js';
 import { aplica, puedeJugar } from './acciones.js';
 import { obtenerSprite, cajaDeContenidoPantalla } from './sprites.js';
@@ -82,7 +88,8 @@ import {
   svgDeBurbuja,
   svgDeTilde,
   svgDeRayo,
-  svgDeNumero
+  svgDeNumero,
+  caminoDelCable
 } from './formas.js';
 
 // Los nodos, el puente de custom properties y los SVG del mobiliario están en
@@ -115,7 +122,9 @@ import {
   estantes,
   resplandor,
   contenedorNubes,
-  crearBanda
+  crearBanda,
+  nodoCable,
+  toma
 } from './ui-montaje.js';
 
 // ---- El menú ----
@@ -505,6 +514,66 @@ let temporizadorCelebracion = null;
 // La tanda que dispara una acción que sube el humor. Es el momento en que la
 // mecánica y la emoción coinciden, y hasta ahora no tenía expresión visual.
 //
+// ---- El cable ----
+//
+// Se dibuja en un SVG que cubre la escena entera, con viewBox de 1000x1000 y
+// preserveAspectRatio="none": así las coordenadas son milésimos de la escena y
+// no hace falta recalcular nada al cambiar de viewport. La distorsión que eso
+// mete en el trazo la anula `vector-effect: non-scaling-stroke`, que es
+// exactamente para esto.
+//
+// El punto de partida NO es un porcentaje fijo de la escena: es el conector del
+// pecho, que vive en el lienzo de Chip, y Chip se ubica con sus propios
+// anclajes. Se mide la caja real de #chip y se convierte. Un porcentaje de la
+// escena se desalinearía apenas cambiara la proporción — el mismo error que ya
+// tuvo el encuadre del fondo.
+
+function puntoDelConector() {
+  if (!cajaChip || !nodoCable) return null;
+  const chip = cajaChip.getBoundingClientRect();
+  const escena = nodoCable.getBoundingClientRect();
+  if (!chip.width || !escena.width) return null;
+
+  return {
+    x: ((chip.x - escena.x + (CONECTOR_PECHO.x / 100) * chip.width) / escena.width) * 1000,
+    y: ((chip.y - escena.y + (CONECTOR_PECHO.y / 100) * chip.height) / escena.height) * 1000
+  };
+}
+
+export function dibujarCable(nombreDestino = DESTINO_CABLE_ACTUAL) {
+  if (!nodoCable) return;
+
+  const destino = DESTINOS_CABLE[nombreDestino];
+  const desde = puntoDelConector();
+  if (!destino || !desde) return;
+
+  const hasta = { x: destino.x * 10, y: destino.y * 10 };
+  const d = caminoDelCable(desde, hasta, CABLE.caida);
+
+  // El pulso viaja del extremo LEJANO al conector, o sea al revés del path: la
+  // energía va hacia Chip. Se invierte con animation-direction en el CSS en vez
+  // de con un segundo path, que habría que mantener sincronizado.
+  nodoCable.style.setProperty(VARS_CABLE.camino, `path("${d}")`);
+
+  const pulsos = Array.from(
+    { length: PULSOS_CABLE.cuantos },
+    (_, i) =>
+      `<circle class="pulso-cable" r="${PULSOS_CABLE.radio}" style="animation-delay: ${(i * PULSOS_CABLE.ciclo) / PULSOS_CABLE.cuantos}ms"/>`
+  ).join('');
+
+  nodoCable.innerHTML =
+    `<path class="cable-cuerpo" d="${d}"/>` +
+    `<path class="cable-brillo" d="${d}"/>` +
+    pulsos;
+
+  // La toma sólo existe en las variantes que la piden.
+  if (toma) toma.hidden = !destino.toma;
+  if (destino.toma && toma) {
+    toma.style.left = `${destino.x}%`;
+    toma.style.top = `${destino.y}%`;
+  }
+}
+
 // ---- La nube que pasa una vez ----
 //
 // Cada tres a seis minutos cruza una sola nube, rápido, y después no está más.
@@ -1124,6 +1193,11 @@ export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = 
   pintarOjos(claveSprite);
   pintarPantalla(estado, claveSprite);
   pintarRayo(claveSprite);
+  // El cable se redibuja en cada render y no una sola vez al arrancar: su punto
+  // de partida es el conector del pecho, que se mide sobre la caja REAL de
+  // #chip, y esa caja cambia con el viewport. Es una cuenta de dos restas y una
+  // cúbica — más barato que escuchar el resize.
+  dibujarCable();
   actualizarBarras(estado);
 }
 

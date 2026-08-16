@@ -745,7 +745,12 @@ export const APOYO_ORUGAS = {
   feliz: { y: 96.9, x: 17.6, ancho: 58.6 },
   critico: { y: 96.9, x: 17.2, ancho: 59.0 },
   standby: { y: 96.9, x: 17.6, ancho: 59.8 },
-  cargando: { y: 96.5, x: 25.4, ancho: 56.3 },
+  // Remedido contra el sprite limpio: la medición vieja del apoyo estaba
+  // contaminada por el cable dibujado, que bajaba hasta el borde inferior del
+  // lienzo. Comparando viejo y nuevo en la MISMA fila, el delta es x -1,6 y
+  // ancho +0,8; se aplica ese delta y no el valor absoluto, para no cambiar de
+  // convención respecto del resto de la tabla.
+  cargando: { y: 96.5, x: 23.8, ancho: 57.1 },
   jugando: { y: 96.1, x: 28.1, ancho: 48.0 },
   limpiando: { y: 96.5, x: 21.5, ancho: 54.3 },
   esperando: { y: 95.7, x: 21.1, ancho: 55.5 },
@@ -822,7 +827,12 @@ export const PANTALLAS_PECHO = {
   // tono. La nueva arranca del CONTENIDO cian del display —que no se confunde
   // con ninguna sombra— y crece desde ahí sólo por vidrio oscuro; el cable, que
   // es cian brillante, no es vidrio y no la deja fugarse.
-  cargando: { x: 43.0, y: 61.3, ancho: 18.7, alto: 12.9, giro: 2.5, vidrio: '#002137' },
+  // giro 0 y no 2,5. El marco pintado de esta pose es HORIZONTAL —se ve con una
+  // guía recta encima del bisel: las dos aristas corren paralelas al borde del
+  // lienzo— así que el 2,5 estaba inclinando el contenido adentro de un marco
+  // recto. El número venía de suponer que el torso en tres cuartos arrastraba al
+  // display, y no: el display está pintado de frente.
+  cargando: { x: 43.0, y: 61.3, ancho: 18.7, alto: 12.9, giro: 0, vidrio: '#002137' },
   jugando: { x: 39.5, y: 57.0, ancho: 17.6, alto: 14.1, giro: 7.4, vidrio: '#001c2e' },
   limpiando: { x: 37.9, y: 60.9, ancho: 16.4, alto: 13.3, giro: 0, vidrio: '#001e31' },
   'idle-manitos': { x: 39.1, y: 60.2, ancho: 17.6, alto: 11.3, giro: 4.5, vidrio: '#002a3c' }
@@ -1076,7 +1086,16 @@ export const CLASE_ESTOY_BIEN = 'estoy-bien';
 //
 // Y achicada: de 40% de ancho a 34. Con dos estantes ocupa más alto, y mantener
 // el ancho la habría vuelto el objeto más grande de la pared.
-export const REPISA = { x: 58, y: 26.5, ancho: 34, alto: 3.4 };
+// y=29,5 y no 26,5. La pared tiene conductos VERTICALES con ménsulas
+// horizontales, y 26,5% caía sobre la primera de ellas: la tabla quedaba
+// montada encima en vez de apoyada debajo. La siguiente línea horizontal libre,
+// medida con una escala de porcentajes sobre la escena renderizada, está en
+// 29,5%.
+//
+// Y de 34% de ancho a 28. Con dos tablas y ménsulas visibles, 34% la volvía la
+// pieza más grande de la pared; a 28 son 109 px en un viewport de 390, contra
+// los 133 de antes.
+export const REPISA = { x: 60, y: 29.5, ancho: 28, alto: 3.4 };
 
 // DOS ESTANTES. La separación va en % de la escena, igual que el resto de la
 // geometría de la pared, para que el hueco entre tablas no cambie con el
@@ -1283,7 +1302,67 @@ export const VARS_PANTALLA = {
 // posiciona con los mismos anclajes que usa #chip —el 50% de ancho y el piso—,
 // así que en cualquier viewport cae exactamente donde el dibujo la pide. Un
 // porcentaje de la escena se desalinearía apenas cambiara la proporción.
-export const PUNTA_DEL_CABLE = { x: 79.7, y: 98.6 };
+// Dónde NACE el cable: el conector del pecho, medido sobre el sprite limpio.
+// Antes acá había PUNTA_DEL_CABLE, que era donde TERMINABA el cable dibujado —
+// y ese cable ya no existe, Damián lo borró. La toma se posicionaba contra una
+// punta que hoy no está.
+//
+// El conector ocupa x 48,4-57% / y 75,4-85,5% del lienzo; el cable sale del
+// centro de su boca.
+export const CONECTOR_PECHO = { x: 52.9, y: 77.5 };
+
+// EL CABLE, dibujado y animado por código.
+//
+// La forma es una CATENARIA —la caída natural de algo que cuelga por su propio
+// peso— y no una recta ni un arco simétrico. Se aproxima con una cúbica de dos
+// puntos de control tirados hacia abajo: la diferencia con un arco simétrico es
+// que la panza cae más cerca del extremo bajo, que es lo que hace un cable de
+// verdad.
+export const CABLE = {
+  grosor: 3.4,
+  // Cuánto cuelga la panza respecto de la cuerda entre los dos extremos, en % de
+  // la distancia. Un cable flojo pero no una soga.
+  caida: 0.34,
+  color: '#1f7f96',
+  brillo: '#5fd8ef',
+  // El balanceo: muy leve y muy lento. Algo que apenas se mueve por su propio
+  // peso, no algo que serpentea.
+  balanceo: { ciclo: 4600, amplitud: 2.6 }
+};
+
+// LOS PULSOS que viajan por el cable. Nacen en el extremo lejano y recorren el
+// path hasta el conector: la energía VIAJA, y eso es lo que separa una carga que
+// se ve profesional de una luz que parpadea en su lugar.
+export const PULSOS_CABLE = { cuantos: 4, ciclo: 2600, radio: 3.2 };
+
+// LAS TRES UBICACIONES A PROBAR. Coordenadas en % de la ESCENA, no del sprite:
+// el destino es un lugar del galpón, no un lugar de Chip.
+export const DESTINOS_CABLE = {
+  // 1. Cruza el fondo hacia la izquierda y se pierde detrás del marco de la
+  //    ventana. Sin objeto: el cable simplemente va a algún lado fuera de
+  //    cuadro, y eso sugiere que el galpón es más grande que lo que se ve.
+  ventana: { x: 8, y: 62, toma: false },
+  // 2. Toma en la pared del fondo, a la altura del zócalo, con el cable subiendo
+  //    en diagonal hacia ella.
+  pared: { x: 86, y: 74, toma: true },
+  // 3. Sin toma: el cable baja y se pierde en el borde inferior de la escena.
+  abajo: { x: 68, y: 101, toma: false }
+};
+
+export const DESTINO_CABLE_ACTUAL = 'ventana';
+
+export const VARS_CABLE = {
+  camino: '--cable-camino',
+  grosor: '--cable-grosor',
+  color: '--cable-color',
+  brillo: '--cable-brillo',
+  cicloBalanceo: '--cable-balanceo-ciclo',
+  amplitudBalanceo: '--cable-balanceo-amplitud',
+  // El radio del pulso NO viaja por custom property: es un atributo r del SVG y
+  // lo escribe ui.js desde PULSOS_CABLE. Estuvo acá un rato y el test del puente
+  // lo marcó como escrito sin lector, que es exactamente lo que era.
+  cicloPulso: '--cable-pulso-ciclo'
+};
 
 // Del tamaño de un puño de Chip: la mano de `cargando` mide ~12% del lienzo.
 // Más alta que ancha, como una toma de verdad.

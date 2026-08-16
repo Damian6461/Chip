@@ -61,6 +61,12 @@
        es lo que le da la hora del día. La forma la dibuja ui.js. -->
   <div id="toma" aria-hidden="true"></div>
 
+  <!-- EL CABLE. Se dibuja entero por código: el sprite de cargando ya no trae
+       ninguno. Va antes de #chip para pasar por detrás de él, y lo llena ui.js
+       con una catenaria medida entre el conector del pecho y el destino
+       elegido en DESTINOS_CABLE. -->
+  <svg id="cable" aria-hidden="true" viewBox="0 0 1000 1000" preserveAspectRatio="none"></svg>
+
   <!-- La caja de Chip: define dónde pisa y cuánto mide, y NO se anima nunca.
        Adentro, la sombra queda quieta y el contenedor rebota; por eso al saltar
        Chip se despega y la sombra se queda en el piso. -->
@@ -132,7 +138,6 @@
              partículas genéricas recoloreadas. Los llena ui.js. -->
         <div id="rayitas"></div>
         <div id="pulsos"></div>
-        <div id="latido-rayo"></div>
         <div id="burbujas"></div>
 
         <div id="zetas">

@@ -1292,52 +1292,14 @@ body.es-noche #rayo {
   }
 }
 
-/* El latido del rayo: el display del pecho se enciende cuando el pulso llega.
-   No es una forma nueva —el rayo ya está dibujado en el sprite— es luz encima,
-   en la caja medida del display. Comparte --duracion-pulso, así que late en
-   sincronía con lo que sube: eso es lo que cierra el circuito visualmente. */
-#latido-rayo {
-  position: absolute;
-  /* El display medido va de 45% a 55% de ancho y de 62% a 72% de alto. La caja
-     es más grande que eso a propósito: el degradé se apaga antes del borde, así
-     que si midiera justo el display la luz quedaría cortada en el filo. */
-  left: 40%;
-  top: 57%;
-  width: 20%;
-  height: 20%;
-  border-radius: 40%;
-  background: radial-gradient(
-    ellipse at center,
-    color-mix(in srgb, var(--pulso-nucleo) 70%, transparent) 0%,
-    color-mix(in srgb, var(--pulso-halo) 45%, transparent) 45%,
-    transparent 75%
-  );
-  opacity: 0;
-  display: none;
-}
+/* ACÁ VIVÍA #latido-rayo, y se fue. Era una segunda luz de carga, en una caja
+   escrita a mano —left 40%, top 57%— o sea en el CENTRO del display. Se dibujó
+   antes de que se supiera que el arte tiene DOS instrumentos: el display grande
+   y una ventanita aparte, a la derecha, que es donde está el rayo.
 
-.estado-cargando #latido-rayo {
-  display: block;
-  animation: latir-rayo var(--duracion-pulso) ease-out infinite;
-}
-
-/* El pico va al final del ciclo del pulso, no al principio: primero llega la
-   energía, después prende. */
-@keyframes latir-rayo {
-  0%,
-  55% {
-    opacity: 0.15;
-    transform: scale(0.9);
-  }
-  85% {
-    opacity: 1;
-    transform: scale(1.15);
-  }
-  100% {
-    opacity: 0.15;
-    transform: scale(0.9);
-  }
-}
+   Con ese hallazgo quedó de más: #rayo ya se enciende en cargando y ya cae sobre
+   la ventanita correcta, medida en RECUADROS_RAYO. Se veían los dos a la vez —
+   uno encima del número y otro afuera— y el de adentro era el equivocado. */
 
 /* ---- Limpiando: las burbujas ----
 
@@ -1490,7 +1452,40 @@ body.es-noche #rayo {
       color-mix(in srgb, var(--bulbo-halo) 80%, transparent),
     0 0 calc(30px * var(--halo-escala, 1)) calc(10px * var(--halo-escala, 1))
       color-mix(in srgb, var(--bulbo-halo) 42%, transparent);
-  animation: latir var(--bulbo-ciclo) ease-in-out infinite;
+  /* El bulbo late en BRILLO y no en opacidad, y eso es un arreglo, no un gusto.
+     Con opacity el disco se volvía translúcido en la mitad baja del ciclo y el
+     bulbo CIAN pintado en el sprite se veía por debajo: cian abajo + ámbar
+     arriba = verde. La luz de cargando salía verde, el primer color fuera de la
+     paleta del proyecto, y no venía de COLORES_BULBO —que dice ámbar— sino de
+     una mezcla que nadie eligió.
+
+     Una lámpara encendida no se vuelve transparente: cambia de intensidad. Así
+     que el disco queda opaco siempre —tapa lo pintado en todo el ciclo— y lo que
+     late es el brillo. El que sí late en opacidad es el resplandor, que es el
+     aire iluminado y ahí sí corresponde. */
+  animation: latir-bulbo var(--bulbo-ciclo) ease-in-out infinite;
+}
+
+@keyframes latir-bulbo {
+  0%,
+  100% {
+    filter: brightness(var(--bulbo-piso));
+  }
+  50% {
+    filter: brightness(var(--bulbo-pico));
+  }
+}
+
+/* Y la falla de crítico, con la misma cuenta pero en brillo. */
+@keyframes fallar-bulbo {
+  0% { filter: brightness(var(--bulbo-pico)); }
+  7% { filter: brightness(var(--bulbo-piso)); }
+  12% { filter: brightness(var(--bulbo-pico)); }
+  19% { filter: brightness(var(--bulbo-piso)); }
+  55% { filter: brightness(var(--bulbo-piso)); }
+  62% { filter: brightness(calc(var(--bulbo-pico) * 0.6)); }
+  70%,
+  100% { filter: brightness(var(--bulbo-piso)); }
 }
 
 /* EL RESPLANDOR SOBRE EL CASCO. Es lo que separa una fuente de luz de un sticker
@@ -1584,7 +1579,11 @@ body.es-noche #rayo {
 
 /* La luz que falla es de crítico y de nadie más. Va con animation-name para no
    pisar la duración ni el easing con el shorthand: la regla del archivo. */
-#chip:has(.estado-critico) #antena,
+#chip:has(.estado-critico) #antena {
+  animation-name: fallar-bulbo;
+  animation-timing-function: linear;
+}
+
 #chip:has(.estado-critico) #resplandor {
   animation-name: fallar;
   animation-timing-function: linear;
@@ -1605,7 +1604,13 @@ body.es-noche #resplandor {
 /* EL DESTELLO. Una caricia o un hallazgo prenden la luz en blanco un instante.
    Se monta encima del latido con su propia animación sobre otra propiedad
    —filter— para no tener que interrumpir el ciclo y volver a arrancarlo. */
-#antena.destellando,
+#antena.destellando {
+  animation-name: latir-bulbo, destellar-bulbo;
+  animation-duration: var(--bulbo-ciclo), var(--duracion-destello-bulbo);
+  animation-timing-function: ease-in-out, ease-out;
+  animation-iteration-count: infinite, 1;
+}
+
 #resplandor.destellando {
   animation-name: latir, destellar-bulbo;
   animation-duration: var(--bulbo-ciclo), var(--duracion-destello-bulbo);
@@ -3304,6 +3309,8 @@ body.es-noche .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
    misma especificidad que las reglas de arriba, declarada después. */
 @media (prefers-reduced-motion: reduce) {
   #contenedor-mascota,
+  #cable path,
+  .pulso-cable,
   #cuerpo.cambiando,
   #cuerpo.saltando.cambiando,
   #cuerpo.saltando {
@@ -3463,4 +3470,97 @@ body.sin-movimiento *::after {
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
   scroll-behavior: auto !important;
+}
+
+/* ============================================================================
+   EL CABLE
+
+   Se dibuja entero por código: el sprite de `cargando` ya no trae ninguno.
+
+   El SVG cubre la escena con viewBox de 1000x1000 y preserveAspectRatio="none",
+   así las coordenadas son milésimos de escena y no hay nada que recalcular al
+   cambiar de viewport. La distorsión que eso mete en el trazo la anula
+   `vector-effect: non-scaling-stroke`, que existe justamente para esto: sin él,
+   un cable de 3,4 px se vería de 1,5 a lo alto y de 8 a lo ancho.
+   ============================================================================ */
+
+#cable {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: -1;
+  display: none;
+}
+
+/* Sólo existe mientras Chip carga. En los demás estados no hay nada enchufado. */
+#escena:has(.estado-cargando) #cable {
+  display: block;
+}
+
+.cable-cuerpo,
+.cable-brillo {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+}
+
+.cable-cuerpo {
+  stroke: var(--cable-color);
+  stroke-width: var(--cable-grosor);
+}
+
+/* La línea de brillo en el borde de arriba, como los caños de la panorámica: no
+   es un contorno, es la luz de la ventana pegándole por encima. Se consigue con
+   un trazo más fino corrido hacia arriba, no con un segundo path. */
+.cable-brillo {
+  stroke: var(--cable-brillo);
+  stroke-width: calc(var(--cable-grosor) * 0.34);
+  opacity: 0.55;
+  translate: 0 calc(var(--cable-grosor) * -0.3);
+}
+
+/* EL BALANCEO. Muy leve y muy lento: algo que apenas se mueve por su propio
+   peso, no algo que serpentea. Va sobre el grupo entero y no sobre la panza,
+   porque un cable colgado se mueve como una pieza. */
+#cable path {
+  animation: colgar var(--cable-balanceo-ciclo) ease-in-out infinite;
+  transform-origin: 0% 0%;
+}
+
+@keyframes colgar {
+  0%,
+  100% { translate: 0 0; }
+  50% { translate: 0 var(--cable-balanceo-amplitud); }
+}
+
+/* LOS PULSOS. Viajan por la curva —no la cruzan— con offset-path, que toma el
+   MISMO `d` que el cable a través de una custom property. Un segundo camino
+   escrito aparte habría que mantenerlo sincronizado a mano.
+
+   `direction: reverse` los hace nacer en el extremo lejano y llegar al conector:
+   la energía va HACIA Chip, que es lo que cierra el circuito con el latido del
+   rayo del pecho. */
+.pulso-cable {
+  fill: var(--cable-brillo);
+  offset-path: var(--cable-camino);
+  offset-rotate: 0deg;
+  offset-distance: 0%;
+  filter: drop-shadow(0 0 3px var(--cable-brillo));
+  animation: viajar-pulso var(--cable-pulso-ciclo) linear infinite reverse;
+}
+
+@keyframes viajar-pulso {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
 }

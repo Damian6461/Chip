@@ -49,6 +49,7 @@ export const grillaGigantes = document.getElementById('gigantes-grilla');
 export const detalleGigantes = document.getElementById('gigantes-detalle');
 export const canvas = document.getElementById('canvas-mascota');
 export const toma = document.getElementById('toma');
+export const nodoCable = document.getElementById('cable');
 export const repisa = document.getElementById('repisa');
 // Las dos capas de la luz de la cabeza. El bulbo TAPA al pintado en el sprite;
 // el resplandor es lo que esa fuente derrama sobre el casco.
