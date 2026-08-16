@@ -3319,6 +3319,7 @@ body.es-noche .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
 @media (prefers-reduced-motion: reduce) {
   #contenedor-mascota,
   #cabeza-grupo.inclinada,
+  #orugas .cubo,
   #cable path,
   .pulso-cable,
   #cuerpo.cambiando,
@@ -3654,4 +3655,70 @@ body.sin-movimiento *::after {
   100% {
     rotate: 0deg;
   }
+}
+
+/* ============================================================================
+   LAS ORUGAS QUE GIRAN
+
+   Lo que gira es la BARRA DEL CUBO y no el aro. El aro pintado es una elipse
+   lisa —un círculo visto en escorzo— y rotarlo sobre su centro no lo hace
+   rodar: lo acuesta. A 90 grados un círculo en escorzo pasa a estar horizontal,
+   que es exactamente lo contrario de lo que se quiere decir.
+
+   La barra está SIEMPRE, también en reposo, donde se lee como una chaveta del
+   cubo. Lo que cambia es su ángulo. Una marca que aparece sólo al girar se lee
+   como un glitch.
+   ============================================================================ */
+
+#orugas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+#orugas[hidden] {
+  display: none;
+}
+
+/* EN REPOSO NO GIRAN. Chip está quieto, y una rueda girando sola es lo que hace
+   que un personaje parado se vea como un GIF en loop. */
+.cubo {
+  rotate: var(--giro-oruga, 0deg);
+}
+
+/* EL ACOMODO: un cuarto de vuelta rápido al ejecutar una acción, como si se
+   asentara. Va montado en el mismo momento que el salto — es la misma reacción
+   del cuerpo a haber hecho algo. */
+#orugas.acomodando .cubo {
+  animation: acomodar-oruga var(--acomodo-duracion) cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes acomodar-oruga {
+  from { rotate: 0deg; }
+  to { rotate: var(--acomodo-angulo); }
+}
+
+/* LA MECIDA de jugando: de ida y vuelta, no una vuelta libre. Chip no se va a
+   ningún lado — se mece, que es lo que hace un cuerpo jugando en el lugar.
+   Las dos orugas van en CONTRAFASE: mecerse es alternar el peso de un lado al
+   otro, y con las dos en fase se leería como un temblor. */
+.estado-jugando #orugas .cubo {
+  animation: mecer-oruga var(--mecida-ciclo) ease-in-out infinite;
+}
+
+/* La contrafase se hace con un DELAY NEGATIVO de medio ciclo y no con
+   animation-direction: reverse. El keyframe es simétrico —arranca y termina en
+   el mismo ángulo— así que invertirlo da exactamente la misma curva y las dos
+   orugas se mecían en fase. Un delay negativo arranca el ciclo por la mitad, que
+   es lo que de verdad las pone en contrafase. */
+.estado-jugando #orugas .cubo:nth-child(2) {
+  animation-delay: calc(var(--mecida-ciclo) * -0.5);
+}
+
+@keyframes mecer-oruga {
+  0%, 100% { rotate: calc(var(--mecida-angulo) * -1); }
+  50% { rotate: var(--mecida-angulo); }
 }

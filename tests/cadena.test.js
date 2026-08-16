@@ -4,7 +4,7 @@
 // resolverEstadoVisual es pura y recibe `ahora` inyectado, así que estas pruebas
 // no llaman Date.now() y no dependen del reloj ni de la zona horaria.
 
-import { prueba, igual } from './runner.js';
+import { prueba, igual, verdadero } from './runner.js';
 import {
   T0,
   T_MADRUGADA,
@@ -28,7 +28,9 @@ import {
   ASPECTO_PANTALLA,
   ALTO_NUMERO,
   CAJA_NUMERO,
-  CAJA_SEGMENTOS
+  CAJA_SEGMENTOS,
+  AROS_ORUGA,
+  APOYO_ORUGAS
 } from '../js/config.js';
 import {
   resolverEstadoVisual,
@@ -269,4 +271,59 @@ prueba('pantalla: el número entra entero en la caja de contenido', () => {
     true,
     'las barras terminan antes de que empiece el número'
   );
+});
+
+// ---- Los aros de las orugas ----
+//
+// AROS_ORUGA está medida A MANO: cuatro métodos automáticos fallaron y quedaron
+// documentados. Una tabla a mano es disciplina, y la disciplina se olvida — así
+// que se la protege igual que a las poses.
+//
+// Son tres chequeos y cada uno caza un olvido distinto:
+//
+//   1. que exista entrada para toda pose que se dibuje
+//   2. que sean DOS aros, porque Chip tiene dos orugas
+//   3. el control cruzado contra APOYO_ORUGAS, que es una tabla independiente y
+//      medida con otro método: la distancia del eje del aro a la línea de apoyo
+//      cae entre 8,5 y 11,3 en los dieciocho aros medidos. Un valor inventado
+//      —o copiado de otra pose— se sale de esa banda.
+
+prueba('orugas: toda pose dibujable tiene sus dos aros medidos', () => {
+  for (const clave of Object.keys(RUTAS_SPRITES)) {
+    const aros = AROS_ORUGA[clave];
+    verdadero(Array.isArray(aros), `${clave} necesita entrada en AROS_ORUGA`);
+    igual(aros.length, 2, `${clave} tiene ${aros?.length} aros y Chip tiene dos orugas`);
+  }
+});
+
+prueba('orugas: los aros son elipses en escorzo, más altas que anchas', () => {
+  for (const [clave, aros] of Object.entries(AROS_ORUGA)) {
+    for (const aro of aros) {
+      verdadero(
+        aro.ry > aro.rx,
+        `${clave}: un aro con rx ${aro.rx} y ry ${aro.ry} no está en escorzo`
+      );
+      verdadero(aro.rx > 1.5 && aro.rx < 6, `${clave}: rx ${aro.rx} fuera de rango`);
+      verdadero(aro.ry > 2.5 && aro.ry < 8, `${clave}: ry ${aro.ry} fuera de rango`);
+    }
+  }
+});
+
+prueba('orugas: el eje de cada aro cae a la altura correcta sobre la línea de apoyo', () => {
+  for (const [clave, aros] of Object.entries(AROS_ORUGA)) {
+    const apoyo = APOYO_ORUGAS[clave];
+    verdadero(Boolean(apoyo), `${clave} necesita entrada en APOYO_ORUGAS`);
+
+    for (const aro of aros) {
+      const distancia = apoyo.y - aro.y;
+      verdadero(
+        distancia > 7 && distancia < 13,
+        `${clave}: el eje está a ${distancia.toFixed(1)} de la línea de apoyo, fuera de la banda medida`
+      );
+    }
+
+    // Y los dos aros, uno de cada lado del centro.
+    const [izq, der] = [...aros].sort((a, b) => a.x - b.x);
+    verdadero(izq.x < 50 && der.x > 50, `${clave}: los dos aros caen del mismo lado`);
+  }
 });

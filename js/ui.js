@@ -68,6 +68,10 @@ import {
   CLASE_DESTELLO_BULBO,
   DURACION_DESTELLO_BULBO_MS,
   NUBE_RAPIDA,
+  AROS_ORUGA,
+  BARRA_CUBO,
+  GIRO_ORUGAS,
+  CLASE_ACOMODO,
   RUTAS_CABEZA,
   VARS_CABEZA,
   CLASE_INCLINADA,
@@ -92,7 +96,8 @@ import {
   svgDeTilde,
   svgDeRayo,
   svgDeNumero,
-  caminoDelCable
+  caminoDelCable,
+  barraDeCubo
 } from './formas.js';
 
 // Los nodos, el puente de custom properties y los SVG del mobiliario están en
@@ -101,6 +106,7 @@ import {
   raiz,
   cajaChip,
   contenedorMascota,
+  nodoOrugas,
   capaCabeza,
   grupoCabeza,
   capaOjos,
@@ -518,6 +524,44 @@ let temporizadorCelebracion = null;
 // La tanda que dispara una acción que sube el humor. Es el momento en que la
 // mecánica y la emoción coinciden, y hasta ahora no tenía expresión visual.
 //
+// ---- Las orugas ----
+//
+// En reposo NO giran: Chip está quieto, y una rueda girando sola es lo que hace
+// que un personaje parado se vea como un GIF. Giran en dos momentos, y los dos
+// tienen causa: al ejecutar una acción se acomoda un cuarto de vuelta, y en
+// jugando se mece de ida y vuelta.
+//
+// Lo que gira es la BARRA DEL CUBO y no el aro. El aro pintado es una elipse
+// lisa —un círculo en escorzo— y rotarla sobre su centro no la hace rodar, la
+// acuesta. La barra es la única pieza angular, y está dibujada por código
+// justamente porque el arte no traía ninguna.
+
+let temporizadorAcomodo = null;
+
+function pintarOrugas(claveSprite) {
+  if (!nodoOrugas) return;
+
+  const aros = AROS_ORUGA[claveSprite];
+  nodoOrugas.hidden = !aros;
+  if (!aros) return;
+
+  nodoOrugas.innerHTML = aros.map((aro) => barraDeCubo(aro, BARRA_CUBO)).join('');
+}
+
+// El cuarto de vuelta de una acción. Se saca solo: es un gesto, no un estado.
+export function acomodarOrugas() {
+  if (!nodoOrugas || nodoOrugas.hidden) return;
+
+  nodoOrugas.classList.remove(CLASE_ACOMODO);
+  void nodoOrugas.offsetWidth;
+  nodoOrugas.classList.add(CLASE_ACOMODO);
+
+  clearTimeout(temporizadorAcomodo);
+  temporizadorAcomodo = setTimeout(() => {
+    nodoOrugas.classList.remove(CLASE_ACOMODO);
+  }, GIRO_ORUGAS.acomodo.duracion + 120);
+}
+
 // ---- La inclinación de cabeza ----
 //
 // Cada tanto Chip ladea la cabeza. No lo dispara nada: pasa solo, y ese es el
@@ -1285,6 +1329,7 @@ export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = 
   // Los cambios de acción van en corte seco: ESE corte es el feedback de que la
   // acción respondió. Los ambientales, con squash.
   dibujarMascota(claveSprite, !ESTADOS_DE_ACCION.includes(estadoVisual));
+  pintarOrugas(claveSprite);
   pintarCabeza(claveSprite);
   pintarOjos(claveSprite);
   pintarPantalla(estado, claveSprite);
@@ -1322,6 +1367,9 @@ export function mostrarEventos(eventos) {
 // un botón y la acción efectivamente se aplicó. Con prefers-reduced-motion la
 // clase se pone igual y no hace nada: quién puede moverse lo decide el CSS.
 export function animarAccion() {
+  // Las orugas se acomodan junto con el salto: es la misma reacción del cuerpo
+  // a haber hecho algo, y separarlas dejaría dos gestos desincronizados.
+  acomodarOrugas();
   // Sacar, forzar reflow y volver a poner reinicia la animación cuando la
   // acción se repite antes de que la anterior haya terminado. Sin el reflow el
   // navegador agrupa las dos mutaciones y no ve ningún cambio de clase.

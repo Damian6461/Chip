@@ -798,6 +798,101 @@ export const CLASE_DESTELLO_BULBO = 'destellando';
 // En `cargando` el cable y la ficha llegan al borde inferior del lienzo y daban
 // 100%: se excluye el cian del cable y se toma el valor de las otras poses, que
 // caen todas entre 95,7% y 96,9%. La ficha apoyada en el piso no es una oruga.
+// ---- Los aros de las orugas ----
+//
+// MEDIDA A MANO, y ese fue el resultado de probar lo contrario. Cuatro métodos
+// automáticos fallaron y quedaron documentados en EL-PORQUE.md; el techo era
+// siempre el mismo, que la oruga no se distingue de lo que tiene encima ni por
+// color ni por alfa.
+//
+// Se midió leyendo los nueve sprites contra una grilla de porcentajes cada 2,
+// ampliados 5x. El control cruzado es APOYO_ORUGAS: la distancia del eje del aro
+// a la línea de apoyo cae entre 8,7 y 10,6 puntos en los nueve, y el test de
+// abajo exige que siga cayendo en esa banda. Si alguien agrega un sprite y le
+// inventa los aros, ese rango lo caza.
+//
+// Los radios son de la ELIPSE pintada: el aro es un círculo visto en escorzo, o
+// sea más alto que ancho.
+export const AROS_ORUGA = {
+  idle: [
+    { x: 34.6, y: 87.4, rx: 2.6, ry: 4.1 },
+    { x: 71.4, y: 87.3, rx: 3.0, ry: 4.4 }
+  ],
+  feliz: [
+    { x: 33.0, y: 87.0, rx: 2.7, ry: 4.2 },
+    { x: 72.4, y: 86.2, rx: 3.0, ry: 4.4 }
+  ],
+  critico: [
+    { x: 32.2, y: 88.0, rx: 2.6, ry: 4.0 },
+    { x: 72.6, y: 87.6, rx: 2.8, ry: 4.2 }
+  ],
+  standby: [
+    { x: 32.8, y: 87.0, rx: 2.8, ry: 4.3 },
+    { x: 74.8, y: 85.6, rx: 3.1, ry: 4.6 }
+  ],
+  cargando: [
+    { x: 23.4, y: 87.6, rx: 2.7, ry: 4.2 },
+    { x: 64.8, y: 88.0, rx: 2.6, ry: 4.0 }
+  ],
+  jugando: [
+    { x: 37.4, y: 85.6, rx: 2.9, ry: 4.3 },
+    { x: 72.8, y: 86.6, rx: 2.9, ry: 4.3 }
+  ],
+  limpiando: [
+    { x: 36.0, y: 87.6, rx: 2.7, ry: 4.1 },
+    { x: 71.8, y: 86.6, rx: 2.9, ry: 4.3 }
+  ],
+  esperando: [
+    { x: 36.8, y: 87.0, rx: 2.8, ry: 4.2 },
+    { x: 72.0, y: 86.8, rx: 2.9, ry: 4.3 }
+  ],
+  'idle-manitos': [
+    { x: 36.0, y: 87.4, rx: 2.7, ry: 4.1 },
+    { x: 71.6, y: 87.0, rx: 2.9, ry: 4.3 }
+  ]
+};
+
+// LA BARRA DEL CUBO, y por qué existe.
+//
+// El aro pintado es una elipse lisa con un cubo liso adentro: NO tiene ningún
+// rasgo angular. Girar la elipse sobre su centro no la hace rodar, la tumba —
+// un círculo en escorzo rotado 90 grados pasa a estar acostado.
+//
+// Así que lo que gira se dibuja: una barra corta cruzando el cubo, del vocabulario
+// del galpón (una chaveta, un tornillo pasante). Está SIEMPRE, también en reposo,
+// donde se lee como parte del cubo; lo que cambia es su ángulo. Una marca que
+// aparece sólo al girar se lee como un glitch.
+export const BARRA_CUBO = {
+  // % del radio del aro que ocupa la barra
+  largo: 1.15,
+  // En % del contenedor, igual que el resto de la tabla: el SVG tiene viewBox
+  // 0 0 100 100 para que las coordenadas de AROS_ORUGA entren directo.
+  grosor: 0.9,
+  color: '#8a4a12',
+  brillo: '#f0a326'
+};
+
+// El giro. En reposo NO giran: Chip está quieto.
+export const GIRO_ORUGAS = {
+  // Al ejecutar una acción: un cuarto de vuelta rápido, como si se acomodara.
+  acomodo: { angulo: 90, duracion: 300 },
+  // En jugando: de ida y vuelta, como si se meciera. No es una rueda libre, es
+  // un cuerpo jugando.
+  mecida: { angulo: 26, ciclo: 900 }
+};
+
+export const VARS_ORUGAS = {
+  giro: '--giro-oruga',
+  duracionAcomodo: '--acomodo-duracion',
+  anguloAcomodo: '--acomodo-angulo',
+  cicloMecida: '--mecida-ciclo',
+  anguloMecida: '--mecida-angulo',
+  barraColor: '--barra-cubo-color',
+  barraBrillo: '--barra-cubo-brillo'
+};
+
+export const CLASE_ACOMODO = 'acomodando';
+
 export const APOYO_ORUGAS = {
   idle: { y: 96.5, x: 21.5, ancho: 54.7 },
   feliz: { y: 96.9, x: 17.6, ancho: 58.6 },

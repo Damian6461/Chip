@@ -57,6 +57,9 @@ import {
   CICLOS_POLVO_MS,
   VARS_PERSONAJE,
   VARS_CABEZA,
+  VARS_ORUGAS,
+  BARRA_CUBO,
+  GIRO_ORUGAS,
   PIVOTE_CABEZA,
   INCLINACION_CABEZA,
   ORIGEN_PARPADEO,
@@ -205,6 +208,14 @@ export function variablesDeTema() {
     [VARS_CABEZA.pivoteX]: pct(PIVOTE_CABEZA.x),
     [VARS_CABEZA.pivoteY]: pct(PIVOTE_CABEZA.y),
     [VARS_CABEZA.angulo]: `${INCLINACION_CABEZA.angulo}deg`,
+    // Las orugas
+    [VARS_ORUGAS.barraColor]: BARRA_CUBO.color,
+    [VARS_ORUGAS.barraBrillo]: BARRA_CUBO.brillo,
+    [VARS_ORUGAS.anguloAcomodo]: `${GIRO_ORUGAS.acomodo.angulo}deg`,
+    [VARS_ORUGAS.duracionAcomodo]: ms(GIRO_ORUGAS.acomodo.duracion),
+    [VARS_ORUGAS.anguloMecida]: `${GIRO_ORUGAS.mecida.angulo}deg`,
+    [VARS_ORUGAS.cicloMecida]: ms(GIRO_ORUGAS.mecida.ciclo),
+
     [VARS_CABEZA.total]: ms(
       INCLINACION_CABEZA.entra + INCLINACION_CABEZA.sostiene + INCLINACION_CABEZA.vuelve
     ),

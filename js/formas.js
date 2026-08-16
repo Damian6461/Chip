@@ -523,6 +523,28 @@ export function caminoDelCable(conector, r) {
   return d;
 }
 
+// LA BARRA DEL CUBO de una oruga. Función pura: recibe el aro medido y devuelve
+// el grupo SVG, ya con su pivote puesto.
+//
+// Dos trazos y no uno: el oscuro es la ranura y el claro es el filo que le pega
+// la luz, que es el mismo tratamiento de todo el metal del galpón. Con un solo
+// trazo la barra se hunde en el cubo y no se ve girar, que es justamente lo
+// único que tiene que hacer.
+export function barraDeCubo(aro, barra) {
+  const lx = aro.rx * barra.largo;
+  const ly = aro.ry * barra.largo;
+  const n = (v) => Math.round(v * 100) / 100;
+
+  return (
+    `<g class="cubo" style="transform-origin: ${n(aro.x)}px ${n(aro.y)}px">` +
+    `<line x1="${n(aro.x - lx)}" y1="${n(aro.y + ly * 0.34)}" x2="${n(aro.x + lx)}" y2="${n(aro.y - ly * 0.34)}" ` +
+    `stroke="var(--barra-cubo-color)" stroke-width="${barra.grosor * 1.9}" stroke-linecap="round"/>` +
+    `<line x1="${n(aro.x - lx * 0.8)}" y1="${n(aro.y + ly * 0.27)}" x2="${n(aro.x + lx * 0.8)}" y2="${n(aro.y - ly * 0.27)}" ` +
+    `stroke="var(--barra-cubo-brillo)" stroke-width="${barra.grosor * 0.75}" stroke-linecap="round"/>` +
+    `</g>`
+  );
+}
+
 export function tieneForma(id) {
   return id in FORMAS;
 }

@@ -86,6 +86,13 @@
            nada: dibuja 1 a 1 y el CSS lo lleva al tamaño de la escena. -->
       <canvas id="canvas-mascota" width="256" height="256"></canvas>
 
+      <!-- LAS BARRAS DE CUBO de las dos orugas. El viewBox es el mismo 256 del
+           lienzo, así que las coordenadas de AROS_ORUGA entran directo.
+           Existen porque el aro pintado no tiene ningún rasgo angular: es una
+           elipse lisa, y una elipse rotada sobre su centro no rueda, se tumba.
+           Lo llena ui.js con la tabla de la pose. -->
+      <svg id="orugas" viewBox="0 0 100 100" aria-hidden="true"></svg>
+
       <!-- LA CABEZA, para poder ladearla. Es el mismo lienzo de 256 que el
            cuerpo y se apoya exactamente encima, así que a 0 grados es invisible:
            tapa a la cabeza pintada con sus propios píxeles. Lo que la hace
