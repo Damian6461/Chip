@@ -107,13 +107,29 @@ prueba('tema: es determinista — dos llamadas dan exactamente lo mismo', () => 
   );
 });
 
-prueba('tema: toda duración lleva unidad y todo color es un hex', () => {
+// El chequeo de color va dirigido por VALOR y no por nombre, y es una corrección
+// de la primera versión: buscaba /sombra|filo|cuerpo|.../ en el nombre y se
+// llevaba puesta a `--sombra-respiracion-x`, que es un factor de escala. Un
+// heurístico sobre el nombre inventa falsos positivos en cuanto el vocabulario
+// crece. Sobre el valor no hay ambigüedad: lo que empieza con # es un color y
+// tiene que estar bien formado.
+prueba('tema: cada valor tiene la forma que le corresponde', () => {
   for (const [nombre, valor] of Object.entries(variablesDeTema())) {
     if (/duracion|ciclo|transicion|retardo/.test(nombre)) {
       verdadero(/^\d+(\.\d+)?m?s$/.test(valor), `${nombre} vale "${valor}" y debería ser una duración`);
     }
-    if (/color|borde|cuerpo|brillo|sombra|filo|cara|canto|chapa|hueco|linea/.test(nombre)) {
-      verdadero(/^#[0-9a-f]{3,8}$/i.test(valor), `${nombre} vale "${valor}" y debería ser un hex`);
+
+    if (valor.startsWith('#')) {
+      verdadero(/^#[0-9a-f]{3,8}$/i.test(valor), `${nombre} vale "${valor}", que no es un hex válido`);
+    }
+
+    // Escalas, anclas y factores: números pelados, sin unidad. Un `%` colado acá
+    // rompe silenciosamente el calc() del otro lado.
+    if (/-(x|y|achatado|corrimiento|ancla[xy]|opacidad)$/i.test(nombre) && !valor.endsWith('%')) {
+      verdadero(
+        Number.isFinite(Number(valor)),
+        `${nombre} vale "${valor}" y debería ser un número sin unidad`
+      );
     }
   }
 });

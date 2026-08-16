@@ -16,7 +16,10 @@
 // los de los SVG de formas.js, en las dos direcciones.
 
 import {
-  CICLO_REBOTE_MS,
+  CICLO_RESPIRACION_MS,
+  RESPIRACION,
+  RESPIRACION_POR_ESTADO,
+  RESPIRACION_SOMBRA,
   DURACION_SALTO_MS,
   TRANSICION_BARRA_MS,
   DURACION_PRESION_MS,
@@ -76,6 +79,25 @@ import {
 const ms = (n) => `${n}ms`;
 const pct = (n) => `${n}%`;
 
+// La respiración de un estado: su ciclo y su amplitud, escalada sobre la base.
+// El multiplicador se aplica a la DISTANCIA respecto de 1, no al valor, porque
+// lo que escala es cuánto se deforma y no cuánto mide.
+function respiracionDe({ ciclo = CICLO_RESPIRACION_MS, amplitud = 1 } = {}, sufijo = '') {
+  return {
+    [`--ciclo-respiracion${sufijo}`]: ms(ciclo),
+    [`--respiracion-y${sufijo}`]: String(+(1 + (RESPIRACION.y - 1) * amplitud).toFixed(4)),
+    [`--respiracion-x${sufijo}`]: String(+(1 - (1 - RESPIRACION.x) * amplitud).toFixed(4)),
+    // La sombra acompaña con la misma amplitud: si Chip casi no respira, su
+    // huella tampoco puede estar latiendo.
+    [`--sombra-respiracion-x${sufijo}`]: String(
+      +(1 - (1 - RESPIRACION_SOMBRA.x) * amplitud).toFixed(4)
+    ),
+    [`--sombra-respiracion-opacidad${sufijo}`]: String(
+      +(1 - (1 - RESPIRACION_SOMBRA.opacidad) * amplitud).toFixed(4)
+    )
+  };
+}
+
 // Los tonos de un grupo viajan por convención de nombre: --<grupo>-<tono>.
 // Declarar catorce nombres a mano no agregaría nada; lo que importa es que el
 // grupo y el tono estén en config, y ahí están.
@@ -85,8 +107,16 @@ function tonos(prefijo, tabla) {
 
 export function variablesDeTema() {
   return {
+    // LA RESPIRACIÓN. La base va sin sufijo; cada estado con ritmo propio suma
+    // su juego con el suyo, y una regla de style.css lo levanta por clase. Se
+    // resuelven todos acá y no en cada render porque son constantes: lo único
+    // que cambia en vivo es qué clase tiene el contenedor.
+    ...respiracionDe(),
+    ...Object.entries(RESPIRACION_POR_ESTADO).reduce(
+      (acc, [estado, valores]) => ({ ...acc, ...respiracionDe(valores, `-${estado}`) }),
+      {}
+    ),
     // Ritmo de la interfaz
-    [VARS_ANIMACION.cicloRebote]: ms(CICLO_REBOTE_MS),
     [VARS_ANIMACION.duracionSalto]: ms(DURACION_SALTO_MS),
     [VARS_ANIMACION.transicionBarra]: ms(TRANSICION_BARRA_MS),
     [VARS_ANIMACION.duracionPresion]: ms(DURACION_PRESION_MS),

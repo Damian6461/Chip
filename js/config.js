@@ -284,15 +284,55 @@ export const TICK_VISUAL_MS = 60_000;
 
 // ---- Animaciones de vida ----
 
-// Rebote permanente: Chip respira siempre, en todos los estados.
+// LA RESPIRACIÓN. Chip respira siempre, en todos los estados.
 //
-// 2.2 s y no 2 a propósito. DEBOUNCE_VISUAL_MS y DURACION_ESTADO_ACCION_MS
-// valen 2 s los dos: un ciclo del mismo largo quedaría en fase con ellos y el
-// cambio de sprite caería siempre en el mismo punto del rebote, que es
-// justamente lo que hace que una animación se vea mecánica.
-export const CICLO_REBOTE_MS = 2200;
+// Reemplazó al rebote, que era traslación pura: subir y bajar 4 px es levitar,
+// no respirar. Un cuerpo que respira se DEFORMA en el lugar, con el pivote en la
+// línea de apoyo de las orugas (APOYO_ORUGAS), que es lo único que no se mueve.
+//
+// El ciclo se alargó de 2,2 s a 3,4: la respiración en reposo es lenta, y el
+// rebote viejo a 2,2 leía más como nerviosismo que como calma. Sigue valiendo la
+// razón por la que no es un número redondo: DEBOUNCE_VISUAL_MS y
+// DURACION_ESTADO_ACCION_MS valen 2 s los dos, y un ciclo múltiplo de ellos
+// haría caer el cambio de sprite siempre en el mismo punto de la respiración,
+// que es justo lo que vuelve mecánica a una animación.
+export const CICLO_RESPIRACION_MS = 3400;
 
-// Salto de acción: sube y vuelve, una sola vez, montado encima del rebote.
+// La curva es ASIMÉTRICA y ese es el detalle que la hace leer como respiración:
+// inhalar ocupa el 40% del ciclo y exhalar el 60%. Un cuerpo real toma aire más
+// rápido de lo que lo suelta. Con 50/50 se ve como un fuelle.
+//
+// Este número NO viaja por custom property, y no por olvido: los offsets de un
+// @keyframes (`40% { ... }`) no admiten var(). Es un literal en style.css atado
+// a este valor por tests/composicion.test.js, igual que las posiciones de los
+// corazones. Si alguien mueve uno de los dos, el test lo dice.
+export const INHALACION = 0.4;
+
+// Amplitud base. El scaleX va a la INVERSA y es lo que evita que se lea como un
+// globo inflándose: cuando un cuerpo se estira hacia arriba, se angosta un poco.
+// La compensación no es exacta —0,994 contra 1,018— porque conservar el volumen
+// al milímetro se ve rígido; un cuerpo blando gana un poco de volumen al inhalar.
+export const RESPIRACION = { y: 1.018, x: 0.994 };
+
+// La respiración es el PRIMER indicador de estado, antes de mirarle la cara.
+// Cada estado tiene su ritmo y su profundidad; el multiplicador escala la
+// amplitud sobre RESPIRACION. Lo que no está acá usa el ciclo y el 1x de arriba.
+export const RESPIRACION_POR_ESTADO = {
+  // Respira despacio y poco: la batería no da para más.
+  critico: { ciclo: 5000, amplitud: 0.5 },
+  // Agitado y profundo, como quien está contento.
+  feliz: { ciclo: 2600, amplitud: 1.5 },
+  // Dormido: casi no se mueve, pero se mueve.
+  standby: { ciclo: 6000, amplitud: 0.35 }
+};
+
+// Cuánto acompaña la sombra. Al inhalar Chip se estira hacia arriba y apoya
+// menos, así que la huella se angosta; al exhalar vuelve a ensancharse. Es la
+// contrafase de siempre, ahora atada a la deformación y no a la altura.
+export const RESPIRACION_SOMBRA = { x: 0.94, opacidad: 0.82 };
+
+// Salto de acción: sube y vuelve, montado encima de la respiración. Sigue siendo
+// TRASLACIÓN, a propósito — ahí sí se quiere que despegue del piso.
 export const DURACION_SALTO_MS = 300;
 
 // Cuánto tarda una barra en viajar hasta su nuevo ancho en vez de saltar.
@@ -308,7 +348,11 @@ export const DURACION_PRESION_MS = 90;
 // y la hoja los lee con var(). Sin JS no hay animación, que es exactamente lo
 // que corresponde.
 export const VARS_ANIMACION = {
-  cicloRebote: '--ciclo-rebote',
+  cicloRespiracion: '--ciclo-respiracion',
+  respiracionY: '--respiracion-y',
+  respiracionX: '--respiracion-x',
+  sombraX: '--sombra-respiracion-x',
+  sombraOpacidad: '--sombra-respiracion-opacidad',
   duracionSalto: '--duracion-salto',
   transicionBarra: '--transicion-barra',
   duracionPresion: '--duracion-presion',
@@ -624,7 +668,16 @@ export const PANTALLAS_PECHO = {
   feliz: { x: 36.3, y: 60.9, ancho: 18.0, alto: 12.9, giro: 2.3, vidrio: '#001c2e' },
   critico: { x: 34.0, y: 65.2, ancho: 17.2, alto: 11.3, giro: 6.8, vidrio: '#0f1825' },
   standby: { x: 37.9, y: 63.7, ancho: 17.2, alto: 12.5, giro: 0.7, vidrio: '#00283f' },
-  cargando: { x: 43.0, y: 62.1, ancho: 18.3, alto: 11.7, giro: 2.5, vidrio: '#002137' },
+  // REMEDIDO. Estaba en y 62,1 / alto 11,7: el recuadro entraba 0,8 puntos
+  // abajo del cristal y le faltaban 1,2 de alto, así que la pantalla viva
+  // quedaba corrida hacia abajo y sin llenar el vidrio pintado.
+  //
+  // La medición vieja se hizo buscando "oscuro y azulado" en el torso, y en esta
+  // pose eso agarra también la sombra del hombro y el cable, que son del mismo
+  // tono. La nueva arranca del CONTENIDO cian del display —que no se confunde
+  // con ninguna sombra— y crece desde ahí sólo por vidrio oscuro; el cable, que
+  // es cian brillante, no es vidrio y no la deja fugarse.
+  cargando: { x: 43.0, y: 61.3, ancho: 18.7, alto: 12.9, giro: 2.5, vidrio: '#002137' },
   jugando: { x: 39.5, y: 57.0, ancho: 17.6, alto: 14.1, giro: 7.4, vidrio: '#001c2e' },
   limpiando: { x: 37.9, y: 60.9, ancho: 16.4, alto: 13.3, giro: 0, vidrio: '#001e31' },
   'idle-manitos': { x: 39.1, y: 60.2, ancho: 17.6, alto: 11.3, giro: 4.5, vidrio: '#002a3c' }

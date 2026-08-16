@@ -29,6 +29,7 @@
 import { readFileSync } from 'node:fs';
 import { prueba, igual, verdadero } from './runner.js';
 import {
+  INHALACION,
   RADIO_EXCLUSION_ANTENA,
   FRANJA_EFECTOS,
   POSICIONES_ANTENA,
@@ -265,4 +266,51 @@ prueba('composición: queda margen contra la antena, no está pasando raspando',
     peor >= RADIO_EXCLUSION_ANTENA,
     `la pieza más cerca es ${quien}, a ${peor.toFixed(1)} del radio de ${RADIO_EXCLUSION_ANTENA}`
   );
+});
+
+// ---- La asimetría de la respiración ----
+//
+// El pico de `respirar` y el de `respirar-sombra` tienen que caer en el MISMO
+// fotograma, y los dos en INHALACION. Si se separan, el cuerpo y su huella
+// cuentan dos historias distintas y se lee como un desfasaje, no como peso.
+//
+// Va acá y no en tema.test.js por la misma razón que las posiciones de los
+// corazones: es un literal del CSS que sostiene una constante de config, y los
+// offsets de un @keyframes no pueden llevar var().
+
+// Se apoya en el mismo parser de llaves de arriba y NO en una expresión regular
+// propia. La primera versión usaba /@keyframes respirar\s*\{([\s\S]*?)\n\}/ y
+// devolvía null en los DOS keyframes, porque el archivo tiene finales CRLF y ese
+// `\n\}` no cerraba nunca. Los dos null se comparaban entre sí y la prueba de la
+// sombra PASABA: un pase en falso de manual, en el mismo commit que agregó un
+// guardián para evitarlos. De ahí el `verdadero` de abajo — ninguna de las dos
+// puede aprobar sin haber encontrado un número de verdad.
+function picoDelKeyframe(nombre) {
+  const bloque = reglasDePrimerNivel(CSS).find((r) => r.selector === `@keyframes ${nombre}`);
+  if (!bloque) return null;
+
+  // Los offsets del bloque, sin el 0% ni el 100%, que son el reposo.
+  const offsets = [...bloque.cuerpo.matchAll(/(\d+(?:\.\d+)?)%\s*\{/g)]
+    .map((m) => Number(m[1]))
+    .filter((n) => n > 0 && n < 100);
+
+  return offsets.length === 1 ? offsets[0] : offsets;
+}
+
+prueba('respiración: el pico del keyframe cae en INHALACION', () => {
+  const pico = picoDelKeyframe('respirar');
+
+  verdadero(
+    Number.isFinite(pico),
+    `no se encontró un pico único en @keyframes respirar (dio ${JSON.stringify(pico)})`
+  );
+  igual(pico, INHALACION * 100, `el pico de @keyframes respirar tiene que ser INHALACION`);
+});
+
+prueba('respiración: la sombra pica en el mismo fotograma que el cuerpo', () => {
+  const cuerpo = picoDelKeyframe('respirar');
+  const sombra = picoDelKeyframe('respirar-sombra');
+
+  verdadero(Number.isFinite(cuerpo) && Number.isFinite(sombra), `dieron ${cuerpo} y ${sombra}`);
+  igual(sombra, cuerpo, `el cuerpo y su huella tienen que llegar al pico juntos`);
 });

@@ -1439,27 +1439,38 @@ body.es-noche #antena {
   border-radius: 50%;
   background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0) 72%);
   filter: blur(3px);
-  animation: respirar-sombra var(--ciclo-rebote) ease-in-out infinite;
+  animation: respirar-sombra var(--ciclo-respiracion) infinite;
 }
 
-/* Contrafase SIN delay, y es a propósito: el rebote está arriba en su 50%, así
-   que la sombra chica en el 50% ya es la contrafase. Atarla con un delay de
-   medio ciclo la habría puesto justo al revés —chica con Chip abajo—, además de
-   sumar una pieza que se puede desincronizar. Las dos animaciones comparten la
-   misma variable de duración, que es lo que importa. */
-/* Ojo con estos dos números: la opacidad de acá MULTIPLICA a la del degradé.
+/* Contrafase SIN delay, y ahora por una razón distinta a la de antes.
+   Con el rebote, la sombra se achicaba porque Chip se ALEJABA del piso. Con la
+   respiración Chip no se despega nunca: lo que cambia es que al inhalar se
+   estira hacia arriba y apoya menos, así que la huella se angosta; al exhalar se
+   asienta y se ensancha. El efecto en pantalla es parecido y el motivo es otro,
+   que es justo lo que hace que se lea como peso y no como levitación.
+
+   El pico va en 40% y no en 50%: tiene que caer en el mismo fotograma que el
+   pico de `respirar`, o la sombra y el cuerpo cuentan dos historias. Las dos
+   animaciones comparten --ciclo-respiracion, incluida su versión por estado.
+
+   Ojo con estos dos números: la opacidad de acá MULTIPLICA a la del degradé.
    Subir el alfa del radial-gradient a 0,62 y dejar esto en 0,35 daba un 0,22
    efectivo, y la sombra seguía sin leerse. Se vio en la captura ampliada: bajo
    las orugas no había nada. */
 @keyframes respirar-sombra {
-  0%,
+  0% {
+    transform: scaleX(1);
+    opacity: 0.92;
+    animation-timing-function: ease-out;
+  }
+  40% {
+    transform: scaleX(var(--sombra-respiracion-x));
+    opacity: var(--sombra-respiracion-opacidad);
+    animation-timing-function: ease-in-out;
+  }
   100% {
     transform: scaleX(1);
     opacity: 0.92;
-  }
-  50% {
-    transform: scaleX(0.88);
-    opacity: 0.78;
   }
 }
 
@@ -1790,9 +1801,35 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
    La sombra es la única que queda afuera, y es deliberado: se queda en el piso
    cuando Chip despega, que es lo que vende el despegue. */
 
+/* LA RESPIRACIÓN. Reemplazó al rebote, que era `translateY(-4px)` y punto.
+   Subir y bajar entero es levitar: un cuerpo que respira se DEFORMA y su punto
+   de apoyo no se mueve. Por eso el pivote está en --apoyo-y, la misma línea de
+   las orugas que ancla la sombra y el squash del cambio.
+
+   Va en `scale` y no en `transform` por la misma razón que el squash: son
+   propiedades distintas y se componen solas, así que la respiración del
+   contenedor y el salto de #cuerpo pueden convivir sin pisarse.
+
+   EL 40% NO ES DECORATIVO. Es INHALACION (config.js): inhalar ocupa el 40% del
+   ciclo y exhalar el 60%, porque un cuerpo real toma aire más rápido de lo que
+   lo suelta. Con el pico en 50% se ve como un fuelle. Los offsets de keyframe no
+   aceptan var(), así que este literal está atado a la constante por
+   tests/composicion.test.js.
+
+   Los dos easings también son asimétricos: se entra con ease-out (el aire llena
+   rápido y frena) y se sale con ease-in-out más largo. */
 @keyframes respirar {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  0% {
+    scale: 1 1;
+    animation-timing-function: ease-out;
+  }
+  40% {
+    scale: var(--respiracion-x) var(--respiracion-y);
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    scale: 1 1;
+  }
 }
 
 @keyframes saltar {
@@ -1802,7 +1839,44 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 }
 
 #contenedor-mascota {
-  animation: respirar var(--ciclo-rebote) ease-in-out infinite;
+  transform-origin: 50% var(--apoyo-y, 96.5%);
+  animation: respirar var(--ciclo-respiracion) infinite;
+}
+
+/* LA RESPIRACIÓN ES EL PRIMER INDICADOR DE ESTADO, antes de mirarle la cara.
+   Cada estado trae su ciclo y su amplitud desde config.js con el nombre
+   sufijado, así que acá no hay ningún número: sólo se elige qué juego usar.
+
+   Las variables se redefinen en #chip y NO en #contenedor-mascota, aunque la
+   clase de estado la lleve el contenedor. El motivo es #sombra: es HERMANO del
+   contenedor, no hijo, así que una regla colgada de la clase no lo alcanzaría y
+   la huella seguiría latiendo al ritmo de reposo con Chip en crítico. Puestas un
+   nivel más arriba, las heredan los dos y la contrafase no se puede desarmar.
+
+   Por eso el selector es :has() y no descendencia: hay que mirar hacia abajo
+   para saber el estado y aplicar hacia arriba. */
+#chip:has(.estado-critico) {
+  --ciclo-respiracion: var(--ciclo-respiracion-critico);
+  --respiracion-y: var(--respiracion-y-critico);
+  --respiracion-x: var(--respiracion-x-critico);
+  --sombra-respiracion-x: var(--sombra-respiracion-x-critico);
+  --sombra-respiracion-opacidad: var(--sombra-respiracion-opacidad-critico);
+}
+
+#chip:has(.estado-feliz) {
+  --ciclo-respiracion: var(--ciclo-respiracion-feliz);
+  --respiracion-y: var(--respiracion-y-feliz);
+  --respiracion-x: var(--respiracion-x-feliz);
+  --sombra-respiracion-x: var(--sombra-respiracion-x-feliz);
+  --sombra-respiracion-opacidad: var(--sombra-respiracion-opacidad-feliz);
+}
+
+#chip:has(.estado-standby) {
+  --ciclo-respiracion: var(--ciclo-respiracion-standby);
+  --respiracion-y: var(--respiracion-y-standby);
+  --respiracion-x: var(--respiracion-x-standby);
+  --sombra-respiracion-x: var(--sombra-respiracion-x-standby);
+  --sombra-respiracion-opacidad: var(--sombra-respiracion-opacidad-standby);
 }
 
 #cuerpo {
