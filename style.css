@@ -214,53 +214,91 @@ body {
    Y cada nube son DOS elipses corridas, no una: una elipse sola tiene silueta
    de pastilla, y lo que hace que se lea como nube es que el contorno sea
    irregular. */
+/* LAS BANDAS DE NUBES. Son cinco y todas usan ESTA receta: los cúmulos, sus
+   posiciones y sus proporciones se escriben una vez y cada banda las escala,
+   las atenúa y las corre de fase con sus propias variables. Escribir cinco
+   bloques a mano habría sido cinco lugares donde corregir un cúmulo.
+
+   LOS CÚMULOS SE MIDEN EN LONGITUDES, NO EN PORCENTAJES, y ese fue el bug de
+   fondo de la primera versión. `radial-gradient(ellipse 26% 9%)` toma el 26%
+   del ANCHO y el 9% del ALTO del elemento, y la abertura mide 138x450: 36 px de
+   ancho por 40 de alto, o sea un CÍRCULO. Los cuatro "cúmulos anchos y bajos"
+   eran cuatro pelotas.
+
+   Atadas a --alto-escena escalan con el aparato y mantienen la proporción de un
+   cúmulo visto de lejos —tres o cuatro veces más ancho que alto— en cualquier
+   viewport. Y cada cúmulo son DOS elipses corridas: una sola tiene silueta de
+   pastilla, y lo que lo hace leer como nube es el contorno irregular. */
 .banda {
-  --nube-a: calc(var(--alto-escena) * 0.048);
-  --nube-b: calc(var(--alto-escena) * 0.013);
+  --nube-a: calc(var(--alto-escena) * 0.048 * var(--banda-escala, 1));
+  --nube-b: calc(var(--alto-escena) * 0.013 * var(--banda-escala, 1));
+  --alfa-banda: calc(var(--nube-alfa) * var(--banda-alfa, 1));
 
   position: absolute;
-  inset: 0;
+  left: 0;
+  /* Cada banda ocupa su propia franja de la ventana. Las lentas —las de lejos—
+     caen cerca del horizonte, que es donde están cuando mirás el cielo por una
+     ventana; arriba quedan las de cerca. */
+  top: var(--banda-y, 0%);
+  height: var(--banda-alto, 100%);
   width: 200%;
   background-image:
-    /* cúmulo 1, el grande de arriba */
-    radial-gradient(ellipse var(--nube-a) var(--nube-b) at 20% 20%, rgb(from var(--nube-color) r g b / var(--nube-alfa)) 0%, rgb(from var(--nube-color) r g b / var(--nube-alfa)) 34%, transparent 100%),
-    radial-gradient(ellipse calc(var(--nube-a) * 0.62) calc(var(--nube-b) * 0.85) at 13% 18%, rgb(from var(--nube-color) r g b / var(--nube-alfa)) 0%, rgb(from var(--nube-color) r g b / var(--nube-alfa)) 34%, transparent 100%),
-    /* cúmulo 2, chico y alto */
-    radial-gradient(ellipse calc(var(--nube-a) * 0.7) calc(var(--nube-b) * 0.8) at 44% 12%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.85)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.85)) 32%, transparent 100%),
-    radial-gradient(ellipse calc(var(--nube-a) * 0.45) calc(var(--nube-b) * 0.6) at 39% 11%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.85)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.85)) 32%, transparent 100%),
-    /* cúmulo 3, el más ancho, a media altura */
-    radial-gradient(ellipse calc(var(--nube-a) * 1.15) calc(var(--nube-b) * 1.1) at 32% 36%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.72)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.72)) 32%, transparent 100%),
-    radial-gradient(ellipse calc(var(--nube-a) * 0.6) calc(var(--nube-b) * 0.8) at 42% 34%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.72)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.72)) 32%, transparent 100%),
-    /* cúmulo 4, el desflecado de abajo a la izquierda */
-    radial-gradient(ellipse calc(var(--nube-a) * 0.8) calc(var(--nube-b) * 0.75) at 9% 50%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.6)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.6)) 30%, transparent 100%);
+    radial-gradient(ellipse calc(var(--nube-a) * 1) calc(var(--nube-b) * 1) at 20% 26%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 1)) 0%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 1)) 33%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 0.62) calc(var(--nube-b) * 0.85) at 13% 23%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 1)) 0%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 1)) 33%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 0.7) calc(var(--nube-b) * 0.8) at 44% 16%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.85)) 0%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.85)) 33%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 0.45) calc(var(--nube-b) * 0.6) at 39% 14%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.85)) 0%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.85)) 33%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 1.15) calc(var(--nube-b) * 1.1) at 32% 48%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.72)) 0%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.72)) 33%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 0.6) calc(var(--nube-b) * 0.8) at 42% 45%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.72)) 0%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.72)) 33%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 0.8) calc(var(--nube-b) * 0.75) at 9% 66%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.6)) 0%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.6)) 33%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 0.5) calc(var(--nube-b) * 0.55) at 66% 34%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.7)) 0%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.7)) 33%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 0.9) calc(var(--nube-b) * 0.7) at 78% 58%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.55)) 0%, rgb(from var(--nube-color) r g b / calc(var(--alfa-banda) * 0.55)) 33%, transparent 100%);
   background-size: 50% 100%;
   background-repeat: repeat-x;
-  animation: derivar-nubes var(--ciclo-nubes) linear infinite;
+  /* La fase corre el patrón para que las cinco no repitan la misma silueta en
+     la misma columna. Sin esto, cinco capas de la misma receta se leen como una
+     sola con más contraste. */
+  background-position-x: var(--banda-fase, 0%);
+  animation: derivar-nubes var(--banda-ciclo) linear infinite;
 }
 
-/* LA BANDA LEJANA. Va al doble de lento, más chica, más tenue y abajo, cerca
-   del horizonte — que es donde caen las nubes lejanas cuando mirás el cielo por
-   una ventana. Arriba estarían las de más cerca.
+/* LA DEFORMACIÓN, sólo en las bandas lentas. Una nube no es rígida: se estira
+   mientras cruza. En las rápidas el cruce dura tan poco que no se llega a leer.
 
-   Es una segunda capa y no más cúmulos en la misma: lo que da profundidad es la
-   DIFERENCIA de velocidad, no la cantidad de nubes. Con todo a la misma
-   velocidad, agregar cúmulos sólo hace un cielo más cargado y igual de plano. */
-.banda.lejana {
-  background-image:
-    radial-gradient(ellipse calc(var(--nube-a) * 0.58) calc(var(--nube-b) * 0.55) at 26% 66%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.5)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.5)) 32%, transparent 100%),
-    radial-gradient(ellipse calc(var(--nube-a) * 0.42) calc(var(--nube-b) * 0.45) at 47% 76%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.4)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.4)) 30%, transparent 100%),
-    radial-gradient(ellipse calc(var(--nube-a) * 0.66) calc(var(--nube-b) * 0.5) at 10% 82%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.32)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.32)) 30%, transparent 100%);
-  animation-duration: var(--ciclo-nubes-lejanas);
+   Va en `scale` y no en `transform` porque el transform ya lo usa la deriva, y
+   son propiedades distintas que se componen solas — el mismo truco que el
+   squash y el salto de Chip. */
+.banda.deformable {
+  animation-name: derivar-nubes, estirar-nube;
+  animation-duration: var(--banda-ciclo), var(--banda-ciclo);
+  animation-timing-function: linear, ease-in-out;
+  animation-iteration-count: infinite, infinite;
 }
 
-/* De noche el movimiento afloja, las dos con la misma proporción: si se frena
-   una sola, la profundidad se pierde justo cuando el cielo es más plano. */
+@keyframes estirar-nube {
+  0%,
+  100% { scale: 1 1; }
+  50% { scale: var(--nube-deformacion) 1; }
+}
+
+/* LA NUBE OCASIONAL. Cruza una vez y se va: ui.js la prende, espera a que
+   termine y la apaga. No está siempre, que es el punto — si todo se repite con
+   el mismo período, a los dos minutos ya viste el cielo entero. */
+.banda.pasajera {
+  animation-iteration-count: 1;
+}
+
+/* De noche TODO afloja con el mismo factor. Frenar sólo algunas rompería la
+   proporción entre ellas, que es de donde sale la profundidad. El factor
+   multiplica la duración de cada banda, así que cada una conserva su lugar
+   relativo en la escala de velocidades. */
 body.es-noche .banda {
-  animation-duration: var(--ciclo-nubes-noche);
+  animation-duration: calc(var(--banda-ciclo) * var(--nubes-factor-noche));
 }
 
-body.es-noche .banda.lejana {
-  animation-duration: var(--ciclo-nubes-lejanas-noche);
+body.es-noche .banda.deformable {
+  animation-duration:
+    calc(var(--banda-ciclo) * var(--nubes-factor-noche)),
+    calc(var(--banda-ciclo) * var(--nubes-factor-noche));
 }
 
 @keyframes derivar-nubes {
@@ -1385,37 +1423,176 @@ body.es-noche #rayo {
    corresponde al estado en estas dos variables, desde la tabla medida de
    config.js. El default de idle es la red de contención si algún estado nuevo
    entra sin medir. */
+/* EL BULBO. Ahora TAPA al que está pintado en el sprite en vez de sumarle un
+   halo encima, y por eso el disco es opaco en el centro.
+
+   El tamaño va en % y no en px fijos: el bulbo pintado mide entre 7 y 9 px de
+   radio sobre el lienzo de 256 —o sea hasta 3,5% del contenedor— y con 12 px
+   fijos quedaba corto en pantallas grandes y sobraba en chicas. Ver
+   DIAMETRO_BULBO en config.js, que es la medición.
+
+   El degradé va de un núcleo casi blanco al color del estado y muere
+   transparente: así el borde no corta contra el poste y el disco se lee como una
+   luz encendida y no como una calcomanía. */
 #antena {
-  --pico-antena: 0.8;
   position: absolute;
   left: var(--antena-x, 50%);
   top: var(--antena-y, 7.8%);
-  width: 12px;
-  height: 12px;
-  margin: -6px 0 0 -6px;
+  width: var(--bulbo-diametro);
+  aspect-ratio: 1;
+  translate: -50% -50%;
   border-radius: 50%;
-  /* Dos capas: una difusa amplia que es el halo y una compacta que es el foco. */
+  background: radial-gradient(
+    circle at 50% 42%,
+    var(--bulbo-nucleo) 0%,
+    var(--bulbo-nucleo) 22%,
+    var(--bulbo-cuerpo) 52%,
+    color-mix(in srgb, var(--bulbo-cuerpo) 55%, transparent) 78%,
+    transparent 100%
+  );
+  /* El halo, en dos capas: una compacta que es el foco y una difusa que es el
+     resplandor en el aire. Se miden en em del propio elemento para que crezcan
+     con él. --halo-escala la agranda de noche. */
   box-shadow:
-    0 0 15px 6px color-mix(in srgb, var(--color-bateria) 45%, transparent),
-    0 0 4px 1px color-mix(in srgb, var(--color-bateria) 85%, transparent);
-  animation: latir var(--ciclo-antena) ease-in-out infinite;
+    0 0 calc(10px * var(--halo-escala, 1)) calc(2px * var(--halo-escala, 1))
+      color-mix(in srgb, var(--bulbo-halo) 80%, transparent),
+    0 0 calc(30px * var(--halo-escala, 1)) calc(10px * var(--halo-escala, 1))
+      color-mix(in srgb, var(--bulbo-halo) 42%, transparent);
+  animation: latir var(--bulbo-ciclo) ease-in-out infinite;
 }
 
+/* EL RESPLANDOR SOBRE EL CASCO. Es lo que separa una fuente de luz de un sticker
+   luminoso: la mancha que la fuente derrama sobre lo que tiene cerca.
+
+   Va en `screen` para SUMAR luz sobre el dibujo en vez de taparlo, y baja del
+   bulbo —no lo rodea— porque la cabeza está abajo de la antena y el aire de
+   arriba no tiene qué iluminar. */
+#resplandor {
+  position: absolute;
+  left: var(--antena-x, 50%);
+  top: calc(var(--antena-y, 7.8%) + var(--resplandor-y));
+  width: var(--resplandor-diametro);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--bulbo-halo) 34%, transparent) 0%,
+    color-mix(in srgb, var(--bulbo-halo) 14%, transparent) 42%,
+    transparent 72%
+  );
+  animation: latir var(--bulbo-ciclo) ease-in-out infinite;
+}
+
+/* El latido: los dos extremos vienen por variable, así el mismo keyframe sirve
+   para el pulso tranquilo de idle y para el casi-apagado de standby. */
 @keyframes latir {
   0%,
   100% {
-    opacity: 0.35;
+    opacity: var(--bulbo-piso);
   }
   50% {
-    opacity: var(--pico-antena);
+    opacity: var(--bulbo-pico);
   }
 }
 
-/* De noche el corazón va más lento y más tenue. Es el mismo keyframe: sólo
-   cambian la duración y el pico, los dos por variable. */
-body.es-noche #antena {
-  --pico-antena: 0.5;
-  animation-duration: var(--ciclo-antena-noche);
+/* CRITICO NO LATE: TARTAMUDEA. Mismo criterio que el rayo del pecho — una luz
+   que se está quedando sin batería no pulsa parejo, falla. Dos golpes juntos,
+   una pausa larga apagada, y otro golpe débil. */
+@keyframes fallar {
+  0% { opacity: var(--bulbo-pico); }
+  7% { opacity: var(--bulbo-piso); }
+  12% { opacity: var(--bulbo-pico); }
+  19% { opacity: var(--bulbo-piso); }
+  55% { opacity: var(--bulbo-piso); }
+  62% { opacity: calc(var(--bulbo-pico) * 0.6); }
+  70%,
+  100% { opacity: var(--bulbo-piso); }
+}
+
+/* El juego de variables de cada estado. Se redefinen en #chip y no en el
+   contenedor por la misma razón que la respiración: así cualquier capa de Chip
+   las hereda, esté donde esté en el árbol. */
+#chip:has(.estado-feliz) {
+  --bulbo-nucleo: var(--bulbo-nucleo-feliz);
+  --bulbo-cuerpo: var(--bulbo-cuerpo-feliz);
+  --bulbo-halo: var(--bulbo-halo-feliz);
+  --bulbo-ciclo: var(--bulbo-ciclo-feliz);
+  --bulbo-piso: var(--bulbo-piso-feliz);
+  --bulbo-pico: var(--bulbo-pico-feliz);
+}
+
+#chip:has(.estado-cargando) {
+  --bulbo-nucleo: var(--bulbo-nucleo-cargando);
+  --bulbo-cuerpo: var(--bulbo-cuerpo-cargando);
+  --bulbo-halo: var(--bulbo-halo-cargando);
+  --bulbo-ciclo: var(--bulbo-ciclo-cargando);
+  --bulbo-piso: var(--bulbo-piso-cargando);
+  --bulbo-pico: var(--bulbo-pico-cargando);
+}
+
+#chip:has(.estado-critico) {
+  --bulbo-nucleo: var(--bulbo-nucleo-critico);
+  --bulbo-cuerpo: var(--bulbo-cuerpo-critico);
+  --bulbo-halo: var(--bulbo-halo-critico);
+  --bulbo-ciclo: var(--bulbo-ciclo-critico);
+  --bulbo-piso: var(--bulbo-piso-critico);
+  --bulbo-pico: var(--bulbo-pico-critico);
+}
+
+#chip:has(.estado-standby) {
+  --bulbo-nucleo: var(--bulbo-nucleo-standby);
+  --bulbo-cuerpo: var(--bulbo-cuerpo-standby);
+  --bulbo-halo: var(--bulbo-halo-standby);
+  --bulbo-ciclo: var(--bulbo-ciclo-standby);
+  --bulbo-piso: var(--bulbo-piso-standby);
+  --bulbo-pico: var(--bulbo-pico-standby);
+}
+
+/* La luz que falla es de crítico y de nadie más. Va con animation-name para no
+   pisar la duración ni el easing con el shorthand: la regla del archivo. */
+#chip:has(.estado-critico) #antena,
+#chip:has(.estado-critico) #resplandor {
+  animation-name: fallar;
+  animation-timing-function: linear;
+}
+
+/* DE NOCHE ES LA ÚNICA FUENTE CÁLIDA DE LA ESCENA, y se tiene que notar: el halo
+   crece FACTOR_HALO_NOCHE. El bulbo no cambia de tamaño —la lámpara es la
+   misma— sino cuánto alcanza a iluminar, que es lo que cambia cuando alrededor
+   está oscuro. */
+body.es-noche #chip {
+  --halo-escala: var(--halo-noche);
+}
+
+body.es-noche #resplandor {
+  opacity: var(--resplandor-opacidad);
+}
+
+/* EL DESTELLO. Una caricia o un hallazgo prenden la luz en blanco un instante.
+   Se monta encima del latido con su propia animación sobre otra propiedad
+   —filter— para no tener que interrumpir el ciclo y volver a arrancarlo. */
+#antena.destellando,
+#resplandor.destellando {
+  animation-name: latir, destellar-bulbo;
+  animation-duration: var(--bulbo-ciclo), var(--duracion-destello-bulbo);
+  animation-timing-function: ease-in-out, ease-out;
+  animation-iteration-count: infinite, 1;
+}
+
+/* Subir el brillo y bajar la saturación DA blanco, y vuelve interpolando. Por
+   eso el destello no es un color aparte: un color aparte habría que devolverlo
+   al apagar, y ese regreso es un salto de blanco a cian a plena opacidad. Así
+   se apaga en vez de cortarse, y funciona igual sobre el ámbar de cargando y el
+   rojo de crítico sin una entrada por estado. */
+@keyframes destellar-bulbo {
+  0% {
+    filter: brightness(var(--destello-brillo)) saturate(var(--destello-saturacion));
+  }
+  100% {
+    filter: brightness(1) saturate(1);
+  }
 }
 
 /* ---- 2. La sombra que respira ---- */

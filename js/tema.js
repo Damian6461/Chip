@@ -40,17 +40,13 @@ import {
   CICLO_RAYO_NOCHE_MS,
   VARS_NUBES,
   ABERTURA_VENTANA,
-  CICLO_NUBES_MS,
-  CICLO_NUBES_NOCHE_MS,
-  CICLO_NUBES_LEJANAS_MS,
-  CICLO_NUBES_LEJANAS_NOCHE_MS,
+  DEFORMACION_NUBE,
+  FACTOR_NUBES_NOCHE,
   VARS_FONDO,
   FONDO_CORRIMIENTO,
   VARS_BARRAS,
   COLORES_BARRAS,
   VARS_EFECTOS,
-  CICLO_ANTENA_MS,
-  CICLO_ANTENA_NOCHE_MS,
   CICLO_ZETA_MS,
   CICLO_CHISPA_MS,
   CICLOS_POLVO_MS,
@@ -64,6 +60,15 @@ import {
   DURACION_PULSO_MS,
   DURACION_BURBUJA_MS,
   GRUPOS_DE_COLOR,
+  VARS_BULBO,
+  DIAMETRO_BULBO,
+  COLORES_BULBO,
+  CICLOS_BULBO,
+  LATIDO_BULBO,
+  RESPLANDOR_CABEZA,
+  FACTOR_HALO_NOCHE,
+  DURACION_DESTELLO_BULBO_MS,
+  DESTELLO_BULBO,
   VARS_TOMA,
   PUNTA_DEL_CABLE,
   TAMANO_TOMA,
@@ -141,10 +146,8 @@ export function variablesDeTema() {
     [VARS_NUBES.y]: pct(ABERTURA_VENTANA.y),
     [VARS_NUBES.ancho]: pct(ABERTURA_VENTANA.ancho),
     [VARS_NUBES.alto]: pct(ABERTURA_VENTANA.alto),
-    [VARS_NUBES.ciclo]: ms(CICLO_NUBES_MS),
-    [VARS_NUBES.cicloNoche]: ms(CICLO_NUBES_NOCHE_MS),
-    [VARS_NUBES.cicloLejanas]: ms(CICLO_NUBES_LEJANAS_MS),
-    [VARS_NUBES.cicloLejanasNoche]: ms(CICLO_NUBES_LEJANAS_NOCHE_MS),
+    [VARS_NUBES.deformacion]: String(DEFORMACION_NUBE),
+    [VARS_NUBES.factorNoche]: String(FACTOR_NUBES_NOCHE),
 
     // El encuadre de la escena: cuánto correr la panorámica para entrar 8% en
     // ella. Va sin unidad porque el CSS lo multiplica por el alto de la escena,
@@ -158,8 +161,6 @@ export function variablesDeTema() {
     ),
 
     // Los efectos de vida
-    [VARS_EFECTOS.cicloAntena]: ms(CICLO_ANTENA_MS),
-    [VARS_EFECTOS.cicloAntenaNoche]: ms(CICLO_ANTENA_NOCHE_MS),
     [VARS_EFECTOS.cicloZeta]: ms(CICLO_ZETA_MS),
     [VARS_EFECTOS.cicloChispa]: ms(CICLO_CHISPA_MS),
     ...Object.fromEntries(
@@ -205,6 +206,52 @@ export function variablesDeTema() {
     ...tonos('repisa', COLORES_REPISA),
 
     // El botón del menú
-    ...tonos('panel', COLORES_PANEL)
+    ...tonos('panel', COLORES_PANEL),
+
+    // LA LUZ DE LA CABEZA. El juego base es el de reposo; cada estado suma el
+    // suyo con el nombre sufijado y una regla de style.css lo levanta por clase,
+    // igual que la respiración. Nada de esto cambia en vivo salvo la clase.
+    [VARS_BULBO.diametro]: pct(DIAMETRO_BULBO),
+    [VARS_BULBO.resplandorDiametro]: pct(RESPLANDOR_CABEZA.diametro),
+    [VARS_BULBO.resplandorY]: pct(RESPLANDOR_CABEZA.corrimientoY),
+    [VARS_BULBO.resplandorOpacidad]: String(RESPLANDOR_CABEZA.opacidad),
+    [VARS_BULBO.haloNoche]: String(FACTOR_HALO_NOCHE),
+    [VARS_BULBO.duracionDestello]: ms(DURACION_DESTELLO_BULBO_MS),
+    [VARS_BULBO.destelloBrillo]: String(DESTELLO_BULBO.brillo),
+    [VARS_BULBO.destelloSaturacion]: String(DESTELLO_BULBO.saturacion),
+
+    // El juego de idle NO se emite con sufijo: idle es el DEFECTO y va sin él,
+    // más abajo. Emitirlo sería escribir tres variables que ninguna regla lee.
+    ...Object.entries(COLORES_BULBO).filter(([e]) => e !== "idle").reduce(
+      (acc, [estado, c]) => ({
+        ...acc,
+        [`--bulbo-nucleo-${estado}`]: c.nucleo,
+        [`--bulbo-cuerpo-${estado}`]: c.cuerpo,
+        [`--bulbo-halo-${estado}`]: c.halo
+      }),
+      {}
+    ),
+    ...Object.entries(CICLOS_BULBO).filter(([e]) => e !== "idle").reduce(
+      (acc, [estado, v]) => ({ ...acc, [`--bulbo-ciclo-${estado}`]: ms(v) }),
+      {}
+    ),
+    ...Object.entries(LATIDO_BULBO).filter(([e]) => e !== "idle").reduce(
+      (acc, [estado, v]) => ({
+        ...acc,
+        [`--bulbo-piso-${estado}`]: String(v.piso),
+        [`--bulbo-pico-${estado}`]: String(v.pico)
+      }),
+      {}
+    ),
+
+    // Y el juego por defecto, que es el de idle: así una pose sin regla propia
+    // igual tiene una luz, en vez de quedarse con las var() sin resolver y
+    // desaparecer.
+    [VARS_BULBO.nucleo]: COLORES_BULBO.idle.nucleo,
+    [VARS_BULBO.cuerpo]: COLORES_BULBO.idle.cuerpo,
+    [VARS_BULBO.halo]: COLORES_BULBO.idle.halo,
+    [VARS_BULBO.ciclo]: ms(CICLOS_BULBO.idle),
+    [VARS_BULBO.piso]: String(LATIDO_BULBO.idle.piso),
+    [VARS_BULBO.pico]: String(LATIDO_BULBO.idle.pico)
   };
 }

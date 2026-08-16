@@ -64,7 +64,10 @@ import {
   FILOS_OBJETO,
   FILO_OBJETO_POR_DEFECTO,
   VARS_LUZ,
-  PREFIJO_CLASE_ESTADO
+  PREFIJO_CLASE_ESTADO,
+  CLASE_DESTELLO_BULBO,
+  DURACION_DESTELLO_BULBO_MS,
+  NUBE_RAPIDA
 } from './config.js';
 import { aplica, puedeJugar } from './acciones.js';
 import { obtenerSprite, cajaDeContenidoPantalla } from './sprites.js';
@@ -107,7 +110,11 @@ import {
   menuBoton,
   menu,
   solapas,
-  secciones
+  secciones,
+  bulbo,
+  resplandor,
+  contenedorNubes,
+  crearBanda
 } from './ui-montaje.js';
 
 // ---- El menú ----
@@ -497,6 +504,75 @@ let temporizadorCelebracion = null;
 // La tanda que dispara una acción que sube el humor. Es el momento en que la
 // mecánica y la emoción coinciden, y hasta ahora no tenía expresión visual.
 //
+// ---- La nube que pasa una vez ----
+//
+// Cada tres a seis minutos cruza una sola nube, rápido, y después no está más.
+// Es lo que hace que mirar la ventana tenga premio: con cinco bandas girando en
+// bucle, a los dos minutos ya viste el cielo entero.
+//
+// El timer vive acá y no en main.js. Es la misma excepción que el parpadeo, y
+// por la misma razón: no es una decisión de estado ni toca el save, es un
+// detalle de pintado que nadie más tiene que conocer. main.js sigue siendo el
+// único que tiene timers DEL JUEGO.
+//
+// No aparece de noche. Una nube suelta cruzando rápido contra el cielo nocturno
+// se lee como un objeto volando, no como clima.
+
+const entre = (min, max) => min + Math.random() * (max - min);
+
+function pasarUnaNube() {
+  if (!contenedorNubes || esDeNocheAhora) return;
+
+  const cruce = Math.round(entre(NUBE_RAPIDA.cruce.min, NUBE_RAPIDA.cruce.max));
+  const nodo = crearBanda({ ...NUBE_RAPIDA, ciclo: cruce, fase: Math.round(entre(0, 100)) }, [
+    'pasajera'
+  ]);
+
+  contenedorNubes.appendChild(nodo);
+  // Se saca sola cuando terminó de cruzar. Sin esto quedaría un nodo quieto por
+  // cada nube que pasó, y a la hora habría veinte capas paradas encima del
+  // cielo.
+  nodo.addEventListener('animationend', () => nodo.remove(), { once: true });
+}
+
+function programarNubeRapida() {
+  clearTimeout(temporizadorNubeRapida);
+  temporizadorNubeRapida = setTimeout(() => {
+    pasarUnaNube();
+    programarNubeRapida();
+  }, entre(NUBE_RAPIDA.espera.min, NUBE_RAPIDA.espera.max));
+}
+
+let temporizadorNubeRapida = null;
+let esDeNocheAhora = false;
+
+programarNubeRapida();
+
+// EL DESTELLO DE LA LUZ DE LA CABEZA. Un golpe blanco de un instante, para las
+// dos cosas que Chip registra sin que cambie su estado: una caricia y un objeto
+// recogido. No es un estado: es un acuse de recibo.
+//
+// El timer se guarda para poder cancelarlo: dos destellos encadenados tienen que
+// reiniciar el efecto, no dejar que el primero apague al segundo a mitad de
+// camino. Es el mismo patrón que la red de contención del parpadeo.
+let temporizadorDestelloBulbo = null;
+
+export function destellarBulbo() {
+  for (const capa of [bulbo, resplandor]) {
+    if (!capa) continue;
+    capa.classList.remove(CLASE_DESTELLO_BULBO);
+    // Reflow forzado: sin esto, quitar y volver a poner la clase en el mismo
+    // frame no reinicia la animación. Es la misma razón que en unParpadeo.
+    void capa.offsetWidth;
+    capa.classList.add(CLASE_DESTELLO_BULBO);
+  }
+
+  clearTimeout(temporizadorDestelloBulbo);
+  temporizadorDestelloBulbo = setTimeout(() => {
+    for (const capa of [bulbo, resplandor]) capa?.classList.remove(CLASE_DESTELLO_BULBO);
+  }, DURACION_DESTELLO_BULBO_MS);
+}
+
 // Sale de main.js sólo si el humor efectivamente subió: con el stat saturado la
 // acción se aplica igual —jugar gasta batería— pero no hay nada que celebrar, y
 // un corazón sin efecto le mentiría al jugador. Mismo criterio que el salto.
@@ -933,6 +1009,9 @@ function pintarFondo(franja, esNoche, cruce = null) {
 
   // Y el mismo dato como clase, para lo que cambia de ritmo y no de imagen.
   document.body.classList.toggle(CLASE_NOCHE, esNoche);
+  // La nube ocasional consulta esto para no salir de noche. Se guarda en vez de
+  // leer la clase del body cada vez: es el mismo dato y una sola fuente.
+  esDeNocheAhora = esNoche;
 
   // El crossfade se hace con la panorámica que SE VA, encima de la nueva y
   // desvaneciéndose. Al revés —la nueva apareciendo encima— el galpón se

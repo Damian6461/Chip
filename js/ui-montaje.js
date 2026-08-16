@@ -24,7 +24,7 @@
 // archivos del mismo módulo y ninguno de los dos es importable desde Node. Lo
 // que sí es importable —y es lo que se gana— es tema.js.
 
-import { VERSION_JUEGO } from './config.js';
+import { VERSION_JUEGO, BANDAS_NUBES, VARS_NUBES } from './config.js';
 import { variablesDeTema } from './tema.js';
 import { svgDeToma, svgDeRepisa, svgDePanel } from './formas.js';
 
@@ -50,6 +50,11 @@ export const detalleGigantes = document.getElementById('gigantes-detalle');
 export const canvas = document.getElementById('canvas-mascota');
 export const toma = document.getElementById('toma');
 export const repisa = document.getElementById('repisa');
+// Las dos capas de la luz de la cabeza. El bulbo TAPA al pintado en el sprite;
+// el resplandor es lo que esa fuente derrama sobre el casco.
+export const bulbo = document.getElementById('antena');
+export const resplandor = document.getElementById('resplandor');
+
 export const menuBoton = document.getElementById('menu-boton');
 export const menu = document.getElementById('menu');
 
@@ -109,4 +114,37 @@ if (menu) {
   panelColeccion.hidden = false;
 
   document.querySelector('.acerca-version').textContent = `Versión ${VERSION_JUEGO}`;
+}
+
+// ---- El cielo ----
+//
+// Las cinco bandas se crean acá desde BANDAS_NUBES y no están escritas en el
+// HTML, para que agregar o sacar una capa del cielo sea tocar la tabla y nada
+// más. Todas comparten la receta de cúmulos de style.css; lo que las distingue
+// —velocidad, tamaño, opacidad, altura y fase— viaja en estas variables.
+//
+// Se crean en orden y se apilan en orden, así que la última de la tabla queda
+// arriba. La tabla va de la más rápida a la más lenta, o sea de la más cercana a
+// la más lejana: por eso las lejanas quedan pintadas ENCIMA. Suena al revés y no
+// lo es — con este alfa la de arriba no tapa, tiñe, y lo que se busca es que la
+// bruma de lejos se lea sobre todo lo demás.
+
+export const contenedorNubes = document.getElementById('nubes');
+
+export function crearBanda(banda, clases = []) {
+  const nodo = document.createElement('div');
+  nodo.className = ['banda', ...clases].join(' ');
+  nodo.style.setProperty(VARS_NUBES.cicloBanda, `${banda.ciclo}ms`);
+  nodo.style.setProperty(VARS_NUBES.escala, String(banda.escala));
+  nodo.style.setProperty(VARS_NUBES.alfaBanda, String(banda.alfa));
+  nodo.style.setProperty(VARS_NUBES.bandaY, `${banda.y}%`);
+  nodo.style.setProperty(VARS_NUBES.bandaAlto, `${banda.alto}%`);
+  nodo.style.setProperty(VARS_NUBES.fase, `${banda.fase ?? 0}%`);
+  return nodo;
+}
+
+if (contenedorNubes) {
+  for (const banda of BANDAS_NUBES) {
+    contenedorNubes.appendChild(crearBanda(banda, banda.deforma ? ['deformable'] : []));
+  }
 }

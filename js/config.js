@@ -580,6 +580,105 @@ export const VARS_ANTENA = {
   y: '--antena-y'
 };
 
+// ---- La luz de la cabeza ----
+//
+// DECISIÓN: el bulbo del sprite se TAPA con una capa dibujada por código, no se
+// borra del PNG. Borrarlo dejaría un hueco en el poste que habría que
+// reconstruir en los ocho sprites, y es irreversible. Taparlo no.
+//
+// Para taparlo hay que cubrirlo entero, y eso se midió: el núcleo brillante del
+// bulbo tiene un radio de 7 a 9 px sobre el lienzo de 256 según la pose —o sea
+// hasta 3,5% del contenedor— y su halo llega a 13. El disco va a 9% de diámetro,
+// que cubre el peor caso con margen y sigue leyendo como un bulbo y no como un
+// parche. Al ser porcentaje escala con Chip; el valor viejo eran 12 px fijos,
+// que en una pantalla grande quedaban chicos.
+export const DIAMETRO_BULBO = 9; // % del contenedor
+
+// El color ES el estado. Cada uno con su núcleo —el centro caliente, casi
+// blanco— y su cuerpo, que es lo que tiñe el halo.
+//
+// El ámbar de `cargando` y el rojo de `critico` son los dos que más trabajan:
+// son los que avisan sin que haya que leer un número.
+export const COLORES_BULBO = {
+  idle: { nucleo: '#dffcff', cuerpo: '#22d3ee', halo: '#22d3ee' },
+  feliz: { nucleo: '#eafeff', cuerpo: '#38e8ff', halo: '#38e8ff' },
+  cargando: { nucleo: '#fff3d6', cuerpo: '#f0a326', halo: '#f0a326' },
+  critico: { nucleo: '#ffd9d9', cuerpo: '#c2453f', halo: '#c2453f' },
+  standby: { nucleo: '#cfe6f2', cuerpo: '#2a6f86', halo: '#2a6f86' }
+};
+
+// El destello blanco de una caricia o de un hallazgo NO es una entrada más de
+// COLORES_BULBO, y esa fue la primera versión. Un color aparte obliga a cambiar
+// las tres variables al prender y a devolverlas al apagar, y ese regreso es un
+// salto de blanco a cian a plena opacidad — el defecto que se quería evitar.
+//
+// Se resuelve con `filter: brightness() saturate()` sobre el color del estado:
+// subir el brillo y bajar la saturación DA blanco, y vuelve interpolando, así
+// que el destello se apaga en vez de cortarse. Además funciona igual sobre el
+// ámbar de cargando y el rojo de crítico, sin una entrada por estado.
+export const DESTELLO_BULBO = { brillo: 2.6, saturacion: 0.15 };
+
+// Cuánto late cada uno. `critico` no tiene ciclo propio acá: usa su propio
+// keyframe irregular, el mismo criterio que el rayo del pecho — una luz que
+// falla no late, tartamudea.
+export const CICLOS_BULBO = {
+  idle: 3100,
+  feliz: 1500,
+  cargando: 900,
+  critico: 2300,
+  standby: 5200
+};
+
+// Los dos extremos de opacidad del latido, por estado. `critico` baja mucho más
+// que los otros: la luz casi se apaga entre pulso y pulso.
+export const LATIDO_BULBO = {
+  idle: { piso: 0.62, pico: 1 },
+  feliz: { piso: 0.72, pico: 1 },
+  cargando: { piso: 0.55, pico: 1 },
+  critico: { piso: 0.18, pico: 0.86 },
+  standby: { piso: 0.3, pico: 0.55 }
+};
+
+// EL RESPLANDOR SOBRE LA CABEZA. Es lo que hace que la luz se sienta como una
+// FUENTE y no como un sticker luminoso: una mancha suave proyectada sobre la
+// parte alta del casco, que late con el bulbo.
+//
+// Va en `screen` para que sume luz sobre el dibujo en vez de taparlo, y su
+// tamaño es varias veces el del bulbo — una fuente chica ilumina un área grande.
+export const RESPLANDOR_CABEZA = {
+  diametro: 46, // % del contenedor
+  // Cuánto más abajo del bulbo cae el centro del resplandor. La luz baña la
+  // cabeza, que está abajo de la antena, no el aire que está arriba.
+  corrimientoY: 9,
+  opacidad: 0.5
+};
+
+// De noche la luz de la cabeza es la única fuente cálida de la escena, y se
+// tiene que notar: el halo crece un 30%.
+export const FACTOR_HALO_NOCHE = 1.3;
+
+// Cuánto dura el destello blanco de una caricia o de un hallazgo.
+export const DURACION_DESTELLO_BULBO_MS = 420;
+
+export const VARS_BULBO = {
+  diametro: '--bulbo-diametro',
+  nucleo: '--bulbo-nucleo',
+  cuerpo: '--bulbo-cuerpo',
+  halo: '--bulbo-halo',
+  ciclo: '--bulbo-ciclo',
+  piso: '--bulbo-piso',
+  pico: '--bulbo-pico',
+  resplandorDiametro: '--resplandor-diametro',
+  resplandorY: '--resplandor-y',
+  resplandorOpacidad: '--resplandor-opacidad',
+  haloNoche: '--halo-noche',
+  duracionDestello: '--duracion-destello-bulbo',
+  destelloBrillo: '--destello-brillo',
+  destelloSaturacion: '--destello-saturacion'
+};
+
+export const CLASE_DESTELLO_BULBO = 'destellando';
+
 // ---- Dónde apoyan las orugas ----
 //
 // La sombra estaba clavada al borde del canvas y Chip flotaba: el canvas mide
@@ -786,14 +885,59 @@ export const ABERTURA_VENTANA = { x: 2.8, y: 5.6, ancho: 35.5, alto: 53.3 };
 // La segunda banda va al DOBLE de lento, más chica y más tenue, y abajo, cerca
 // del horizonte — que es donde caen las nubes lejanas cuando mirás el cielo por
 // una ventana, no arriba.
-export const CICLO_NUBES_MS = 80_000;
-export const CICLO_NUBES_LEJANAS_MS = 165_000;
+// CINCO BANDAS. Eran dos, y dos alcanzaban para que el cielo dejara de estar
+// plano pero no para que tuviera profundidad: con dos velocidades el ojo lee
+// "hay algo adelante y algo atrás", no "hay cielo".
+//
+// Las velocidades son MUY distintas entre sí a propósito. Dos capas que van a
+// 80 y 95 segundos se leen como una sola capa con ruido; lo que construye
+// distancia es que la más rápida tarde cuatro veces menos que la más lenta.
+//
+// Y la regla de perspectiva, que es la que ordena la tabla entera: lo que está
+// CERCA se mueve rápido, es chico en la ventana y se ve nítido; lo que está
+// LEJOS se mueve lento, ocupa más y se difumina. Por eso la banda de 60 s es la
+// más chica y tenue —está cerca, apenas asoma— y la de 260 s es la más grande y
+// difusa. Al revés se lee como un error de escala.
+//
+// `y` y `alto` recortan la franja de la ventana donde vive cada banda: las
+// lejanas caen cerca del horizonte, que es donde están cuando mirás el cielo de
+// verdad. `fase` corre el patrón para que las cinco no repitan la misma silueta
+// en la misma columna.
+export const BANDAS_NUBES = [
+  { ciclo: 60_000, escala: 0.55, alfa: 0.45, y: 6, alto: 46, fase: 0, deforma: false },
+  { ciclo: 95_000, escala: 0.85, alfa: 0.75, y: 0, alto: 58, fase: 37, deforma: false },
+  { ciclo: 140_000, escala: 1, alfa: 1, y: 10, alto: 64, fase: 71, deforma: true },
+  { ciclo: 190_000, escala: 1.25, alfa: 0.6, y: 30, alto: 60, fase: 19, deforma: true },
+  { ciclo: 260_000, escala: 1.6, alfa: 0.38, y: 46, alto: 54, fase: 53, deforma: true }
+];
 
-// De noche el movimiento afloja, pero con la misma proporción entre las dos: si
-// sólo se frena una, la profundidad se pierde justo cuando el cielo es más
-// plano.
-export const CICLO_NUBES_NOCHE_MS = 150_000;
-export const CICLO_NUBES_LEJANAS_NOCHE_MS = 310_000;
+// De noche TODO afloja con el mismo factor. Frenar sólo algunas rompería la
+// proporción entre ellas, que es de donde sale la profundidad, justo cuando el
+// cielo es más plano y más la necesita.
+export const FACTOR_NUBES_NOCHE = 1.6;
+
+// LA DEFORMACIÓN. Una nube no es rígida: se estira mientras cruza. Va sólo en
+// las bandas lentas —las de lejos— porque en las rápidas el cruce dura tan poco
+// que no se llega a leer, y en cambio sí se nota el costo.
+//
+// El recorrido es 1 -> 1.08 -> 1 y no 1 -> 1.08 a secas: una rampa de ida sola
+// vuelve de golpe al reiniciar el ciclo, y ese salto se ve. Ida y vuelta cierra.
+export const DEFORMACION_NUBE = 1.08;
+
+// LA NUBE OCASIONAL. Cada tanto pasa una sola, rápido, y después no está más.
+// Es lo que hace que mirar la ventana tenga premio: si todo se repite con el
+// mismo período, a los dos minutos ya viste el cielo entero.
+//
+// No aparece de noche. Una nube suelta cruzando rápido contra el cielo nocturno
+// se lee como un objeto, no como clima.
+export const NUBE_RAPIDA = {
+  cruce: { min: 25_000, max: 30_000 },
+  espera: { min: 180_000, max: 360_000 },
+  escala: 0.7,
+  alfa: 0.8,
+  y: 14,
+  alto: 44
+};
 
 // El color de las nubes sale del momento del día: blancas al mediodía, lilas al
 // amanecer, doradas al atardecer y casi invisibles de noche. Es el mismo
@@ -803,6 +947,10 @@ export const CICLO_NUBES_LEJANAS_NOCHE_MS = 310_000;
 // más claro del juego y ya trae cúmulos pintados: blanco al 0,3 encima de eso no
 // se ve, medido con dos capturas a 15 segundos. Cuanto más claro el cielo, más
 // alfa necesita la capa para existir — al revés de lo que uno supone.
+//
+// Con cinco bandas superpuestas el alfa de cada una se multiplica por su factor
+// de banda, así que el total no se dispara: la suma de los cinco factores es
+// menor que 3,2 y ninguna banda sola llega al alfa de acá.
 export const COLORES_NUBE = {
   amanecer: { color: '#ffffff', alfa: 0.3 },
   mediodia: { color: '#ffffff', alfa: 0.5 },
@@ -817,10 +965,14 @@ export const VARS_NUBES = {
   alto: '--ventana-alto',
   color: '--nube-color',
   alfa: '--nube-alfa',
-  ciclo: '--ciclo-nubes',
-  cicloNoche: '--ciclo-nubes-noche',
-  cicloLejanas: '--ciclo-nubes-lejanas',
-  cicloLejanasNoche: '--ciclo-nubes-lejanas-noche'
+  escala: '--banda-escala',
+  alfaBanda: '--banda-alfa',
+  bandaY: '--banda-y',
+  bandaAlto: '--banda-alto',
+  fase: '--banda-fase',
+  cicloBanda: '--banda-ciclo',
+  deformacion: '--nube-deformacion',
+  factorNoche: '--nubes-factor-noche',
 };
 
 // ---- "Estoy bien, gracias" ----
@@ -1326,12 +1478,10 @@ export const GRUPOS_DE_COLOR = {
 // sprite. Un efecto con su propio timer sería una segunda fuente de verdad.
 export const PREFIJO_CLASE_ESTADO = 'estado-';
 
-// La antena late fuera de fase con el rebote de 2.2 s a propósito: dos ciclos
-// del mismo largo se sincronizan y el conjunto se vuelve mecánico.
-export const CICLO_ANTENA_MS = 3100;
-
-// De noche el corazón va lento. Ver esDeNoche: es el tramo nocturno del mundo.
-export const CICLO_ANTENA_NOCHE_MS = 5000;
+// El ciclo de la antena vive ahora en CICLOS_BULBO, con un valor por estado. El
+// de reposo sigue siendo 3100 y sigue estando fuera de fase con la respiración
+// de 3400 por la razón de siempre: dos ciclos del mismo largo se sincronizan y
+// el conjunto se vuelve un metrónomo.
 
 // Cada "z" del standby tarda esto en nacer, subir y apagarse.
 export const CICLO_ZETA_MS = 4000;
@@ -1349,9 +1499,10 @@ export const CICLO_CHISPA_MS = 600;
 // cuadro está en la hoja de estilos.
 export const CICLOS_POLVO_MS = [11_000, 14_000, 17_000];
 
+// cicloAntena y cicloAntenaNoche se fueron: los reemplazó CICLOS_BULBO, que
+// tiene un ritmo por estado en vez de uno solo más el de noche. El bulbo dejó de
+// ser un halo encima del dibujo y pasó a ser la luz misma; ver COLORES_BULBO.
 export const VARS_EFECTOS = {
-  cicloAntena: '--ciclo-antena',
-  cicloAntenaNoche: '--ciclo-antena-noche',
   cicloZeta: '--ciclo-zeta',
   cicloChispa: '--ciclo-chispa',
   ciclosPolvo: ['--ciclo-polvo-1', '--ciclo-polvo-2', '--ciclo-polvo-3']

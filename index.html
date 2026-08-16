@@ -25,10 +25,11 @@
 
   <!-- Las nubes de la ventana. Van recortadas a la abertura y pasan POR
        DELANTE del cielo pintado, que queda intacto abajo. -->
-  <div id="nubes" aria-hidden="true">
-    <div class="banda lejana"></div>
-    <div class="banda"></div>
-  </div>
+  <!-- Vacío a propósito: las cinco bandas las crea ui-montaje.js desde
+       BANDAS_NUBES, para que agregar o sacar una capa del cielo sea tocar la
+       tabla de config.js y nada más. Escribirlas acá sería tener la lista en
+       dos lados. -->
+  <div id="nubes" aria-hidden="true"></div>
 
   <!-- Polvo en el aire del galpón, al fondo de todo. Son dieciséis y ocupan la
        escena entera, no sólo el haz: el galpón tiene polvo en todos lados y el
@@ -113,6 +114,11 @@
       <div id="rayo" aria-hidden="true"></div>
 
       <div id="efectos" aria-hidden="true">
+        <!-- LA LUZ DE LA CABEZA. Son dos capas y hacen cosas distintas:
+             #resplandor es la luz que la fuente derrama sobre el casco, y va
+             DEBAJO; #antena es el bulbo, que TAPA al que está pintado en el
+             sprite y por eso es opaco. Ver COLORES_BULBO en config.js. -->
+        <div id="resplandor"></div>
         <div id="antena"></div>
 
         <!-- Los corazones de feliz y las chispas amarillas, que antes estaban
