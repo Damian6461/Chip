@@ -57,6 +57,9 @@ import {
   CICLOS_POLVO_MS,
   VARS_PERSONAJE,
   VARS_CABEZA,
+  VARS_CARICIA,
+  ESPERA_MANTENIDO_MS,
+  DURACION_CARICIA_MS,
   VARS_ORUGAS,
   REFLEJO_ARO,
   GIRO_ORUGAS,
@@ -203,6 +206,10 @@ export function variablesDeTema() {
     [VARS_PERSONAJE.duracionRayita]: ms(DURACION_RAYITA_MS),
     [VARS_PERSONAJE.duracionPulso]: ms(DURACION_PULSO_MS),
     [VARS_PERSONAJE.duracionBurbuja]: ms(DURACION_BURBUJA_MS),
+
+    // Acariciar
+    [VARS_CARICIA.espera]: ms(ESPERA_MANTENIDO_MS),
+    [VARS_CARICIA.duracion]: ms(DURACION_CARICIA_MS),
 
     // La inclinación de cabeza
     [VARS_CABEZA.pivoteX]: pct(PIVOTE_CABEZA.x),

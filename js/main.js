@@ -30,6 +30,7 @@ import {
   mostrarColeccion,
   mostrarGigantes,
   conectarAcciones,
+  conectarCaricia,
   animarAccion,
   iniciarAccion,
   celebrarHumor,
@@ -125,6 +126,12 @@ conectarAcciones({
   onJugar: () => sesion.ejecutar(E.jugando, jugar, 'jugar'),
   onLimpiar: () => sesion.ejecutar(E.limpiando, limpiar, 'limpiar')
 });
+
+// El gesto de acariciar. Va aparte de conectarAcciones porque no es una acción:
+// no tiene tecla, no tiene estado visual y no ocupa a Chip. ui.js decide CUÁNDO
+// —el cooldown de la animación y el cansancio son suyos— y la sesión decide SI
+// aplica, que es lo del modelo.
+conectarCaricia(() => sesion.acariciar());
 
 sesion.actualizarVisual({ inmediato: true });
 

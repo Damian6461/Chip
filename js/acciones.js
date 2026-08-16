@@ -6,7 +6,8 @@ import {
   STAT_MIN,
   STAT_MAX,
   JUGAR_BATERIA_MINIMA,
-  VALORES_ACCION
+  VALORES_ACCION,
+  CARICIA_HUMOR
 } from './config.js';
 
 // Clamp de las acciones: llega hasta el piso real del stat, a diferencia del
@@ -63,5 +64,23 @@ export function limpiar(estado) {
   return {
     ...estado,
     mantenimiento: clampAccion(estado.mantenimiento + VALORES_ACCION.limpiar.mantenimiento)
+  };
+}
+
+// ---- Acariciar ----
+//
+// No es una cuarta acción: es un gesto. La diferencia está en el contrato —no
+// tiene estado visual propio, no ocupa a Chip mientras dura y no aparece en
+// `aplica`, que es la tabla de las tres teclas.
+//
+// Lo que SÍ comparte es la regla de siempre: si no cambia nada, devuelve la
+// misma referencia. Con el humor al máximo, acariciar no aplica, y quien
+// orqueste se entera igual que con las otras tres.
+export function acariciar(estado) {
+  if (estado.humor >= STAT_MAX) return estado;
+
+  return {
+    ...estado,
+    humor: clampAccion(estado.humor + CARICIA_HUMOR)
   };
 }

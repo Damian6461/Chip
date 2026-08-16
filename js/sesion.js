@@ -37,7 +37,7 @@ import {
   DURACION_CRUCE_FONDO_MS,
   POSES_IDLE
 } from './config.js';
-import { aplica } from './acciones.js';
+import { aplica, acariciar } from './acciones.js';
 import { resolverEstadoVisual, esDeNoche, franjaDelDia, luzDelMomento, poseDeIdle } from './sprites.js';
 
 export function crearSesion({
@@ -299,6 +299,32 @@ export function crearSesion({
     pintar();
   }
 
+  // ---- La caricia ----
+  //
+  // Es un GESTO y no una acción, y el contrato lo dice: no marca estado visual,
+  // no ocupa a Chip, no entra en la tabla de las tres teclas. Lo único que
+  // comparte con ellas es la regla de la referencia — si el humor está al
+  // máximo, acariciar no cambia nada y quien llama se entera.
+  //
+  // Sí respeta lo de "ocupado": mientras Chip carga, está cargando. Una caricia
+  // a mitad de una carga tendría que interrumpir la lectura del estado de acción
+  // o convivir con ella, y las dos cosas se ven mal.
+  //
+  // Devuelve si la caricia APLICÓ, para que la vista sepa si corresponde
+  // celebrar. Con el humor lleno no hay corazones: es el mismo criterio que
+  // celebrarHumor, que se dispara por "el humor subió" y no por "se jugó".
+  function acariciarAChip() {
+    if (ocupado()) return false;
+
+    const siguiente = acariciar(estado);
+    if (siguiente === estado) return false;
+
+    estado = siguiente;
+    guardar(estado);
+    pintar();
+    return true;
+  }
+
   // El tick periódico. Los stats sólo cambian por acción, así que su único
   // efecto real es detectar el cruce de un límite de tramo con la app abierta.
   // No toca stats, no aplica decay, no guarda —salvo el nombre del tramo.
@@ -348,6 +374,7 @@ export function crearSesion({
     esNoche: () => esNocheActual,
     // el juego
     ejecutar,
+    acariciar: acariciarAChip,
     ocupado,
     actualizarVisual,
     actualizarNoche,

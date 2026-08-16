@@ -3318,6 +3318,8 @@ body.es-noche .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
    misma especificidad que las reglas de arriba, declarada después. */
 @media (prefers-reduced-motion: reduce) {
   #contenedor-mascota,
+  #cuerpo.acariciado,
+  #chip.manteniendo::after,
   #cabeza-grupo.inclinada,
   #orugas .reflejo,
   #cable path,
@@ -3731,5 +3733,91 @@ body.sin-movimiento *::after {
   to {
     stroke-dashoffset: -100;
     opacity: var(--reflejo-giro);
+  }
+}
+
+/* ============================================================================
+   ACARICIAR
+
+   El tap cambió de significado: antes abría el panel de números, ahora
+   acaricia. El criterio es cuál gesto se hace más seguido — a Chip se lo toca
+   porque está ahí, no para consultar stats — así que el frecuente se queda con
+   el toque barato y el otro se muda a mantener apretado.
+   ============================================================================ */
+
+/* El squash de la caricia. Va en `scale` como el del cambio de estado y con el
+   mismo pivote en la línea de apoyo: una cosa que recibe una mano se hunde
+   contra el piso, no se comprime alrededor de su centro.
+
+   Es MÁS CHICO que el del cambio ambiental (1.02 contra 1.035) y bastante más
+   corto. Una caricia es un acuse de recibo; una acción es un evento. */
+#cuerpo.acariciado {
+  animation: recibir-caricia var(--duracion-caricia) ease-out;
+}
+
+@keyframes recibir-caricia {
+  0% { scale: 1 1; }
+  40% { scale: 1.02 0.975; }
+  100% { scale: 1 1; }
+}
+
+/* SE CANSA. Más de seis toques en cuatro segundos y pone la cara de fastidio un
+   rato. Es la única forma de molestarlo que tiene el juego y es graciosa, no
+   punitiva: no baja ningún stat, no bloquea las teclas de acción, y se le pasa
+   solo. Lo único que hace es dejar de contestar la caricia.
+
+   Se marca con un filtro apenas apagado y NO con un sprite forzado: forzar el
+   sprite de `esperando` desde el DOM sería que ui.js decida un estado visual, y
+   eso es de la cadena. El gesto se lee igual. */
+#chip.cansado #cuerpo {
+  filter: saturate(0.82) brightness(0.94);
+  transition: filter 220ms ease-out;
+}
+
+/* LA SEÑAL DEL MANTENIDO. Sin ella los 500 ms se sienten como que la app no
+   responde: el jugador aprieta, no pasa nada, suelta, y nunca descubre el gesto.
+
+   Es un anillo que se CIERRA sobre Chip: aparece grande y difuso y se contrae
+   hasta su tamaño final justo cuando el panel se abre. Con eso el gesto se
+   aprende mirándolo una vez.
+
+   La primera versión dibujaba el avance con un conic-gradient y una custom
+   property angular animada con @property. Se veía bien en teoría y no corría:
+   la animación se cancelaba y se recreaba sola en cada repintado —medido, la
+   animación aparecía con currentTime 0 y a los 150 ms ya era otro objeto— así
+   que el anillo nunca pasaba del primer cuadro. Animar opacidad y escala no
+   depende de nada de eso. */
+#chip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 46%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 2px solid var(--color-bateria);
+  pointer-events: none;
+  opacity: 0;
+  scale: 1;
+}
+
+#chip.manteniendo::after {
+  animation: cerrar-anillo var(--espera-mantenido) ease-out forwards;
+}
+
+@keyframes cerrar-anillo {
+  0% {
+    opacity: 0;
+    scale: 1.7;
+  }
+  /* Aparece recién pasado el primer instante: un toque corto —o sea una
+     caricia— no tiene que dibujar ningún anillo. */
+  18% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0.85;
+    scale: 1;
   }
 }

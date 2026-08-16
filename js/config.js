@@ -522,6 +522,53 @@ export const VARS_CAMBIO = {
   duracionSquash: '--duracion-squash'
 };
 
+// ---- Acariciar ----
+//
+// EL TAP CAMBIA DE SIGNIFICADO. Antes abría el panel de estado; ahora acaricia,
+// y el panel se mudó a mantener apretado. El motivo es cuál de los dos gestos se
+// hace más seguido: a Chip se lo toca porque está ahí, no para consultar
+// números. El gesto más frecuente se queda con el toque más barato.
+//
+// Sube el humor MUY POCO. No es una cuarta acción encubierta: es que a Chip le
+// gusta que lo toquen. Dos puntos no reemplazan a jugar —que da 30— y no
+// alcanzan para sostener el stat solo.
+export const CARICIA_HUMOR = 2;
+
+// Cada cuánto puede haber una reacción visual. Sin esto, quince toques en dos
+// segundos apilan quince tandas de corazones y la pantalla se llena.
+//
+// Ojo: esto NO es un cooldown del gesto. La caricia se registra igual —el humor
+// sube—, lo que se limita es la ANIMACIÓN. Que es la distinción de siempre en
+// este proyecto: se restringe lo que se ve, no lo que se puede hacer.
+export const COOLDOWN_CARICIA_MS = 400;
+
+// CUÁNDO SE CANSA. Más de seis caricias en cuatro segundos y Chip pone la cara
+// de fastidio un rato. Es la única forma de molestarlo que tiene el juego, y es
+// graciosa y no punitiva: NO baja ningún stat, no bloquea nada más que la
+// caricia, y se le pasa solo.
+export const CARICIAS_PARA_CANSARSE = 6;
+export const VENTANA_CANSANCIO_MS = 4000;
+export const DURACION_CANSANCIO_MS = 3000;
+
+// Mantener apretado para ver los números. 500 ms es el umbral clásico de
+// long-press: más corto se dispara sin querer al acariciar, más largo se siente
+// trabado.
+export const ESPERA_MANTENIDO_MS = 500;
+
+export const CLASE_CARICIA = 'acariciado';
+export const CLASE_CANSADO = 'cansado';
+export const CLASE_MANTENIENDO = 'manteniendo';
+
+export const VARS_CARICIA = {
+  espera: '--espera-mantenido',
+  duracion: '--duracion-caricia'
+};
+
+// Cuánto dura el squash de la caricia. Corto: es un acuse de recibo, no una
+// animación de acción — las de acción duran segundos y ocupan a Chip, esta no
+// ocupa nada.
+export const DURACION_CARICIA_MS = 320;
+
 // ---- El estado que aparece al tocar a Chip ----
 
 // El estado no vive en pantalla: vive en Chip. Se abre tocándolo y se cierra

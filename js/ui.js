@@ -20,6 +20,15 @@ import {
   VARS_FONDO,
   CLASE_NOCHE,
   DURACION_PANEL_ESTADO_MS,
+  COOLDOWN_CARICIA_MS,
+  CARICIAS_PARA_CANSARSE,
+  VENTANA_CANSANCIO_MS,
+  DURACION_CANSANCIO_MS,
+  ESPERA_MANTENIDO_MS,
+  DURACION_CARICIA_MS,
+  CLASE_CARICIA,
+  CLASE_CANSADO,
+  CLASE_MANTENIENDO,
   TRANSICION_PANEL_MS,
   CLASE_PANEL_VISIBLE,
   ESPERA_SEGUNDO_EVENTO_MS,
@@ -864,14 +873,162 @@ function alternarEstado() {
   else ocultarEstado();
 }
 
-cajaChip.addEventListener('click', alternarEstado);
+// ---- Acariciar, y el estado que pasó a mantener apretado ----
+//
+// EL TAP CAMBIÓ DE SIGNIFICADO. Antes abría el panel de números; ahora acaricia.
+// El criterio es cuál de los dos gestos se hace más seguido: a Chip se lo toca
+// porque está ahí, no para consultar stats. El gesto frecuente se queda con el
+// toque más barato y el otro se muda a mantener apretado.
+//
+// El reparto de responsabilidades: ui.js decide CUÁNDO se puede acariciar —el
+// cooldown de la animación y el cansancio son de presentación— y la sesión
+// decide SI aplica, que es del modelo. Por eso `onCaricia` devuelve un booleano.
 
-// Chip es un div con role=button: sin esto, con teclado no habría manera de ver
-// los números, que es la única forma de leerlos que queda en el juego.
+let acariciarChip = () => false;
+let temporizadorCaricia = null;
+let temporizadorCansancio = null;
+let temporizadorMantenido = null;
+let ultimaCaricia = 0;
+let caricias = [];
+let cansado = false;
+
+export function conectarCaricia(onCaricia) {
+  acariciarChip = onCaricia;
+}
+
+function estaCansado() {
+  return cansado;
+}
+
+// Se cansa cuando lo tocan muchas veces seguidas. Es la ÚNICA forma de
+// molestarlo que tiene el juego, y es graciosa y no punitiva: no baja ningún
+// stat, no bloquea las teclas, y se le pasa solo. Lo único que hace es dejar de
+// contestar la caricia un rato y poner la cara de fastidio.
+function cansarse() {
+  cansado = true;
+  caricias = [];
+  cajaChip.classList.add(CLASE_CANSADO);
+
+  clearTimeout(temporizadorCansancio);
+  temporizadorCansancio = setTimeout(() => {
+    cansado = false;
+    cajaChip.classList.remove(CLASE_CANSADO);
+  }, DURACION_CANSANCIO_MS);
+}
+
+function unaCaricia() {
+  if (estaCansado()) return;
+
+  const ahora = Date.now();
+
+  // La cuenta para cansarse mira TODOS los toques, incluidos los que no llegan
+  // a tener animación por el cooldown: lo que cansa es que lo manoseen, no que
+  // se vean corazones.
+  caricias = caricias.filter((t) => ahora - t < VENTANA_CANSANCIO_MS);
+  caricias.push(ahora);
+
+  if (caricias.length > CARICIAS_PARA_CANSARSE) {
+    cansarse();
+    return;
+  }
+
+  // El modelo primero: si el humor está lleno, la caricia no aplica y no hay
+  // nada que festejar. Mismo criterio que celebrarHumor — se celebra que el
+  // humor SUBIÓ, no que hubo un toque.
+  const aplico = acariciarChip();
+
+  // Y el cooldown, que es sólo de la ANIMACIÓN. La caricia ya se registró
+  // arriba: lo que se limita es que quince toques en dos segundos apilen quince
+  // tandas de corazones.
+  if (ahora - ultimaCaricia < COOLDOWN_CARICIA_MS) return;
+  ultimaCaricia = ahora;
+
+  // El squash, siempre: es el acuse de recibo del dedo y tiene que estar aunque
+  // el humor esté lleno. Si no, tocarlo con el humor en 100 no hace nada y
+  // parece que la app se colgó.
+  cuerpo.classList.remove(CLASE_CARICIA);
+  void cuerpo.offsetWidth;
+  cuerpo.classList.add(CLASE_CARICIA);
+
+  clearTimeout(temporizadorCaricia);
+  temporizadorCaricia = setTimeout(() => {
+    cuerpo.classList.remove(CLASE_CARICIA);
+  }, DURACION_CARICIA_MS + 60);
+
+  // Los corazones y el destello de la luz, sólo si la caricia hizo algo.
+  if (aplico) {
+    celebrarHumor();
+    destellarBulbo();
+  }
+}
+
+// ---- El gesto ----
+//
+// Un solo par de handlers para las dos cosas: al apretar arranca el reloj del
+// mantenido, y al soltar se decide qué fue. Si el reloj llegó a los 500 ms, ya
+// abrió el panel y el soltar no hace nada; si no llegó, fue una caricia.
+//
+// Se usan eventos de PUNTERO y no click: click llega recién al soltar, y el
+// anillo de progreso del mantenido tiene que empezar a dibujarse al apretar.
+
+function arrancarGesto(evento) {
+  // Sólo el botón principal. Un clic derecho sobre Chip no es una caricia.
+  if (evento.button !== undefined && evento.button !== 0) return;
+
+  cajaChip.classList.add(CLASE_MANTENIENDO);
+
+  clearTimeout(temporizadorMantenido);
+  temporizadorMantenido = setTimeout(() => {
+    temporizadorMantenido = null;
+    cajaChip.classList.remove(CLASE_MANTENIENDO);
+    mostrarEstado();
+  }, ESPERA_MANTENIDO_MS);
+}
+
+function soltarGesto() {
+  cajaChip.classList.remove(CLASE_MANTENIENDO);
+
+  // Si el timer sigue vivo, el mantenido no llegó: fue una caricia.
+  if (temporizadorMantenido) {
+    clearTimeout(temporizadorMantenido);
+    temporizadorMantenido = null;
+    unaCaricia();
+  }
+}
+
+function cancelarGesto() {
+  clearTimeout(temporizadorMantenido);
+  temporizadorMantenido = null;
+  cajaChip.classList.remove(CLASE_MANTENIENDO);
+}
+
+cajaChip.addEventListener('pointerdown', arrancarGesto);
+cajaChip.addEventListener('pointerup', soltarGesto);
+// Si el dedo se va de Chip antes de soltar, no fue ninguna de las dos cosas.
+cajaChip.addEventListener('pointerleave', cancelarGesto);
+cajaChip.addEventListener('pointercancel', cancelarGesto);
+
+// EL TECLADO TIENE LOS DOS GESTOS, no uno. Chip es un div con role=button y sin
+// esto la caricia sería inaccesible — y el panel de números, que ya era la única
+// forma de leer los stats, se perdería del todo.
+//
+// Enter acaricia y Espacio abre los números. La asimetría es a propósito: Enter
+// es "activar" y Espacio es "inspeccionar", que es como se reparten en la
+// mayoría de los controles.
 cajaChip.addEventListener('keydown', (evento) => {
-  if (evento.key !== 'Enter' && evento.key !== ' ') return;
-  evento.preventDefault();
-  alternarEstado();
+  if (evento.repeat) return;
+
+  if (evento.key === 'Enter') {
+    evento.preventDefault();
+    unaCaricia();
+    return;
+  }
+
+  if (evento.key === ' ') {
+    evento.preventDefault();
+    if (panelEstado.hidden) mostrarEstado();
+    else ocultarEstado();
+  }
 });
 
 // Tocar afuera cierra. Se escucha en captura para que el toque en un botón de
