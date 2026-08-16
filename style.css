@@ -364,17 +364,26 @@ body.es-noche .banda.deformable {
      negativos. De ahí sale que la toma reciba la hora del día sin una sola
      línea de JS que la mire. */
   z-index: -1;
-  left: calc(50% + var(--alto-chip) * (var(--toma-x) - 0.5));
-  bottom: calc(var(--piso-chip) + var(--alto-chip) * (1 - var(--toma-y)));
-  width: calc(var(--alto-chip) * var(--toma-ancho));
-  height: calc(var(--alto-chip) * var(--toma-alto-caja));
 
-  /* EL ANCLA ES LA BOCA DEL CONECTOR, no el borde ni el centro de la caja. El
-     cable de cargando.png termina en un punto medido, y ese punto tiene que
-     caer donde el cable se enchufa — si no, el cable muere contra la chapa. */
-  margin-left: calc(var(--alto-chip) * var(--toma-ancho) * var(--toma-ancla-x) * -1);
-  margin-bottom: calc(var(--alto-chip) * var(--toma-alto-caja) * (var(--toma-ancla-y) - 1));
+  /* AL FONDO DEL TALLER, no al lado de Chip. Se posiciona en % de la ESCENA y no
+     con los anclajes de Chip: la caja ya no es un accesorio del personaje, es
+     mobiliario que está lejos. Los anclajes de antes existían para que el cable
+     DIBUJADO en el sprite muriera en su boca, y ese cable ya no existe.
+
+     El ancla es la boca del conector, que es donde llega el cable de código. */
+  left: var(--toma-fondo-x);
+  top: var(--toma-fondo-y);
+  width: var(--toma-fondo-ancho);
+  aspect-ratio: 40 / 38;
+  margin-left: calc(var(--toma-fondo-ancho) * var(--toma-ancla-x) * -1);
+  translate: 0 calc(var(--toma-ancla-y) * -100%);
   pointer-events: none;
+
+  /* SUMERGIDA. No compite con Chip porque está lejos, y estar lejos en este
+     galpón quiere decir dos cosas: menos luz y menos color. Es un filtro y no
+     una opacidad — el objeto está entero, lo que le falta es luz. Bajarle el
+     alfa lo habría vuelto transparente, que es otra cosa. */
+  filter: brightness(var(--toma-fondo-brillo)) saturate(var(--toma-fondo-saturacion));
 
   /* SIN TRANSFORM. La perspectiva está dibujada en el SVG con la fuga medida.
      Antes acá había rotate + perspective + rotateX y no se veía: inclinar una
@@ -3491,7 +3500,11 @@ body.sin-movimiento *::after {
   height: 100%;
   overflow: visible;
   pointer-events: none;
-  z-index: -1;
+  /* ADELANTE DE CHIP, y ese fue el bug. Con z-index -1 el cable quedaba DETRÁS
+     del cuerpo, así que el tramo que va del conector al borde de la silueta no
+     se veía nunca: el cable aparecía por el costado y jamás tocaba el pecho.
+     Un cable enchufado en el pecho pasa POR DELANTE del pecho. */
+  z-index: 1;
   display: none;
 }
 
@@ -3500,16 +3513,23 @@ body.sin-movimiento *::after {
   display: block;
 }
 
+/* Sin `vector-effect: non-scaling-stroke`: existía para anular la distorsión de
+   un viewBox cuadrado sobre una escena que no lo es. Ahora el viewBox está en
+   píxeles reales y el trazo ya mide lo que dice. */
 .cable-cuerpo,
 .cable-brillo {
   fill: none;
-  vector-effect: non-scaling-stroke;
   stroke-linecap: round;
 }
 
+/* GRUESO Y OSCURO. Era 3,4 px de cian pálido y se leía como un hilo. Es un
+   cable de energía industrial: el trazo base va apagado y lo que brilla son los
+   pulsos. Ese contraste entre el cable muerto y la energía que lo recorre ES el
+   efecto — con el cable ya brillante, los pulsos no tienen contra qué destacar. */
 .cable-cuerpo {
   stroke: var(--cable-color);
   stroke-width: var(--cable-grosor);
+  stroke-linejoin: round;
 }
 
 /* La línea de brillo en el borde de arriba, como los caños de la panorámica: no
@@ -3517,9 +3537,9 @@ body.sin-movimiento *::after {
    un trazo más fino corrido hacia arriba, no con un segundo path. */
 .cable-brillo {
   stroke: var(--cable-brillo);
-  stroke-width: calc(var(--cable-grosor) * 0.34);
-  opacity: 0.55;
-  translate: 0 calc(var(--cable-grosor) * -0.3);
+  stroke-width: calc(var(--cable-grosor) * 0.22);
+  opacity: 0.5;
+  translate: 0 calc(var(--cable-grosor) * -0.26);
 }
 
 /* EL BALANCEO. Muy leve y muy lento: algo que apenas se mueve por su propio
@@ -3544,11 +3564,11 @@ body.sin-movimiento *::after {
    la energía va HACIA Chip, que es lo que cierra el circuito con el latido del
    rayo del pecho. */
 .pulso-cable {
-  fill: var(--cable-brillo);
+  fill: var(--cable-energia);
   offset-path: var(--cable-camino);
   offset-rotate: 0deg;
   offset-distance: 0%;
-  filter: drop-shadow(0 0 3px var(--cable-brillo));
+  filter: drop-shadow(0 0 4px var(--cable-energia));
   animation: viajar-pulso var(--cable-pulso-ciclo) linear infinite reverse;
 }
 

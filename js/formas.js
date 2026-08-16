@@ -471,25 +471,56 @@ export function svgDeToma() {
   return `<svg viewBox="0 0 40 38" aria-hidden="true">${TOMA}</svg>`;
 }
 
-// LA CATENARIA. Función PURA: dos puntos y cuánto cuelga, devuelve el `d` de
-// una cúbica. Vive acá con el resto de la geometría dibujable y no en ui.js
-// porque es una cuenta, no un pintado — y porque así se puede probar.
+// EL RECORRIDO DEL CABLE. Función PURA: recibe el conector de Chip y la tabla
+// de puntos, devuelve un `d` de SVG. Vive acá con el resto de la geometría
+// dibujable porque es una cuenta, no un pintado.
 //
-// Los dos puntos de control van tirados hacia abajo, pero NO a la misma altura:
-// el segundo cuelga más que el primero. Una cúbica simétrica da un arco de
-// puente; una catenaria tiene la panza corrida hacia el extremo más bajo, y esa
-// asimetría es lo que la hace leer como peso y no como diseño.
-export function caminoDelCable(desde, hasta, caida) {
-  const dx = hasta.x - desde.x;
-  const dy = hasta.y - desde.y;
-  const largo = Math.hypot(dx, dy);
-  const cuelga = largo * caida;
-
-  const c1 = { x: desde.x + dx * 0.28, y: desde.y + dy * 0.16 + cuelga * 0.82 };
-  const c2 = { x: desde.x + dx * 0.66, y: desde.y + dy * 0.62 + cuelga };
-
+// La primera versión era una catenaria sola y se leía como una línea de
+// interfaz. Un cable de verdad no cae en una curva perfecta: cae, TOCA algo,
+// se acuesta, sobra, y sigue. Cada quiebre de este camino es una de esas
+// cosas, y el conjunto es lo que lo hace leer como un objeto.
+export function caminoDelCable(conector, r) {
   const n = (v) => Math.round(v * 100) / 100;
-  return `M ${n(desde.x)} ${n(desde.y)} C ${n(c1.x)} ${n(c1.y)}, ${n(c2.x)} ${n(c2.y)}, ${n(hasta.x)} ${n(hasta.y)}`;
+  const P = (p) => `${n(p.x)} ${n(p.y)}`;
+
+  // 1. LA CAÍDA. La única catenaria del recorrido, y asimétrica: los dos
+  //    puntos de control cuelgan distinto, así la panza queda corrida hacia
+  //    el extremo bajo. Simétrica daría un arco de puente.
+  const apoyo = { x: r.apoyo.x, y: r.apoyo.y };
+  const largo = Math.hypot(apoyo.x - conector.x, apoyo.y - conector.y);
+  const cuelga = largo * r.apoyo.caida;
+  const c1 = { x: conector.x + (apoyo.x - conector.x) * 0.2, y: conector.y + cuelga * 0.7 };
+  const c2 = { x: conector.x + (apoyo.x - conector.x) * 0.62, y: apoyo.y + cuelga * 0.34 };
+
+  let d = `M ${P(conector)} C ${P(c1)}, ${P(c2)}, ${P(apoyo)}`;
+
+  // 2. LOS RULOS. Cada uno es una vuelta cerrada que CRUZA sobre sí misma:
+  //    se sale por un lado, se da la vuelta y se vuelve a entrar corrido. Van
+  //    achatados porque están apoyados en el piso y se ven en escorzo — un
+  //    círculo redondo se leería como un aro parado.
+  let actual = apoyo;
+  for (const rulo of r.rulos) {
+    const rx = rulo.radio;
+    const ry = rulo.radio * rulo.achatado;
+    const entra = { x: rulo.x - rx * 0.6, y: rulo.y };
+    const sale = { x: rulo.x + rx * 0.8, y: rulo.y - ry * 0.35 };
+
+    // llegar a la boca del rulo
+    d += ` Q ${P({ x: (actual.x + entra.x) / 2, y: Math.max(actual.y, entra.y) + 1.2 })}, ${P(entra)}`;
+    // la vuelta: dos arcos que cierran el óvalo y se cruzan al salir
+    d += ` A ${n(rx)} ${n(ry)} 0 1 1 ${P({ x: rulo.x + rx * 0.5, y: rulo.y + ry * 0.7 })}`;
+    d += ` Q ${P({ x: rulo.x + rx * 0.9, y: rulo.y + ry * 0.4 })}, ${P(sale)}`;
+    actual = sale;
+  }
+
+  // 3. LA CORRIDA por el suelo, con UN quiebre. Recta pura se ve tendida a
+  //    propósito; el quiebre dice que alguien la dejó ahí de cualquier modo.
+  //    Sube en pantalla mientras avanza porque se ALEJA: es la perspectiva del
+  //    piso, no un cable que trepa.
+  d += ` Q ${P({ x: (actual.x + r.quiebre.x) / 2, y: actual.y + 1.4 })}, ${P(r.quiebre)}`;
+  d += ` Q ${P({ x: (r.quiebre.x + r.llegada.x) / 2, y: r.quiebre.y - 1.8 })}, ${P(r.llegada)}`;
+
+  return d;
 }
 
 export function tieneForma(id) {

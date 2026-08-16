@@ -610,7 +610,12 @@ export const POSICIONES_ANTENA = {
   feliz: { x: 53.8, y: 7.6 },
   critico: { x: 44.4, y: 7.5 },
   standby: { x: 50.0, y: 11.5 },
-  cargando: { x: 44.2, y: 8.3 },
+  // Remedida contra el sprite limpio. El sprite viejo tenía remolinos y cable
+  // dibujados alrededor del bulbo, y eso corría el centroide del halo: el núcleo
+  // se movió x -1,3 e y -1,7 entre las dos versiones, medido con el mismo
+  // código y con umbral apretado al núcleo. Con umbral flojo la diferencia se
+  // perdía en el halo y parecía que no había cambiado nada.
+  cargando: { x: 42.9, y: 6.6 },
   jugando: { x: 60.5, y: 6.5 },
   limpiando: { x: 45.9, y: 8.8 },
   esperando: { x: 52.8, y: 8.1 },
@@ -832,7 +837,7 @@ export const PANTALLAS_PECHO = {
   // lienzo— así que el 2,5 estaba inclinando el contenido adentro de un marco
   // recto. El número venía de suponer que el torso en tres cuartos arrastraba al
   // display, y no: el display está pintado de frente.
-  cargando: { x: 43.0, y: 61.3, ancho: 18.7, alto: 12.9, giro: 0, vidrio: '#002137' },
+  cargando: { x: 41.8, y: 60.6, ancho: 18.7, alto: 12.9, giro: 0, vidrio: '#002137' },
   jugando: { x: 39.5, y: 57.0, ancho: 17.6, alto: 14.1, giro: 7.4, vidrio: '#001c2e' },
   limpiando: { x: 37.9, y: 60.9, ancho: 16.4, alto: 13.3, giro: 0, vidrio: '#001e31' },
   'idle-manitos': { x: 39.1, y: 60.2, ancho: 17.6, alto: 11.3, giro: 4.5, vidrio: '#002a3c' }
@@ -1313,49 +1318,98 @@ export const CONECTOR_PECHO = { x: 52.9, y: 77.5 };
 
 // EL CABLE, dibujado y animado por código.
 //
-// La forma es una CATENARIA —la caída natural de algo que cuelga por su propio
-// peso— y no una recta ni un arco simétrico. Se aproxima con una cúbica de dos
-// puntos de control tirados hacia abajo: la diferencia con un arco simétrico es
-// que la panza cae más cerca del extremo bajo, que es lo que hace un cable de
-// verdad.
+// LA FORMA ES EL PUNTO. La primera versión era una catenaria sola: una curva
+// perfecta cruzando el fondo en diagonal. Se leía como una línea de interfaz,
+// no como un cable, y el motivo es que un cable real NO cae en una curva
+// perfecta — hace tramos rectos, se quiebra, se dobla sobre sí mismo, apoya en
+// el piso y sigue. Esa irregularidad es toda la diferencia.
+//
+// El recorrido tiene cinco partes, y cada una hace algo distinto:
+//
+//   1. LA CAÍDA     sale del conector y cae con peso. Es la única catenaria.
+//   2. EL APOYO     toca el piso y ahí se acuesta. El quiebre entre caer y
+//                   apoyar es lo que dice que hay un piso.
+//   3. LOS RULOS    una o dos vueltas de sobrante. Es lo que queda cuando hay
+//                   más cable del necesario, y es el detalle que más vende que
+//                   el cable es una cosa y no un trazo.
+//   4. LA CORRIDA   por el suelo hacia el fondo, casi recta pero no del todo.
+//   5. LA LLEGADA   sube apenas al zócalo de la caja de conexión.
+//
+// Todo en % de la ESCENA salvo el arranque, que sale del conector de Chip.
 export const CABLE = {
-  grosor: 3.4,
-  // Cuánto cuelga la panza respecto de la cuerda entre los dos extremos, en % de
-  // la distancia. Un cable flojo pero no una soga.
-  caida: 0.34,
-  color: '#1f7f96',
-  brillo: '#5fd8ef',
-  // El balanceo: muy leve y muy lento. Algo que apenas se mueve por su propio
-  // peso, no algo que serpentea.
-  balanceo: { ciclo: 4600, amplitud: 2.6 }
+  // Grosor y color: es un cable de energía industrial, no un hilo. El trazo base
+  // va OSCURO a propósito; lo que brilla son los pulsos, y ese contraste entre
+  // el cable apagado y la energía que lo recorre es el efecto.
+  grosor: 7,
+  color: '#16323d',
+  // El filo de arriba: la luz de la ventana pegándole por encima. No es un
+  // contorno, es una arista iluminada, como los caños de la panorámica.
+  brillo: '#3d7f93',
+  // El azul eléctrico es SÓLO de los pulsos.
+  energia: '#5fe6ff',
+  balanceo: { ciclo: 4600, amplitud: 2.2 }
 };
 
-// LOS PULSOS que viajan por el cable. Nacen en el extremo lejano y recorren el
-// path hasta el conector: la energía VIAJA, y eso es lo que separa una carga que
-// se ve profesional de una luz que parpadea en su lugar.
-export const PULSOS_CABLE = { cuantos: 4, ciclo: 2600, radio: 3.2 };
-
-// LAS TRES UBICACIONES A PROBAR. Coordenadas en % de la ESCENA, no del sprite:
-// el destino es un lugar del galpón, no un lugar de Chip.
-export const DESTINOS_CABLE = {
-  // 1. Cruza el fondo hacia la izquierda y se pierde detrás del marco de la
-  //    ventana. Sin objeto: el cable simplemente va a algún lado fuera de
-  //    cuadro, y eso sugiere que el galpón es más grande que lo que se ve.
-  ventana: { x: 8, y: 62, toma: false },
-  // 2. Toma en la pared del fondo, a la altura del zócalo, con el cable subiendo
-  //    en diagonal hacia ella.
-  pared: { x: 86, y: 74, toma: true },
-  // 3. Sin toma: el cable baja y se pierde en el borde inferior de la escena.
-  abajo: { x: 68, y: 101, toma: false }
+// Los puntos del recorrido, en % de la escena. El primero no está: es el
+// conector del pecho, que se mide sobre la caja real de Chip.
+//
+// El piso del galpón en perspectiva: lo que está más al fondo va MÁS ARRIBA en
+// pantalla y más chico. Por eso la corrida sube de y=88 a y=70 mientras se va
+// hacia la derecha — no es que el cable trepe, es que se aleja.
+// El piso ÚTIL termina donde empieza la línea de eventos, alrededor del 84%:
+// más abajo el cable pasa por detrás del texto y de la botonera y deja de
+// leerse como galpón. Todo el recorrido vive arriba de esa línea.
+export const RECORRIDO_CABLE = {
+  // dónde toca el piso, y cuánto cuelga la panza de la caída
+  apoyo: { x: 45.5, y: 82.5, caida: 0.5 },
+  // Los dos rulos de sobrante. El radio se mide en % del ANCHO de la escena en
+  // las dos direcciones, así el rulo es redondo; el achatado que lo vuelve
+  // elipse es el ESCORZO —está apoyado en el piso y se ve desde arriba—, no la
+  // deformación de la caja.
+  rulos: [
+    { x: 41, y: 83.4, radio: 2.6, achatado: 0.44 },
+    { x: 52.5, y: 81.6, radio: 1.9, achatado: 0.42 }
+  ],
+  // el quiebre de la corrida: el cable no va derecho al fondo, dobla una vez
+  quiebre: { x: 66, y: 78 },
+  // dónde termina, que es la boca de la caja de conexión
+  llegada: { x: 82.5, y: 71 }
 };
 
-export const DESTINO_CABLE_ACTUAL = 'ventana';
+// LOS PULSOS que viajan por el cable. Nacen en la caja del fondo y recorren el
+// camino hasta el conector del pecho: la energía VIAJA, y eso es lo que separa
+// una carga que se ve profesional de una luz que parpadea en su lugar.
+//
+// Van brillantes contra un cable oscuro. Ese contraste ES el efecto.
+export const PULSOS_CABLE = { cuantos: 5, ciclo: 3200, radio: 4.2 };
+
+// LA CAJA DE CONEXIÓN, de vuelta y al fondo. Es la misma que se dibujó en su
+// momento —chapa gruesa, conector cilíndrico, tornillos, borde naranja— pero
+// SUMERGIDA: chica, en penumbra y con la luz de esa profundidad. No compite con
+// Chip porque está lejos, que era el problema de tenerla adelante.
+export const TOMA_FONDO = {
+  x: 82.5,
+  y: 71,
+  // Ancho en % de la escena. Adelante medía 13% del lienzo de Chip; al fondo
+  // tiene que leerse como el mismo objeto a tres o cuatro metros.
+  ancho: 7.4,
+  // Cuánto se hunde en la penumbra del fondo. Es un brillo, no una opacidad: el
+  // objeto está entero, lo que le falta es luz.
+  brillo: 0.52,
+  saturacion: 0.72
+};
 
 export const VARS_CABLE = {
   camino: '--cable-camino',
   grosor: '--cable-grosor',
   color: '--cable-color',
   brillo: '--cable-brillo',
+  energia: '--cable-energia',
+  tomaX: '--toma-fondo-x',
+  tomaY: '--toma-fondo-y',
+  tomaAncho: '--toma-fondo-ancho',
+  tomaBrillo: '--toma-fondo-brillo',
+  tomaSaturacion: '--toma-fondo-saturacion',
   cicloBalanceo: '--cable-balanceo-ciclo',
   amplitudBalanceo: '--cable-balanceo-amplitud',
   // El radio del pulso NO viaja por custom property: es un atributo r del SVG y
@@ -1370,7 +1424,10 @@ export const VARS_CABLE = {
 // y su lateral, así que ocupa más ancho que alto. El frente propiamente dicho
 // sigue midiendo lo mismo que antes en pantalla — lo que se agregó es el
 // volumen, no el tamaño.
-export const TAMANO_TOMA = { ancho: 13, alto: 12.3 }; // % del alto de Chip
+// El tamaño de la caja ya no se mide en % del alto de Chip: al fondo se mide en
+// % de la escena, y ese número vive en TOMA_FONDO. Estaba atado a Chip cuando
+// la caja estaba a su lado.
+const TAMANO_TOMA = { ancho: 13, alto: 12.3 };
 
 // DÓNDE, DENTRO DEL DIBUJO, ENCHUFA EL CABLE. Es el centro del conector
 // cilíndrico: (17, 20,6) de un viewBox de 40x38. Sin esto el CSS anclaba el
@@ -1395,11 +1452,11 @@ export const ANCLA_TOMA = { x: 0.425, y: 0.542 };
 // 1672 de ancho —el centro horizontal exacto—, y desde la base de la toma la
 // dirección a ese punto es 39° sobre la horizontal.
 
+// La posición de la caja NO viaja más por acá: ahora va en % de la escena y en
+// VARS_CABLE, porque la caja dejó de ser un accesorio anclado a Chip y pasó a
+// ser mobiliario del fondo. Sobreviven las dos anclas, que dicen dónde está la
+// BOCA del conector dentro del dibujo — eso es del SVG y no cambia con el lugar.
 export const VARS_TOMA = {
-  x: '--toma-x',
-  y: '--toma-y',
-  ancho: '--toma-ancho',
-  alto: '--toma-alto-caja',
   anclaX: '--toma-ancla-x',
   anclaY: '--toma-ancla-y'
 };

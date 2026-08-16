@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v52';
+const CACHE_VERSION = 'chip-cache-v55';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -72,6 +72,11 @@ const ARCHIVOS_CACHE = [
   // al mismo lienzo— pero el sprite es de otra generación y no pega con el
   // estilo del resto. Queda acá listo para el día que la pose se rehabilite.
   './sprites/idle-manitos-ojos.webp',
+  // Igual que el de arriba: está en el repo y en el caché, sin wirear. Es el
+  // recorte de las orugas para el punto 2 (que giren). Medido: vienen las DOS en
+  // una sola capa pero como dos componentes separadas, con centros en 66,3/86,4 y
+  // 30,8/86,5 del lienzo — que son los dos pivotes que va a necesitar el giro.
+  './sprites/idle-orugas.webp',
   './sprites/feliz.webp',
   './sprites/critico.webp',
   './sprites/standby.webp',

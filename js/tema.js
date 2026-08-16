@@ -78,8 +78,7 @@ import {
   VARS_CABLE,
   CABLE,
   PULSOS_CABLE,
-  CONECTOR_PECHO,
-  TAMANO_TOMA,
+  TOMA_FONDO,
   ANCLA_TOMA,
   COLORES_TOMA,
   VARS_REPISA,
@@ -209,10 +208,6 @@ export function variablesDeTema() {
     // lienzo del sprite; el CSS la convierte a la escena con los mismos anclajes
     // que usa #chip, así que no hay ningún porcentaje de la escena de por medio
     // y el encastre aguanta cualquier viewport.
-    [VARS_TOMA.x]: String(CONECTOR_PECHO.x / 100),
-    [VARS_TOMA.y]: String(CONECTOR_PECHO.y / 100),
-    [VARS_TOMA.ancho]: String(TAMANO_TOMA.ancho / 100),
-    [VARS_TOMA.alto]: String(TAMANO_TOMA.alto / 100),
     [VARS_TOMA.anclaX]: String(ANCLA_TOMA.x),
     [VARS_TOMA.anclaY]: String(ANCLA_TOMA.y),
     ...tonos('toma', COLORES_TOMA),
@@ -223,7 +218,15 @@ export function variablesDeTema() {
     [VARS_CABLE.brillo]: CABLE.brillo,
     [VARS_CABLE.cicloBalanceo]: ms(CABLE.balanceo.ciclo),
     [VARS_CABLE.amplitudBalanceo]: px(CABLE.balanceo.amplitud),
+    [VARS_CABLE.energia]: CABLE.energia,
     [VARS_CABLE.cicloPulso]: ms(PULSOS_CABLE.ciclo),
+
+    // La caja de conexión, al fondo y sumergida
+    [VARS_CABLE.tomaX]: pct(TOMA_FONDO.x),
+    [VARS_CABLE.tomaY]: pct(TOMA_FONDO.y),
+    [VARS_CABLE.tomaAncho]: pct(TOMA_FONDO.ancho),
+    [VARS_CABLE.tomaBrillo]: String(TOMA_FONDO.brillo),
+    [VARS_CABLE.tomaSaturacion]: String(TOMA_FONDO.saturacion),
 
     // La repisa alta. Su geometría entera vive en REPISA, así que mover el
     // estante es tocar cuatro números en config y nada más.

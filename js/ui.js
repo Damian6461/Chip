@@ -68,11 +68,9 @@ import {
   CLASE_DESTELLO_BULBO,
   DURACION_DESTELLO_BULBO_MS,
   NUBE_RAPIDA,
-  CABLE,
   PULSOS_CABLE,
   CONECTOR_PECHO,
-  DESTINOS_CABLE,
-  DESTINO_CABLE_ACTUAL,
+  RECORRIDO_CABLE,
   VARS_CABLE
 } from './config.js';
 import { aplica, puedeJugar } from './acciones.js';
@@ -123,8 +121,7 @@ import {
   resplandor,
   contenedorNubes,
   crearBanda,
-  nodoCable,
-  toma
+  nodoCable
 } from './ui-montaje.js';
 
 // ---- El menú ----
@@ -528,50 +525,71 @@ let temporizadorCelebracion = null;
 // escena se desalinearía apenas cambiara la proporción — el mismo error que ya
 // tuvo el encuadre del fondo.
 
-function puntoDelConector() {
-  if (!cajaChip || !nodoCable) return null;
+// EL CABLE SE DIBUJA EN PÍXELES DE LA ESCENA, y el viewBox se pone en cada
+// render con el tamaño real. La primera versión usaba un viewBox de 100x100 con
+// preserveAspectRatio="none", y eso distorsiona: en una escena de 390x844 una
+// unidad valía 3,9 px a lo ancho y 8,4 a lo alto, así que los rulos —definidos
+// como elipses achatadas— salían el DOBLE de altos que anchos. Dos globos
+// parados en vez de dos vueltas de cable en el piso.
+//
+// Es la misma trampa que la de los porcentajes del radial-gradient: un radio en
+// un espacio con los ejes a distinta escala no es un radio. Con el viewBox en
+// píxeles, un círculo es un círculo y el stroke-width se mide en píxeles de
+// verdad, sin necesidad de non-scaling-stroke.
+function cajaDeLaEscena() {
+  return nodoCable ? nodoCable.getBoundingClientRect() : null;
+}
+
+function puntoDelConector(escena) {
+  if (!cajaChip || !escena) return null;
   const chip = cajaChip.getBoundingClientRect();
-  const escena = nodoCable.getBoundingClientRect();
-  if (!chip.width || !escena.width) return null;
+  if (!chip.width) return null;
 
   return {
-    x: ((chip.x - escena.x + (CONECTOR_PECHO.x / 100) * chip.width) / escena.width) * 1000,
-    y: ((chip.y - escena.y + (CONECTOR_PECHO.y / 100) * chip.height) / escena.height) * 1000
+    x: chip.x - escena.x + (CONECTOR_PECHO.x / 100) * chip.width,
+    y: chip.y - escena.y + (CONECTOR_PECHO.y / 100) * chip.height
   };
 }
 
-export function dibujarCable(nombreDestino = DESTINO_CABLE_ACTUAL) {
+export function dibujarCable() {
   if (!nodoCable) return;
 
-  const destino = DESTINOS_CABLE[nombreDestino];
-  const desde = puntoDelConector();
-  if (!destino || !desde) return;
+  const escena = cajaDeLaEscena();
+  const desde = puntoDelConector(escena);
+  if (!desde || !escena.width) return;
 
-  const hasta = { x: destino.x * 10, y: destino.y * 10 };
-  const d = caminoDelCable(desde, hasta, CABLE.caida);
+  // El recorrido está declarado en % de la escena; acá se pasa a píxeles, una
+  // sola vez, y todo lo de adentro de caminoDelCable trabaja en píxeles.
+  const aPx = (p) => ({ x: (p.x / 100) * escena.width, y: (p.y / 100) * escena.height });
+  const enPx = {
+    apoyo: { ...aPx(RECORRIDO_CABLE.apoyo), caida: RECORRIDO_CABLE.apoyo.caida },
+    rulos: RECORRIDO_CABLE.rulos.map((r) => ({
+      ...aPx(r),
+      // El radio se mide contra el ANCHO en las dos direcciones, para que el
+      // rulo sea redondo y su achatado sea el escorzo que se pidió y no el de
+      // la caja.
+      radio: (r.radio / 100) * escena.width,
+      achatado: r.achatado
+    })),
+    quiebre: aPx(RECORRIDO_CABLE.quiebre),
+    llegada: aPx(RECORRIDO_CABLE.llegada)
+  };
 
-  // El pulso viaja del extremo LEJANO al conector, o sea al revés del path: la
-  // energía va hacia Chip. Se invierte con animation-direction en el CSS en vez
-  // de con un segundo path, que habría que mantener sincronizado.
+  const d = caminoDelCable(desde, enPx);
+
+  nodoCable.setAttribute('viewBox', `0 0 ${Math.round(escena.width)} ${Math.round(escena.height)}`);
   nodoCable.style.setProperty(VARS_CABLE.camino, `path("${d}")`);
 
   const pulsos = Array.from(
     { length: PULSOS_CABLE.cuantos },
     (_, i) =>
-      `<circle class="pulso-cable" r="${PULSOS_CABLE.radio}" style="animation-delay: ${(i * PULSOS_CABLE.ciclo) / PULSOS_CABLE.cuantos}ms"/>`
+      `<circle class="pulso-cable" r="${PULSOS_CABLE.radio}" style="animation-delay: ${Math.round((i * PULSOS_CABLE.ciclo) / PULSOS_CABLE.cuantos)}ms"/>`
   ).join('');
 
   nodoCable.innerHTML =
     `<path class="cable-cuerpo" d="${d}"/>` +
     `<path class="cable-brillo" d="${d}"/>` +
     pulsos;
-
-  // La toma sólo existe en las variantes que la piden.
-  if (toma) toma.hidden = !destino.toma;
-  if (destino.toma && toma) {
-    toma.style.left = `${destino.x}%`;
-    toma.style.top = `${destino.y}%`;
-  }
 }
 
 // ---- La nube que pasa una vez ----
