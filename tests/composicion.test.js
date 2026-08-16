@@ -30,6 +30,7 @@ import { readFileSync } from 'node:fs';
 import { prueba, igual, verdadero } from './runner.js';
 import {
   INHALACION,
+  INCLINACION_CABEZA,
   RADIO_EXCLUSION_ANTENA,
   FRANJA_EFECTOS,
   POSICIONES_ANTENA,
@@ -313,4 +314,31 @@ prueba('respiración: la sombra pica en el mismo fotograma que el cuerpo', () =>
 
   verdadero(Number.isFinite(cuerpo) && Number.isFinite(sombra), `dieron ${cuerpo} y ${sombra}`);
   igual(sombra, cuerpo, `el cuerpo y su huella tienen que llegar al pico juntos`);
+});
+
+// ---- Los tres tiempos de la inclinación de cabeza ----
+//
+// Mismo caso que INHALACION: los offsets de un @keyframes no admiten var(), así
+// que 20,7% y 70,7% son literales del CSS que sostienen INCLINACION_CABEZA.
+
+prueba('inclinación: los tramos del keyframe salen de INCLINACION_CABEZA', () => {
+  const total =
+    INCLINACION_CABEZA.entra + INCLINACION_CABEZA.sostiene + INCLINACION_CABEZA.vuelve;
+  const esperados = [
+    +((INCLINACION_CABEZA.entra / total) * 100).toFixed(1),
+    +(((INCLINACION_CABEZA.entra + INCLINACION_CABEZA.sostiene) / total) * 100).toFixed(1)
+  ];
+
+  const bloque = reglasDePrimerNivel(CSS).find((r) => r.selector === '@keyframes ladear');
+  verdadero(Boolean(bloque), 'no se encontró @keyframes ladear');
+
+  const offsets = [...bloque.cuerpo.matchAll(/(\d+(?:\.\d+)?)%\s*\{/g)]
+    .map((m) => Number(m[1]))
+    .filter((n) => n > 0 && n < 100);
+
+  igual(
+    offsets.join(', '),
+    esperados.join(', '),
+    'los tramos del CSS tienen que ser los de config'
+  );
 });

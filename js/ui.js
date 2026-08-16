@@ -68,6 +68,11 @@ import {
   CLASE_DESTELLO_BULBO,
   DURACION_DESTELLO_BULBO_MS,
   NUBE_RAPIDA,
+  RUTAS_CABEZA,
+  VARS_CABEZA,
+  CLASE_INCLINADA,
+  ESPERA_INCLINACION,
+  DURACION_INCLINACION_MS,
   PULSOS_CABLE,
   CONECTOR_PECHO,
   RECORRIDO_CABLE,
@@ -96,6 +101,8 @@ import {
   raiz,
   cajaChip,
   contenedorMascota,
+  capaCabeza,
+  grupoCabeza,
   capaOjos,
   capaParpado,
   contenedorCorazones,
@@ -511,6 +518,76 @@ let temporizadorCelebracion = null;
 // La tanda que dispara una acción que sube el humor. Es el momento en que la
 // mecánica y la emoción coinciden, y hasta ahora no tenía expresión visual.
 //
+// ---- La inclinación de cabeza ----
+//
+// Cada tanto Chip ladea la cabeza. No lo dispara nada: pasa solo, y ese es el
+// punto — es el único gesto del juego sin causa, y por eso se lee como que hay
+// alguien adentro y no como una respuesta a un stat.
+//
+// El timer vive acá, misma excepción que el parpadeo y la nube ocasional: no es
+// una decisión de estado, no toca el save, y nadie más necesita conocerlo.
+//
+// Sólo pasa cuando HAY recorte de cabeza, o sea en idle. En cargando o
+// limpiando el gesto no tendría sentido y además no habría con qué taparlo.
+
+let temporizadorInclinacion = null;
+let temporizadorFinInclinacion = null;
+
+function unaInclinacion() {
+  if (!grupoCabeza || capaCabeza?.hidden) return;
+
+  // El lado se sortea cada vez: siempre para el mismo se vuelve una muletilla.
+  grupoCabeza.style.setProperty(VARS_CABEZA.lado, Math.random() < 0.5 ? '-1' : '1');
+
+  grupoCabeza.classList.remove(CLASE_INCLINADA);
+  // Reflow forzado: sin esto, sacar y poner la clase en el mismo frame no
+  // reinicia la animación. Mismo motivo que en unParpadeo.
+  void grupoCabeza.offsetWidth;
+  grupoCabeza.classList.add(CLASE_INCLINADA);
+
+  // Red de contención, igual que el parpadeo: si animationend no llega —pestaña
+  // en segundo plano, animación cancelada— la clase quedaría puesta y la cabeza
+  // se quedaría torcida para siempre.
+  clearTimeout(temporizadorFinInclinacion);
+  temporizadorFinInclinacion = setTimeout(() => {
+    grupoCabeza.classList.remove(CLASE_INCLINADA);
+  }, DURACION_INCLINACION_MS + 150);
+}
+
+function cicloInclinacion() {
+  unaInclinacion();
+  temporizadorInclinacion = setTimeout(
+    cicloInclinacion,
+    entre(ESPERA_INCLINACION.min, ESPERA_INCLINACION.max)
+  );
+}
+
+function pintarCabeza(claveSprite) {
+  if (!capaCabeza) return;
+
+  const ruta = RUTAS_CABEZA[claveSprite];
+  capaCabeza.hidden = !ruta;
+  if (ruta && !capaCabeza.src.endsWith(ruta)) capaCabeza.src = ruta;
+
+  // Si la pose no tiene recorte, no hay gesto: se corta el ciclo y se limpia
+  // cualquier inclinación en curso, para que un cambio de estado a mitad de
+  // gesto no deje la cabeza torcida sobre un sprite que no es el suyo.
+  if (!ruta) {
+    clearTimeout(temporizadorInclinacion);
+    clearTimeout(temporizadorFinInclinacion);
+    temporizadorInclinacion = null;
+    grupoCabeza?.classList.remove(CLASE_INCLINADA);
+    return;
+  }
+
+  if (!temporizadorInclinacion) {
+    temporizadorInclinacion = setTimeout(
+      cicloInclinacion,
+      entre(ESPERA_INCLINACION.min, ESPERA_INCLINACION.max)
+    );
+  }
+}
+
 // ---- El cable ----
 //
 // Se dibuja en un SVG que cubre la escena entera, con viewBox de 1000x1000 y
@@ -1208,6 +1285,7 @@ export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = 
   // Los cambios de acción van en corte seco: ESE corte es el feedback de que la
   // acción respondió. Los ambientales, con squash.
   dibujarMascota(claveSprite, !ESTADOS_DE_ACCION.includes(estadoVisual));
+  pintarCabeza(claveSprite);
   pintarOjos(claveSprite);
   pintarPantalla(estado, claveSprite);
   pintarRayo(claveSprite);

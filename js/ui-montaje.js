@@ -34,6 +34,8 @@ export const raiz = document.documentElement;
 
 export const cajaChip = document.getElementById('chip');
 export const contenedorMascota = document.getElementById('contenedor-mascota');
+export const capaCabeza = document.getElementById('cabeza');
+export const grupoCabeza = document.getElementById('cabeza-grupo');
 export const capaOjos = document.getElementById('ojos');
 export const capaParpado = document.getElementById('parpado');
 export const contenedorCorazones = document.getElementById('corazones');

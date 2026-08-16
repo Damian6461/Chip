@@ -86,6 +86,14 @@
            nada: dibuja 1 a 1 y el CSS lo lleva al tamaño de la escena. -->
       <canvas id="canvas-mascota" width="256" height="256"></canvas>
 
+      <!-- LA CABEZA, para poder ladearla. Es el mismo lienzo de 256 que el
+           cuerpo y se apoya exactamente encima, así que a 0 grados es invisible:
+           tapa a la cabeza pintada con sus propios píxeles. Lo que la hace
+           existir es el giro.
+           Sólo hay recorte para idle; en los demás estados la capa se esconde y
+           el gesto no pasa, que es lo correcto: Chip no se pone a mirar para el
+           costado mientras carga. -->
+
       <!-- La pantalla del pecho, viva. Tapa la que está pintada en el sprite
            —que decía siempre 100%— y muestra la batería de verdad. Va justo
            encima del canvas y debajo de todo lo demás: es parte del cuerpo, no
@@ -102,6 +110,28 @@
         </div>
       </div>
 
+      <!-- EL GRUPO QUE SE LADEA. Adentro van la cabeza, el párpado y la capa
+           de parpadeo, y se ladean juntos: el párpado y los ojos están pensados
+           para caer sobre los ojos del sprite, así que si la cabeza se inclina
+           sin ellos el parpadeo queda afuera de la cara.
+
+           La pantalla del pecho queda AFUERA a propósito: es del torso, y el
+           torso no se mueve.
+
+           Y es un grupo y no tres rotaciones sueltas porque #ojos ya usa su
+           transform-origin para el pivote del parpadeo: un elemento no puede
+           tener dos orígenes para dos cosas distintas. El grupo gira sobre la
+           base del casco, los ojos parpadean sobre el suyo. -->
+      <div id="cabeza-grupo">
+
+        <!-- LA CABEZA. Es el mismo lienzo de 256 que el cuerpo y se apoya
+             exactamente encima, así que a 0 grados es invisible: tapa a la
+             cabeza pintada con sus propios píxeles. Lo que la hace existir es
+             el giro. Sólo hay recorte para idle; en los demás estados se
+             esconde y el gesto no pasa — Chip no se pone a mirar para el
+             costado mientras carga. -->
+        <img id="cabeza" alt="" aria-hidden="true" hidden>
+
       <!-- El párpado: el mismo recorte usado como máscara y rellenado de un
            color plano. Tapa los ojos que el sprite base trae dibujados, para que
            al cerrarse no asomen por arriba y por abajo de la capa de ojos.
@@ -113,6 +143,7 @@
            ui.js le cambia el src según el estado y la esconde en los que no
            tienen recorte. -->
       <img id="ojos" alt="" aria-hidden="true" hidden>
+      </div>
 
       <!-- El rayo del pecho. NO reemplaza al dibujado en el sprite: se apoya
            encima con mezcla `screen`, así que lo enciende. La forma la pone

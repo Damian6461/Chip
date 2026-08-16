@@ -3318,6 +3318,7 @@ body.es-noche .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
    misma especificidad que las reglas de arriba, declarada después. */
 @media (prefers-reduced-motion: reduce) {
   #contenedor-mascota,
+  #cabeza-grupo.inclinada,
   #cable path,
   .pulso-cable,
   #cuerpo.cambiando,
@@ -3582,5 +3583,75 @@ body.sin-movimiento *::after {
   100% {
     offset-distance: 100%;
     opacity: 0;
+  }
+}
+
+/* ============================================================================
+   LA INCLINACIÓN DE CABEZA
+
+   Cada tanto Chip ladea la cabeza, como si algo le llamara la atención. Es el
+   único gesto del juego que no responde a nada: no lo dispara un stat ni una
+   acción, pasa solo — y eso es lo que lo hace leer como que hay alguien adentro.
+
+   El giro va en la propiedad `rotate` y NO en `transform`, por la razón de
+   siempre en este archivo: el parpadeo ya usa `transform` sobre #ojos, y son
+   propiedades distintas que se componen solas. Con las dos en transform, la
+   última declarada ganaría y el parpadeo se comería la inclinación.
+   ============================================================================ */
+
+#cabeza {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+#cabeza[hidden] {
+  display: none;
+}
+
+/* EL GRUPO gira; sus hijos no saben nada. Así #ojos conserva su propio
+   transform-origin para el pivote del parpadeo, que es otro punto — un elemento
+   no puede tener dos orígenes para dos cosas distintas, y ese era el conflicto
+   que obligó a agrupar en vez de rotar las tres capas por separado. */
+#cabeza-grupo {
+  position: absolute;
+  inset: 0;
+  transform-origin: var(--pivote-cabeza-x) var(--pivote-cabeza-y);
+  pointer-events: none;
+}
+
+/* Tres tiempos, y el del medio es el que cuenta la historia: ladea, SE QUEDA
+   mirando, y vuelve. Sin la pausa el gesto se lee como un tic.
+
+   Vuelve más lento de lo que va — la curiosidad es rápida y el desinterés es
+   lento. Misma asimetría que el salto y que la respiración. Los porcentajes
+   salen de INCLINACION_CABEZA: 620 ms de entrada y 1500 de sostén sobre un
+   total de 3000, o sea 20,7% y 70,7%.
+
+   El lado lo sortea ui.js en cada gesto: siempre para el mismo lado se vuelve
+   una muletilla. */
+#cabeza-grupo.inclinada {
+  animation: ladear var(--duracion-inclinacion) both;
+}
+
+@keyframes ladear {
+  0% {
+    rotate: 0deg;
+    /* Entra con un poquito de sobrepaso: la cabeza llega, se pasa apenas y se
+       acomoda. Es el follow-through de una masa que se detiene. */
+    animation-timing-function: cubic-bezier(0.34, 1.42, 0.64, 1);
+  }
+  20.7% {
+    rotate: calc(var(--angulo-inclinacion) * var(--lado-inclinacion, 1));
+  }
+  70.7% {
+    rotate: calc(var(--angulo-inclinacion) * var(--lado-inclinacion, 1));
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    rotate: 0deg;
   }
 }

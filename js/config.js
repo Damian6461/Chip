@@ -122,6 +122,59 @@ export const POSES_IDLE = ['idle'];
 // cómo está hoy, y la variación se nota entre visitas, que es donde tiene que
 // notarse.
 
+// ---- La inclinación de cabeza ----
+//
+// Cada tanto Chip ladea la cabeza, como si algo le llamara la atención. Es el
+// único gesto del juego que no responde a nada: no lo dispara un stat ni una
+// acción, pasa solo. Eso es justamente lo que lo hace leer como que hay alguien
+// adentro.
+//
+// EL ALCANCE ES CHICO A PROPÓSITO. Girar la cabeza descubriría cuello y hombro,
+// que no están dibujados. Inclinarla dos o tres grados sobre la base del casco
+// no descubre nada — verificado componiendo el recorte girado SOBRE el sprite
+// entero, que es el caso real: a 3 grados no asoma la cabeza pintada de abajo,
+// y aguanta hasta 6. El solape del recorte sobre el torso es lo que lo permite.
+export const RUTAS_CABEZA = {
+  idle: 'sprites/idle-cabeza.webp'
+};
+
+// El pivote, en % del lienzo: la base del casco. Sale de (128, 140) sobre 256.
+export const PIVOTE_CABEZA = { x: 50, y: 54.7 };
+
+// Tres tiempos, y el del medio es el que cuenta la historia: ladea, SE QUEDA
+// mirando, y vuelve. Sin la pausa el gesto se lee como un tic.
+//
+// Vuelve más lento de lo que va: la curiosidad es rápida y el desinterés es
+// lento. Es la misma asimetría del salto y de la respiración.
+export const INCLINACION_CABEZA = {
+  angulo: 3,
+  entra: 620,
+  sostiene: 1500,
+  vuelve: 880
+};
+
+// Cada cuánto. Rango ancho a propósito: un gesto que aparece con período fijo
+// deja de ser un gesto y pasa a ser un reloj.
+export const DURACION_INCLINACION_MS =
+  INCLINACION_CABEZA.entra + INCLINACION_CABEZA.sostiene + INCLINACION_CABEZA.vuelve;
+
+export const ESPERA_INCLINACION = { min: 20_000, max: 40_000 };
+
+export const CLASE_INCLINADA = 'inclinada';
+
+export const VARS_CABEZA = {
+  giro: '--giro-cabeza',
+  pivoteX: '--pivote-cabeza-x',
+  pivoteY: '--pivote-cabeza-y',
+  angulo: '--angulo-inclinacion',
+  // Los tres tramos NO viajan por separado: los offsets de un @keyframes no
+  // admiten var(), así que 20,7% y 70,7% son literales del CSS atados a
+  // INCLINACION_CABEZA por tests/composicion.test.js. Lo que sí viaja es el
+  // total, que es lo que dura la animación.
+  total: '--duracion-inclinacion',
+  lado: '--lado-inclinacion'
+};
+
 // Recortes de la región ocular, para el parpadeo. Están alineados al MISMO
 // lienzo de 256x256 que su sprite base, así que la capa se superpone sin
 // calcular ningún offset: se dibuja en las mismas coordenadas.

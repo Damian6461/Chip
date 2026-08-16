@@ -56,6 +56,9 @@ import {
   CICLO_CHISPA_MS,
   CICLOS_POLVO_MS,
   VARS_PERSONAJE,
+  VARS_CABEZA,
+  PIVOTE_CABEZA,
+  INCLINACION_CABEZA,
   ORIGEN_PARPADEO,
   DURACION_PARPADEO_MS,
   COLOR_PARPADO,
@@ -197,6 +200,14 @@ export function variablesDeTema() {
     [VARS_PERSONAJE.duracionRayita]: ms(DURACION_RAYITA_MS),
     [VARS_PERSONAJE.duracionPulso]: ms(DURACION_PULSO_MS),
     [VARS_PERSONAJE.duracionBurbuja]: ms(DURACION_BURBUJA_MS),
+
+    // La inclinación de cabeza
+    [VARS_CABEZA.pivoteX]: pct(PIVOTE_CABEZA.x),
+    [VARS_CABEZA.pivoteY]: pct(PIVOTE_CABEZA.y),
+    [VARS_CABEZA.angulo]: `${INCLINACION_CABEZA.angulo}deg`,
+    [VARS_CABEZA.total]: ms(
+      INCLINACION_CABEZA.entra + INCLINACION_CABEZA.sostiene + INCLINACION_CABEZA.vuelve
+    ),
 
     // Las paletas de los efectos
     ...Object.entries(GRUPOS_DE_COLOR).reduce(

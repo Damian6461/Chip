@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v55';
+const CACHE_VERSION = 'chip-cache-v56';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -66,6 +66,7 @@ const ARCHIVOS_CACHE = [
   // no puede importar config.js — es el mismo carve-out del bloque de arriba.
   './sprites/idle.webp',
   './sprites/idle-ojos.webp',
+  './sprites/idle-cabeza.webp',
   './sprites/feliz-ojos.webp',
   // Está en el repo y en el caché, pero NO en RUTAS_OJOS ni en POSES_IDLE: la
   // pose sigue suspendida. El recorte existe y es correcto —256x256, alineado
