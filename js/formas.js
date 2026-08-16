@@ -54,7 +54,233 @@ const FORMAS = {
     <path d="M3 16c5-3 11-4 18-3M3 20c5-3 11-4 18-3"
       fill="none" stroke="var(--metal)" stroke-width="2.4" stroke-linecap="round"/>
     <path d="M7 15.4v1.8M12 14.6v1.8M17 14.2v1.8"
-      stroke="var(--hueco)" stroke-width="1.2" stroke-linecap="round"/>`
+      stroke="var(--hueco)" stroke-width="1.2" stroke-linecap="round"/>`,
+
+  // ---- FAMILIA A: piezas del galpón ----
+
+  'bulon-doce': `
+    <path d="M6 3h8l3 3-3 3H6L3 6z" fill="var(--metal)" stroke="var(--filo)"/>
+    <path d="M8.5 9h3v11h-3z" fill="var(--metal)" stroke="var(--filo)"/>
+    <path d="M8.5 12h3M8.5 15h3M8.5 18h3" stroke="var(--filo)" stroke-width="0.9"/>`,
+
+  // Nadie la cortó así a propósito, y por eso le gusta más.
+  'chapa-pez': `
+    <path d="M3 12c3-5 9-6 13-3l4-3v12l-4-3c-4 3-10 2-13-3z"
+      fill="var(--metal)" stroke="var(--filo)"/>
+    <circle cx="8" cy="11" r="1.1" fill="var(--hueco)"/>`,
+
+  // Lo guardó por las letras, que no sabe qué dicen.
+  'resto-embalaje': `
+    <path d="M4 6l7-2 9 3-1 12-8 2-7-3z" fill="var(--metal)" stroke="var(--filo)"/>
+    <path d="M7 10h7M7 13h5M7 16h6" stroke="var(--hueco)" stroke-width="1.4"
+      stroke-linecap="round"/>`,
+
+  // La otra mitad no apareció.
+  'media-junta': `
+    <path d="M12 3a9 9 0 0 1 0 18" fill="none" stroke="var(--metal)" stroke-width="4"/>
+    <path d="M12 3a9 9 0 0 1 0 18" fill="none" stroke="var(--filo)" stroke-width="0.9"/>
+    <path d="M12 7a5 5 0 0 1 0 10" fill="none" stroke="var(--hueco)" stroke-width="1.1"/>`,
+
+  'llave-once': `
+    <path d="M5 3l3 2-1 3 3 2 8 9-2 2-9-8-2-3-3 1-2-3z"
+      fill="var(--metal)" stroke="var(--filo)"/>
+    <circle cx="7" cy="6.5" r="1.2" fill="var(--hueco)"/>`,
+
+  // Trató de enderezarlo, no pudo, y así le gustó más.
+  'perno-doblado': `
+    <path d="M4 19c4 0 6-3 6-7s2-6 5-6" fill="none" stroke="var(--metal)"
+      stroke-width="3.4" stroke-linecap="round"/>
+    <circle cx="15.6" cy="6" r="2.6" fill="var(--metal)" stroke="var(--filo)"/>`,
+
+  // Gira y hace clic.
+  'tapa-valvula': `
+    <circle cx="12" cy="12" r="8" fill="var(--metal)" stroke="var(--filo)"/>
+    <path d="M12 4v2M12 18v2M4 12h2M18 12h2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M17.7 6.3l-1.4 1.4M7.7 16.3l-1.4 1.4"
+      stroke="var(--filo)" stroke-width="1.3" stroke-linecap="round"/>
+    <circle cx="12" cy="12" r="3" fill="var(--hueco)" stroke="var(--filo)"/>`,
+
+  // Mide hasta ochenta y siete y ahí se corta.
+  // Un rollo con la lengüeta saliendo y sus marcas. La primera versión era una
+  // sola curva y se leía como un gancho, no como una cinta.
+  'cinta-metrica': `
+    <circle cx="9" cy="11" r="7" fill="none" stroke="var(--metal)" stroke-width="2.4"/>
+    <circle cx="9" cy="11" r="3.2" fill="none" stroke="var(--metal)" stroke-width="2"/>
+    <path d="M9 18h12" fill="none" stroke="var(--metal)" stroke-width="2.6"
+      stroke-linecap="round"/>
+    <path d="M13 16.9v2.2M16 16.9v2.2M19 16.9v2.2" stroke="var(--filo)"
+      stroke-width="0.95" stroke-linecap="round"/>`,
+
+  'rodamiento': `
+    <circle cx="12" cy="12" r="9" fill="none" stroke="var(--metal)" stroke-width="2.2"/>
+    <circle cx="12" cy="12" r="3.4" fill="var(--metal)" stroke="var(--filo)"/>
+    <circle cx="12" cy="5.4" r="1.7" fill="var(--hueco)"/>
+    <circle cx="18.6" cy="12" r="1.7" fill="var(--hueco)"/>
+    <circle cx="12" cy="18.6" r="1.7" fill="var(--hueco)"/>
+    <circle cx="5.4" cy="12" r="1.7" fill="var(--hueco)"/>`,
+
+  // El resto de la manguera sigue donde estaba.
+  'trozo-manguera': `
+    <path d="M5 19c0-6 3-8 7-8s5-2 5-5" fill="none" stroke="var(--metal)"
+      stroke-width="4.4" stroke-linecap="round"/>
+    <path d="M5 19c0-6 3-8 7-8s5-2 5-5" fill="none" stroke="var(--hueco)"
+      stroke-width="1.1" stroke-linecap="round"/>`,
+
+  // ---- FAMILIA B: lo que los gigantes pierden ----
+  //
+  // Van más grandes en su lienzo que las de la familia A: son piezas de cosas
+  // enormes, y que ocupen más caja es la única forma de decir eso en 24 px.
+
+  'remache-carguero': `
+    <path d="M4 8a8 5 0 0 1 16 0z" fill="var(--metal)" stroke="var(--filo)"/>
+    <path d="M9 8h6v13l-3 2-3-2z" fill="var(--metal)" stroke="var(--filo)"/>
+    <path d="M7 6.5a6 3 0 0 1 6-1.5" fill="none" stroke="var(--hueco)"
+      stroke-width="1.2" stroke-linecap="round"/>`,
+
+  // Pesa más que su cabeza.
+  'eslabon-grua': `
+    <rect x="3" y="6" width="18" height="12" rx="6" fill="none"
+      stroke="var(--metal)" stroke-width="3.6"/>
+    <rect x="3" y="6" width="18" height="12" rx="6" fill="none"
+      stroke="var(--filo)" stroke-width="0.9"/>
+    <path d="M9 12h6" stroke="var(--hueco)" stroke-width="2.4" stroke-linecap="round"/>`,
+
+  // Todavía sirve para algo, seguro.
+  'filtro-descartado': `
+    <path d="M5 5h14v12a7 2.6 0 0 1-14 0z" fill="var(--metal)" stroke="var(--filo)"/>
+    <ellipse cx="12" cy="5" rx="7" ry="2.4" fill="var(--hueco)" stroke="var(--filo)"/>
+    <path d="M8 8v9M12 8v9M16 8v9" stroke="var(--filo)" stroke-width="1"/>`,
+
+  // El número es 4471. Chip no sabe de qué era, pero ahora lo sabe alguien.
+  'placa-numero': `
+    <rect x="2" y="7" width="20" height="10" rx="1" fill="var(--metal)" stroke="var(--filo)"/>
+    <circle cx="4.6" cy="12" r="0.9" fill="var(--hueco)"/>
+    <circle cx="19.4" cy="12" r="0.9" fill="var(--hueco)"/>
+    <path d="M7 9.5v2.2h2.4M9.4 9.5v5M11.6 9.5v2.2H14M14 9.5v5M16.2 9.5h2.4l-1.5 5M20 10.4l1-.9v5"
+      fill="none" stroke="var(--hueco)" stroke-width="1.15" stroke-linecap="round"
+      stroke-linejoin="round"/>`,
+
+  // Tan grande que no se comprime con su peso. Se subió encima igual.
+  // TRES ANILLOS Y NO CUATRO LÍNEAS. La primera versión era una pila de rayas
+  // horizontales y quedaba idéntica al `resorte`, que es exactamente lo que un
+  // objeto de una colección no puede ser: igual a otro. Los anillos en
+  // perspectiva dicen "espiral pesada" y las rayas no dicen nada.
+  'muelle-industrial': `
+    <ellipse cx="12" cy="6.5" rx="8.5" ry="2.8" fill="none" stroke="var(--metal)" stroke-width="2.8"/>
+    <ellipse cx="12" cy="12" rx="8.5" ry="2.8" fill="none" stroke="var(--metal)" stroke-width="2.8"/>
+    <ellipse cx="12" cy="17.5" rx="8.5" ry="2.8" fill="none" stroke="var(--metal)" stroke-width="2.8"/>
+    <path d="M3.5 6.5v11M20.5 6.5v11" stroke="var(--filo)" stroke-width="0.9"/>`,
+
+  // Le entra el cuerpo entero adentro. No lo hizo, pero lo pensó.
+  'guante-trabajo': `
+    <path d="M6 21v-8c0-1 1-1 1 0v-2c0-1.2 1.4-1.2 1.4 0V8c0-1.4 1.6-1.4 1.6 0v3c0-1.4 1.6-1.4 1.6 0v2l3-1c1.2-.4 1.8 1 1 1.8l-3 3v4z"
+      fill="var(--metal)" stroke="var(--filo)"/>
+    <path d="M6 18.6h9.6" stroke="var(--hueco)" stroke-width="1.2"/>`,
+
+  // Alguien la cambió y no barrió lo viejo.
+  'terminal-quemada': `
+    <path d="M3 10h9v4H3z" fill="var(--metal)" stroke="var(--filo)"/>
+    <circle cx="16" cy="12" r="5" fill="var(--metal)" stroke="var(--filo)"/>
+    <circle cx="16" cy="12" r="2.2" fill="var(--hueco)"/>
+    <path d="M3 10h4v4H3z" fill="var(--filo)"/>`,
+
+  // Del lado sin gastar todavía se lee la marca.
+  'pastilla-freno': `
+    <path d="M3 7h18v5H3z" fill="var(--metal)" stroke="var(--filo)"/>
+    <path d="M3 12h18l-2 5H5z" fill="var(--hueco)" stroke="var(--filo)"/>
+    <path d="M13 12h8l-2 5h-6z" fill="var(--metal)" stroke="var(--filo)"/>
+    <path d="M15 14.4h3" stroke="var(--filo)" stroke-width="1"/>`,
+
+  // ---- FAMILIA C: lo que entra de afuera ----
+  //
+  // TIENEN QUE NOTARSE DISTINTAS, y es deliberado: son lo único orgánico de una
+  // colección de metal. Por eso no usan --metal ni el filo negro duro del resto,
+  // sino su propia paleta cálida y contornos curvos sin ángulos. Una hoja seca
+  // en un estante de bulones dice algo que ningún bulón puede decir.
+
+  'hoja-seca': `
+    <path d="M20 4c-9 0-16 5-16 11 0 3 2 5 5 5 6 0 11-7 11-16z"
+      fill="var(--organico)" stroke="var(--organico-veta)"/>
+    <path d="M19 5C13 8 8 13 5.5 19" fill="none" stroke="var(--organico-veta)"
+      stroke-width="1.1" stroke-linecap="round"/>
+    <path d="M16 6.6c-1.6.2-2 2.6-3.6 3.2M13 9.4c-1.6.4-2 2.8-3.6 3.4M10 12.6c-1.5.5-1.8 2.6-3.2 3.2"
+      fill="none" stroke="var(--organico-veta)" stroke-width="0.85" stroke-linecap="round"/>`,
+
+  // No hay piedras adentro del galpón.
+  'piedra-lisa': `
+    <path d="M3.5 14.5c0-3.6 4-6.5 9-6.5s8.5 2.4 8.5 5.4-3.4 5.6-8.6 5.6-8.9-1.5-8.9-4.5z"
+      fill="var(--organico)" stroke="var(--organico-veta)"/>
+    <path d="M6.5 12.4c2-1.6 5-2.4 8-2.2" fill="none" stroke="var(--organico-claro)"
+      stroke-width="1.3" stroke-linecap="round"/>`,
+
+  // Miró hacia arriba un rato largo y no vio nada.
+  pluma: `
+    <path d="M19 3c-7 1-13 7-14 14l2 2c7-1 13-7 14-14z"
+      fill="var(--organico-claro)" stroke="var(--organico-veta)"/>
+    <path d="M19 3L5.6 18.4" fill="none" stroke="var(--organico-veta)" stroke-width="1.1"/>
+    <path d="M14.4 5.4l-3.2 3.2M17 8.4l-3.2 3.2M11.4 8.6l-3.2 3.2M13.8 11.8l-3.2 3.2"
+      fill="none" stroke="var(--organico-veta)" stroke-width="0.8" stroke-linecap="round"/>`,
+
+  // Se despegó entero. Chip lo estiró con cuidado.
+  'papel-humedad': `
+    <path d="M5 4c4-1 9-1 14 0-1 6-1 11 0 16-5 1-10 1-14 0 1-5 1-10 0-16z"
+      fill="var(--organico-claro)" stroke="var(--organico-veta)"/>
+    <path d="M8 8.6c2.6 1.6 5.4 1.4 8 0M8 12.4c2.6 1.6 5.4 1.4 8 0M8 16.2c2 1.2 4 1.2 6 0"
+      fill="none" stroke="var(--organico)" stroke-width="1" stroke-linecap="round"/>`,
+
+  // Bajó girando por la ventana.
+  'semilla-alas': `
+    <path d="M12 17c0-7 3-12 8-13 1 5-2 11-8 13z" fill="var(--organico-claro)"
+      stroke="var(--organico-veta)"/>
+    <path d="M12 17c0-7-3-12-8-13-1 5 2 11 8 13z" fill="var(--organico-claro)"
+      stroke="var(--organico-veta)"/>
+    <ellipse cx="12" cy="18.4" rx="2.6" ry="2.2" fill="var(--organico)"
+      stroke="var(--organico-veta)"/>`,
+
+  // ---- FAMILIA D: las rarezas ----
+
+  // No encaja con nada. No es de acá.
+  'pieza-desconocida': `
+    <path d="M12 3l5 3-1 6 4 4-4 5-6-2-5 2-2-6 3-4-1-5z"
+      fill="var(--raro)" stroke="var(--filo)"/>
+    <path d="M9.6 9.6l4.8 4.8M14.4 9.6l-4.8 4.8" fill="none" stroke="var(--hueco)"
+      stroke-width="1.3" stroke-linecap="round"/>`,
+
+  // NO SE RESUELVE NUNCA. No se distingue qué muestra, y no va a distinguirse:
+  // el borrón es la pieza, no un dibujo pendiente.
+  foto: `
+    <rect x="3.5" y="4.5" width="17" height="15" rx="0.8" fill="var(--metal)"
+      stroke="var(--filo)"/>
+    <rect x="5.5" y="6.5" width="13" height="9" fill="var(--hueco)"/>
+    <path d="M7.5 13c2-3 4 1 5.5-1.5s3 1.5 3.5 0" fill="none" stroke="var(--raro)"
+      stroke-width="1.6" stroke-linecap="round" opacity="0.55"/>
+    <circle cx="10" cy="9.6" r="1.6" fill="var(--raro)" opacity="0.4"/>`,
+
+  // NO SE RESUELVE NUNCA. La etiqueta dice una sola palabra y está borroneada.
+  'llave-etiqueta': `
+    <circle cx="6.5" cy="8" r="3.4" fill="none" stroke="var(--metal)" stroke-width="2.4"/>
+    <path d="M8.8 10.4L15 17" fill="none" stroke="var(--metal)" stroke-width="2.4"
+      stroke-linecap="round"/>
+    <path d="M13 15l1.6-1.6M15 17l1.6-1.6" stroke="var(--metal)" stroke-width="2"
+      stroke-linecap="round"/>
+    <path d="M15.5 3.5h6v5h-6l-1.4-2.5z" fill="var(--raro)" stroke="var(--filo)"/>
+    <path d="M16.6 6h3.4" stroke="var(--hueco)" stroke-width="1.4"
+      stroke-linecap="round" opacity="0.6"/>`,
+
+  // Gira sin ruido, que es raro para algo tan viejo.
+  'engranaje-dorado': `
+    <path d="M12 2l2 1.6 2.4-.6 1.2 2.2 2.4.8-.2 2.5 1.8 1.7-1.4 2.1.6 2.4-2.2 1.2-.8 2.4-2.5-.2-1.7 1.8-2.1-1.4-2.4.6-1.2-2.2-2.4-.8.2-2.5L3.4 12l1.4-2.1L4.2 7.5l2.2-1.2.8-2.4 2.5.2z"
+      fill="var(--acento)" stroke="var(--filo)"/>
+    <circle cx="12" cy="12" r="3.6" fill="var(--hueco)" stroke="var(--filo)"/>`,
+
+  // NO SE RESUELVE NUNCA. Suena cuando la mueve y no la puede abrir. Las tres
+  // marcas de al lado son el sonido, no una tapa entreabierta: la caja está
+  // cerrada y se queda cerrada.
+  'caja-suena': `
+    <path d="M4 8l8-3 8 3v9l-8 3-8-3z" fill="var(--metal)" stroke="var(--filo)"/>
+    <path d="M4 8l8 3 8-3M12 11v9" fill="none" stroke="var(--filo)" stroke-width="1"/>
+    <path d="M14.6 6.4c1.2.6 1.2 2.4 0 3M16.8 5c2 1.2 2 4.8 0 6"
+      fill="none" stroke="var(--raro)" stroke-width="1.2" stroke-linecap="round"/>`
+
 };
 
 // Silueta genérica, por si algún día entra un objeto sin forma propia: mejor un

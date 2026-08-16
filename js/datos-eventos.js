@@ -74,7 +74,92 @@ const POR_CATEGORIA = {
       id: 'evento-10',
       texto:
         'Contó la colección completa: cuarenta y una piezas. Después la contó de nuevo por el gusto de contarla.'
+    },
+
+    // ---- Familia A: piezas del galpón ----
+    // Cosas que estaban ahí. Lo que un lugar viejo deja tirado.
+    {
+      id: 'evento-a1',
+      texto:
+        'Encontró un bulón del doce. Ya tenía uno del doce, pero este está más limpio y ahora tiene dos.'
+    },
+    {
+      id: 'evento-a2',
+      texto:
+        'Una chapa recortada quedó con forma de pez. Nadie la cortó así a propósito, y por eso le gusta más.'
+    },
+    {
+      id: 'evento-a3',
+      texto:
+        'Barrió un pedazo de embalaje con letras impresas. No sabe qué dicen. Lo guardó por las letras.'
+    },
+    {
+      id: 'evento-a4',
+      texto:
+        'Encontró media junta de goma. La otra mitad no apareció y Chip volvió a buscarla dos veces.'
+    },
+    {
+      id: 'evento-a5',
+      texto:
+        'Una llave de once apareció bajo el estante. No le sirve para nada de lo que tiene, pero es una llave.'
+    },
+    {
+      id: 'evento-a6',
+      texto:
+        'El perno estaba doblado en un ángulo raro. Chip trató de enderezarlo, no pudo, y así le gustó más.'
+    },
+    {
+      id: 'evento-a7',
+      texto:
+        'Encontró una tapa de válvula que gira y hace clic. Estuvo un rato largo haciéndola clic.'
+    },
+    {
+      id: 'evento-a8',
+      texto:
+        'Una cinta métrica sin carcasa, enrollada sola. Mide hasta ochenta y siete y ahí se corta.'
+    },
+    {
+      id: 'evento-a9',
+      texto:
+        'Un rodamiento rodó desde el fondo del galpón y se detuvo contra su oruga. Chip lo miró un rato antes de guardarlo.'
+    },
+    {
+      id: 'evento-a10',
+      texto:
+        'Cortó un trozo de manguera vieja que ya no llevaba nada. El resto de la manguera sigue donde estaba.'
+    },
+
+    // ---- Familia D: las rarezas ----
+    // Cada una tiene que sentirse como un hallazgo. Y tres de las cinco NO SE
+    // RESUELVEN NUNCA —la foto no se distingue, la etiqueta está borroneada, la
+    // caja no se abre— y eso es deliberado: abren una pregunta y no la cierran.
+    // Si algún día alguien pide la respuesta, la respuesta es que no hay.
+    {
+      id: 'evento-d1',
+      texto:
+        'Encontró una pieza que no encaja con nada. La comparó con todo lo que tiene y con todo lo que vio. No es de acá.'
+    },
+    {
+      id: 'evento-d2',
+      texto:
+        'Debajo del estante había una foto muy vieja. No se distingue qué muestra. Chip la guardó igual, boca arriba.'
+    },
+    {
+      id: 'evento-d3',
+      texto:
+        'Una llave con una etiqueta escrita a mano. La etiqueta dice una sola palabra y está borroneada.'
+    },
+    {
+      id: 'evento-d4',
+      texto:
+        'Un engranaje dorado apareció donde ayer no había nada. Gira sin ruido, que es raro para algo tan viejo.'
+    },
+    {
+      id: 'evento-d5',
+      texto:
+        'Encontró una caja cerrada que suena cuando la mueve. No la puede abrir. La agita cada tanto.'
     }
+
   ],
 
   // El mundo que no lo ve.
@@ -103,7 +188,52 @@ const POR_CATEGORIA = {
       id: 'evento-15',
       texto:
         'Un robot de carga lo esquivó al pasar. Chip pensó en eso el resto del día: lo esquivó, o sea que lo vio.'
+    },
+
+    // ---- Familia B: lo que los gigantes pierden ----
+    // Cosas que se les caen sin que lo noten. Es el ÚNICO contacto real con
+    // ellos: Chip no los ve ni les habla, junta lo que se les cae.
+    {
+      id: 'evento-b1',
+      texto:
+        'Se le cayó un remache al carguero y siguió de largo. Chip esperó a que se fuera para levantarlo.'
+    },
+    {
+      id: 'evento-b2',
+      texto:
+        'Un eslabón de cadena quedó en el piso después de que la grúa terminara. Pesa más que su cabeza.'
+    },
+    {
+      id: 'evento-b3',
+      texto:
+        'Los de mantenimiento pesado tiraron un filtro usado. Chip lo revisó: todavía sirve para algo, seguro.'
+    },
+    {
+      id: 'evento-b4',
+      texto:
+        'Una placa numerada se soltó de algo grande. El número es 4471. Chip no sabe de qué era, pero ahora lo sabe alguien.'
+    },
+    {
+      id: 'evento-b5',
+      texto:
+        'Encontró un muelle tan grande que no se comprime con su peso. Se subió encima igual, para probar.'
+    },
+    {
+      id: 'evento-b6',
+      texto:
+        'Un guante enorme quedó tirado cerca del portón. Le entra el cuerpo entero adentro. No lo hizo, pero lo pensó.'
+    },
+    {
+      id: 'evento-b7',
+      texto:
+        'Una terminal eléctrica quemada, negra en un extremo. Alguien la cambió y no barrió lo viejo.'
+    },
+    {
+      id: 'evento-b8',
+      texto:
+        'Encontró una pastilla de freno gastada hasta la mitad. Del lado sin gastar todavía se lee la marca.'
     }
+
   ],
 
   // Lo que hace cuando no hace nada.
@@ -131,7 +261,38 @@ const POR_CATEGORIA = {
       id: 'evento-20',
       texto:
         'Practicó frenadas en el sector encerado. Su mejor marca: dos metros y medio de derrape. No hay testigos, lo cual la hace oficial.'
+    },
+
+    // ---- Familia C: lo que entra de afuera ----
+    // El mundo colándose por la ventana. Es lo único orgánico de una colección
+    // de metal, y existe para que la colección no sea sólo chatarra: una hoja
+    // seca en un estante de bulones dice algo que ningún bulón puede decir.
+    {
+      id: 'evento-c1',
+      texto:
+        'Entró una hoja por la ventana y aterrizó en el alféizar. Es lo único del galpón que no es de metal.'
+    },
+    {
+      id: 'evento-c2',
+      texto:
+        'Una piedra chata y lisa apareció cerca de la puerta. No hay piedras adentro del galpón.'
+    },
+    {
+      id: 'evento-c3',
+      texto:
+        'Encontró una pluma gris en el piso. Miró hacia arriba un rato largo y no vio nada.'
+    },
+    {
+      id: 'evento-c4',
+      texto:
+        'Un papel mojado se secó pegado a la pared. Se despegó entero. Chip lo estiró con cuidado.'
+    },
+    {
+      id: 'evento-c5',
+      texto:
+        'Una semilla con alas bajó girando por la ventana. Chip la siguió con la cabeza hasta que tocó el piso.'
     }
+
   ]
 };
 

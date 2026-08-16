@@ -2726,6 +2726,22 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   --acento: var(--color-humor);
   --raro: var(--color-bateria);
 
+  /* LA PALETA ORGÁNICA, sólo para la familia de lo que entra de afuera: hoja,
+     piedra, pluma, papel, semilla.
+
+     TIENEN QUE NOTARSE DISTINTAS y es deliberado, no un descuido de estilo. Son
+     lo único no metálico de una colección de metal, y si comparten el gris azulado
+     y el filo negro duro del resto, se leen como cinco chatarras más y la familia
+     deja de decir lo que existe para decir: que afuera hay otra cosa y que Chip
+     lo notó.
+
+     De ahí que sean cálidas contra un estante entero de tonos fríos, y que su
+     contorno sea un marrón del propio tinte en vez del negro que hunde las
+     formas de metal. Es la misma regla que salió de los corazones. */
+  --organico: #a08a5c;
+  --organico-claro: #c9b489;
+  --organico-veta: #5f4f2f;
+
   /* 16 px fijos eran ilegibles: en un teléfono de 390 de ancho había que ir a
      buscarlas. Atado al alto de la escena escala con el aparato y da 24 px en
      944 y 22 en 844, que es donde una silueta de 24x24 se empieza a leer. */

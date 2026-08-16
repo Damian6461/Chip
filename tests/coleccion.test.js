@@ -9,6 +9,10 @@ import {
   MAX_OBJETOS_POR_VISITA,
   TIERS_OBJETO,
   HORAS_MINIMAS_EVENTO,
+  BASES_OBJETO,
+  LIENZO_OBJETO,
+  PIEZAS_POR_ESTANTE,
+  ESTANTES,
   VUELO_OBJETO
 } from '../js/config.js';
 import { OBJETOS, objetosDelEvento, objetoPorId } from '../js/datos-objetos.js';
@@ -457,4 +461,80 @@ prueba('vuelo: la altura de config da un arco que se ve, no una diagonal', () =>
   const sube = ((hasta.y - pico.y) / alto) * 100;
   cerca(sube, VUELO_OBJETO.altura, 'sube los ' + VUELO_OBJETO.altura + ' puntos de config');
   verdadero(sube > 3, 'y más de tres puntos, que es donde deja de leerse como una recta');
+});
+
+// ---- El pool completo: 36 objetos ----
+
+prueba('pool: son 36, con la distribución que fija el brief', () => {
+  igual(OBJETOS.length, 36, 'las 8 iniciales más las 28 nuevas');
+
+  const comunes = OBJETOS.filter((o) => o.tier === TIERS_OBJETO.comun).length;
+  const raros = OBJETOS.filter((o) => o.tier === TIERS_OBJETO.raro).length;
+
+  igual(comunes, 30, 'treinta comunes');
+  igual(raros, 6, 'seis raros');
+  verdadero(raros / OBJETOS.length < 0.2, `la rareza queda en ${((raros / OBJETOS.length) * 100).toFixed(0)}%, bajo el 20% del brief`);
+});
+
+prueba('pool: cada objeto tiene su silueta dibujada', () => {
+  const sin = OBJETOS.filter((o) => !tieneForma(o.id)).map((o) => o.id);
+  igual(sin.join(', '), '', 'un objeto sin forma cae al casillero vacío y no se distingue de otro');
+});
+
+prueba('pool: cada objeto tiene su línea de apoyo medida', () => {
+  const sin = OBJETOS.filter((o) => !(o.id in BASES_OBJETO)).map((o) => o.id);
+  igual(sin.join(', '), '', 'sin base, la pieza cae al default y flota o se hunde en la tabla');
+});
+
+prueba('pool: ninguna base se sale del lienzo', () => {
+  const fuera = Object.entries(BASES_OBJETO)
+    .filter(([, v]) => v <= 0 || v > LIENZO_OBJETO)
+    .map(([k, v]) => `${k}=${v}`);
+  igual(fuera.join(', '), '', `todas entre 0 y ${LIENZO_OBJETO}`);
+});
+
+prueba('pool: no hay dos objetos con la misma silueta', () => {
+  const vistas = new Map();
+  const repetidas = [];
+
+  for (const o of OBJETOS) {
+    const svg = svgDeObjeto(o.id);
+    if (vistas.has(svg)) repetidas.push(`${vistas.get(svg)} y ${o.id}`);
+    else vistas.set(svg, o.id);
+  }
+
+  igual(repetidas.join(' | '), '', 'dos piezas idénticas en el estante no se pueden distinguir');
+});
+
+// LA FAMILIA ORGÁNICA TIENE QUE NOTARSE DISTINTA, y eso es canon, no estilo.
+//
+// Son lo único no metálico de una colección de metal, y existen para decir que
+// afuera hay otra cosa y que Chip lo notó. Si alguna vez alguien las "unifica"
+// con el resto de la paleta, la familia deja de decir eso y pasa a ser cinco
+// chatarras más. Este test es el que lo impide.
+const ORGANICOS = ['hoja-seca', 'piedra-lisa', 'pluma', 'papel-humedad', 'semilla-alas'];
+
+prueba('pool: la familia de afuera usa su propia paleta y no la del metal', () => {
+  for (const id of ORGANICOS) {
+    const svg = svgDeObjeto(id);
+    verdadero(svg.includes('--organico'), `${id} usa la paleta orgánica`);
+    verdadero(!svg.includes('var(--metal)'), `${id} NO usa el gris del metal`);
+    verdadero(!svg.includes('var(--filo)'), `${id} NO usa el filo negro duro del resto`);
+  }
+});
+
+prueba('pool: y ninguna pieza de metal se coló en la paleta orgánica', () => {
+  const coladas = OBJETOS.filter(
+    (o) => !ORGANICOS.includes(o.id) && svgDeObjeto(o.id).includes('--organico')
+  ).map((o) => o.id);
+
+  igual(coladas.join(', '), '', 'la paleta cálida es de las cinco de afuera y de ninguna más');
+});
+
+// El estante ya no es el inventario: con 36 piezas no entran. Muestra las
+// últimas y el menú muestra todas. Ver pintarEstante.
+prueba('pool: el estante no pretende mostrar las 36', () => {
+  const capacidad = PIEZAS_POR_ESTANTE * ESTANTES;
+  verdadero(capacidad < OBJETOS.length, `entran ${capacidad} y el pool son ${OBJETOS.length}`);
+  igual(capacidad, 8, 'cuatro por tabla, dos tablas');
 });

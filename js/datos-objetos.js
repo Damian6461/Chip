@@ -65,6 +65,181 @@ const CATALOGO = [
     nombre: 'Marca de derrape',
     tier: TIERS_OBJETO.comun,
     eventoId: 'evento-20'
+  },
+
+  // ---- Los 28 que completan el pool ----
+  //
+  // Cada uno sale de SU evento y de ninguno más: acá la relación es uno a uno, a
+  // diferencia de los ocho de arriba, donde el evento 8 deja tres objetos. Eso
+  // hace que el techo de MAX_OBJETOS_POR_VISITA casi nunca se toque con estos, y
+  // está bien: el techo existe para el caso raro, no para el común.
+  {
+    id: 'bulon-doce',
+    nombre: 'Bulón del doce',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-a1'
+  },
+  {
+    id: 'chapa-pez',
+    nombre: 'Chapa con forma de pez',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-a2'
+  },
+  {
+    id: 'resto-embalaje',
+    nombre: 'Resto de embalaje',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-a3'
+  },
+  {
+    id: 'media-junta',
+    nombre: 'Media junta de goma',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-a4'
+  },
+  {
+    id: 'llave-once',
+    nombre: 'Llave de once',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-a5'
+  },
+  {
+    id: 'perno-doblado',
+    nombre: 'Perno doblado',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-a6'
+  },
+  {
+    id: 'tapa-valvula',
+    nombre: 'Tapa de válvula',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-a7'
+  },
+  {
+    id: 'cinta-metrica',
+    nombre: 'Cinta métrica rota',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-a8'
+  },
+  {
+    id: 'rodamiento',
+    nombre: 'Rodamiento suelto',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-a9'
+  },
+  {
+    id: 'trozo-manguera',
+    nombre: 'Trozo de manguera',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-a10'
+  },
+  {
+    id: 'remache-carguero',
+    nombre: 'Remache del carguero',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-b1'
+  },
+  {
+    id: 'eslabon-grua',
+    nombre: 'Eslabón de la grúa',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-b2'
+  },
+  {
+    id: 'filtro-descartado',
+    nombre: 'Filtro descartado',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-b3'
+  },
+  {
+    id: 'placa-numero',
+    nombre: 'Placa con número',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-b4'
+  },
+  {
+    id: 'muelle-industrial',
+    nombre: 'Muelle industrial',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-b5'
+  },
+  {
+    id: 'guante-trabajo',
+    nombre: 'Guante de trabajo',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-b6'
+  },
+  {
+    id: 'terminal-quemada',
+    nombre: 'Terminal quemada',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-b7'
+  },
+  {
+    id: 'pastilla-freno',
+    nombre: 'Pastilla de freno gastada',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-b8'
+  },
+  {
+    id: 'hoja-seca',
+    nombre: 'Hoja seca',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-c1'
+  },
+  {
+    id: 'piedra-lisa',
+    nombre: 'Piedra lisa',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-c2'
+  },
+  {
+    id: 'pluma',
+    nombre: 'Pluma',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-c3'
+  },
+  {
+    id: 'papel-humedad',
+    nombre: 'Papel con humedad',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-c4'
+  },
+  {
+    id: 'semilla-alas',
+    nombre: 'Semilla con alas',
+    tier: TIERS_OBJETO.comun,
+    eventoId: 'evento-c5'
+  },
+  {
+    id: 'pieza-desconocida',
+    nombre: 'Pieza de ningún robot conocido',
+    tier: TIERS_OBJETO.raro,
+    eventoId: 'evento-d1'
+  },
+  {
+    id: 'foto',
+    nombre: 'Foto',
+    tier: TIERS_OBJETO.raro,
+    eventoId: 'evento-d2'
+  },
+  {
+    id: 'llave-etiqueta',
+    nombre: 'Llave con etiqueta',
+    tier: TIERS_OBJETO.raro,
+    eventoId: 'evento-d3'
+  },
+  {
+    id: 'engranaje-dorado',
+    nombre: 'Engranaje dorado',
+    tier: TIERS_OBJETO.raro,
+    eventoId: 'evento-d4'
+  },
+  {
+    id: 'caja-suena',
+    nombre: 'Lo que suena adentro',
+    tier: TIERS_OBJETO.raro,
+    eventoId: 'evento-d5'
   }
 ];
 

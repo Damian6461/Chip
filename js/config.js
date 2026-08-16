@@ -1374,6 +1374,15 @@ export const REPISA = { x: 64, y: 29.5, ancho: 26, alto: 3.4 };
 // geometría de la pared, para que el hueco entre tablas no cambie con el
 // viewport. 6,2% es lo que entra una pieza de las grandes con aire arriba: menos
 // y la fila de abajo se lee apretada contra la de arriba.
+// CUÁNTAS PIEZAS ENTRAN POR TABLA, medido y no elegido: con las tablas donde
+// están, cuatro de 27 px llenan los 110 px útiles y la quinta ya obliga a la
+// grilla a achicarlas. Con dos estantes son ocho, que es exactamente lo que el
+// pool tenía cuando la repisa era el inventario entero.
+//
+// Ahora el pool son 36 y la repisa muestra las ÚLTIMAS ocho. Ver pintarEstante:
+// el desvío está explicado ahí.
+export const PIEZAS_POR_ESTANTE = 4;
+
 export const ESTANTES = 2;
 export const SEPARACION_ESTANTES = 6.2;
 
@@ -1402,14 +1411,42 @@ export const ACHATADO_REPISA = 0.88;
 // La medición vieja fallaba por circular: se verificaba con el mismo detector
 // que la había producido. getBBox no sabe nada de esta tabla.
 export const BASES_OBJETO = {
-  'tuerca-cabeza': 20.5,
-  'cable-enrollado': 18.5,
-  resorte: 20.5,
-  'arandela-dorada': 21.5,
-  'cosa-sin-nombre': 18.98,
-  'tornillo-perfecto': 21.5,
-  'nota-tanque': 21.5,
-  'marca-derrape': 20.5
+  'tuerca-cabeza': 20.6,
+  'cable-enrollado': 18.6,
+  resorte: 20.6,
+  'arandela-dorada': 21.6,
+  'cosa-sin-nombre': 19.08,
+  'tornillo-perfecto': 21.6,
+  'nota-tanque': 21.6,
+  'marca-derrape': 20.6,
+  'bulon-doce': 20.6,
+  'chapa-pez': 18.6,
+  'resto-embalaje': 21.6,
+  'media-junta': 21.6,
+  'llave-once': 21.6,
+  'perno-doblado': 19.6,
+  'tapa-valvula': 20.6,
+  'cinta-metrica': 19.7,
+  rodamiento: 21.6,
+  'trozo-manguera': 19.6,
+  'remache-carguero': 23.6,
+  'eslabon-grua': 18.6,
+  'filtro-descartado': 20.2,
+  'placa-numero': 17.6,
+  'muelle-industrial': 20.9,
+  'guante-trabajo': 21.6,
+  'terminal-quemada': 17.6,
+  'pastilla-freno': 17.6,
+  'hoja-seca': 20.6,
+  'piedra-lisa': 19.6,
+  pluma: 19.6,
+  'papel-humedad': 21.35,
+  'semilla-alas': 21.2,
+  'pieza-desconocida': 21.6,
+  foto: 20.1,
+  'llave-etiqueta': 17.6,
+  'engranaje-dorado': 20.5,
+  'caja-suena': 20.6
 };
 
 // El alto del viewBox de las siluetas. Vive acá porque la cuenta de la base lo

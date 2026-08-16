@@ -231,10 +231,24 @@ const apiDebug = {
   // el estado y la dibuja, así que levantarla ejerce el código real.
   tirarObjetoAlPiso() {
     const estado = sesion.estado();
-    const falta = OBJETOS.find((objeto) => !estado.coleccion.includes(objeto.id));
-    if (!falta) return null;
+    let falta = OBJETOS.find((objeto) => !estado.coleccion.includes(objeto.id));
+    let coleccion = estado.coleccion;
 
-    sesion.establecerEstado({ ...estado, objetoEnPiso: falta.id });
+    // CON LA COLECCIÓN COMPLETA NO HAY NADA QUE TIRAR, y eso es correcto: sólo
+    // cae al piso lo que Chip todavía no tiene. Pero entonces el botón deja de
+    // servir justo cuando uno quiere probar, que es lo que pasó la primera vez
+    // que se intentó verificar el punto 9. Así que acá —y sólo acá, que es el
+    // panel de debug— se le saca la última pieza a la colección para poder
+    // volver a encontrarla. El juego nunca hace esto.
+    if (!falta) {
+      const ultima = coleccion[coleccion.length - 1];
+      falta = OBJETOS.find((objeto) => objeto.id === ultima);
+      if (!falta) return null;
+      coleccion = coleccion.slice(0, -1);
+    }
+
+    sesion.establecerEstado({ ...estado, coleccion, objetoEnPiso: falta.id });
+    mostrarColeccion(sesion.estado().coleccion);
     ponerEnElPiso({ id: falta.id, x: ZONA_PISO.franjas[1].x0 + 4, y: ZONA_PISO.y1 - 4 });
     return falta.id;
   },

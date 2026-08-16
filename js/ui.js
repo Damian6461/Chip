@@ -40,6 +40,7 @@ import {
   ESPERA_SEGUNDO_EVENTO_MS,
   DURACION_LLEGADA_MS,
   ESPERA_ENTRE_LLEGADAS_MS,
+  PIEZAS_POR_ESTANTE,
   CLASE_OBJETO_NUEVO,
   CLASE_OBJETO_OBTENIDO,
   RUTAS_OJOS,
@@ -1220,7 +1221,9 @@ export function mostrarGigantes(dias, hitosVistos = []) {
 // que los eventos. `nuevos` son los de esta visita, los que entran animados.
 export function mostrarColeccion(coleccion, nuevos = []) {
   objetosActuales = objetosConEstado(coleccion);
-  pintarEstante(objetosActuales, nuevos);
+  // La colección cruda viaja hasta el estante porque su ORDEN es el dato: es lo
+  // que dice cuáles son las últimas encontradas. objetosConEstado lo pierde.
+  pintarEstante(objetosActuales, nuevos, coleccion);
   pintarGrilla(objetosActuales);
 
   const titulo = document.getElementById('coleccion-titulo');
@@ -1389,12 +1392,33 @@ function nodoDeObjeto(objeto, tag = 'div') {
 // de abajo recibe el sobrante. Al revés —llenar abajo— dejaría la tabla de
 // arriba vacía durante toda la primera mitad del juego, y una repisa con un
 // estante desierto se lee como que falta algo, no como que hay lugar.
-function pintarEstante(objetos, nuevos) {
+// EL ESTANTE MUESTRA LAS ÚLTIMAS, NO TODAS, y esto es un desvío declarado.
+//
+// Con ocho piezas entraban todas y la repisa era el inventario. Con treinta y
+// seis no entran: en 110 px de tabla, dieciocho por fila dan seis píxeles por
+// pieza. La grilla del CSS las achica antes que desbordarlas, así que no se
+// rompe nada — se vuelve ilegible, que es peor, porque un inventario ilegible no
+// contesta ninguna de las dos preguntas.
+//
+// Y las dos preguntas ya estaban separadas en el código: la repisa contesta
+// "¿qué encontré?" y el menú contesta "¿cuánto me queda?". Mostrar las últimas
+// ocho contesta la primera mejor que mostrar las treinta y seis, y la segunda la
+// sigue contestando el menú, donde están todas.
+//
+// El orden es el de HALLAZGO y no el del catálogo: `coleccion` es un array en
+// orden de llegada, así que las últimas del array son las últimas encontradas.
+// objetosConEstado devuelve orden de catálogo, que para esto no sirve.
+function pintarEstante(objetos, nuevos, coleccion = []) {
   for (const fila of estantes) fila.replaceChildren();
 
   const recienLlegados = new Set(nuevos.map((o) => o.id));
-  const obtenidos = objetos.filter((o) => o.obtenido);
-  const porFila = Math.ceil(obtenidos.length / estantes.length) || 1;
+  const llegada = new Map(coleccion.map((id, i) => [id, i]));
+  const obtenidos = objetos
+    .filter((o) => o.obtenido)
+    .sort((a, b) => (llegada.get(a.id) ?? 0) - (llegada.get(b.id) ?? 0))
+    .slice(-PIEZAS_POR_ESTANTE * estantes.length);
+
+  const porFila = PIEZAS_POR_ESTANTE;
   let orden = 0;
   let puestos = 0;
 
