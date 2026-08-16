@@ -79,6 +79,7 @@ Se rompen y el proyecto se degrada rápido.
 - **El decay se calcula por diferencia de timestamps, nunca con un contador corriendo.**
 - **Nunca el shorthand `animation` en una regla que pueda pisar delays de `:nth-child`.** Se declaran las propiedades por separado, o los `animation-delay` van **después** de la regla del shorthand y con el mismo prefijo de estado. Ver abajo: mordió tres veces.
 - **Todo asset nuevo entra en `ARCHIVOS_CACHE` con su bump de `CACHE_VERSION`**, y `tests/assets.test.js` lo verifica: el cruce ya no es disciplina.
+- **Nunca medir con `getBoundingClientRect` un elemento con `transform`.** Devuelve la caja del bounding box rotado, no la del elemento. Para la caja de layout van `offsetWidth` / `offsetHeight`. Ver abajo: el instrumento miente.
 
 `main.js` orquesta: mantiene el estado vivo, resuelve el reloj y es el único con timers.
 
@@ -99,6 +100,39 @@ Lo peligroso es que **no se detecta mirando ni midiendo el resultado**: los elem
 Las burbujas de `limpiando` nunca tuvieron el problema, y no por suerte: su regla de estado usa longhands (`animation-name`, `animation-duration`, …) en vez del shorthand. Ese es el patrón a copiar.
 
 Tres veces es patrón, no casualidad. Por eso está arriba, entre las reglas de arquitectura.
+
+### Cuando el instrumento miente
+
+Cuatro veces en la misma sesión una medición dio un número correcto de una cosa
+que no era la que se estaba midiendo. Ninguna de las cuatro se detecta mirando
+el número: todos parecen razonables. Se detectan sabiendo que existen.
+
+| el instrumento | lo que devuelve | lo que uno cree que devuelve |
+|---|---|---|
+| la pestaña de automatización | los relojes de animación **congelados**: `animationend` no llega nunca y `requestAnimationFrame` no dispara | el estado de una animación corriendo |
+| `fetch` con el service worker vivo | lo que hay **en la caché**, que puede ser de tres deploys atrás | el archivo que acabás de escribir |
+| una captura durante una transición | un fotograma **a mitad de camino** | el estado final |
+| `getBoundingClientRect` sobre un elemento con `transform` | la caja **alineada a los ejes** del elemento rotado, siempre más grande | la caja del elemento |
+
+Las cuatro salidas:
+
+- **Pestaña oculta:** nada de esperar `animationend`. Se busca el momento con
+  `animacion.pause()` y `animacion.currentTime = t`. De paso es mejor método:
+  permite capturar tres momentos exactos del ciclo en vez de tres momentos que
+  cayeron donde cayeron.
+- **Service worker:** `unregister()` de todas las registraciones y `caches.delete()`
+  de todas las claves **antes de cada medición**, no una vez al principio. Se
+  vuelve a registrar en cada carga.
+- **Transiciones:** se termina lo que esté corriendo —`for (const a of
+  document.getAnimations()) a.finish()`— y recién ahí se mide.
+- **`transform`:** `offsetWidth` / `offsetHeight` para la caja de layout.
+  `getBoundingClientRect` sólo cuando lo que se quiere es justamente la caja
+  rotada en coordenadas de viewport.
+
+El caso del `transform` fue el más traicionero de los cuatro porque el error era
+**parcial**: las poses con `giro: 0` —idle y limpiando— daban el valor exacto, y
+las otras tres venían infladas cada una por su propio ángulo. Un resultado
+mezclado se parece mucho a un bug real.
 
 ---
 
