@@ -671,6 +671,19 @@ export const VARS_NUBES = {
   cicloNoche: '--ciclo-nubes-noche'
 };
 
+// ---- "Estoy bien, gracias" ----
+//
+// Cuando una acción no hace falta, el botón se apaga Y Chip contesta algo. El
+// tono es deliberado: no es "no se puede", es "ya estoy atendido". Por eso el
+// símbolo es un tilde y no una cruz, y por eso dura poco — es un acuse de
+// recibo, no un cartel de error.
+//
+// Aparece en la pantalla del pecho, que es donde Chip ya habla: usa la misma
+// caja medida y la misma fuente de píxeles que el número de batería. Inventarle
+// una burbuja de diálogo aparte habría sido un segundo idioma para lo mismo.
+export const DURACION_ESTOY_BIEN_MS = 1600;
+export const CLASE_ESTOY_BIEN = 'estoy-bien';
+
 // ---- El menú ----
 //
 // La colección se abría tocando el alféizar y nada más: un secreto que nadie
@@ -706,19 +719,35 @@ export const CLASE_SIN_MOVIMIENTO = 'sin-movimiento';
 // pantalla que no hacía nada. Es el símbolo de energía: puede comunicar estado
 // por sí solo.
 //
-// El recuadro del rayo vive a la DERECHA del cristal y adentro de la placa, en
-// su propio hueco. Medido con la misma firma de color del vidrio, acotada a esa
-// zona. En standby el hueco muestra una luna en vez de un rayo, pero está y
-// late igual: lo que se enciende es el indicador, no el símbolo.
+// DÓNDE ESTÁ EL RAYO, y la corrección que costó entenderlo: el rayo está
+// ADENTRO del cristal, a la derecha de las barritas. No es un recuadro aparte.
+//
+// La primera medición lo buscó como "hueco a la derecha del cristal" y tomó la
+// caja de contorno de todo lo que tuviera firma de vidrio en una ventana de
+// 41 px. Eso mete el marco y la hombrera: el recuadro salía de 15% de ancho en
+// vez de 4, y el rayo terminaba dibujado sobre el brazo de Chip.
+//
+// La medición buena es TEMPLATE MATCHING, un solo método para los ocho. Buscarlo
+// por color no cierra —en critico es rojo, en standby no hay rayo sino una luna—
+// y cada máscara cromática necesitaba su excepción. El rayo es el mismo dibujo
+// en todas las poses: se recorta el de idle, verificado a ojo, y se lo busca por
+// correlación normalizada en el resto.
+//
+// El puntaje además CONTESTA si el rayo está: idle 1,00 (es el patrón), limpiando
+// 0,86, cargando 0,85, critico 0,79, feliz 0,77, jugando 0,69, idle-manitos 0,52
+// —ahí el brazo levantado lo tapa a medias, y por eso baja— y standby 0,44, que
+// es el único que no tiene. La caída del puntaje es la señal, no una falla.
 export const RECUADROS_RAYO = {
-  idle: { x: 55.9, y: 59.4, ancho: 15.2, alto: 16.4 },
-  feliz: { x: 55.1, y: 59.0, ancho: 15.6, alto: 16.8 },
-  critico: { x: 52.0, y: 64.5, ancho: 11.3, alto: 14.1 },
-  standby: { x: 59.0, y: 61.7, ancho: 12.5, alto: 16.4 },
-  cargando: { x: 61.7, y: 60.2, ancho: 16.0, alto: 15.6 },
-  jugando: { x: 57.4, y: 55.1, ancho: 16.0, alto: 18.0 },
-  limpiando: { x: 55.5, y: 59.0, ancho: 14.8, alto: 17.2 },
-  'idle-manitos': { x: 57.0, y: 58.2, ancho: 15.6, alto: 15.2 }
+  idle: { x: 55.9, y: 63.3, ancho: 4.3, alto: 8.6 },
+  feliz: { x: 55.1, y: 63.7, ancho: 4.3, alto: 8.6 },
+  critico: { x: 52, y: 66.8, ancho: 4.3, alto: 8.6 },
+  // standby no tiene rayo: el display muestra una luna. La correlación se cae a
+  // 0,44 y eso es la señal, no una falla del método.
+  standby: null,
+  cargando: { x: 62.5, y: 62.9, ancho: 4.3, alto: 8.6 },
+  jugando: { x: 58.2, y: 61.3, ancho: 4.3, alto: 8.6 },
+  limpiando: { x: 55.5, y: 62.9, ancho: 4.3, alto: 8.6 },
+  'idle-manitos': { x: 57, y: 61.3, ancho: 4.3, alto: 8.6 }
 };
 
 // Los cuatro ritmos. El de reposo es más lento que el de la antena y fuera de

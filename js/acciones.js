@@ -20,6 +20,28 @@ export function puedeJugar(estado) {
   return estado.bateria >= JUGAR_BATERIA_MINIMA;
 }
 
+// ¿Esta acción cambiaría algo? Es la pregunta que faltaba, y NO es un cooldown.
+//
+// La distinción importa y es la que sostiene el modelo sin culpa: acá no hay
+// tiempo de espera, no hay penalización y nada se bloquea por reloj. Una acción
+// no aplica cuando su stat ya está al máximo — o sea, cuando NO HACE FALTA
+// porque Chip ya está atendido. La restricción es de estado, no de tiempo.
+//
+// Se apoya en el mismo STAT_OBJETIVO que usa cada acción, así que agregar una
+// acción nueva no pide tocar esto: alcanza con declarar qué stat sube.
+export const STAT_DE_ACCION = {
+  cargar: 'bateria',
+  jugar: 'humor',
+  limpiar: 'mantenimiento'
+};
+
+export function aplica(nombre, estado) {
+  if (nombre === 'jugar' && !puedeJugar(estado)) return false;
+
+  const stat = STAT_DE_ACCION[nombre];
+  return stat ? estado[stat] < STAT_MAX : true;
+}
+
 export function cargar(estado) {
   return {
     ...estado,

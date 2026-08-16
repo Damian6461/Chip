@@ -10,6 +10,8 @@ import {
   DURACION_PRESION_MS,
   VARS_ANIMACION,
   CLASE_SALTO,
+  DURACION_ESTOY_BIEN_MS,
+  CLASE_ESTOY_BIEN,
   SECCIONES_MENU,
   COLORES_PANEL,
   VERSION_JUEGO,
@@ -95,7 +97,7 @@ import {
   CICLOS_POLVO_MS,
   VARS_EFECTOS
 } from './config.js';
-import { puedeJugar } from './acciones.js';
+import { aplica, puedeJugar } from './acciones.js';
 import { obtenerSprite } from './sprites.js';
 import { objetosConEstado } from './coleccion.js';
 import { gigantesConEstado } from './gigantes.js';
@@ -108,6 +110,7 @@ import {
   svgDeBurbuja,
   svgDeToma,
   svgDePanel,
+  svgDeTilde,
   svgDeRayo,
   svgDeNumero
 } from './formas.js';
@@ -416,17 +419,52 @@ function pintarPantalla(estado, estadoVisual) {
   pantalla.style.setProperty(VARS_PANTALLA.giro, `${caja.giro}deg`);
   pantalla.style.setProperty(VARS_PANTALLA.vidrio, caja.vidrio);
 
+  estadoUltimo = estado;
+  claveUltima = estadoVisual;
+
   const bateria = Math.round(estado.bateria);
   const prendidos = segmentosEncendidos(estado.bateria);
   [...segmentosPantalla.children].forEach((seg, i) => {
     seg.classList.toggle('encendido', i < prendidos);
   });
   const texto = `${bateria}%`;
+  if (pantalla.classList.contains(CLASE_ESTOY_BIEN)) return;
   if (numeroPantalla.dataset.texto !== texto) {
     numeroPantalla.dataset.texto = texto;
     numeroPantalla.innerHTML = svgDeNumero(texto);
   }
 }
+
+// ---- "Estoy bien, gracias" ----
+//
+// La respuesta cuando una acción no hace falta. Va en la pantalla del pecho,
+// que es donde Chip ya habla, y reemplaza al número por un momento — no se
+// suma al lado, porque dos cosas en un display de 45 px no se leen.
+//
+// El tono es lo importante: un tilde y no una cruz. La acción no está
+// prohibida, es que ya está hecha.
+let temporizadorEstoyBien = null;
+
+export function responderEstoyBien() {
+  if (!pantalla || pantalla.hidden) return;
+
+  clearTimeout(temporizadorEstoyBien);
+  numeroPantalla.dataset.texto = "";
+  numeroPantalla.innerHTML = svgDeTilde();
+  pantalla.classList.add(CLASE_ESTOY_BIEN);
+
+  temporizadorEstoyBien = setTimeout(() => {
+    pantalla.classList.remove(CLASE_ESTOY_BIEN);
+    // El dataset vacío fuerza a pintarPantalla a reescribir el número en el
+    // próximo render, que llega solo con el tick o con la próxima acción.
+    numeroPantalla.dataset.texto = "";
+    pintarPantalla(estadoUltimo, claveUltima);
+  }, DURACION_ESTOY_BIEN_MS);
+}
+
+// Lo último que se pintó, para poder volver al número cuando el tilde se va.
+let estadoUltimo = null;
+let claveUltima = null;
 
 // ---- El parpadeo ----
 //
@@ -921,7 +959,27 @@ function actualizarBarras(estado) {
     barras[nombre].valor.textContent = Math.round(valor);
   }
 
+  // Las TRES teclas se apagan, pero por DOS motivos distintos, y la diferencia
+  // no es cosmética:
+  //
+  //   NO HACE FALTA  el stat ya está al máximo. La tecla queda apagada pero
+  //                  SIGUE recibiendo el toque (aria-disabled, no disabled),
+  //                  porque Chip tiene algo que contestar: "estoy bien". Con
+  //                  `disabled` de verdad el click nunca llega y el jugador se
+  //                  queda sin respuesta, que es el problema original.
+  //   NO PUEDO       jugar sin batería. Eso sí es `disabled`: no hay nada que
+  //                  decir y no hay nada que hacer hasta cargarlo.
+  //
+  // Ninguno de los dos es un cooldown. No hay reloj en ninguna parte de esto.
+  apagarSiNoHaceFalta(btnCargar, aplica('cargar', estado));
+  apagarSiNoHaceFalta(btnLimpiar, aplica('limpiar', estado));
+
   btnJugar.disabled = !puedeJugar(estado);
+  apagarSiNoHaceFalta(btnJugar, btnJugar.disabled || aplica('jugar', estado));
+}
+
+function apagarSiNoHaceFalta(boton, hace) {
+  boton.setAttribute('aria-disabled', String(!hace));
 }
 
 // Se guarda la ruta puesta para no reescribir la propiedad en cada tick y en

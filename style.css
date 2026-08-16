@@ -559,6 +559,23 @@ body.es-noche #rayo {
   50% { opacity: 0.14; }
 }
 
+/* El tilde de "estoy bien": ocupa el lugar del número por un momento y late
+   una vez al aparecer. Más grande que el número porque no compite con nada —
+   mientras está, es lo único que dice la pantalla. */
+#pantalla.estoy-bien #pantalla-segmentos {
+  opacity: 0.35;
+}
+
+#pantalla.estoy-bien #pantalla-numero svg {
+  height: 34cqh;
+  animation: aparecer-tilde 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes aparecer-tilde {
+  from { transform: scale(0.2); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
 /* ============================================================================
    EL PARPADEO
 
@@ -1743,25 +1760,42 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 
 #menu-boton {
   position: absolute;
-  top: calc(var(--esp-2) + env(safe-area-inset-top, 0px));
-  right: var(--esp-2);
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: 0;
-  background: none;
+  /* Separado del borde, no pegado: --esp-3 arriba y a la derecha, más las safe
+     areas. Contra el filo de la pantalla el pulgar lo erra y el notch se lo come. */
+  top: calc(var(--esp-3) + env(safe-area-inset-top, 0px));
+  right: calc(var(--esp-3) + env(safe-area-inset-right, 0px));
+
+  /* 44x44 DE ÁREA TÁCTIL, el mismo mínimo que ya respeta la botonera. Tenía 30,
+     que es dos tercios del target: chico para el pulgar y, ampliado, un
+     cuadradito gris indistinguible de la pared.
+     El GRÁFICO sigue siendo chico —28 px— y el padding completa el target: la
+     tecla es grande para el dedo y discreta para el ojo, que no es lo mismo. */
+  width: 44px;
+  height: 44px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Y contraste suficiente para despegarse de la pared, sin volverse un
+     elemento llamativo: un borde fino y un fondo apenas más oscuro que el
+     galpón. "Discreto" no puede significar "invisible". */
+  background: rgba(10, 13, 18, 0.5);
+  border: 1px solid rgba(150, 165, 190, 0.32);
+  border-radius: 4px;
   cursor: pointer;
-  /* Discreto de verdad: apagado hasta que lo mirás. Es mobiliario del galpón,
-     no una llamada a la acción. */
-  opacity: 0.42;
-  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
-  transition: opacity var(--duracion-presion) ease-out;
+  opacity: 0.72;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.75));
+  transition:
+    opacity var(--duracion-presion) ease-out,
+    border-color var(--duracion-presion) ease-out;
   -webkit-tap-highlight-color: transparent;
 }
 
 #menu-boton:hover,
 #menu-boton:focus-visible {
-  opacity: 0.85;
+  opacity: 1;
+  border-color: var(--color-humor);
 }
 
 #menu-boton:active {
@@ -2439,14 +2473,14 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   50% { opacity: 1; }
 }
 
-#acciones button:hover:not(:disabled) {
+#acciones button:hover:not(:disabled):not([aria-disabled='true']) {
   filter: brightness(1.12);
   color: #fff;
 }
 
 /* SE HUNDE DE VERDAD: baja 2 px —el espesor entero del canto— y el canto
    desaparece. Con 1 px y el canto puesto, la tecla se movía pero no se hundía. */
-#acciones button:active:not(:disabled) {
+#acciones button:active:not(:disabled):not([aria-disabled='true']) {
   transform: translateY(2px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -2455,18 +2489,18 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 }
 
 /* El ícono destella un instante al tocar: el surco se llena de luz. */
-#acciones button:active:not(:disabled) svg {
+#acciones button:active:not(:disabled):not([aria-disabled='true']) svg {
   stroke: var(--color-bateria);
   filter: drop-shadow(0 0 4px var(--color-bateria));
 }
 
-#btn-cargar:active:not(:disabled) svg {
+#btn-cargar:active:not(:disabled):not([aria-disabled='true']) svg {
   fill: var(--color-bateria);
   stroke: none;
 }
 
 /* Y el LED pulsa fuerte, una sola vez. */
-#acciones button:active:not(:disabled) .led {
+#acciones button:active:not(:disabled):not([aria-disabled='true']) .led {
   animation: pulso-led var(--duracion-presion) ease-out;
 }
 
@@ -2480,7 +2514,11 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
    apaga, el relieve se aplana y el LED se APAGA del todo. Que el LED esté o no
    esté es la diferencia más rápida de leer que hay — antes que el color, antes
    que el contraste. */
-#acciones button:disabled {
+/* El mismo tratamiento apagado para los dos motivos: chapa mate, relieve
+   aplanado y sin LED. Al jugador no le importa la diferencia entre "no hace
+   falta" y "no puedo" mirando la tecla — la diferencia la explica Chip. */
+#acciones button:disabled,
+#acciones button[aria-disabled='true'] {
   background: linear-gradient(180deg, #22262e 0%, #1a1e25 52%, #14171d 52.5%, #101319 100%);
   color: #6b727e;
   box-shadow:
@@ -2489,16 +2527,19 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   cursor: not-allowed;
 }
 
-#acciones button:disabled .led {
+#acciones button:disabled .led,
+#acciones button[aria-disabled='true'] .led {
   display: none;
 }
 
-#acciones button:disabled svg {
+#acciones button:disabled svg,
+#acciones button[aria-disabled='true'] svg {
   stroke: #2a2f39;
   filter: none;
 }
 
-#btn-cargar:disabled svg {
+#btn-cargar:disabled svg,
+#btn-cargar[aria-disabled='true'] svg {
   fill: #2a2f39;
 }
 

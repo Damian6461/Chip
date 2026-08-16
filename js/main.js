@@ -18,7 +18,7 @@ import {
 } from './config.js';
 import { crearEstadoNuevo, cargarEstado, guardarEstado } from './estado.js';
 import { aplicarDecay, horasTranscurridas } from './decay.js';
-import { cargar, jugar, limpiar } from './acciones.js';
+import { cargar, jugar, limpiar, aplica } from './acciones.js';
 import { elegirEventos, horasConGarantiaDiaria, diaLocal } from './eventos.js';
 import { otorgarPorEventos } from './coleccion.js';
 import { OBJETOS } from './datos-objetos.js';
@@ -41,7 +41,8 @@ import {
   mostrarGigantes,
   conectarAcciones,
   animarAccion,
-  celebrarHumor
+  celebrarHumor,
+  responderEstoyBien
 } from './ui.js';
 
 let estado = cargarEstado();
@@ -224,7 +225,14 @@ function marcarAccion(nombreVisual) {
 // Si la acción devuelve el mismo estado, no aplicó (ej: jugar sin batería):
 // no se guarda ni se redibuja. Las tres acciones tienen estado visual propio;
 // `nombreVisual` acepta null por si alguna futura no lo tuviera.
-function ejecutar(nombreVisual, accion) {
+function ejecutar(nombreVisual, accion, nombreAccion) {
+  // Si la acción no hace falta —el stat ya está al máximo— Chip contesta en vez
+  // de no hacer nada. No es un rechazo: es "ya estoy atendido".
+  if (nombreAccion && !aplica(nombreAccion, estado)) {
+    responderEstoyBien();
+    return;
+  }
+
   const siguiente = accion(estado);
   if (siguiente === estado) return;
 
@@ -340,9 +348,9 @@ conectarMenu({
 });
 
 conectarAcciones({
-  onCargar: () => ejecutar(E.cargando, cargar),
-  onJugar: () => ejecutar(E.jugando, jugar),
-  onLimpiar: () => ejecutar(E.limpiando, limpiar)
+  onCargar: () => ejecutar(E.cargando, cargar, 'cargar'),
+  onJugar: () => ejecutar(E.jugando, jugar, 'jugar'),
+  onLimpiar: () => ejecutar(E.limpiando, limpiar, 'limpiar')
 });
 
 actualizarVisual({ inmediato: true });

@@ -2,6 +2,7 @@
 // Se corren después de cualquier cambio que toque estado, decay o persistencia.
 
 import { prueba, igual, cerca, verdadero } from './runner.js';
+import { aplica, puedeJugar } from '../js/acciones.js';
 import { T0, HORAS_LARGAS, HORAS_PISO } from './config.pruebas.js';
 import { MS_POR_HORA, DECAY_FLOOR, VERSION_ESTADO } from '../js/config.js';
 import { aplicarDecay } from '../js/decay.js';
@@ -126,5 +127,51 @@ prueba('4b. sin doble decay: 2 h + 3 h da lo mismo que 5 h de una', () => {
 
   for (const stat of STATS) {
     cerca(partido[stat], entero[stat], `${stat}: partir el intervalo no cambia el total`);
+  }
+});
+
+// ---- Cuándo una acción NO hace falta ----
+//
+// La distinción que sostiene el modelo sin culpa: acá no hay cooldown, no hay
+// tiempo de espera y nada se bloquea por reloj. Una acción no aplica cuando su
+// stat ya está al máximo, o sea cuando Chip ya está atendido. La restricción es
+// de estado, no de tiempo, y estas pruebas están para que siga siendo así.
+
+const conStats = (bateria, humor, mantenimiento) => ({ bateria, humor, mantenimiento });
+
+prueba('aplica: cargar no hace falta con la batería llena', () => {
+  igual(aplica('cargar', conStats(100, 50, 50)), false, '100 no aplica');
+  igual(aplica('cargar', conStats(99.9, 50, 50)), true, '99,9 todavía aplica');
+});
+
+prueba('aplica: limpiar no hace falta con el mantenimiento lleno', () => {
+  igual(aplica('limpiar', conStats(50, 50, 100)), false, '100 no aplica');
+  igual(aplica('limpiar', conStats(50, 50, 99.9)), true, '99,9 todavía aplica');
+});
+
+prueba('aplica: jugar no hace falta con el humor lleno', () => {
+  igual(aplica('jugar', conStats(50, 100, 50)), false, 'humor 100 no aplica');
+  igual(aplica('jugar', conStats(50, 99.9, 50)), true, 'humor 99,9 aplica');
+});
+
+// Los dos motivos son distintos y los dos apagan la tecla, pero no significan lo
+// mismo: uno es "no hace falta" y el otro es "no puedo".
+prueba('aplica: jugar tampoco aplica sin batería, que es otro motivo', () => {
+  igual(aplica('jugar', conStats(14, 50, 50)), false, 'sin batería no aplica');
+  igual(puedeJugar(conStats(14, 50, 50)), false, 'y ese es el motivo de batería');
+  igual(puedeJugar(conStats(50, 100, 50)), true, 'con humor lleno la batería no es el motivo');
+});
+
+// La prueba que protege la regla de diseño: NADA de esto depende del reloj. Si
+// alguien mete un cooldown, el mismo estado dejaría de dar el mismo resultado.
+prueba('aplica: la restricción es de estado y no de tiempo', () => {
+  const estado = conStats(100, 100, 100);
+  for (const nombre of ['cargar', 'jugar', 'limpiar']) {
+    igual(aplica(nombre, estado), false, `${nombre} no aplica con todo lleno`);
+    igual(aplica(nombre, estado), false, `${nombre} sigue sin aplicar al preguntar de nuevo`);
+  }
+  const atendible = conStats(50, 50, 50);
+  for (const nombre of ['cargar', 'jugar', 'limpiar']) {
+    igual(aplica(nombre, atendible), true, `${nombre} aplica y no hay espera`);
   }
 });

@@ -211,6 +211,12 @@ export function svgDeNumero(texto) {
 const RAYO = `
   <path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="var(--rayo-color)"/>`;
 
+// El tilde de "estoy bien". Mismo grosor de trazo y mismas puntas redondeadas
+// que el resto de los íconos del juego; no es un glifo de una fuente.
+const TILDE = `
+  <path d="M4 12.5 9.5 18 20 6.5" fill="none" stroke="var(--color-bateria)"
+    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+
 // El panel de mantenimiento: la puerta del menú.
 //
 // Es diegético a propósito — no es un ícono de hamburguesa, es una cosa que
@@ -291,6 +297,10 @@ export function svgDeBurbuja() {
 }
 
 // Su propio envoltorio: es la única forma con caja no cuadrada.
+export function svgDeTilde() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${TILDE}</svg>`;
+}
+
 export function svgDePanel() {
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${PANEL}</svg>`;
 }
