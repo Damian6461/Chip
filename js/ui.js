@@ -85,6 +85,12 @@ import {
   TAMANO_TOMA,
   PERSPECTIVA_TOMA,
   VARS_TOMA,
+  VARS_REPISA,
+  REPISA,
+  ACHATADO_REPISA,
+  COLORES_REPISA,
+  FILOS_OBJETO,
+  FILO_OBJETO_POR_DEFECTO,
   COLORES_TOMA,
   VARS_LUZ,
   COLORES_BARRAS,
@@ -109,6 +115,7 @@ import {
   svgDePulso,
   svgDeBurbuja,
   svgDeToma,
+  svgDeRepisa,
   svgDePanel,
   svgDeTilde,
   svgDeRayo,
@@ -235,6 +242,27 @@ if (toma) {
 
   for (const [tono, valor] of Object.entries(COLORES_TOMA)) {
     raiz.style.setProperty(`--toma-${tono}`, valor);
+  }
+}
+
+
+// ---- La repisa alta ----
+//
+// Se dibuja una vez y no cambia nunca: es mobiliario del galpón, como la toma.
+// Su geometría entera vive en REPISA, así que mover el estante es tocar cuatro
+// números en config y nada más.
+const repisa = document.getElementById('repisa');
+
+if (repisa) {
+  repisa.innerHTML = svgDeRepisa();
+  raiz.style.setProperty(VARS_REPISA.x, `${REPISA.x}%`);
+  raiz.style.setProperty(VARS_REPISA.y, `${REPISA.y}%`);
+  raiz.style.setProperty(VARS_REPISA.ancho, `${REPISA.ancho}%`);
+  raiz.style.setProperty(VARS_REPISA.alto, `${REPISA.alto}%`);
+  raiz.style.setProperty(VARS_REPISA.achatado, String(ACHATADO_REPISA));
+
+  for (const [tono, valor] of Object.entries(COLORES_REPISA)) {
+    raiz.style.setProperty(`--repisa-${tono}`, valor);
   }
 }
 
@@ -806,14 +834,25 @@ function nodoDeObjeto(objeto, tag = 'div') {
   return nodo;
 }
 
+// En la escena van SÓLO LAS PIEZAS ENCONTRADAS.
+//
+// Antes iban también las siluetas de lo que falta, en gris oscuro. Eso convertía
+// la repisa en un marcador de progreso —ocho casilleros, unos llenos y otros
+// vacíos— y un marcador es interfaz, no mundo. Un objeto que Chip no encontró
+// todavía no está en el galpón: no hay nada que dibujar.
+//
+// Lo que falta se mira en el menú, que es donde el jugador va a preguntar
+// "¿cuánto me queda?". Esa pregunta es de menú; la repisa contesta otra:
+// "¿qué encontré?".
 function pintarEstante(objetos, nuevos) {
   estante.replaceChildren();
 
   const recienLlegados = new Set(nuevos.map((o) => o.id));
   let orden = 0;
 
-  for (const objeto of objetos) {
+  for (const objeto of objetos.filter((o) => o.obtenido)) {
     const nodo = nodoDeObjeto(objeto);
+    nodo.style.setProperty('--filo', FILOS_OBJETO[objeto.id] ?? FILO_OBJETO_POR_DEFECTO);
 
     // Los que llegaron en esta visita entran con su animación, escalonados para
     // que tres hallazgos no aparezcan de golpe.

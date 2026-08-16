@@ -211,6 +211,55 @@ export function svgDeNumero(texto) {
 const RAYO = `
   <path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="var(--rayo-color)"/>`;
 
+// La repisa alta de la pared derecha, dibujada por código.
+//
+// Está POR ENCIMA de la línea del horizonte —que en esta escena cae en el 63%
+// del alto, medida por el borde del alféizar— así que se ve DESDE ABAJO. Eso
+// manda el dibujo entero: de la cara de arriba se ve apenas una tira, lo que
+// domina es el canto frontal, y la tira de arriba se ACORTA en los extremos
+// porque el borde de atrás está más lejos. Ese trapecio de dos píxeles es todo
+// lo que hace falta para que la tabla no se lea como una barra de frente.
+//
+// Los tonos NO están elegidos a ojo. La primera versión medía 48-88 de
+// luminancia contra una pared de 35, y en azul frío contra una pared cálida
+// (RGB 41/36/33): saltaba de la escena como un elemento de interfaz. Ahora el
+// canto está apenas por encima de la pared, la cara un poco más, y lo único
+// brillante es el filo de arriba —una línea de un píxel— porque la luz entra
+// por la ventana, que está a la izquierda y es lo más claro del cuadro.
+//
+// El viewBox es 100x20 porque es una tabla ancha: así el CSS le da el largo sin
+// deformar el grosor.
+const REPISA = `
+  <defs>
+    <linearGradient id="repisa-caida" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--repisa-sombra)" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="var(--repisa-sombra)" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- la sombra que la tabla tira sobre la pared: va primero, debajo de todo -->
+  <rect x="3" y="11" width="94" height="6" fill="url(#repisa-caida)"/>
+  <!-- los dos soportes en L, atornillados a la pared. El cuerpo va más oscuro
+       que la pared —están abajo de la tabla, o sea en sombra— pero con un filo
+       encendido en el canto izquierdo, que es de donde viene la luz. Sin ese
+       filo desaparecían: 27 de luminancia contra una pared de 35 no alcanza
+       para dibujar nada a este tamaño. -->
+  <path d="M14.4 9h4v11h-4zM14.4 9h8v2.6h-8z" fill="var(--repisa-soporte)"/>
+  <path d="M14.4 9v11" stroke="var(--repisa-filo)" stroke-width="0.7" opacity="0.5"/>
+  <path d="M81 9h4v11h-4zM77 9h8v2.6h-8z" fill="var(--repisa-soporte)"/>
+  <path d="M81 9v11" stroke="var(--repisa-filo)" stroke-width="0.7" opacity="0.5"/>
+  <!-- la cara de arriba, en trapecio: el borde de atrás es más corto -->
+  <path d="M4 5.6h92l2 2H2z" fill="var(--repisa-cara)"/>
+  <!-- el canto frontal, que es lo que más se ve desde acá abajo -->
+  <path d="M2 7.6h96v3.4H2z" fill="var(--repisa-canto)"/>
+  <!-- el filo iluminado de arriba. Una línea sola: es el único brillo que se
+       permite, y viene de la ventana, que está a la izquierda -->
+  <path d="M5 5.9h90" stroke="var(--repisa-filo)" stroke-width="0.9"
+    stroke-linecap="round" opacity="0.8"/>
+  <!-- las dos cabezas de bulón sobre los soportes: chapa de galpón, no un
+       mueble. Son lo que dice que la tabla está atornillada a algo -->
+  <circle cx="16.7" cy="9.3" r="0.9" fill="var(--repisa-filo)" opacity="0.45"/>
+  <circle cx="83.3" cy="9.3" r="0.9" fill="var(--repisa-filo)" opacity="0.45"/>`;
+
 // El tilde de "estoy bien". Mismo grosor de trazo y mismas puntas redondeadas
 // que el resto de los íconos del juego; no es un glifo de una fuente.
 const TILDE = `
@@ -297,6 +346,10 @@ export function svgDeBurbuja() {
 }
 
 // Su propio envoltorio: es la única forma con caja no cuadrada.
+export function svgDeRepisa() {
+  return `<svg viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true">${REPISA}</svg>`;
+}
+
 export function svgDeTilde() {
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${TILDE}</svg>`;
 }

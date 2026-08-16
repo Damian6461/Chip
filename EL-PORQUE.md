@@ -443,3 +443,95 @@ Las teclas se apagan por **dos motivos distintos que se ven igual pero no signif
 Y Chip contesta con un **tilde** en la pantalla del pecho, con las barritas atenuadas detrás. Va ahí porque es donde Chip ya habla —misma caja medida, misma fuente de píxeles que el número— en vez de inventarle una burbuja de diálogo aparte, que sería un segundo idioma para lo mismo. Es un tilde y no una cruz: la acción no está prohibida, ya está hecha.
 
 **Nada de esto es un cooldown**, y esa distinción sostiene el modelo sin culpa: no hay tiempo de espera, no hay penalización y nada se bloquea por reloj. La restricción es de **estado**. Hay una prueba dedicada a eso —el mismo estado da el mismo resultado dos veces seguidas, y con los stats a medias las tres acciones aplican sin espera— para que un cooldown metido más adelante la rompa en vez de colarse.
+
+## Dónde apoyar la colección: tres candidatas y una medición
+
+Los objetos vivían en el alféizar de la ventana, a media altura y al lado de
+Chip. El diagnóstico fue exacto: se leían como iconos de interfaz pegados sobre
+el galpón, no como cosas del mundo. Dos motivos, y ninguno era el dibujo de las
+piezas.
+
+El primero es la altura. A la altura de la cara de Chip y contra la ventana
+iluminada, cuatro siluetas en fila compiten con el personaje y ocupan el lugar
+donde el ojo espera información, no mundo. El segundo es que no apoyaban en
+nada: el alféizar es una línea, no una superficie, y una cosa que no tiene
+debajo un objeto que la sostenga flota.
+
+Mudarlas arriba de todo choca con que **en la zona superior no hay superficie**.
+Las tres candidatas, y la medición que decidió:
+
+**El travesaño superior del marco de la ventana.** Descartada por el dibujo
+mismo: en las cuatro panorámicas no es un travesaño horizontal sino una moldura
+en diagonal, y está sobre el cielo. Los objetos quedarían a contraluz, que es
+justo el caso donde el contorno oscuro deja de despegar la forma y empieza a
+comérsela.
+
+**La repisa que forma el borde del portón.** Descartada al mirar de cerca: lo
+que parecía un saliente es una costura de chapa. No hay dónde apoyar nada.
+
+**Un estante alto en la pared derecha, dibujado por código.** Elegida. La pared
+se midió banda por banda —desvío estándar del brillo en franjas del 2% del alto,
+sobre la columna x 58-96%— y da esto:
+
+    y  8%   media  32   desvío  8.1   liso
+    y 12%   media  35   desvío  8.2   liso
+    y 16%   media  36   desvío  8.2   liso
+    y 20%   media  37   desvío  8.3   liso
+    y 24%   media  38   desvío  9.8
+    y 26%   media  38   desvío 12.7   <- costura de panel
+    y 28%   media  39   desvío  8.9   liso
+
+Entre el 8% y el 22% la pared es plana y oscura, y en 24-26% hay una costura de
+panel. El estante quedó en el 19,5%: sobre pared limpia y justo encima de la
+costura, que le da apoyo visual. Chip arranca en el 38% y el botón del menú
+termina en el 7%, así que no se pisa con ninguno de los dos.
+
+### Los tonos de la tabla no se eligen a ojo
+
+La primera versión usó el azul-gris de la chapa del resto del juego. Medida
+contra la pared donde iba, daba 74 de luminancia en la cara y 50 en el canto
+contra una pared de **35 de media, y cálida** (RGB 41/36/33). El resultado fue
+una barra clara y fría flotando sobre un galpón oscuro y cálido: exactamente el
+problema que veníamos a arreglar, ahora en la tabla en vez de en las piezas.
+
+Los tonos definitivos están escalonados contra esa media: canto 43 (apenas
+arriba de la pared), cara 60, soporte 27 (**debajo** de la pared, porque los
+soportes están en sombra) y un único filo brillante de 112 en una línea de un
+píxel, que viene de la ventana. Todos en la familia cálida.
+
+### Lo que hace que una pieza "apoye"
+
+Tres cosas, y las tres se descubrieron mirando en zoom, no midiendo:
+
+1. **La base de la forma no es la base de la caja.** Las ocho siluetas están en
+   un viewBox de 24x24 y ninguna llega al borde de abajo: la tuerca termina en
+   20, la arandela en 21,5, la cosa-sin-nombre en 19. Sin corregirlo, las piezas
+   flotaban entre 3 y 6 px sobre la tabla — a este tamaño, la diferencia entre
+   "apoyada" y "pegada en la pared".
+2. **La sombra de contacto tiene que estar pegada**, angosta y casi tapada por
+   el filo de la tabla. Una sombra que se ve entera es la de una cosa que flota.
+3. **Cuatro piezas perfectamente alineadas siguen siendo cuatro iconos.** Lo que
+   las convierte en cosas puestas es la irregularidad: una torcida, otra un poco
+   más atrás y más apagada. El escalonado es por `:nth-child` y no al azar,
+   porque una pieza que cambia de inclinación entre render y render se lee como
+   un glitch — el mismo motivo por el que la pose de idle se elige una vez por
+   sesión.
+
+### La repisa llena
+
+Con la colección completa no entran ocho siluetas legibles en el largo de la
+tabla, y hay que elegir qué se rompe. Achicarlas hasta que entren las deja en
+17 px, que es de donde veníamos. Dos filas ponen la de arriba flotando. Mostrar
+sólo las últimas cinco esconde cosas que el jugador encontró.
+
+Se amontonan, que además es lo que pasa de verdad. Pero amontonadas **todas al
+mismo plano** se funden en un borrón: probado, y se ve exactamente así. Lo que
+las separa es la profundidad — una de cada dos se corre para atrás, más chica y
+más oscura, y entonces cada una se recorta contra su vecina.
+
+### Lo que falta salió de la escena
+
+Antes iban también las siluetas en gris de lo que faltaba. Eso convertía la
+repisa en un marcador de progreso, y un marcador es interfaz. Un objeto que Chip
+no encontró todavía no está en el galpón: no hay nada que dibujar. La pregunta
+"¿cuánto me queda?" es de menú; la repisa contesta otra, "¿qué encontré?".

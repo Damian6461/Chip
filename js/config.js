@@ -684,6 +684,77 @@ export const VARS_NUBES = {
 export const DURACION_ESTOY_BIEN_MS = 1600;
 export const CLASE_ESTOY_BIEN = 'estoy-bien';
 
+// ---- La repisa alta ----
+//
+// Los objetos estaban en el alféizar, a media altura y al lado de Chip, y se
+// leían como iconos de interfaz pegados sobre el galpón: tres formas sueltas
+// en el aire contra la pared.
+//
+// DÓNDE SE APOYAN AHORA, y por qué esta y no las otras dos candidatas:
+//
+//   la pared derecha  ELEGIDA. Medida banda por banda, es plana y oscura entre
+//                     el 8% y el 22% del alto —desvío estándar de 8 sobre una
+//                     media de 35— y tiene una costura de panel justo debajo,
+//                     en 24-26%, que le da a la repisa dónde apoyarse.
+//                     Lejos de Chip, que arranca en el 38%. Y el fondo oscuro
+//                     hace que las piezas metálicas se despeguen solas.
+//   el travesaño de   Descartada: no es horizontal, es una moldura en diagonal,
+//   la ventana        y está sobre el cielo. Los objetos quedarían a contraluz,
+//                     que es justo donde el contorno oscuro deja de servir.
+//   la repisa del     Descartada: lo que parecía un borde es una costura de
+//   portón            chapa, no un saliente. No hay dónde apoyar.
+//
+// La repisa se dibuja por código, con los soportes en L y el canto frontal.
+export const REPISA = { x: 56, y: 19.5, ancho: 40, alto: 4.2 };
+
+// Está por encima del horizonte —el borde del alféizar, en el 63% del alto— así
+// que se ve DESDE ABAJO. Los objetos se achatan un poco en vertical y su base
+// queda tapada por el canto de la tabla, que es exactamente lo que pasa cuando
+// mirás una repisa alta.
+export const ACHATADO_REPISA = 0.88;
+
+// El contorno de cada pieza en un tono OSCURO DE SU PROPIO COLOR, no negro. Es
+// la regla que salió de los corazones: el negro hunde la forma, y un tono
+// oscuro del mismo tinte la despega sin ensuciarla. Las piezas de metal comparten
+// el azul-gris; las dos de acento tienen el suyo.
+export const FILOS_OBJETO = {
+  'arandela-dorada': '#5a3a10',
+  'cosa-sin-nombre': '#00404d',
+  'nota-tanque': '#5a3a10'
+};
+export const FILO_OBJETO_POR_DEFECTO = '#1b222c';
+
+// Los colores de la tabla, MEDIDOS contra la pared donde va, no elegidos a ojo.
+//
+// La primera versión usaba el azul-gris del resto de la chapa —cara 74, canto 50
+// de luminancia— y contra una pared que mide 35 de media y es CÁLIDA (RGB 41/36/33)
+// se leía como una barra de interfaz apoyada encima del galpón. El problema era
+// doble: demasiado clara y del tinte equivocado.
+//
+// Los tonos de ahora están todos en la familia cálida de la pared, y escalonados
+// contra su media de 35:
+//
+//   canto     43   apenas arriba de la pared: se despega sin gritar
+//   cara      60   la tira de arriba, que recibe algo de luz
+//   filo     112   una línea de un píxel, y el único brillo permitido
+//   soporte   27   DEBAJO de la pared: los soportes están en sombra
+//   sombra     -   negro cálido para la caída sobre la pared
+export const COLORES_REPISA = {
+  cara: '#403c34',
+  canto: '#2e2b26',
+  filo: '#7d6f56',
+  soporte: '#1d1b18',
+  sombra: '#0a0806'
+};
+
+export const VARS_REPISA = {
+  x: '--repisa-x',
+  y: '--repisa-y',
+  ancho: '--repisa-ancho',
+  alto: '--repisa-alto',
+  achatado: '--repisa-achatado'
+};
+
 // ---- El menú ----
 //
 // La colección se abría tocando el alféizar y nada más: un secreto que nadie
