@@ -60,6 +60,11 @@ import {
   VARS_SOMBRA,
   PANTALLAS_PECHO,
   RECUADROS_RAYO,
+  ABERTURA_VENTANA,
+  CICLO_NUBES_MS,
+  CICLO_NUBES_NOCHE_MS,
+  COLORES_NUBE,
+  VARS_NUBES,
   CICLO_RAYO_MS,
   CICLO_RAYO_CRITICO_MS,
   CICLO_RAYO_NOCHE_MS,
@@ -149,6 +154,12 @@ raiz.style.setProperty(VARS_ANIMACION.transicionPanel, `${TRANSICION_PANEL_MS}ms
 raiz.style.setProperty(VARS_ANIMACION.duracionLlegada, `${DURACION_LLEGADA_MS}ms`);
 raiz.style.setProperty(VARS_CAMBIO.duracionSquash, `${DURACION_SQUASH_MS}ms`);
 raiz.style.setProperty(VARS_RAYO.ciclo, `${CICLO_RAYO_MS}ms`);
+raiz.style.setProperty(VARS_NUBES.x, `${ABERTURA_VENTANA.x}%`);
+raiz.style.setProperty(VARS_NUBES.y, `${ABERTURA_VENTANA.y}%`);
+raiz.style.setProperty(VARS_NUBES.ancho, `${ABERTURA_VENTANA.ancho}%`);
+raiz.style.setProperty(VARS_NUBES.alto, `${ABERTURA_VENTANA.alto}%`);
+raiz.style.setProperty(VARS_NUBES.ciclo, `${CICLO_NUBES_MS}ms`);
+raiz.style.setProperty(VARS_NUBES.cicloNoche, `${CICLO_NUBES_NOCHE_MS}ms`);
 raiz.style.setProperty(VARS_RAYO.cicloCritico, `${CICLO_RAYO_CRITICO_MS}ms`);
 raiz.style.setProperty(VARS_RAYO.cicloNoche, `${CICLO_RAYO_NOCHE_MS}ms`);
 
@@ -814,6 +825,12 @@ function pintarFondo(franja, esNoche, cruce = null) {
   // difuminado del body leen la misma custom property, así el swap las mueve
   // juntas y no hay forma de que queden en fondos distintos.
   raiz.style.setProperty(VARS_FONDO.actual, `url("${ruta}")`);
+
+  // Las nubes toman el color del momento: blancas al mediodía, doradas al
+  // atardecer, casi invisibles de noche.
+  const nube = COLORES_NUBE[franja.nombre] ?? COLORES_NUBE.mediodia;
+  raiz.style.setProperty(VARS_NUBES.color, nube.color);
+  raiz.style.setProperty(VARS_NUBES.alfa, String(nube.alfa));
 
   // Y el mismo dato como clase, para lo que cambia de ritmo y no de imagen.
   document.body.classList.toggle(CLASE_NOCHE, esNoche);

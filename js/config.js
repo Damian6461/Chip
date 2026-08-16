@@ -616,6 +616,53 @@ export const SEGMENTOS_PANTALLA = 6;
 export const CAJA_SEGMENTOS = { x: 16, y: 22, ancho: 68, alto: 31 };
 export const CAJA_NUMERO = { y: 66, alto: 20 };
 
+// ---- Las nubes de la ventana ----
+//
+// La abertura, medida sobre fondo-mediodia aislando la componente conexa de
+// cielo (azul saturado y claro): x 2,8% a 38,3% de la escena, y 5,6% a 58,9%.
+// Son 171 x 502 px de escena — una ventana alta y angosta, que ahora ocupa más
+// de la mitad del alto.
+export const ABERTURA_VENTANA = { x: 2.8, y: 5.6, ancho: 35.5, alto: 53.3 };
+
+// DECISIÓN: las nubes se generan por código y se mueven ENCIMA del cielo
+// pintado, en vez de recortar las de la panorámica y desplazarlas.
+//
+// Recortarlas no cierra por dos motivos medidos. Uno: la abertura tiene 171 px
+// de ancho en la panorámica, así que deslizar una copia de la imagen mete el
+// marco de la ventana en cuadro después de veinte píxeles — muy lejos de "una
+// vuelta cada varios minutos". Dos: para que el loop fuera de verdad infinito
+// habría que sacar el parche de cielo a un archivo aparte y hacerlo tileable, y
+// eso son cuatro assets nuevos justo cuando el peso de instalación es la
+// prioridad número uno.
+//
+// Generadas, el loop es exacto por construcción —la banda se repite y se
+// desplaza justo un ancho de patrón—, no pesan un byte, y el cielo del artista
+// queda intacto abajo: estas nubes pasan por delante, no lo reemplazan.
+export const CICLO_NUBES_MS = 240_000;
+export const CICLO_NUBES_NOCHE_MS = 540_000;
+
+// El color de las nubes sale del momento del día: blancas al mediodía, lilas al
+// amanecer, doradas al atardecer y casi invisibles de noche. Es el mismo
+// criterio que el resto de la escena — nada tiene color propio, todo lo toma de
+// la hora.
+export const COLORES_NUBE = {
+  amanecer: { color: '#ffffff', alfa: 0.2 },
+  mediodia: { color: '#ffffff', alfa: 0.3 },
+  atardecer: { color: '#ffe6b8', alfa: 0.26 },
+  noche: { color: '#93a6d8', alfa: 0.07 }
+};
+
+export const VARS_NUBES = {
+  x: '--ventana-x',
+  y: '--ventana-y',
+  ancho: '--ventana-ancho',
+  alto: '--ventana-alto',
+  color: '--nube-color',
+  alfa: '--nube-alfa',
+  ciclo: '--ciclo-nubes',
+  cicloNoche: '--ciclo-nubes-noche'
+};
+
 // ---- El rayo del pecho ----
 //
 // Estaba dibujado al lado de las barritas y era el único elemento de la

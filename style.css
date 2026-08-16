@@ -134,6 +134,59 @@ body {
   );
 }
 
+/* ---- Las nubes de la ventana ----
+
+   Generadas por código y desplazándose por delante del cielo pintado. El
+   porqué está en config.js: la abertura tiene 171 px de ancho, así que correr
+   una copia de la panorámica mete el marco en cuadro enseguida, y sacar el
+   parche de cielo a un archivo aparte serían cuatro assets nuevos.
+
+   El loop es exacto por construcción: la banda mide el doble de la ventana, el
+   patrón se repite cada mitad, y la animación la corre justo una mitad. No hay
+   costura posible. */
+#nubes {
+  position: absolute;
+  left: var(--ventana-x);
+  top: var(--ventana-y);
+  width: var(--ventana-ancho);
+  height: var(--ventana-alto);
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  /* Se desvanece contra los bordes de la abertura: sin esto, una nube cortada
+     en el filo del marco delata que hay una capa encima. */
+  -webkit-mask-image: radial-gradient(ellipse 78% 88% at 50% 42%, #000 55%, transparent 100%);
+  mask-image: radial-gradient(ellipse 78% 88% at 50% 42%, #000 55%, transparent 100%);
+}
+
+/* Cuatro cúmulos de tamaños y alturas distintas. Los radial-gradient son
+   elipses anchas y bajas, que es la forma de un cúmulo visto de lejos; con
+   círculos quedarían pompas. El background-size al 50% es lo que hace que el
+   patrón se repita dos veces en la banda. */
+.banda {
+  position: absolute;
+  inset: 0;
+  width: 200%;
+  background-image:
+    radial-gradient(ellipse 26% 9% at 18% 22%, rgb(from var(--nube-color) r g b / var(--nube-alfa)) 0%, transparent 70%),
+    radial-gradient(ellipse 20% 7% at 41% 14%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.8)) 0%, transparent 72%),
+    radial-gradient(ellipse 30% 11% at 33% 38%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.65)) 0%, transparent 68%),
+    radial-gradient(ellipse 22% 8% at 8% 52%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.55)) 0%, transparent 70%);
+  background-size: 50% 100%;
+  background-repeat: repeat-x;
+  animation: derivar-nubes var(--ciclo-nubes) linear infinite;
+}
+
+/* De noche el movimiento es aún más lento. */
+body.es-noche .banda {
+  animation-duration: var(--ciclo-nubes-noche);
+}
+
+@keyframes derivar-nubes {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 /* La panorámica saliente. Usa EXACTAMENTE el mismo encuadre que #escena —mismo
    background-size, misma cuenta de corrimiento— porque si no, el crossfade se
    vería como un desplazamiento lateral en vez de una disolvencia. */
@@ -2205,6 +2258,12 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
      disolvencia. El galpón correcto aparece de una. */
   #fondo-anterior.cruzando-fondo {
     display: none;
+    animation: none;
+  }
+
+  /* Las nubes se quedan quietas. La ventana sigue teniendo nubes: lo que se
+     va es la deriva. */
+  .banda {
     animation: none;
   }
 
