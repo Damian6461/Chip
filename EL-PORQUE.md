@@ -407,3 +407,39 @@ La tecla apretada **sigue avisando** con reduced-motion: se le apaga el viaje de
 De los efectos de vida se van los cinco menos uno: **la sombra queda**, estática y en su tamaño medio, porque su trabajo es anclar a Chip al piso y eso lo hace igual de quieta. Verificado en el peor caso —de día y con `standby` forzado, que es cuando más cosas pueden estar prendidas—: **0 animaciones**, glow, Z, chispas y polvo en `display: none`, la sombra visible en `scaleX(0.94)` y el canvas dibujado.
 
 Los selectores del bloque `@media` repiten los que prenden cada efecto (`.estado-standby .zeta`, no `.zeta`): con el selector corto perderían por especificidad aunque vengan después.
+
+---
+
+## El rayo del pecho: cómo se mide algo que cambia de color
+
+El rayo se ubicó primero buscándolo como **hueco a la derecha del cristal**, tomando la caja de contorno de todo lo que tuviera firma de vidrio en una ventana de 41 px. El error: eso mete el marco y la hombrera. Los recuadros salían de 11 a 16% de ancho —terminando en el 63-78% del lienzo— y el rayo quedaba dibujado **sobre el brazo de Chip**.
+
+La medición buena es **template matching**, y es un solo método para los ocho sprites. Buscarlo por color no cierra: en `critico` el rayo es rojo y en `standby` no hay rayo sino una luna, así que cada máscara cromática necesitaba su excepción. Pero el rayo es el **mismo dibujo** en todas las poses: se recorta el de `idle` —verificado a ojo— y se lo busca por correlación normalizada en el resto, comparando forma y no brillo absoluto.
+
+Lo mejor del método es que **el puntaje contesta si el rayo está**:
+
+| sprite | correlación | |
+|---|---|---|
+| idle | 1,00 | es el patrón |
+| limpiando | 0,86 | |
+| cargando | 0,85 | |
+| critico | 0,79 | el rayo es rojo y la correlación no se entera |
+| feliz | 0,77 | |
+| jugando | 0,69 | |
+| idle-manitos | 0,52 | el brazo levantado lo tapa a medias |
+| standby | 0,44 | **no hay rayo**: el display muestra una luna |
+
+La caída del puntaje es la señal, no una falla del método. Las cajas pasaron de 11-16% de ancho a 4,3%.
+
+## "Estoy bien, gracias": por qué no es un cooldown
+
+Con los stats al máximo los tres botones quedaban encendidos y no hacían nada al tocarlos. La corrección tiene dos mitades y la segunda es la que importa.
+
+Las teclas se apagan por **dos motivos distintos que se ven igual pero no significan lo mismo**:
+
+- **No hace falta** — el stat está al máximo. La tecla queda apagada pero **sigue recibiendo el toque** (`aria-disabled`, no `disabled`), porque Chip tiene algo que contestar. Con `disabled` de verdad el click nunca llega y el jugador se queda sin respuesta, que es exactamente el problema original.
+- **No puedo** — jugar sin batería. Eso sí es `disabled`: no hay nada que decir y no hay nada que hacer hasta cargarlo.
+
+Y Chip contesta con un **tilde** en la pantalla del pecho, con las barritas atenuadas detrás. Va ahí porque es donde Chip ya habla —misma caja medida, misma fuente de píxeles que el número— en vez de inventarle una burbuja de diálogo aparte, que sería un segundo idioma para lo mismo. Es un tilde y no una cruz: la acción no está prohibida, ya está hecha.
+
+**Nada de esto es un cooldown**, y esa distinción sostiene el modelo sin culpa: no hay tiempo de espera, no hay penalización y nada se bloquea por reloj. La restricción es de **estado**. Hay una prueba dedicada a eso —el mismo estado da el mismo resultado dos veces seguidas, y con los stats a medias las tres acciones aplican sin espera— para que un cooldown metido más adelante la rompa en vez de colarse.
