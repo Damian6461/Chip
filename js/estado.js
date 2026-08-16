@@ -23,6 +23,13 @@ export function crearEstadoNuevo() {
     ultimosEventosIds: [...EVENTOS_INICIALES_IDS],
     // Los ids de lo que Chip ya juntó. Ver coleccion.js.
     coleccion: [...COLECCION_INICIAL],
+    // El id de lo que quedó TIRADO en el piso y todavía no se levantó, o null.
+    //
+    // Se persiste el id y NO la posición, y esa asimetría es la regla del punto:
+    // el objeto sobrevive a la sesión —a la próxima visita Chip lo guarda solo—
+    // pero su lugar en el piso no, porque no hay ninguna visita en la que ese
+    // lugar se vuelva a usar. Guardarlo sería guardar un dato que nadie lee.
+    objetoEnPiso: null,
     // Último día calendario en que la visita mostró eventos, para la garantía
     // diaria. null en una partida nueva: la primera visita ya cuenta como día
     // sin estrenar y trae algo.
@@ -38,9 +45,9 @@ export function crearEstadoNuevo() {
     // anterior en vez de aparecer ya cambiado. null en una partida nueva —no
     // hay desde dónde venir, así que el primer arranque no hace fade.
     ultimaFranja: null,
-    // Lo que el jugador eligió. Es un objeto y no un campo suelto porque va a
-    // crecer —el sonido entra acá cuando exista— y así cada ajuste nuevo lo
-    // trae el merge-con-defaults sin tocar la migración.
+    // Lo que el jugador eligió. Es un objeto y no un campo suelto porque crece
+    // —el sonido ya entró acá— y así cada ajuste nuevo lo trae el
+    // merge-con-defaults sin tocar la migración.
     // El sonido arranca APAGADO, y no por prudencia: los navegadores bloquean el
     // audio sin un gesto del usuario, así que un ambiente que arrancara solo no
     // sonaría igual y dejaría la app en un estado indistinguible de un bug.

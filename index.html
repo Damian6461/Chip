@@ -265,6 +265,11 @@
   <div id="repisa" aria-hidden="true"></div>
   <div id="estante" role="button" tabindex="0" aria-label="Ver la colección de Chip"></div>
 
+  <!-- Lo que Chip encontró mientras no estabas y no llegó a guardar. Aparece
+       solo a veces, ya tirado en el piso cuando abrís, y se levanta tocándolo.
+       El nodo existe siempre y arranca vacío: quién lo llena es ui.js. -->
+  <div id="piso" hidden></div>
+
   <!-- La colección entera. Se abre tocando el rincón. -->
   <div id="coleccion" hidden>
     <p id="coleccion-titulo">Lo que juntó</p>

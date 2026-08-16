@@ -137,7 +137,15 @@ const CADENA_ESTADOS = [
   // quedarse sin batería. Dormido no se aguanta nada —Chip no se entera— y con
   // la batería en rojo el aviso urgente es el otro. Arriba de feliz porque es
   // inmediato: está pasando ahora, del otro lado de la pared.
-  { nombre: E.esperando, condicion: (c) => c.gigantePasando === true },
+  //
+  // La misma cara sirve para las dos cosas y no es reciclaje: `esperando` es
+  // "los brazos cruzados", y eso es lo que hace cuando pasa un gigante y también
+  // cuando le levantás del piso algo que él tenía ahí. La lectura del segundo
+  // caso es "lo tenía ahí y vos me lo ordenaste".
+  {
+    nombre: E.esperando,
+    condicion: (c) => c.gigantePasando === true || c.leOrdenaron === true
+  },
   {
     nombre: E.feliz,
     condicion: (c) =>
@@ -149,11 +157,13 @@ const CADENA_ESTADOS = [
 // Fallback de la cadena: si ninguna condición se cumpliera, se cae a idle.
 const ESTADO_POR_DEFECTO = E.idle;
 
-// contexto: { estado, ahora, accion, gigantePasando }. `ahora` es un timestamp
-// en ms y no tiene default a propósito — el reloj lo pone el llamador, igual que
-// en aplicarDecay. `accion` es el nombre del estado de acción en curso, o null.
-// `gigantePasando` es true mientras se está leyendo un evento de la categoría
-// `grandes`, y lo decide main.js: acá no hay timers.
+// contexto: { estado, ahora, accion, gigantePasando, leOrdenaron }. `ahora` es un
+// timestamp en ms y no tiene default a propósito — el reloj lo pone el llamador,
+// igual que en aplicarDecay. `accion` es el nombre del estado de acción en curso,
+// o null. `gigantePasando` es true mientras se está leyendo un evento de la
+// categoría `grandes` y `leOrdenaron` mientras dura el fastidio de que le
+// levanten del piso una pieza; los dos los decide la sesión, que es la que tiene
+// los timers. Acá no hay ninguno.
 export function resolverEstadoVisual(contexto) {
   for (const entrada of CADENA_ESTADOS) {
     if (entrada.condicion(contexto)) return entrada.nombre;

@@ -12,7 +12,7 @@
 // el reloj de pared, los timers de verdad, el service worker y el panel de
 // debug. Y el estado vivo ya no vive acá: lo tiene la sesión.
 
-import { MS_POR_HORA, FRANJAS_DIA, DURACION_CRUCE_APERTURA_MS, TICK_VISUAL_MS, ESTADOS_VISUALES as E, PARAM_DEBUG, RUTA_SW } from './config.js';
+import { MS_POR_HORA, FRANJAS_DIA, DURACION_CRUCE_APERTURA_MS, TICK_VISUAL_MS, ESTADOS_VISUALES as E, PARAM_DEBUG, RUTA_SW, ZONA_PISO } from './config.js';
 import { crearEstadoNuevo, cargarEstado, guardarEstado } from './estado.js';
 import { aplicarDecay } from './decay.js';
 import { cargar, jugar, limpiar } from './acciones.js';
@@ -32,6 +32,8 @@ import {
   mostrarGigantes,
   conectarAcciones,
   conectarCaricia,
+  conectarPiso,
+  ponerEnElPiso,
   conectarDebugOculto,
   animarAccion,
   iniciarAccion,
@@ -102,6 +104,9 @@ const pintar = sesion.pintar;
 mostrarEventos(visita.eventos);
 sesion.programarEsperando(visita.eventos);
 mostrarColeccion(sesion.estado().coleccion, visita.hallazgos.nuevos);
+// Después de mostrarColeccion y no antes: la pieza del piso saca su nombre del
+// mismo pool que el estante, y el aria-label lo necesita puesto.
+ponerEnElPiso(visita.piso);
 mostrarGigantes(sesion.estado().diasDePresencia, sesion.estado().hitosVistos);
 
 // Los ajustes se aplican ANTES del primer pintado: si no, el juego arranca con
@@ -147,6 +152,15 @@ conectarAcciones({
 // —el cooldown de la animación y el cansancio son suyos— y la sesión decide SI
 // aplica, que es lo del modelo.
 conectarCaricia(() => sesion.acariciar());
+
+// Levantar lo que quedó tirado. ui.js avisa qué se tocó, la sesión decide si
+// aplica y repinta el estante con la pieza ya en su casillero; recién entonces
+// ui.js puede medir a dónde volarla.
+conectarPiso((id) => {
+  if (!sesion.recogerDelPiso(id)) return false;
+  mostrarColeccion(sesion.estado().coleccion);
+  return true;
+});
 
 sesion.actualizarVisual({ inmediato: true });
 
@@ -210,6 +224,19 @@ const apiDebug = {
     sesion.establecerEstado({ ...estado, coleccion: [...estado.coleccion, falta.id] });
     mostrarColeccion(sesion.estado().coleccion, [falta]);
     pintar();
+  },
+
+  // Tira al piso la primera pieza que falte, sin esperar a que la moneda del 15%
+  // salga. Pasa por el mismo camino que una de verdad: escribe objetoEnPiso en
+  // el estado y la dibuja, así que levantarla ejerce el código real.
+  tirarObjetoAlPiso() {
+    const estado = sesion.estado();
+    const falta = OBJETOS.find((objeto) => !estado.coleccion.includes(objeto.id));
+    if (!falta) return null;
+
+    sesion.establecerEstado({ ...estado, objetoEnPiso: falta.id });
+    ponerEnElPiso({ id: falta.id, x: ZONA_PISO.franjas[1].x0 + 4, y: ZONA_PISO.y1 - 4 });
+    return falta.id;
   },
 
   // Simula presencia acumulada para ver el arco de los gigantes avanzar sin

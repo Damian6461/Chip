@@ -31,6 +31,10 @@ import {
   CLASE_MANTENIENDO,
   ESPERA_DEBUG_MS,
   CLASE_ABRIENDO_DEBUG,
+  VUELO_OBJETO,
+  VARS_PISO,
+  CLASE_VOLANDO,
+  CLASE_EN_PISO,
   TRANSICION_PANEL_MS,
   CLASE_PANEL_VISIBLE,
   ESPERA_SEGUNDO_EVENTO_MS,
@@ -112,6 +116,7 @@ import {
   svgDeRayo,
   svgDeNumero,
   caminoDelCable,
+  caminoDeVuelo,
   reflejoDeAro
 } from './formas.js';
 
@@ -149,7 +154,9 @@ import {
   resplandor,
   contenedorNubes,
   crearBanda,
-  nodoCable
+  nodoCable,
+  escena,
+  nodoPiso
 } from './ui-montaje.js';
 
 // ---- El menú ----
@@ -1219,6 +1226,135 @@ export function mostrarColeccion(coleccion, nuevos = []) {
   const titulo = document.getElementById('coleccion-titulo');
   titulo.textContent = `Lo que juntó — ${contarObtenidos(objetosActuales)} de ${objetosActuales.length}`;
 }
+
+// ---- Lo que quedó tirado en el piso ----
+//
+// Una pieza sola, apoyada en el piso del galpón, que se levanta tocándola. La
+// posición y el id los decide la visita; acá se dibuja y se vuela.
+//
+// Es la MISMA forma que va en la repisa y en la grilla —`nodoDeObjeto`— y no un
+// dibujo aparte: la pieza que levantás del piso tiene que ser reconocible como
+// la que después ves en el estante, si no el vuelo no cuenta ninguna historia.
+
+let recogerObjeto = () => false;
+let objetoDelPiso = null;
+
+export function conectarPiso(onRecoger) {
+  recogerObjeto = onRecoger;
+}
+
+export function ponerEnElPiso(piso) {
+  nodoPiso.replaceChildren();
+  objetoDelPiso = piso;
+
+  if (!piso) {
+    nodoPiso.hidden = true;
+    return;
+  }
+
+  const nodo = nodoDeObjeto({ id: piso.id, obtenido: true });
+  nodo.classList.add(CLASE_EN_PISO);
+  nodoPiso.appendChild(nodo);
+
+  nodoPiso.style.left = `${piso.x}%`;
+  nodoPiso.style.top = `${piso.y}%`;
+  nodoPiso.hidden = false;
+
+  // Es un control de verdad, no una decoración: tiene rol, foco y nombre. Sin
+  // esto la única forma de levantarlo sería verlo, y hay gente que no lo ve.
+  nodoPiso.setAttribute('role', 'button');
+  nodoPiso.setAttribute('tabindex', '0');
+  nodoPiso.setAttribute('aria-label', `Guardar ${nombreDelObjeto(piso.id)} en la repisa`);
+}
+
+function nombreDelObjeto(id) {
+  return objetosActuales.find((o) => o.id === id)?.nombre ?? 'lo que quedó tirado';
+}
+
+function levantarDelPiso() {
+  if (!objetoDelPiso) return;
+
+  const piso = objetoDelPiso;
+  // Se apaga ACÁ y no al final del vuelo: entre el toque y el aterrizaje hay
+  // 760 ms, y sin esto un segundo toque en el medio dispara todo de nuevo.
+  objetoDelPiso = null;
+  nodoPiso.removeAttribute('role');
+  nodoPiso.removeAttribute('tabindex');
+
+  const desde = nodoPiso.getBoundingClientRect();
+
+  // La sesión decide si aplica. Si dice que no —el id ya no está tirado— la
+  // pieza se queda donde estaba y no vuela nada.
+  if (!recogerObjeto(piso.id)) return;
+
+  nodoPiso.hidden = true;
+  volarAlEstante(piso.id, desde);
+}
+
+// EL VUELO. Sale del piso, sube por arriba del estante y baja sobre su lugar.
+//
+// El destino no se calcula: se MIDE. La pieza ya está en su casillero cuando
+// esto corre —recogerObjeto() cambió el estado y main.js repintó el estante— así
+// que el lugar exacto es el rect de ese nodo, con la fila, el orden y el
+// corrimiento de BASES_OBJETO ya resueltos por el layout. Calcularlo sería
+// reimplementar pintarEstante y quedarse desincronizado a la primera.
+//
+// El nodo que vuela es un TERCERO, ni el del piso ni el del estante: el del piso
+// tiene su posición en % de la escena y el del estante vive adentro de un flex,
+// y mover cualquiera de los dos a mano rompería su propio layout.
+function volarAlEstante(id, desde) {
+  const destino = estantes
+    .flatMap((fila) => [...fila.children])
+    .find((n) => n.dataset.id === id);
+
+  if (!destino) return;
+
+  const caja = escena.getBoundingClientRect();
+  const llegada = destino.getBoundingClientRect();
+
+  const ax = desde.left - caja.left + desde.width / 2;
+  const ay = desde.top - caja.top + desde.height / 2;
+  const bx = llegada.left - caja.left + llegada.width / 2;
+  const by = llegada.top - caja.top + llegada.height / 2;
+
+  // La altura del arco se pide como VÉRTICE, no como punto de control: una
+  // cuadrática no pasa por su control y pedirlo mal da una diagonal. Ver
+  // caminoDeVuelo en formas.js, que trae la medición que lo destapó.
+  const camino = caminoDeVuelo(
+    { x: ax, y: ay },
+    { x: bx, y: by },
+    (VUELO_OBJETO.altura / 100) * caja.height
+  );
+
+  const volador = nodoDeObjeto({ id, obtenido: true });
+  volador.classList.add(CLASE_VOLANDO);
+  volador.style.width = `${desde.width}px`;
+  volador.style.height = `${desde.height}px`;
+  volador.style.setProperty(VARS_PISO.vueloCamino, `path("${camino}")`);
+
+  // El casillero se esconde mientras la pieza viaja. Si no, la misma cosa está
+  // en dos lugares a la vez y el vuelo pasa a ser una copia volando.
+  destino.style.visibility = 'hidden';
+  escena.appendChild(volador);
+
+  const aterrizar = () => {
+    volador.remove();
+    destino.style.visibility = '';
+  };
+
+  volador.addEventListener('animationend', aterrizar, { once: true });
+  // Red de contención, igual que en las llegadas al estante: si la animación no
+  // termina —pestaña en segundo plano, movimiento reducido— la pieza tiene que
+  // aparecer en su casillero igual.
+  setTimeout(aterrizar, VUELO_OBJETO.duracion + 250);
+}
+
+nodoPiso.addEventListener('click', levantarDelPiso);
+nodoPiso.addEventListener('keydown', (evento) => {
+  if (evento.key !== 'Enter' && evento.key !== ' ') return;
+  evento.preventDefault();
+  levantarDelPiso();
+});
 
 // ---- El estante y la colección ----
 //

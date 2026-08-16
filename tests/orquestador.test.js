@@ -27,8 +27,12 @@ import {
   CATEGORIA_GRANDES,
   TIERS_OBJETO,
   VALORES_ACCION,
-  DURACION_CRUCE_FONDO_MS
+  DURACION_CRUCE_FONDO_MS,
+  PROBABILIDAD_OBJETO_PISO,
+  ZONA_PISO,
+  DURACION_FASTIDIO_MS
 } from '../js/config.js';
+import { OBJETOS } from '../js/datos-objetos.js';
 import { crearEstadoNuevo, cargarEstado, guardarEstado } from '../js/estado.js';
 import { cargar, limpiar, jugar } from '../js/acciones.js';
 import { EVENTOS } from '../js/datos-eventos.js';
@@ -728,4 +732,253 @@ prueba('sesión: el debounce mide el reloj de pared, no el del mundo', () => {
 
   igual(sesion.actualizarVisual(), false, 'sin tiempo de pared, el cambio se suprime');
   verdadero(reloj.cuantosTimers() > 0, 'y queda un timer para reintentar');
+});
+
+// ---- Lo que quedó tirado en el piso ----
+//
+// El orden de la apertura vuelve a ser la regla, igual que con el decay y la
+// presencia: lo que quedó tirado se guarda ANTES de repartir y lo nuevo se
+// sortea DESPUÉS. Las dos puntas tienen su prueba porque las dos fallan en
+// silencio — una duplica una pieza en el estante y la otra te hace levantar del
+// suelo algo que ya tenías.
+
+// Moneda del piso armada a mano. El orden de las tiradas está fijado en
+// tirarAlPiso: sale/no sale, cuál, dónde en x, a qué altura.
+const CAE_AL_PISO = (indice = 0, x = 0.5, y = 0.5) => {
+  const valores = [0, indice, x, y];
+  let n = 0;
+  return () => valores[Math.min(n++, valores.length - 1)];
+};
+const NO_CAE_AL_PISO = () => 1;
+
+prueba('piso: lo que quedó tirado la vez pasada se guardó solo', () => {
+  const guardado = {
+    ...crearEstadoNuevo(),
+    ultimaVisita: T0 - 8 * MS_POR_HORA,
+    objetoEnPiso: 'resorte',
+    ultimosEventosIds: []
+  };
+
+  const visita = abrirVisita({
+    estado: guardado,
+    ahora: T0,
+    aleatorio: elegirEstos(['evento-01', 'evento-02']),
+    azarRaro: NO_SALE_EL_RARO,
+    azarPiso: NO_CAE_AL_PISO
+  });
+
+  verdadero(visita.estado.coleccion.includes('resorte'), 'el resorte está en la colección');
+  igual(visita.estado.objetoEnPiso, null, 'y ya no está tirado');
+  igual(visita.piso, null, 'no cayó nada nuevo');
+
+  // Y no lleva ceremonia: no hay hallazgo, no hay cartel, no hay animación de
+  // llegada. Pasó mientras no estabas.
+  igual(
+    visita.hallazgos.nuevos.filter((o) => o.id === 'resorte').length,
+    0,
+    'guardarse solo no es un hallazgo'
+  );
+});
+
+prueba('piso: lo tirado se guarda ANTES de repartir, así no queda duplicado', () => {
+  // evento-06 deja la tuerca. Si la tuerca está tirada y el orden se invirtiera,
+  // el evento la otorgaría y después el piso la sumaría de nuevo.
+  const guardado = {
+    ...crearEstadoNuevo(),
+    ultimaVisita: T0 - 8 * MS_POR_HORA,
+    objetoEnPiso: 'tuerca-cabeza',
+    ultimosEventosIds: []
+  };
+
+  const visita = abrirVisita({
+    estado: guardado,
+    ahora: T0,
+    aleatorio: elegirEstos(['evento-06', 'evento-07']),
+    azarRaro: NO_SALE_EL_RARO,
+    azarPiso: NO_CAE_AL_PISO
+  });
+
+  igual(
+    visita.estado.coleccion.filter((id) => id === 'tuerca-cabeza').length,
+    1,
+    'la tuerca está una sola vez'
+  );
+  igual(
+    visita.hallazgos.nuevos.filter((o) => o.id === 'tuerca-cabeza').length,
+    0,
+    'y el evento no la volvió a otorgar: ya era suya'
+  );
+});
+
+prueba('piso: lo nuevo se sortea DESPUÉS de repartir, nunca algo de esta visita', () => {
+  const guardado = {
+    ...crearEstadoNuevo(),
+    ultimaVisita: T0 - 8 * MS_POR_HORA,
+    ultimosEventosIds: []
+  };
+
+  // Se corre el sorteo del piso sobre TODOS los casilleros del pool. Ninguno
+  // puede caer en algo que esta visita acaba de regalar.
+  let cayeron = 0;
+
+  for (let i = 0; i < OBJETOS.length; i++) {
+    const visita = abrirVisita({
+      estado: guardado,
+      ahora: T0,
+      aleatorio: elegirEstos(['evento-06', 'evento-07']),
+      azarRaro: NO_SALE_EL_RARO,
+      azarPiso: CAE_AL_PISO((i + 0.5) / OBJETOS.length)
+    });
+
+    if (!visita.piso) continue;
+    cayeron++;
+
+    verdadero(
+      !visita.estado.coleccion.includes(visita.piso.id),
+      visita.piso.id + ' cayó al piso y NO está en la colección'
+    );
+  }
+
+  verdadero(cayeron > 0, 'y el barrido probó algo: al menos una cayó');
+});
+
+prueba('piso: la probabilidad es la de config, ni una décima más', () => {
+  const guardado = { ...crearEstadoNuevo(), ultimaVisita: T0 - 8 * MS_POR_HORA };
+
+  const conMoneda = (m) =>
+    abrirVisita({
+      estado: guardado,
+      ahora: T0,
+      aleatorio: elegirEstos(['evento-01', 'evento-02']),
+      azarRaro: NO_SALE_EL_RARO,
+      azarPiso: () => m
+    }).piso;
+
+  // Justo abajo del umbral cae; justo en el umbral no. Con >= en vez de > en el
+  // código, el borde exacto sería el que se escapa.
+  verdadero(conMoneda(PROBABILIDAD_OBJETO_PISO - 0.0001) !== null, 'abajo del umbral cae');
+  verdadero(conMoneda(PROBABILIDAD_OBJETO_PISO) === null, 'en el umbral exacto NO cae');
+  verdadero(conMoneda(0.99) === null, 'y muy arriba tampoco');
+});
+
+prueba('piso: la posición cae siempre adentro de una franja de ZONA_PISO', () => {
+  const guardado = { ...crearEstadoNuevo(), ultimaVisita: T0 - 8 * MS_POR_HORA };
+
+  // Se barre el eje entero del sorteo de x, incluidos los dos bordes y la
+  // costura entre las dos franjas, que es donde un signo de más manda el objeto
+  // a caer justo encima de Chip.
+  for (let i = 0; i <= 40; i++) {
+    const t = i / 40;
+    const visita = abrirVisita({
+      estado: guardado,
+      ahora: T0,
+      aleatorio: elegirEstos(['evento-01']),
+      azarRaro: NO_SALE_EL_RARO,
+      azarPiso: CAE_AL_PISO(0.5, t, t)
+    });
+
+    const { x, y } = visita.piso;
+    const dentro = ZONA_PISO.franjas.some((f) => x >= f.x0 - EPSILON && x <= f.x1 + EPSILON);
+
+    verdadero(dentro, 'x=' + x + ' (t=' + t.toFixed(3) + ') cae en una de las dos franjas');
+    verdadero(
+      y >= ZONA_PISO.y0 - EPSILON && y <= ZONA_PISO.y1 + EPSILON,
+      'y=' + y + ' está entre ' + ZONA_PISO.y0 + ' y ' + ZONA_PISO.y1
+    );
+  }
+});
+
+// LOS TRES OBSTÁCULOS, y esto es un guardián de medición como el de las poses.
+//
+// El pedido nombraba dos —Chip y la botonera— y en el galpón hay tres: el cartel
+// de evento se apoya en el piso y no se va nunca. Si alguien mueve la zona sin
+// volver a mirar la escena, esto lo frena antes de que el objeto quede abajo de
+// algo.
+prueba('piso: la zona segura no toca a Chip, ni la botonera, ni el cartel', () => {
+  // Medido contra la escena real: abajo de la mitad, ninguna de las nueve poses
+  // pasa de x 18,2% ni de x 74,7%. El cartel arranca en y 86,7% y la botonera
+  // en y 93%.
+  const CHIP_IZQ = 18.2;
+  const CHIP_DER = 74.7;
+  const MARGEN = 3;
+  const CARTEL = 86.7;
+  const BOTONERA = 93;
+
+  for (const f of ZONA_PISO.franjas) {
+    verdadero(
+      f.x1 <= CHIP_IZQ - MARGEN || f.x0 >= CHIP_DER + MARGEN,
+      'la franja ' + f.x0 + '-' + f.x1 + ' queda a tres puntos del contorno de Chip'
+    );
+    verdadero(f.x0 >= 2 && f.x1 <= 98, 'la franja ' + f.x0 + '-' + f.x1 + ' no se sale de la escena');
+  }
+
+  verdadero(ZONA_PISO.y1 <= CARTEL, 'el techo de la zona queda arriba del cartel de evento');
+  verdadero(ZONA_PISO.y1 < BOTONERA, 'y bien lejos de la botonera');
+  verdadero(ZONA_PISO.y0 < ZONA_PISO.y1, 'y la zona tiene alto');
+});
+
+prueba('sesión: levantar del piso lo guarda y pone la cara de fastidio', () => {
+  const { sesion, reloj, vista } = sesionDePrueba({
+    ...crearEstadoNuevo(),
+    objetoEnPiso: 'resorte'
+  });
+
+  sesion.actualizarVisual({ inmediato: true });
+  const antes = sesion.estadoVisual();
+
+  igual(sesion.recogerDelPiso('resorte'), true, 'aplicó');
+  igual(sesion.estado().objetoEnPiso, null, 'ya no está tirado');
+  verdadero(sesion.estado().coleccion.includes('resorte'), 'y está en la colección');
+  igual(cargarEstado().objetoEnPiso, null, 'el save también lo sabe');
+
+  igual(sesion.estadoVisual(), E.esperando, 'los brazos cruzados: se lo ordenaste');
+
+  reloj.avanzar(DURACION_FASTIDIO_MS - 1);
+  igual(sesion.estadoVisual(), E.esperando, 'y se aguanta los dos segundos');
+
+  reloj.avanzar(2);
+  igual(sesion.estadoVisual(), antes, 'después vuelve a lo que estaba');
+  verdadero(vista.cuenta.render > 0, 'y todo eso se pintó');
+});
+
+prueba('sesión: levantar dos veces la misma pieza no la suma dos veces', () => {
+  const { sesion } = sesionDePrueba({ ...crearEstadoNuevo(), objetoEnPiso: 'resorte' });
+
+  igual(sesion.recogerDelPiso('resorte'), true, 'la primera aplica');
+  igual(sesion.recogerDelPiso('resorte'), false, 'la segunda no');
+  igual(
+    sesion.estado().coleccion.filter((id) => id === 'resorte').length,
+    1,
+    'y quedó una sola vez'
+  );
+});
+
+prueba('sesión: levantar algo que NO está tirado no hace nada', () => {
+  const { sesion } = sesionDePrueba({ ...crearEstadoNuevo(), objetoEnPiso: 'resorte' });
+
+  igual(sesion.recogerDelPiso('tuerca-cabeza'), false, 'no aplica');
+  igual(sesion.recogerDelPiso(null), false, 'ni con null');
+  igual(sesion.estado().objetoEnPiso, 'resorte', 'el resorte sigue tirado');
+});
+
+// EL FASTIDIO NO ES UNA ACCIÓN. No ocupa a Chip, no apaga los botones y no
+// bloquea nada — igual que la caricia. Es una cara, no un estado de juego.
+prueba('sesión: el fastidio no ocupa a Chip', () => {
+  // El mantenimiento va bajo a propósito: con el estado nuevo, los tres stats
+  // arrancan en 100 y limpiar no aplica —contesta "estoy bien" y no pasa nada—,
+  // así que la prueba habría dado verde sin probar nada.
+  const { sesion } = sesionDePrueba({
+    ...crearEstadoNuevo(),
+    mantenimiento: 40,
+    objetoEnPiso: 'resorte'
+  });
+
+  sesion.recogerDelPiso('resorte');
+  igual(sesion.ocupado(), false, 'no está ocupado: la cara no es una acción');
+  igual(sesion.estadoVisual(), E.esperando, 'y sí está con la cara de fastidio');
+
+  // Y las acciones siguen entrando con normalidad: la cadena pone los estados de
+  // acción ARRIBA de esperando, así que la acción le gana al fastidio.
+  sesion.ejecutar(E.limpiando, limpiar, 'limpiar');
+  igual(sesion.estadoVisual(), E.limpiando, 'limpiar entró igual y le ganó a la cara');
 });

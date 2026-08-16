@@ -178,6 +178,12 @@ export function iniciarDebug(api) {
   const botonObjeto = crearBoton('sumar objeto');
   botonObjeto.addEventListener('click', () => api.sumarObjeto());
 
+  // ---- Tirar un objeto al piso ----
+  // La moneda del piso sale una de cada siete aperturas, y encima sólo al abrir:
+  // sin esto, verificar el vuelo al estante era recargar hasta que tocara.
+  const botonPiso = crearBoton('tirar al piso');
+  botonPiso.addEventListener('click', () => api.tirarObjetoAlPiso());
+
   // ---- Simular una apertura con el tramo cambiado ----
   const botonTramo = crearBoton('abrir en otro tramo');
   botonTramo.addEventListener('click', () => api.simularAperturaEnOtroTramo());
@@ -242,6 +248,7 @@ export function iniciarDebug(api) {
     filaDias,
     botonHito,
     botonObjeto,
+    botonPiso,
     botonTramo,
     botonPose,
     botonReiniciar,

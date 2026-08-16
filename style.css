@@ -2806,6 +2806,137 @@ body.es-noche .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
   }
 }
 
+/* ============================================================================
+   LO QUE QUEDÓ TIRADO EN EL PISO
+
+   Una pieza sola, apoyada en el piso del galpón. No es interfaz: es una cosa que
+   está ahí, y por eso no tiene marco, ni fondo, ni indicador de que se puede
+   tocar. Lo único que la separa del piso es que junta un poco de luz.
+
+   La posición la escribe ui.js en left/top, y el translate hace que esas
+   coordenadas signifiquen "el centro de la base" y no "la esquina de arriba a la
+   izquierda": el número que uno quiere tocar es dónde APOYA, igual que en la
+   repisa con BASES_OBJETO.
+   ============================================================================ */
+
+#piso {
+  position: absolute;
+  translate: -50% -100%;
+  /* MISMA CAPA QUE LA TOMA: mobiliario del galpón. z-index negativo lo deja
+     arriba de la panorámica y de la luz de la hora, y ABAJO de Chip.
+
+     Por construcción nunca se cruzan —la zona segura está medida contra el
+     contorno opaco de las nueve poses— pero un z-index que depende de que una
+     medición no cambie nunca no es un z-index. Si algún día la zona se corre,
+     el peor caso es que la pieza quede detrás de Chip, no encima.
+
+     Sigue recibiendo el toque: las dos capas que tiene arriba —la luz de la hora
+     y el polvo— son ::after con pointer-events: none. */
+  z-index: -1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#piso:focus-visible {
+  outline: 2px solid var(--color-humor);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* EL BRILLO QUE LO HACE DESCUBRIBLE, y que no es un parpadeo.
+
+   La diferencia está en el piso de la curva: la opacidad del halo nunca baja de
+   --brillo-piso-alfa-min, así que la pieza devuelve luz TODO el ciclo y lo que
+   cambia es cuánta. Un keyframe que llegue a cero convierte esto en un ícono
+   titilando, que es exactamente lo que el pedido descarta.
+
+   Va en drop-shadow y no en un box-shadow: la silueta es un SVG con transparencia
+   y una caja iluminada alrededor de una tuerca se ve como una tuerca adentro de
+   un cuadrado que brilla. drop-shadow sigue la forma. */
+.objeto.en-piso {
+  /* El halo QUIETO va acá y no sólo en el keyframe. Con el movimiento apagado
+     la animación dura 0,001 ms y el filter vuelve al de .objeto.obtenido, que
+     es la sombra sola: la pieza quedaría indistinguible de una mancha del piso
+     justo para quien no puede usar el movimiento como pista. Así el brillo es
+     la base y la animación es el extra. */
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.85))
+    drop-shadow(
+      0 0 var(--brillo-piso-radio-max)
+        color-mix(
+          in srgb,
+          var(--brillo-piso-color) calc(var(--brillo-piso-alfa-min) * 100%),
+          transparent
+        )
+    );
+  animation: brillo-de-piso var(--brillo-piso-ciclo) ease-in-out infinite;
+}
+
+/* DE NOCHE SE APAGA COMO TODO LO DEMÁS, y el filtro va en el PADRE y no en la
+   pieza: el brillo del piso ya usa filter en la pieza, y dos declaraciones de
+   filter sobre el mismo elemento no se suman —gana la última—, así que ponerlo
+   ahí borraría el halo. En el padre se componen. Es la misma trampa que ya se
+   documentó en .objeto.obtenido. */
+body.es-noche #piso {
+  filter: saturate(0.7) brightness(0.78);
+}
+
+@keyframes brillo-de-piso {
+  0%,
+  100% {
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.85))
+      drop-shadow(
+        0 0 var(--brillo-piso-radio-min)
+          color-mix(in srgb, var(--brillo-piso-color) calc(var(--brillo-piso-alfa-min) * 100%), transparent)
+      );
+  }
+  50% {
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.85))
+      drop-shadow(
+        0 0 var(--brillo-piso-radio-max)
+          color-mix(in srgb, var(--brillo-piso-color) calc(var(--brillo-piso-alfa-max) * 100%), transparent)
+      );
+  }
+}
+
+/* EL VUELO AL ESTANTE.
+
+   offset-path con un path() en una custom property, igual que los pulsos del
+   cable: el camino lo arma ui.js con los dos rects ya medidos y esto sólo lo
+   recorre. Las coordenadas del path son px desde el origen de #escena, que es el
+   bloque contenedor — por eso el nodo va en left:0/top:0 y no se posiciona por
+   su cuenta.
+
+   offset-rotate: 0deg es obligatorio y no cosmético: el default es `auto`, que
+   alinea el elemento con la tangente de la curva, así que sin esto la pieza sale
+   del piso girando 60 grados y llega al estante dada vuelta.
+
+   La curva de tiempo arranca despacio —lo están levantando— y llega frenando.
+   Nada de linear, que es la regla de la tanda. */
+.objeto.volando {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  pointer-events: none;
+  offset-path: var(--vuelo-camino);
+  offset-rotate: 0deg;
+  /* offset-path pone el ANCLA del elemento sobre la curva, y el ancla por
+     defecto es su centro sólo si se lo dice: sin offset-anchor el navegador usa
+     el transform-origin, que acá es el centro. Se declara igual para que no
+     dependa de un default. */
+  offset-anchor: 50% 50%;
+  animation: volar-al-estante var(--vuelo-duracion) cubic-bezier(0.42, 0, 0.28, 1) forwards;
+}
+
+@keyframes volar-al-estante {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 100%;
+  }
+}
+
 /* ---- La vista de colección ---- */
 
 /* Ya NO es un overlay centrado: vive adentro del cuerpo del menú, como una

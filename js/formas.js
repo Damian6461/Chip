@@ -553,3 +553,55 @@ export function reflejoDeAro(aro) {
 export function tieneForma(id) {
   return id in FORMAS;
 }
+
+// EL ARCO DEL VUELO al estante, y por qué no alcanza con levantar el punto de
+// control.
+//
+// Una Bézier cuadrática NO PASA POR SU PUNTO DE CONTROL: se le acerca como mucho
+// hasta la mitad. La primera versión ponía el control a 11% del alto de la escena
+// por encima del estante y el arco resultante subía 1,9% —medido, no estimado—,
+// así que el vuelo se leía como una diagonal y no como que alguien levantó una
+// cosa y la apoyó.
+//
+// Así que en vez de elegir el control y ver qué sale, se pide el VÉRTICE y se
+// despeja el control. Con A = y de salida, C = y de llegada, B = y del control:
+//
+//   y(t) = (1-t)^2*A + 2t(1-t)*B + t^2*C
+//   el vértice cae en t* = (A-B)/(A-2B+C)  y ahí vale  A - (A-B)^2/(A-2B+C)
+//
+// Igualando eso al pico pedido, y llamando u = A-B y k = A-pico:
+//
+//   u^2 - 2ku + k(A-C) = 0   =>   u = k ± raiz(k*(k-A+C))
+//
+// Se toma la raíz POSITIVA y no la otra: la negativa da un t* mayor que 1, o sea
+// un vértice que cae fuera de la curva, que es exactamente el arco falso del que
+// venimos. Y k-A+C es la altura pedida, siempre positiva, así que el radicando
+// nunca es negativo y no hace falta un caso degenerado.
+function controlDelVuelo(desde, hasta, altura) {
+  const pico = Math.min(desde.y, hasta.y) - altura;
+  const k = desde.y - pico;
+  const u = k + Math.sqrt(Math.max(0, k * (k - desde.y + hasta.y)));
+
+  return { x: (desde.x + hasta.x) / 2, y: desde.y - u, u };
+}
+
+export function caminoDeVuelo(desde, hasta, altura) {
+  const c = controlDelVuelo(desde, hasta, altura);
+  const n = (v) => v.toFixed(1);
+
+  return (
+    'M ' + n(desde.x) + ' ' + n(desde.y) +
+    ' Q ' + n(c.x) + ' ' + n(c.y) +
+    ' ' + n(hasta.x) + ' ' + n(hasta.y)
+  );
+}
+
+// Dónde termina picando ese camino. Se exporta para que la altura del arco se
+// pueda verificar en Node y no haga falta un navegador para saber si el vuelo
+// sube lo que dice que sube.
+export function picoDelVuelo(desde, hasta, altura) {
+  const c = controlDelVuelo(desde, hasta, altura);
+  const den = desde.y - 2 * c.y + hasta.y;
+
+  return { t: c.u / den, y: desde.y - (c.u * c.u) / den };
+}

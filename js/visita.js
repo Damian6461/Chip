@@ -20,16 +20,29 @@
 //    tocar `ultimoDiaConEvento`, que es justamente lo que la garantía consulta.
 // 4. El hito, si lo hay, es el único evento de la visita: no comparte cartel.
 // 5. Los hallazgos salen de los eventos ya elegidos, nunca al revés.
+// 6. Lo que quedó tirado en el piso se guarda ANTES de repartir, y lo nuevo se
+//    sortea DESPUÉS. Los dos extremos importan: si se guardara después, un
+//    evento de esta visita podría otorgar la misma pieza y quedaría dos veces
+//    en el array; si lo nuevo se sorteara antes, podría caer al piso algo que
+//    esta misma visita está por regalar, y el jugador levantaría del suelo algo
+//    que ya tiene.
 
 import { aplicarDecay, horasTranscurridas } from './decay.js';
 import { elegirEventos, horasConGarantiaDiaria, diaLocal } from './eventos.js';
-import { otorgarPorEventos } from './coleccion.js';
+import { otorgarPorEventos, guardarLoDelPiso, sortearDelPiso } from './coleccion.js';
 import { hitoPendiente, eventoDeHito } from './gigantes.js';
+import { PROBABILIDAD_OBJETO_PISO, ZONA_PISO } from './config.js';
 
 // `aleatorio` y `azarRaro` son inyectables por la misma razón que en
 // elegirEventos y otorgarPorEventos: una visita tiene que poder probarse sin
 // depender de dos monedas.
-export function abrirVisita({ estado, ahora, aleatorio = Math.random, azarRaro = Math.random }) {
+export function abrirVisita({
+  estado,
+  ahora,
+  aleatorio = Math.random,
+  azarRaro = Math.random,
+  azarPiso = Math.random
+}) {
   // `ahora` se resuelve UNA vez y se comparte: el decay y los eventos tienen que
   // estar de acuerdo sobre cuánto tiempo pasó, si no cuentan visitas distintas.
   const horasFuera = horasTranscurridas(estado, ahora);
@@ -48,6 +61,15 @@ export function abrirVisita({ estado, ahora, aleatorio = Math.random, azarRaro =
       ultimoDiaVisitado: hoy
     };
   }
+
+  // Lo que quedó tirado la vez pasada: Chip lo guardó solo mientras no estabas.
+  // Va acá arriba, antes de elegir eventos, para que la colección con la que se
+  // reparte ya lo tenga. Ver el punto 6 del orden.
+  siguiente = {
+    ...siguiente,
+    coleccion: guardarLoDelPiso(siguiente.coleccion, siguiente.objetoEnPiso),
+    objetoEnPiso: null
+  };
 
   // La garantía diaria entra acá y no adentro de elegirEventos: es una decisión
   // de cadencia sobre las horas de esta visita, y elegirEventos sigue siendo una
@@ -85,5 +107,43 @@ export function abrirVisita({ estado, ahora, aleatorio = Math.random, azarRaro =
     };
   }
 
-  return { estado: siguiente, eventos, hallazgos, horasFuera, diaNuevo };
+  // Y lo que quedó tirado ESTA vez, con la colección ya completa: lo del piso
+  // anterior y lo que dejaron los eventos.
+  const piso = tirarAlPiso(siguiente.coleccion, azarPiso);
+  if (piso) siguiente = { ...siguiente, objetoEnPiso: piso.id };
+
+  return { estado: siguiente, eventos, hallazgos, horasFuera, diaNuevo, piso };
+}
+
+// La moneda y el lugar. Cuatro tiradas del MISMO generador y en este orden: si
+// sale, cuál es, dónde en el eje largo, y a qué altura. El orden está fijado a
+// propósito para que una prueba pueda darle una secuencia y saber exactamente
+// qué le va a tocar a cada cosa.
+//
+// La franja se sortea con PESO POR ANCHO y no a cara o cruz. Son de tamaños muy
+// distintos —7 puntos la izquierda contra 14 la derecha— y con peso parejo el
+// objeto caería en la angosta la mitad de las veces, que es lo que la convertiría
+// en "el lugar donde aparecen las cosas".
+function tirarAlPiso(coleccion, azar) {
+  if (azar() >= PROBABILIDAD_OBJETO_PISO) return null;
+
+  const id = sortearDelPiso(coleccion, azar);
+  if (!id) return null;
+
+  const anchoTotal = ZONA_PISO.franjas.reduce((s, f) => s + (f.x1 - f.x0), 0);
+  let resto = azar() * anchoTotal;
+  let x = ZONA_PISO.franjas[ZONA_PISO.franjas.length - 1].x1;
+
+  for (const franja of ZONA_PISO.franjas) {
+    const ancho = franja.x1 - franja.x0;
+    if (resto <= ancho) {
+      x = franja.x0 + resto;
+      break;
+    }
+    resto -= ancho;
+  }
+
+  const y = ZONA_PISO.y0 + azar() * (ZONA_PISO.y1 - ZONA_PISO.y0);
+
+  return { id, x: +x.toFixed(2), y: +y.toFixed(2) };
 }

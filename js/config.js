@@ -2100,6 +2100,94 @@ export const MAX_OBJETOS_POR_VISITA = 3;
 // estado, nunca se comparte la referencia.
 export const COLECCION_INICIAL = [];
 
+// ---- Lo que quedó tirado en el piso ----
+//
+// CONVIVE CON LOS EVENTOS, no los reemplaza. Los eventos siguen otorgando
+// objetos solos; esto es un extra ocasional y de otra naturaleza: el evento te
+// CUENTA que Chip encontró algo, y esto te muestra que lo encontró y no lo
+// guardó. Es un rastro, no un aviso.
+//
+// Por eso aparece al ABRIR y no durante la sesión: ya estaba ahí cuando
+// llegaste. Un objeto que se materializa con la app abierta sería un spawn, y
+// un spawn es de otro juego.
+export const PROBABILIDAD_OBJETO_PISO = 0.15;
+
+// LA ZONA SEGURA DEL PISO, medida contra la escena y no estimada.
+//
+// El pedido decía "que no quede tapado por Chip ni por la botonera". Son dos
+// obstáculos, y en el galpón hay TRES: el cartel de evento se apoya en el piso
+// —medido: y 86,7% a 92,2%, de x 3 a x 97— y NO SE VA NUNCA; una vez que
+// mostrarEventos lo prende se queda toda la sesión. Y el objeto aparece
+// exactamente en la misma apertura que el cartel, así que la franja de adelante,
+// que era la candidata obvia, es justo la que está ocupada.
+//
+// De ahí las dos franjas laterales. El límite de x sale del contorno OPACO de
+// los nueve sprites, no de su caja: la caja de #chip va de x 6,7% a 93,3% de la
+// escena, pero abajo de la mitad ninguna pose pasa de x 18,2% ni de x 74,7%.
+// El margen contra ese contorno es de 3 puntos de cada lado.
+//
+// `y` es la BASE del objeto —dónde apoya— y no su borde de arriba, igual que
+// BASES_OBJETO en la repisa: lo que uno quiere tocar es la línea de apoyo.
+// El techo de 86 deja la pieza entera arriba del cartel de evento.
+export const ZONA_PISO = {
+  y0: 72,
+  y1: 86,
+  // Se sortea entre las dos con peso por ancho, así que la de la derecha —que
+  // es más ancha porque hay más piso libre de ese lado— sale más seguido. Con
+  // peso parejo el objeto caería en la franja angosta la mitad de las veces y
+  // la izquierda se leería como su lugar fijo.
+  franjas: [
+    { x0: 8, x1: 15 },
+    { x0: 80, x1: 94 }
+  ]
+};
+
+// EL BRILLO QUE LO HACE DESCUBRIBLE. El pedido pide "un brillo muy sutil o un
+// movimiento mínimo", y explícitamente NO un ícono parpadeante.
+//
+// Es un halo que respira, no un blink: la opacidad nunca baja de `alfaMin`, así
+// que la pieza no desaparece en ningún momento del ciclo — lo que cambia es
+// cuánta luz junta. Ciclo largo a propósito: a 4,4 s el ojo lo registra como
+// que algo ahí devuelve luz, no como que algo titila.
+export const BRILLO_PISO = {
+  ciclo: 4400,
+  color: '#ffe6b0',
+  radioMin: 2,
+  radioMax: 8,
+  alfaMin: 0.3,
+  alfaMax: 0.75
+};
+
+// EL VUELO AL ESTANTE. Un arco, no una recta: el pedido dice "animación de arco"
+// y además una recta entre dos puntos de la pantalla se lee como una transición
+// de interfaz, no como algo que alguien levantó y guardó.
+//
+// `altura` es cuánto sube el VÉRTICE de la curva por encima del punto más alto
+// de los dos, en % del alto de la escena — no dónde va el punto de control. La
+// diferencia no es una sutileza: una Bézier cuadrática no pasa por su control,
+// y pedir 11 ahí daba un arco de 1,9. Ver caminoDeVuelo en formas.js.
+//
+// Seis puntos sobre un tramo vertical de cuarenta y cinco: alcanza para que se
+// lea como levantar y apoyar, y no llega a leerse como un tiro por elevación.
+export const VUELO_OBJETO = { duracion: 760, altura: 6 };
+
+// CUÁNTO DURA LA CARA DE FASTIDIO cuando le ordenás algo que él tenía ahí.
+export const DURACION_FASTIDIO_MS = 2000;
+
+export const VARS_PISO = {
+  brilloCiclo: '--brillo-piso-ciclo',
+  brilloColor: '--brillo-piso-color',
+  brilloRadioMin: '--brillo-piso-radio-min',
+  brilloRadioMax: '--brillo-piso-radio-max',
+  brilloAlfaMin: '--brillo-piso-alfa-min',
+  brilloAlfaMax: '--brillo-piso-alfa-max',
+  vueloDuracion: '--vuelo-duracion',
+  vueloCamino: '--vuelo-camino'
+};
+
+export const CLASE_VOLANDO = 'volando';
+export const CLASE_EN_PISO = 'en-piso';
+
 // ---- Los gigantes ----
 
 // Presencia: días distintos en que el jugador abrió el juego. No visitas —abrir

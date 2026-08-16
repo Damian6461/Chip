@@ -35,6 +35,7 @@ import {
   DURACION_ESPERANDO_MS,
   ESPERA_SEGUNDO_EVENTO_MS,
   DURACION_CRUCE_FONDO_MS,
+  DURACION_FASTIDIO_MS,
   POSES_IDLE
 } from './config.js';
 import { aplica, acariciar } from './acciones.js';
@@ -59,7 +60,9 @@ export function crearSesion({
   let temporizadorAccion = null;
   let temporizadorDebounce = null;
   let gigantePasando = false; // true mientras se lee un evento de la categoría grandes
+  let leOrdenaron = false; // true mientras dura el fastidio de que le guarden algo
   let temporizadoresGigante = [];
+  let temporizadorFastidio = null;
   let poseIdle = poseInicial;
   let visualForzado = null; // sólo lo escribe el panel de debug
   let esNocheActual = null;
@@ -89,7 +92,8 @@ export function crearSesion({
       estado,
       ahora: reloj.mundo(),
       accion: accionEnCurso,
-      gigantePasando
+      gigantePasando,
+      leOrdenaron
     });
   }
 
@@ -325,6 +329,44 @@ export function crearSesion({
     return true;
   }
 
+  // ---- Levantar lo que estaba tirado ----
+  //
+  // Lo del piso ya es de Chip: lo encontró él mientras no estabas. Levantarlo no
+  // es ganarlo, es ordenarlo, y por eso no hay hallazgo, no hay evento y no hay
+  // tirada de rareza. La colección suma el id y listo.
+  //
+  // La cara de fastidio se decide ACÁ y no en ui.js, por lo mismo que
+  // programarEsperando: elegir un estado visual es de la sesión. ui.js pide
+  // "levanté esto" y la sesión resuelve qué significa.
+  //
+  // Devuelve si aplicó, para que la vista sepa si corresponde volar la pieza al
+  // estante. Un id que no está tirado no hace nada: sin esto, dos toques rápidos
+  // sobre la misma pieza la sumarían dos veces.
+  function recogerDelPiso(id) {
+    if (!id || estado.objetoEnPiso !== id) return false;
+
+    estado = {
+      ...estado,
+      coleccion: estado.coleccion.includes(id) ? estado.coleccion : [...estado.coleccion, id],
+      objetoEnPiso: null
+    };
+    guardar(estado);
+
+    reloj.cancelar(temporizadorFastidio);
+    leOrdenaron = true;
+    actualizarVisual({ inmediato: true });
+    pintar();
+
+    temporizadorFastidio = reloj.programar(() => {
+      temporizadorFastidio = null;
+      leOrdenaron = false;
+      actualizarVisual({ inmediato: true });
+      pintar();
+    }, DURACION_FASTIDIO_MS);
+
+    return true;
+  }
+
   // El tick periódico. Los stats sólo cambian por acción, así que su único
   // efecto real es detectar el cruce de un límite de tramo con la app abierta.
   // No toca stats, no aplica decay, no guarda —salvo el nombre del tramo.
@@ -375,6 +417,7 @@ export function crearSesion({
     // el juego
     ejecutar,
     acariciar: acariciarAChip,
+    recogerDelPiso,
     ocupado,
     actualizarVisual,
     actualizarNoche,

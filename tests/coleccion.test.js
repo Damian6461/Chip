@@ -1,19 +1,26 @@
 // El sistema de colección: qué deja una visita, qué no vuelve a dejar, el techo
 // por visita, la rareza y la garantía diaria de cadencia.
 
-import { prueba, igual, verdadero } from './runner.js';
+import { prueba, igual, cerca, verdadero } from './runner.js';
 import { T0 } from './config.pruebas.js';
 import {
   VERSION_ESTADO,
   PROBABILIDAD_OBJETO_RARO,
   MAX_OBJETOS_POR_VISITA,
   TIERS_OBJETO,
-  HORAS_MINIMAS_EVENTO
+  HORAS_MINIMAS_EVENTO,
+  VUELO_OBJETO
 } from '../js/config.js';
 import { OBJETOS, objetosDelEvento, objetoPorId } from '../js/datos-objetos.js';
 import { EVENTOS } from '../js/datos-eventos.js';
-import { otorgarPorEventos, tiene, objetosConEstado } from '../js/coleccion.js';
-import { svgDeObjeto, tieneForma } from '../js/formas.js';
+import {
+  otorgarPorEventos,
+  tiene,
+  objetosConEstado,
+  guardarLoDelPiso,
+  sortearDelPiso
+} from '../js/coleccion.js';
+import { svgDeObjeto, tieneForma, caminoDeVuelo, picoDelVuelo } from '../js/formas.js';
 import { diaLocal, horasConGarantiaDiaria } from '../js/eventos.js';
 import { cargarEstado, guardarEstado } from '../js/estado.js';
 
@@ -330,4 +337,124 @@ prueba('formas: un id desconocido devuelve el casillero vacío y no rompe', () =
   const svg = svgDeObjeto('no-existe');
   verdadero(svg.includes('<svg'), 'devuelve algo dibujable igual');
   verdadero(!tieneForma('no-existe'), 'y avisa que no era propia');
+});
+
+// ---- Lo que quedó tirado en el piso ----
+//
+// Es un extra ocasional que CONVIVE con los eventos, no un reemplazo. Estas
+// pruebas cubren las dos reglas que lo hacen coherente: sólo puede aparecer lo
+// que Chip todavía no tiene, y lo que no se levantó se guarda solo a la próxima.
+
+prueba('piso: lo que quedó tirado entra a la colección tal cual', () => {
+  const antes = ['tuerca-cabeza'];
+  const despues = guardarLoDelPiso(antes, 'resorte');
+
+  igual(despues.join(','), 'tuerca-cabeza,resorte', 'se sumó al final');
+  igual(antes.join(','), 'tuerca-cabeza', 'y la colección original no se tocó');
+});
+
+prueba('piso: sin nada tirado no cambia nada, y devuelve la MISMA referencia', () => {
+  const antes = ['tuerca-cabeza'];
+
+  verdadero(guardarLoDelPiso(antes, null) === antes, 'sin objeto, el mismo array');
+  // Un objeto que ya está no se suma dos veces. No debería poder pasar —lo del
+  // piso se guarda antes de repartir— pero si el orden se rompiera algún día,
+  // el síntoma sería una pieza duplicada en el estante y no un error.
+  verdadero(
+    guardarLoDelPiso(antes, 'tuerca-cabeza') === antes,
+    'y algo que ya está tampoco se duplica'
+  );
+});
+
+prueba('piso: sólo puede caer algo que Chip todavía no tiene', () => {
+  const casiTodo = OBJETOS.slice(0, -1).map((o) => o.id);
+  const ultimo = OBJETOS[OBJETOS.length - 1].id;
+
+  // Con todo menos uno, sea cual sea la moneda, sólo puede salir ese uno.
+  for (const moneda of [0, 0.5, 0.999]) {
+    igual(sortearDelPiso(casiTodo, () => moneda), ultimo, `con ${moneda} sale el único que falta`);
+  }
+});
+
+prueba('piso: con la colección completa no cae nada', () => {
+  const todo = OBJETOS.map((o) => o.id);
+  igual(sortearDelPiso(todo, () => 0.5), null, 'no queda nada que Chip pueda haber encontrado');
+});
+
+prueba('piso: el sorteo recorre TODO el pool que falta y no se atasca en uno', () => {
+  const salidas = new Set();
+  const n = OBJETOS.length;
+
+  for (let i = 0; i < n; i++) {
+    salidas.add(sortearDelPiso([], () => (i + 0.5) / n));
+  }
+
+  igual(salidas.size, n, 'cada casillero de la moneda cae en un objeto distinto');
+});
+
+prueba('piso: la moneda al ras del 1 no se sale del pool', () => {
+  // Math.random() nunca devuelve 1, pero un doble inyectado sí puede, y un
+  // índice fuera de rango acá sería un `undefined.id` en producción.
+  verdadero(sortearDelPiso([], () => 0.9999999999) !== null, 'sigue devolviendo un objeto');
+});
+
+// ---- El arco del vuelo al estante ----
+//
+// Esta prueba existe por un error concreto: la primera versión ponía el punto de
+// control a la altura pedida y daba por hecho que la curva pasaba por ahí. Medido
+// en el navegador, subía 1,9% en vez de 11 — el vuelo era una diagonal. Una
+// cuadrática no pasa por su control, y eso no se ve mirando el código.
+
+prueba('vuelo: el arco sube EXACTAMENTE lo que se le pide', () => {
+  const desde = { x: 403, y: 762 };
+  const hasta = { x: 359, y: 331 };
+
+  for (const altura of [20, 57, 104, 200]) {
+    const pico = picoDelVuelo(desde, hasta, altura);
+    cerca(
+      Math.min(desde.y, hasta.y) - pico.y,
+      altura,
+      'con altura ' + altura + ' el vértice queda a esa distancia del punto más alto'
+    );
+  }
+});
+
+prueba('vuelo: el vértice cae ADENTRO de la curva, no después del final', () => {
+  // La otra raíz de la cuadrática da un t mayor que 1: un vértice que la curva
+  // nunca alcanza, que es exactamente el arco falso del que venimos.
+  const pico = picoDelVuelo({ x: 403, y: 762 }, { x: 359, y: 331 }, 57);
+
+  verdadero(pico.t > 0 && pico.t < 1, 't=' + pico.t.toFixed(3) + ' está entre 0 y 1');
+});
+
+prueba('vuelo: el camino arranca y termina en los dos puntos que se le dieron', () => {
+  const d = caminoDeVuelo({ x: 100, y: 800 }, { x: 300, y: 200 }, 50);
+
+  verdadero(d.startsWith('M 100.0 800.0'), 'arranca en la salida: ' + d);
+  verdadero(d.endsWith('300.0 200.0'), 'y termina en la llegada: ' + d);
+  verdadero(d.includes(' Q '), 'y es una cuadrática');
+});
+
+prueba('vuelo: sale un path que el CSS puede parsear', () => {
+  const d = caminoDeVuelo({ x: 1, y: 2 }, { x: 3, y: 4 }, 5);
+
+  verdadero(
+    /^M -?\d+\.\d \S+ Q -?\d+\.\d \S+ -?\d+\.\d \S+$/.test(d.replace(/ -?\d+\.\d(?= |$)/g, ' N').replace(/N/g, '0.0')) ||
+      /^M [-\d.]+ [-\d.]+ Q [-\d.]+ [-\d.]+ [-\d.]+ [-\d.]+$/.test(d),
+    'forma del path: ' + d
+  );
+  verdadero(!d.includes('NaN'), 'y sin NaN, que en offset-path es un elemento que no se mueve');
+});
+
+prueba('vuelo: la altura de config da un arco que se ve, no una diagonal', () => {
+  // El tramo real medido en la escena: del piso (y 80,7%) al estante (y 35,1%).
+  // Con el bug viejo el arco subía 1,9 puntos y eso se lee como una recta.
+  const alto = 945;
+  const desde = { x: 0.84 * 480, y: 0.807 * alto };
+  const hasta = { x: 0.916 * 480, y: 0.351 * alto };
+  const pico = picoDelVuelo(desde, hasta, (VUELO_OBJETO.altura / 100) * alto);
+
+  const sube = ((hasta.y - pico.y) / alto) * 100;
+  cerca(sube, VUELO_OBJETO.altura, 'sube los ' + VUELO_OBJETO.altura + ' puntos de config');
+  verdadero(sube > 3, 'y más de tres puntos, que es donde deja de leerse como una recta');
 });

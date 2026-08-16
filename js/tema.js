@@ -62,6 +62,9 @@ import {
   ESPERA_MANTENIDO_MS,
   DURACION_CARICIA_MS,
   VARS_ORUGAS,
+  VARS_PISO,
+  BRILLO_PISO,
+  VUELO_OBJETO,
   REFLEJO_ARO,
   GIRO_ORUGAS,
   PIVOTE_CABEZA,
@@ -319,6 +322,15 @@ export function variablesDeTema() {
     [VARS_BULBO.halo]: COLORES_BULBO.idle.halo,
     [VARS_BULBO.ciclo]: ms(CICLOS_BULBO.idle),
     [VARS_BULBO.piso]: String(LATIDO_BULBO.idle.piso),
-    [VARS_BULBO.pico]: String(LATIDO_BULBO.idle.pico)
+    [VARS_BULBO.pico]: String(LATIDO_BULBO.idle.pico),
+
+    // ---- Lo que quedó tirado en el piso ----
+    [VARS_PISO.brilloCiclo]: ms(BRILLO_PISO.ciclo),
+    [VARS_PISO.brilloColor]: BRILLO_PISO.color,
+    [VARS_PISO.brilloRadioMin]: `${BRILLO_PISO.radioMin}px`,
+    [VARS_PISO.brilloRadioMax]: `${BRILLO_PISO.radioMax}px`,
+    [VARS_PISO.brilloAlfaMin]: String(BRILLO_PISO.alfaMin),
+    [VARS_PISO.brilloAlfaMax]: String(BRILLO_PISO.alfaMax),
+    [VARS_PISO.vueloDuracion]: ms(VUELO_OBJETO.duracion)
   };
 }

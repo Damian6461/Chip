@@ -71,6 +71,35 @@ export function otorgarPorEventos(coleccion, eventos, azarRaro = Math.random) {
   return armar(coleccion, nuevos);
 }
 
+// ---- Lo que quedó tirado en el piso ----
+//
+// Dos funciones y una regla entre las dos: el objeto del piso ENTRA a la
+// colección antes de que la visita reparta nada. Si fuera al revés, un evento de
+// esta visita podría otorgar la misma pieza que está tirada y quedaría dos veces
+// en el array.
+//
+// Que se guarde solo no lleva ceremonia: no hay evento, no hay cartel y no hay
+// animación de llegada. Pasó mientras no estabas — lo que ves al abrir es el
+// resultado, no el momento. La animación de llegada es para lo que llega ahora.
+export function guardarLoDelPiso(coleccion, objetoEnPiso) {
+  if (!objetoEnPiso || coleccion.includes(objetoEnPiso)) return coleccion;
+  return [...coleccion, objetoEnPiso];
+}
+
+// Qué puede aparecer tirado: SÓLO lo que Chip todavía no tiene.
+//
+// La razón no es de balance sino de lectura. Si apareciera algo repetido, el
+// jugador lo levantaría, no pasaría nada en la repisa, y el gesto quedaría
+// desmentido. Con la colección completa devuelve null y no hay objeto: no queda
+// nada que Chip pueda haber encontrado.
+export function sortearDelPiso(coleccion, aleatorio = Math.random) {
+  const tengo = new Set(coleccion);
+  const faltan = OBJETOS.filter((objeto) => !tengo.has(objeto.id));
+  if (faltan.length === 0) return null;
+
+  return faltan[Math.min(faltan.length - 1, Math.floor(aleatorio() * faltan.length))].id;
+}
+
 function armar(coleccion, nuevos) {
   return {
     coleccion: nuevos.length === 0 ? coleccion : [...coleccion, ...nuevos.map((o) => o.id)],

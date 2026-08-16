@@ -159,9 +159,9 @@ Tres veces es patrón, no casualidad. Por eso está arriba, entre las reglas de 
 
 ### Cuando el instrumento miente
 
-Cuatro veces en la misma sesión una medición dio un número correcto de una cosa
-que no era la que se estaba midiendo. Ninguna de las cuatro se detecta mirando
-el número: todos parecen razonables. Se detectan sabiendo que existen.
+Una y otra vez, una medición dio un número correcto de una cosa que no era la
+que se estaba midiendo. Ninguna se detecta mirando el número: todos parecen
+razonables. Se detectan sabiendo que existen.
 
 | el instrumento | lo que devuelve | lo que uno cree que devuelve |
 |---|---|---|
@@ -169,8 +169,18 @@ el número: todos parecen razonables. Se detectan sabiendo que existen.
 | `fetch` con el service worker vivo | lo que hay **en la caché**, que puede ser de tres deploys atrás | el archivo que acabás de escribir |
 | una captura durante una transición | un fotograma **a mitad de camino** | el estado final |
 | `getBoundingClientRect` sobre un elemento con `transform` | la caja **alineada a los ejes** del elemento rotado, siempre más grande | la caja del elemento |
+| `setTimeout(fn, 30)` en la pestaña oculta | un timer de **un segundo**: el navegador clampea los timers de las pestañas en segundo plano | treinta milisegundos |
 
-Las cuatro salidas:
+La quinta es la que más caro sale, porque no falla: devuelve un dato coherente
+del momento equivocado. Un `await` de 30 ms entre dos lecturas mide un segundo
+después, así que todo lo que dura menos de un segundo —el fastidio de dos
+segundos leído tarde, la red de contención de un vuelo que barre el nodo antes
+de la segunda muestra— aparece como si no existiera. La salida es **no esperar**:
+`getBoundingClientRect()` fuerza el layout por su cuenta, así que un barrido de
+posiciones se puede hacer entero en una sola vuelta del bucle, sin un solo
+`await` en el medio.
+
+Las salidas de las otras cuatro:
 
 - **Pestaña oculta:** nada de esperar `animationend`. Se busca el momento con
   `animacion.pause()` y `animacion.currentTime = t`. De paso es mejor método:
