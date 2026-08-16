@@ -16,12 +16,18 @@
 //
 // Las dos eran disciplina. La disciplina se olvida; un test no.
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { prueba, igual, verdadero } from './runner.js';
-import { RUTAS_SPRITES, RUTAS_OJOS, RUTAS_FONDOS } from '../js/config.js';
-import { LIMITES_PESO, PRESUPUESTO_TOTAL_KB } from './presupuesto.js';
+import { RUTAS_SPRITES, RUTAS_OJOS, RUTAS_FONDOS, AMBIENTES } from '../js/config.js';
+import {
+  LIMITES_PESO,
+  PRESUPUESTO_TOTAL_KB,
+  LIMITE_AMBIENTE_KB,
+  PRESUPUESTO_SONIDO_KB
+} from './presupuesto.js';
 
+const SW = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 const RAIZ = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const CARPETAS = ['sprites', 'icons'];
 
@@ -95,4 +101,56 @@ prueba('caché: las rutas declaradas en config.js están cacheadas', () => {
   ];
   const fuera = declaradas.filter((r) => !enCache.has(r));
   igual(fuera.join(' | '), '', 'rutas de config.js fuera del caché');
+});
+
+// ---- Los ambientes: otra bolsa, otro límite ----
+//
+// El sonido NO se instala con la PWA. Los ambientes no están en ARCHIVOS_CACHE:
+// se bajan bajo demanda la primera vez que alguien prende el sonido. Por eso
+// tienen su propio presupuesto — sumarlos al de los sprites haría que el número
+// de "lo que pesa instalar" mienta por más del doble.
+
+const AMBIENTES_EN_DISCO = readdirSync(join(RAIZ, 'sonidos'))
+  .filter((n) => /\.(ogg|mp3|m4a|wav)$/i.test(n))
+  .map((n) => ({ nombre: n, kb: statSync(join(RAIZ, 'sonidos', n)).size / 1024 }));
+
+prueba('sonido: ningún ambiente supera su límite', () => {
+  const excedidos = AMBIENTES_EN_DISCO.filter((a) => a.kb > LIMITE_AMBIENTE_KB).map(
+    (a) => `sonidos/${a.nombre} pesa ${a.kb.toFixed(0)} KB y el límite es ${LIMITE_AMBIENTE_KB}`
+  );
+  igual(excedidos.join(' | '), '', 'ambientes fuera de presupuesto');
+});
+
+prueba('sonido: el total de lo que se baja bajo demanda entra en su presupuesto', () => {
+  const total = AMBIENTES_EN_DISCO.reduce((s, a) => s + a.kb, 0);
+  verdadero(
+    total <= PRESUPUESTO_SONIDO_KB,
+    `los ambientes suman ${total.toFixed(0)} KB y el presupuesto es ${PRESUPUESTO_SONIDO_KB}`
+  );
+});
+
+// El que evita que la decisión se deshaga sin querer: si alguien mete un
+// ambiente en ARCHIVOS_CACHE, la instalación de la PWA pasa de 1,6 MB a 3,9 y
+// nadie se entera hasta que alguien mida por qué tarda tanto en instalar.
+prueba('sonido: ningún ambiente está en ARCHIVOS_CACHE', () => {
+  const cacheados = AMBIENTES_EN_DISCO.filter((a) => SW.includes(`sonidos/${a.nombre}`)).map(
+    (a) => a.nombre
+  );
+  igual(
+    cacheados.join(', '),
+    '',
+    'los ambientes se bajan bajo demanda: no van en el caché de instalación'
+  );
+});
+
+// Y el otro lado del mismo contrato: el código tiene que poder pedirlos. Una
+// ruta mal escrita en AMBIENTES daría un 404 silencioso —el <audio> no tira
+// error visible— y el galpón se quedaría mudo sin que nada lo diga.
+prueba('sonido: toda ruta de AMBIENTES existe en el disco', () => {
+  for (const [franja, ruta] of Object.entries(AMBIENTES)) {
+    verdadero(
+      existsSync(join(RAIZ, ruta)),
+      `${franja} apunta a ${ruta}, que no está en el repo`
+    );
+  }
 });

@@ -3821,3 +3821,13 @@ body.sin-movimiento *::after {
     scale: 1;
   }
 }
+
+/* La puerta de servicio: mientras se mantiene apretado el botón del menú, el
+   canto se hunde y se enciende apenas. No dice qué está por pasar —es una
+   puerta de servicio, no una función del juego— pero confirma que el aparato
+   registró el dedo, que es lo mínimo para que no se sienta trabado. */
+#menu-boton.abriendo-debug {
+  transition: filter var(--espera-debug) linear, transform 120ms ease-out;
+  filter: brightness(1.35) saturate(1.2);
+  transform: translateY(1px);
+}

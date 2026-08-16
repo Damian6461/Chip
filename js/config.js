@@ -2149,7 +2149,57 @@ export const RUTA_SW = './sw.js';
 
 // El panel se activa con ?debug en la URL. En juego normal debug.js ni se
 // descarga: main.js lo carga con import dinámico.
+// ---- El ambiente del galpón ----
+//
+// Un archivo por tramo del día, con la MISMA tabla horaria que gobierna los
+// fondos: la hora se resuelve una vez y de ahí salen el sprite, la luz, el fondo
+// y el sonido. Un reloj propio para el audio sería una segunda fuente de verdad.
+//
+// `lluvia` está cargada y SIN ENGANCHAR. Es para el evento 16 del canon —"Miró
+// la lluvia por la ventana del fondo. Es su ventana."— que todavía no tiene
+// disparador. Queda en la tabla para que el día que se enganche sea agregar la
+// llamada y nada más; y NO es un quinto tramo ni un sistema de clima: la lluvia
+// es un evento, y armarle un sistema propio sería un sistema entero para un
+// solo caso.
+export const AMBIENTES = {
+  amanecer: 'sonidos/ambiente-amanecer.ogg',
+  mediodia: 'sonidos/ambiente-dia.ogg',
+  atardecer: 'sonidos/ambiente-dia.ogg',
+  noche: 'sonidos/ambiente-noche.ogg',
+  lluvia: 'sonidos/ambiente-lluvia.ogg'
+};
+
+export const SONIDO = {
+  // Bajo. Es ambiente, no música: tiene que estar abajo de todo y notarse
+  // cuando no está, no cuando está.
+  volumen: 0.28,
+  // El cruce entre tramos, y el del archivo consigo mismo al terminar. Los dos
+  // usan el mismo número porque son el mismo problema: dos fuentes y una
+  // transición.
+  cruceMs: 2600,
+  // La primera entrada, al prender el sonido: más lenta, para que no aparezca
+  // de golpe.
+  entradaMs: 1800,
+  pasoCruceMs: 50
+};
+
 export const PARAM_DEBUG = 'debug';
+
+// CÓMO SE ABRE EL PANEL EN LA APP INSTALADA.
+//
+// Con ?debug=1 no alcanza: la PWA instalada arranca en la start_url cacheada y
+// el service worker responde con caches.match SIN ignoreSearch, así que el
+// parámetro no llega a ningún lado. Para probar en el teléfono había que abrir
+// Chrome aparte, que es justamente lo que la app instalada viene a evitar.
+//
+// El gesto es MANTENER APRETADO EL BOTÓN DEL MENÚ tres segundos. Se eligió sobre
+// la alternativa —cinco toques en una esquina— por dos razones: reutiliza un
+// control que ya existe en vez de inventar una zona sensible invisible, y es
+// imposible de encontrar sin querer, porque nadie sostiene un botón de menú tres
+// segundos. Un toque normal sigue abriendo el menú.
+export const ESPERA_DEBUG_MS = 3000;
+
+export const CLASE_ABRIENDO_DEBUG = 'abriendo-debug';
 export const OPCION_DEBUG_AUTO = 'auto';
 
 // Opciones del selector de hora del panel: 0 a 23. Forzar la hora mueve el

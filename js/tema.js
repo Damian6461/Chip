@@ -58,6 +58,7 @@ import {
   VARS_PERSONAJE,
   VARS_CABEZA,
   VARS_CARICIA,
+  ESPERA_DEBUG_MS,
   ESPERA_MANTENIDO_MS,
   DURACION_CARICIA_MS,
   VARS_ORUGAS,
@@ -210,6 +211,7 @@ export function variablesDeTema() {
     // Acariciar
     [VARS_CARICIA.espera]: ms(ESPERA_MANTENIDO_MS),
     [VARS_CARICIA.duracion]: ms(DURACION_CARICIA_MS),
+    '--espera-debug': ms(ESPERA_DEBUG_MS),
 
     // La inclinación de cabeza
     [VARS_CABEZA.pivoteX]: pct(PIVOTE_CABEZA.x),

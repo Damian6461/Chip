@@ -33,10 +33,20 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v65';
+const CACHE_VERSION = 'chip-cache-v67';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
+//
+// TAMPOCO SE CACHEAN LOS AMBIENTES de sonidos/, y es una decisión y no un
+// olvido: son 2,3 MB que se le sumarían a la instalación de la PWA para algo
+// que mucha gente no va a usar nunca. Se bajan bajo demanda la primera vez que
+// alguien prende el sonido; quien no lo prenda, no los baja. El fetch cae al
+// `|| fetch(evento.request)` de más abajo y anda igual.
+//
+// tests/assets.test.js los contempla como categoría aparte, con su propio
+// límite: si estuvieran en la misma bolsa que los sprites, el presupuesto de la
+// instalación diría 3,9 MB cuando en realidad instala 1,6.
 const ARCHIVOS_CACHE = [
   './',
   './index.html',

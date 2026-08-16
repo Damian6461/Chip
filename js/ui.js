@@ -29,6 +29,8 @@ import {
   CLASE_CARICIA,
   CLASE_CANSADO,
   CLASE_MANTENIENDO,
+  ESPERA_DEBUG_MS,
+  CLASE_ABRIENDO_DEBUG,
   TRANSICION_PANEL_MS,
   CLASE_PANEL_VISIBLE,
   ESPERA_SEGUNDO_EVENTO_MS,
@@ -197,6 +199,61 @@ if (menu) {
   });
 }
 
+// ---- La puerta de servicio ----
+//
+// Mantener apretado el botón del menú abre el panel de debug. Existe porque en
+// la app INSTALADA no hay forma de pasar ?debug=1: la PWA arranca en la
+// start_url cacheada y el service worker responde con caches.match sin
+// ignoreSearch, así que el parámetro no llega.
+//
+// Tres segundos es a propósito: nadie sostiene un botón de menú tres segundos
+// sin querer. Y el botón sigue haciendo lo suyo con un toque normal — si el
+// timer no llegó a vencer, el click abre el menú como siempre.
+
+let temporizadorDebug = null;
+let abrioElDebug = false;
+
+export function conectarDebugOculto(alActivar) {
+  if (!menuBoton) return;
+
+  menuBoton.addEventListener('pointerdown', () => {
+    abrioElDebug = false;
+    menuBoton.classList.add(CLASE_ABRIENDO_DEBUG);
+
+    clearTimeout(temporizadorDebug);
+    temporizadorDebug = setTimeout(() => {
+      temporizadorDebug = null;
+      menuBoton.classList.remove(CLASE_ABRIENDO_DEBUG);
+      abrioElDebug = true;
+      alActivar();
+    }, ESPERA_DEBUG_MS);
+  });
+
+  const soltar = () => {
+    clearTimeout(temporizadorDebug);
+    temporizadorDebug = null;
+    menuBoton.classList.remove(CLASE_ABRIENDO_DEBUG);
+  };
+
+  menuBoton.addEventListener('pointerup', soltar);
+  menuBoton.addEventListener('pointerleave', soltar);
+  menuBoton.addEventListener('pointercancel', soltar);
+
+  // Al soltar después de los tres segundos el click llega igual, y sin esto el
+  // menú se abriría encima del panel que se acaba de abrir. Se escucha en
+  // CAPTURA para llegar antes que el handler que abre el menú.
+  menuBoton.addEventListener(
+    'click',
+    (evento) => {
+      if (!abrioElDebug) return;
+      abrioElDebug = false;
+      evento.stopPropagation();
+      evento.preventDefault();
+    },
+    true
+  );
+}
+
 // El movimiento reducido puede venir de dos lados: del ajuste del juego o de
 // prefers-reduced-motion del sistema. El OR se resuelve acá y el CSS ve una sola
 // clase — así nunca tiene que preguntar dos cosas.
@@ -208,10 +265,13 @@ export function aplicarAjustes(ajustes) {
 
   const casilla = document.getElementById('ajuste-movimiento');
   if (casilla) casilla.checked = ajustes.movimientoReducido;
+
+  const sonido = document.getElementById('ajuste-sonido');
+  if (sonido) sonido.checked = Boolean(ajustes.sonido);
 }
 
 // Si el sistema cambia de opinión con la app abierta, se acompaña.
-export function conectarMenu({ onMovimiento, onReiniciar, ajustesActuales }) {
+export function conectarMenu({ onMovimiento, onSonido, onReiniciar, ajustesActuales }) {
   if (!menu) return;
 
   // Si el sistema cambia de opinión con la app abierta, se acompaña sin pisar
@@ -220,6 +280,12 @@ export function conectarMenu({ onMovimiento, onReiniciar, ajustesActuales }) {
 
   document.getElementById('ajuste-movimiento').addEventListener('change', (e) => {
     onMovimiento(e.target.checked);
+  });
+
+  // El toggle del sonido ES el gesto que el navegador pide para poder reproducir
+  // audio. Por eso no hay ningún intento de sonar antes de esto.
+  document.getElementById('ajuste-sonido')?.addEventListener('change', (e) => {
+    onSonido(e.target.checked);
   });
 
   const caja = document.getElementById('confirmar-reinicio');

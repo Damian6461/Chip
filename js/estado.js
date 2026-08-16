@@ -41,7 +41,10 @@ export function crearEstadoNuevo() {
     // Lo que el jugador eligió. Es un objeto y no un campo suelto porque va a
     // crecer —el sonido entra acá cuando exista— y así cada ajuste nuevo lo
     // trae el merge-con-defaults sin tocar la migración.
-    ajustes: { movimientoReducido: false },
+    // El sonido arranca APAGADO, y no por prudencia: los navegadores bloquean el
+    // audio sin un gesto del usuario, así que un ambiente que arrancara solo no
+    // sonaría igual y dejaría la app en un estado indistinguible de un bug.
+    ajustes: { movimientoReducido: false, sonido: false },
     version: VERSION_ESTADO
   };
 }

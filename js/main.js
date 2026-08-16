@@ -21,6 +21,7 @@ import { hitoPendiente, eventoDeHito, capaPorDias } from './gigantes.js';
 import { cargarSprites, franjaDelDia } from './sprites.js';
 import { abrirVisita } from './visita.js';
 import { crearSesion } from './sesion.js';
+import { ambientar, encender } from './sonido.js';
 import {
   render,
   sembrarFondo,
@@ -31,6 +32,7 @@ import {
   mostrarGigantes,
   conectarAcciones,
   conectarCaricia,
+  conectarDebugOculto,
   animarAccion,
   iniciarAccion,
   celebrarHumor,
@@ -79,6 +81,10 @@ const sesion = crearSesion({
   vista: {
     render(...args) {
       render(...args);
+      // El ambiente sigue al MISMO tramo que el fondo: llega como argumento de
+      // render y no de un reloj propio. ambientar() ignora los repetidos, así
+      // que llamarlo en cada pintada no cuesta nada.
+      ambientar(args[5]?.nombre);
       if (refrescarDebug) refrescarDebug();
     },
     sembrarFondo,
@@ -109,11 +115,20 @@ conectarMenu({
     sesion.establecerEstado({ ...e, ajustes: { ...e.ajustes, movimientoReducido: activado } });
     aplicarAjustes(sesion.estado().ajustes);
   },
+  onSonido(activado) {
+    const e = sesion.estado();
+    sesion.establecerEstado({ ...e, ajustes: { ...e.ajustes, sonido: activado } });
+    // Este click ES el gesto de usuario que el navegador exige para poder
+    // reproducir audio, así que encender() sólo puede llamarse desde acá.
+    encender(activado);
+  },
   onReiniciar() {
     // El mismo camino que el botón del panel de debug, pero con confirmación
     // adelante. Reiniciar borra la colección, la presencia y los stats.
     sesion.establecerEstado(crearEstadoNuevo());
     aplicarAjustes(sesion.estado().ajustes);
+    // Reiniciar devuelve el ajuste a su default, que es apagado.
+    encender(false);
     mostrarColeccion(sesion.estado().coleccion);
     mostrarGigantes(sesion.estado().diasDePresencia, sesion.estado().hitosVistos);
     sesion.actualizarVisual({ inmediato: true });
@@ -291,8 +306,22 @@ const apiDebug = {
 // Import dinámico: sin ?debug en la URL, debug.js no se descarga.
 // iniciarDebug devuelve su refresco, que pintar() engancha para que la lectura
 // de stats siga a los botones del juego y no sólo a los del panel.
-if (new URLSearchParams(location.search).has(PARAM_DEBUG)) {
+// El panel se descarga sólo cuando alguien lo pide: sin ?debug y sin el gesto,
+// debug.js no se baja nunca.
+let panelDebugPedido = false;
+
+function abrirPanelDebug() {
+  if (panelDebugPedido) return;
+  panelDebugPedido = true;
+
   import('./debug.js').then(({ iniciarDebug }) => {
     refrescarDebug = iniciarDebug(apiDebug);
+    pintar();
   });
 }
+
+if (new URLSearchParams(location.search).has(PARAM_DEBUG)) abrirPanelDebug();
+
+// Y la puerta de servicio, para la app instalada: mantener apretado el botón
+// del menú. Ver conectarDebugOculto en ui.js.
+conectarDebugOculto(abrirPanelDebug);
