@@ -175,8 +175,8 @@ export const RUTAS_FONDOS = {
 // 100%` la imagen escalada mide alto x (1672/941), así que entrar 8% en ella es
 // correrla `alto * 0,08 * 1,7768` hacia la izquierda, sea cual sea la pantalla.
 // El CSS hace ese calc con la constante de acá.
-export const FONDO_ENTRADA = 0.08;
-export const FONDO_PROPORCION = 1672 / 941;
+const FONDO_ENTRADA = 0.08;
+const FONDO_PROPORCION = 1672 / 941;
 export const FONDO_CORRIMIENTO = FONDO_ENTRADA * FONDO_PROPORCION;
 
 // La panorámica se usa en DOS capas: el panel de Chip, nítido y recortado, y el
@@ -1151,41 +1151,41 @@ export const CLASE_PARPADEO = 'parpadeando';
 // Corazones de feliz. Los originales median 24x22 px sobre el lienzo de 256, o
 // sea 9,4% del alto de Chip, y nacían pegados a los costados de la cabeza
 // (17,8% y 80,3% de ancho, 21% de alto).
-export const COLORES_CORAZON = {
+const COLORES_CORAZON = {
   borde: '#ff2741',
   cuerpo: '#ff8d90',
   brillo: '#ffe0df'
 };
 
 // Chispas de feliz: cuñas de 13-14 px de ancho, o sea 5,5%.
-export const COLORES_DESTELLO = {
+const COLORES_DESTELLO = {
   borde: '#ffb100',
   cuerpo: '#ffdc16'
 };
 
 // Rayitas de jugando: la misma cuña pero de 26x25, el doble, y en un amarillo
 // más anaranjado. Es el estado más enérgico y el efecto lo tiene que decir.
-export const COLORES_RAYITA = {
+const COLORES_RAYITA = {
   borde: '#e07d00',
   cuerpo: '#ffb900'
 };
 
 // Pulsos de cargando: la energía que sube por el cuerpo desde el enchufe hasta
 // el rayo del pecho. Mismo cian del cable y del display.
-export const COLORES_PULSO = {
+const COLORES_PULSO = {
   halo: '#16c8e6',
   nucleo: '#eafcff'
 };
 
 // Burbujas de limpiando: redondas, de 20 a 26 px.
-export const COLORES_BURBUJA = {
+const COLORES_BURBUJA = {
   borde: '#7fd8f0',
   cuerpo: '#cdeffb',
   brillo: '#ffffff'
 };
 
 // Las Z del standby: 20x25 px el más grande, con contorno azul marino.
-export const COLORES_ZETA = {
+const COLORES_ZETA = {
   borde: '#00204b',
   cuerpo: '#00efff'
 };

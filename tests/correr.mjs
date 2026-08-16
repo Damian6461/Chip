@@ -18,6 +18,7 @@ await import('./orquestador.test.js');
 // Sólo en Node: es el único que toca el sistema de archivos, por eso no está en
 // tests/index.html.
 await import('./assets.test.js');
+await import('./composicion.test.js');
 
 const VERDE = '\x1b[32m';
 const ROJO = '\x1b[31m';

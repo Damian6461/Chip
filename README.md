@@ -20,7 +20,7 @@ http://127.0.0.1:5500/index.html
 
 ## Tests
 
-152 pruebas, mismos archivos en dos entrypoints:
+157 pruebas, mismos archivos en dos entrypoints:
 
 ```bash
 node tests/correr.mjs        # sale 0 si pasa todo, 1 si no
@@ -33,6 +33,8 @@ http://127.0.0.1:5500/tests/   # verde/rojo en la página, resumen en el <title>
 No hace falta `package.json`: Node detecta la sintaxis de módulo sola. Los dos entrypoints instalan un `localStorage` en memoria antes de importar nada del juego, así que **la suite nunca toca tu partida**, ni siquiera en el navegador donde el origen es el mismo.
 
 Se corren después de cualquier cambio que toque estado, decay o persistencia.
+
+`tests/composicion.test.js` hace cumplir las dos reglas de composición de los efectos: que ninguna partícula se salga de `FRANJA_EFECTOS` y que ninguna entre en el círculo de `RADIO_EXCLUSION_ANTENA`. Las dos constantes existían hace rato y **no las leía nadie** — aparecían sólo en un comentario de `style.css` contando que las posiciones se habían verificado a mano. Los números que mandan viven en el CSS como literales, así que mover un corazón al 92% no rompía nada y nadie se enteraba. Mismo patrón que el guardián de las poses: una regla sostenida por disciplina, no por construcción.
 
 `tests/orquestador.test.js` es el que cubre la secuencia y no las piezas: el ciclo de visita completo, la primera visita absoluta, la ausencia larga contra los dos caps, la acción que no aplica, el cruce de tramo con la app abierta y el doble guardado. Las otras siete suites pasaban enteras mientras el lugar donde esas piezas se combinan no tenía una sola prueba — y ahí estaban los dos bugs de arriba.
 
@@ -56,7 +58,7 @@ Sin el parámetro, `js/debug.js` ni se descarga (import dinámico).
 | sumar días | suma presencia acumulada, para ver el arco de los gigantes avanzar |
 | disparar hito | dispara el hito pendiente sin esperar a la próxima apertura |
 | sumar objeto | agrega el primer objeto que falte, para poblar el estante |
-| cambiar pose | fuerza la otra pose de idle, que si no cambia una vez por minuto y con moneda |
+| cambiar pose | avanza el índice de pose de idle sin recargar (hoy `POSES_IDLE` tiene una sola, así que no cambia nada) |
 | reiniciar partida | save nuevo en 100/100/100 |
 
 La lectura de abajo muestra los stats con decimales, la colección cruda, la presencia, la capa que alcanzó el arco y los hitos ya vividos.
@@ -82,7 +84,6 @@ Se rompen y el proyecto se degrada rápido.
 - **Nunca el shorthand `animation` en una regla que pueda pisar delays de `:nth-child`.** Se declaran las propiedades por separado, o los `animation-delay` van **después** de la regla del shorthand y con el mismo prefijo de estado. Ver abajo: mordió tres veces.
 - **Todo asset nuevo entra en `ARCHIVOS_CACHE` con su bump de `CACHE_VERSION`**, y `tests/assets.test.js` lo verifica: el cruce ya no es disciplina.
 - **Nunca medir con `getBoundingClientRect` un elemento con `transform`.** Devuelve la caja del bounding box rotado, no la del elemento. Para la caja de layout van `offsetWidth` / `offsetHeight`. Ver abajo: el instrumento miente.
-
 - **`main.js` es cableado y no decide nada.** Arma las piezas, les pasa el reloj real y el DOM real, y las conecta. Lo que decide vive en `visita.js` y `sesion.js`, que se prueban sin navegador.
 
 ### El orquestador son tres archivos
