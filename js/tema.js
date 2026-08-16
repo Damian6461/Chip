@@ -58,7 +58,7 @@ import {
   VARS_PERSONAJE,
   VARS_CABEZA,
   VARS_ORUGAS,
-  BARRA_CUBO,
+  REFLEJO_ARO,
   GIRO_ORUGAS,
   PIVOTE_CABEZA,
   INCLINACION_CABEZA,
@@ -209,11 +209,15 @@ export function variablesDeTema() {
     [VARS_CABEZA.pivoteY]: pct(PIVOTE_CABEZA.y),
     [VARS_CABEZA.angulo]: `${INCLINACION_CABEZA.angulo}deg`,
     // Las orugas
-    [VARS_ORUGAS.barraColor]: BARRA_CUBO.color,
-    [VARS_ORUGAS.barraBrillo]: BARRA_CUBO.brillo,
-    [VARS_ORUGAS.anguloAcomodo]: `${GIRO_ORUGAS.acomodo.angulo}deg`,
+    [VARS_ORUGAS.reflejoColor]: REFLEJO_ARO.color,
+    // El perímetro se normaliza a 100 con pathLength, así el arco y el hueco se
+    // escriben en porcentaje del recorrido y no hay que medir ninguna elipse.
+    [VARS_ORUGAS.reflejoArco]: String(+(REFLEJO_ARO.arco * 100).toFixed(2)),
+    [VARS_ORUGAS.reflejoHueco]: String(+((1 - REFLEJO_ARO.arco) * 100).toFixed(2)),
+    [VARS_ORUGAS.reflejoGrosor]: String(REFLEJO_ARO.grosor),
+    [VARS_ORUGAS.reflejoReposo]: String(REFLEJO_ARO.opacidadReposo),
+    [VARS_ORUGAS.reflejoGiro]: String(REFLEJO_ARO.opacidadGiro),
     [VARS_ORUGAS.duracionAcomodo]: ms(GIRO_ORUGAS.acomodo.duracion),
-    [VARS_ORUGAS.anguloMecida]: `${GIRO_ORUGAS.mecida.angulo}deg`,
     [VARS_ORUGAS.cicloMecida]: ms(GIRO_ORUGAS.mecida.ciclo),
 
     [VARS_CABEZA.total]: ms(
@@ -235,7 +239,6 @@ export function variablesDeTema() {
     ...tonos('toma', COLORES_TOMA),
 
     // EL CABLE
-    [VARS_CABLE.grosor]: String(CABLE.grosor),
     [VARS_CABLE.color]: CABLE.color,
     [VARS_CABLE.brillo]: CABLE.brillo,
     [VARS_CABLE.cicloBalanceo]: ms(CABLE.balanceo.ciclo),

@@ -69,7 +69,6 @@ import {
   DURACION_DESTELLO_BULBO_MS,
   NUBE_RAPIDA,
   AROS_ORUGA,
-  BARRA_CUBO,
   GIRO_ORUGAS,
   CLASE_ACOMODO,
   RUTAS_CABEZA,
@@ -77,6 +76,7 @@ import {
   CLASE_INCLINADA,
   ESPERA_INCLINACION,
   DURACION_INCLINACION_MS,
+  CABLE,
   PULSOS_CABLE,
   CONECTOR_PECHO,
   RECORRIDO_CABLE,
@@ -97,7 +97,7 @@ import {
   svgDeRayo,
   svgDeNumero,
   caminoDelCable,
-  barraDeCubo
+  reflejoDeAro
 } from './formas.js';
 
 // Los nodos, el puente de custom properties y los SVG del mobiliario están en
@@ -545,7 +545,7 @@ function pintarOrugas(claveSprite) {
   nodoOrugas.hidden = !aros;
   if (!aros) return;
 
-  nodoOrugas.innerHTML = aros.map((aro) => barraDeCubo(aro, BARRA_CUBO)).join('');
+  nodoOrugas.innerHTML = aros.map(reflejoDeAro).join('');
 }
 
 // El cuarto de vuelta de una acción. Se saca solo: es un gesto, no un estado.
@@ -679,27 +679,36 @@ export function dibujarCable() {
   const desde = puntoDelConector(escena);
   if (!desde || !escena.width) return;
 
-  // El recorrido está declarado en % de la escena; acá se pasa a píxeles, una
-  // sola vez, y todo lo de adentro de caminoDelCable trabaja en píxeles.
-  const aPx = (p) => ({ x: (p.x / 100) * escena.width, y: (p.y / 100) * escena.height });
+  const aPx = (p) => ({ ...p, x: (p.x / 100) * escena.width, y: (p.y / 100) * escena.height });
   const enPx = {
-    apoyo: { ...aPx(RECORRIDO_CABLE.apoyo), caida: RECORRIDO_CABLE.apoyo.caida },
-    rulos: RECORRIDO_CABLE.rulos.map((r) => ({
-      ...aPx(r),
-      // El radio se mide contra el ANCHO en las dos direcciones, para que el
-      // rulo sea redondo y su achatado sea el escorzo que se pidió y no el de
-      // la caja.
-      radio: (r.radio / 100) * escena.width,
-      achatado: r.achatado
-    })),
-    quiebre: aPx(RECORRIDO_CABLE.quiebre),
+    apoyo: aPx(RECORRIDO_CABLE.apoyo),
+    quiebres: RECORRIDO_CABLE.quiebres.map(aPx),
     llegada: aPx(RECORRIDO_CABLE.llegada)
   };
 
-  const d = caminoDelCable(desde, enPx);
+  const { completo, tramos } = caminoDelCable(desde, enPx);
 
   nodoCable.setAttribute('viewBox', `0 0 ${Math.round(escena.width)} ${Math.round(escena.height)}`);
-  nodoCable.style.setProperty(VARS_CABLE.camino, `path("${d}")`);
+  nodoCable.style.setProperty(VARS_CABLE.camino, `path("${completo}")`);
+
+  // EL TRAZO SE AFINA CON LA DISTANCIA. Cada tramo trae su profundidad de 0 a 1
+  // y de ahí sale su grosor; sin esto el cable mide lo mismo a dos metros que a
+  // ocho, y la escena se aplana.
+  const grosorDe = (z) => CABLE.grosor + (CABLE.grosorLejos - CABLE.grosor) * z;
+
+  const cuerpo = tramos
+    .map(
+      (t) =>
+        `<path class="cable-cuerpo" d="${t.d}" style="stroke-width: ${grosorDe(t.z).toFixed(2)}px"/>`
+    )
+    .join('');
+
+  const filo = tramos
+    .map(
+      (t) =>
+        `<path class="cable-brillo" d="${t.d}" style="stroke-width: ${(grosorDe(t.z) * 0.22).toFixed(2)}px; translate: 0 ${(grosorDe(t.z) * -0.26).toFixed(2)}px"/>`
+    )
+    .join('');
 
   const pulsos = Array.from(
     { length: PULSOS_CABLE.cuantos },
@@ -707,10 +716,7 @@ export function dibujarCable() {
       `<circle class="pulso-cable" r="${PULSOS_CABLE.radio}" style="animation-delay: ${Math.round((i * PULSOS_CABLE.ciclo) / PULSOS_CABLE.cuantos)}ms"/>`
   ).join('');
 
-  nodoCable.innerHTML =
-    `<path class="cable-cuerpo" d="${d}"/>` +
-    `<path class="cable-brillo" d="${d}"/>` +
-    pulsos;
+  nodoCable.innerHTML = cuerpo + filo + pulsos;
 }
 
 // ---- La nube que pasa una vez ----

@@ -852,43 +852,54 @@ export const AROS_ORUGA = {
   ]
 };
 
-// LA BARRA DEL CUBO, y por qué existe.
+// EL REFLEJO QUE RECORRE EL ARO.
 //
-// El aro pintado es una elipse lisa con un cubo liso adentro: NO tiene ningún
-// rasgo angular. Girar la elipse sobre su centro no la hace rodar, la tumba —
-// un círculo en escorzo rotado 90 grados pasa a estar acostado.
+// La primera versión dibujaba una CHAVETA cruzando el cubo y la rotaba. Andaba,
+// pero agregaba una pieza mecánica al arte, y el arte no se toca.
 //
-// Así que lo que gira se dibuja: una barra corta cruzando el cubo, del vocabulario
-// del galpón (una chaveta, un tornillo pasante). Está SIEMPRE, también en reposo,
-// donde se lee como parte del cubo; lo que cambia es su ángulo. Una marca que
-// aparece sólo al girar se lee como un glitch.
-export const BARRA_CUBO = {
-  // % del radio del aro que ocupa la barra
-  largo: 1.15,
-  // En % del contenedor, igual que el resto de la tabla: el SVG tiene viewBox
-  // 0 0 100 100 para que las coordenadas de AROS_ORUGA entren directo.
-  grosor: 0.9,
-  color: '#8a4a12',
-  brillo: '#f0a326'
+// Esto no agrega nada: los aros YA tienen un reflejo especular pintado, y lo
+// que se anima es dónde está esa luz. Un metal que gira no cambia de forma —
+// cambia dónde le pega la luz, y el brillo corre por el borde. Es la misma
+// lógica que el bulbo de la antena: no se cambia el dibujo, se cambia la luz.
+//
+// Es un ARCO corto y no un punto: un punto de luz sobre un aro se lee como un
+// LED, y un arco se lee como el filo del metal atrapando la luz.
+export const REFLEJO_ARO = {
+  // Cuánto del perímetro ocupa el arco de luz, de 0 a 1.
+  arco: 0.17,
+  // Grosor del trazo, en % del contenedor. Fino: es un filo, no un anillo.
+  grosor: 0.85,
+  // El naranja claro del propio aro, muestreado del arte: los píxeles más
+  // brillantes del aro llegan a rgb(255, 216, 0).
+  color: '#ffd84a',
+  // En reposo el arco está QUIETO, apoyado donde pega la luz de la ventana —que
+  // está a la izquierda— y muy tenue: ahí no es un efecto, es el reflejo que ya
+  // estaba pintado. Al girar sube.
+  opacidadReposo: 0.35,
+  opacidadGiro: 0.95
 };
 
-// El giro. En reposo NO giran: Chip está quieto.
+// El giro, ahora medido en VUELTAS del reflejo y no en grados de una pieza.
 export const GIRO_ORUGAS = {
-  // Al ejecutar una acción: un cuarto de vuelta rápido, como si se acomodara.
-  acomodo: { angulo: 90, duracion: 300 },
-  // En jugando: de ida y vuelta, como si se meciera. No es una rueda libre, es
-  // un cuerpo jugando.
-  mecida: { angulo: 26, ciclo: 900 }
+  // Al ejecutar una acción: una vuelta rápida, como si se acomodara.
+  acomodo: { duracion: 620 },
+  // En jugando: continuo y lento. No es una rueda libre — es un cuerpo que se
+  // mece en el lugar, así que la vuelta es pausada.
+  mecida: { ciclo: 2400 }
 };
+
+// En reposo el reflejo está quieto: Chip no se mueve, y una luz corriendo
+// sola por la rueda de un personaje parado se lee como un GIF en loop.
 
 export const VARS_ORUGAS = {
-  giro: '--giro-oruga',
   duracionAcomodo: '--acomodo-duracion',
-  anguloAcomodo: '--acomodo-angulo',
   cicloMecida: '--mecida-ciclo',
-  anguloMecida: '--mecida-angulo',
-  barraColor: '--barra-cubo-color',
-  barraBrillo: '--barra-cubo-brillo'
+  reflejoColor: '--reflejo-color',
+  reflejoArco: '--reflejo-arco',
+  reflejoHueco: '--reflejo-hueco',
+  reflejoGrosor: '--reflejo-grosor',
+  reflejoReposo: '--reflejo-reposo',
+  reflejoGiro: '--reflejo-giro'
 };
 
 export const CLASE_ACOMODO = 'acomodando';
@@ -1248,7 +1259,11 @@ export const CLASE_ESTOY_BIEN = 'estoy-bien';
 // Y de 34% de ancho a 28. Con dos tablas y ménsulas visibles, 34% la volvía la
 // pieza más grande de la pared; a 28 son 109 px en un viewport de 390, contra
 // los 133 de antes.
-export const REPISA = { x: 60, y: 29.5, ancho: 28, alto: 3.4 };
+// x 70 y no 60. El problema no era la ALTURA sino que la repisa CRUZABA los
+// conductos verticales de la pared, que bajan por x 52-58% y x 63-68%: su
+// tercio izquierdo quedaba montado encima de ellos. Corrida a 70-95% apoya en
+// pared limpia y la altura se queda donde estaba.
+export const REPISA = { x: 70, y: 29.5, ancho: 25, alto: 3.4 };
 
 // DOS ESTANTES. La separación va en % de la escena, igual que el resto de la
 // geometría de la pared, para que el hueco entre tablas no cambie con el
@@ -1488,7 +1503,10 @@ export const CABLE = {
   // Grosor y color: es un cable de energía industrial, no un hilo. El trazo base
   // va OSCURO a propósito; lo que brilla son los pulsos, y ese contraste entre
   // el cable apagado y la energía que lo recorre es el efecto.
+  // Grosor CERCA del conector. Se afina hacia el fondo con la profundidad de
+  // cada tramo, hasta grosorLejos.
   grosor: 7,
+  grosorLejos: 1.8,
   color: '#16323d',
   // El filo de arriba: la luz de la ventana pegándole por encima. No es un
   // contorno, es una arista iluminada, como los caños de la panorámica.
@@ -1507,28 +1525,48 @@ export const CABLE = {
 // El piso ÚTIL termina donde empieza la línea de eventos, alrededor del 84%:
 // más abajo el cable pasa por detrás del texto y de la botonera y deja de
 // leerse como galpón. Todo el recorrido vive arriba de esa línea.
+// EL RECORRIDO, medido contra la profundidad de la panorámica.
+//
+// EL FONDO DEL TALLER ESTÁ EN y = 65-66%: ahí es donde el piso encuentra la
+// pared, medido con una escala de porcentajes sobre el fondo. Todo lo que esté
+// más abajo de 66 está en el PISO, o sea adelante. La versión anterior terminaba
+// en 71% y por eso la caja quedaba en primer plano, a la misma profundidad que
+// Chip, en vez de al fondo.
+//
+// LOS DOBLECES SON TRAMOS RECTOS QUE SE QUIEBRAN, no curvas. Un cable tirado en
+// el piso no describe una curva suave: hace un tramo, dobla en ángulo, hace
+// otro. La versión anterior era una curva con un rulo y se leía como una cinta.
+// La única curva que queda es la CAÍDA, que sí es una catenaria porque ahí el
+// cable cuelga en el aire.
+//
+// Y se ACHICA con la distancia: cada tramo lleva su profundidad y el trazo se
+// afina con ella. Un cable del mismo grosor de punta a punta aplana la escena.
 export const RECORRIDO_CABLE = {
-  // dónde toca el piso, y cuánto cuelga la panza de la caída
-  apoyo: { x: 45.5, y: 82.5, caida: 0.5 },
-  // Los dos rulos de sobrante. El radio se mide en % del ANCHO de la escena en
-  // las dos direcciones, así el rulo es redondo; el achatado que lo vuelve
-  // elipse es el ESCORZO —está apoyado en el piso y se ve desde arriba—, no la
-  // deformación de la caja.
-  rulos: [
-    { x: 41, y: 83.4, radio: 2.6, achatado: 0.44 },
-    { x: 52.5, y: 81.6, radio: 1.9, achatado: 0.42 }
+  // Dónde toca el piso, y cuánto cuelga la panza. El apoyo cae adelante y a la
+  // izquierda de Chip: el cable sale del pecho, no de atrás.
+  // y 81,5 y no 85,5: la línea de eventos arranca en 83% y el cable le pasaba
+  // por detrás. La banda útil del piso va de 66% —donde el piso encuentra la
+  // pared— a 82%, que es donde apoyan las orugas de Chip. Todo el recorrido
+  // vive ahí adentro.
+  apoyo: { x: 44, y: 81.5, caida: 0.44 },
+
+  // Los quiebres, en orden, del apoyo hasta la caja. Cada uno con su
+  // PROFUNDIDAD de 0 a 1 —0 es acá, 1 es el fondo— que decide el grosor.
+  // Los tramos son rectos; lo que los hace leer como cable son los ángulos
+  // entre ellos, que no son suaves ni parejos.
+  quiebres: [
+    { x: 50.5, y: 82.4, z: 0.08 },
+    { x: 57, y: 79.6, z: 0.26 },
+    { x: 54, y: 76.8, z: 0.42 },
+    { x: 62.5, y: 74.2, z: 0.58 },
+    { x: 68, y: 70.4, z: 0.76 },
+    { x: 75.5, y: 67.4, z: 0.9 }
   ],
-  // el quiebre de la corrida: el cable no va derecho al fondo, dobla una vez
-  quiebre: { x: 66, y: 78 },
-  // dónde termina, que es la boca de la caja de conexión
-  llegada: { x: 82.5, y: 71 }
+
+  // La boca de la caja de conexión, contra la pared del fondo.
+  llegada: { x: 80.5, y: 65, z: 1 }
 };
 
-// LOS PULSOS que viajan por el cable. Nacen en la caja del fondo y recorren el
-// camino hasta el conector del pecho: la energía VIAJA, y eso es lo que separa
-// una carga que se ve profesional de una luz que parpadea en su lugar.
-//
-// Van brillantes contra un cable oscuro. Ese contraste ES el efecto.
 export const PULSOS_CABLE = { cuantos: 5, ciclo: 3200, radio: 4.2 };
 
 // LA CAJA DE CONEXIÓN, de vuelta y al fondo. Es la misma que se dibujó en su
@@ -1536,20 +1574,30 @@ export const PULSOS_CABLE = { cuantos: 5, ciclo: 3200, radio: 4.2 };
 // SUMERGIDA: chica, en penumbra y con la luz de esa profundidad. No compite con
 // Chip porque está lejos, que era el problema de tenerla adelante.
 export const TOMA_FONDO = {
-  x: 82.5,
-  y: 71,
-  // Ancho en % de la escena. Adelante medía 13% del lienzo de Chip; al fondo
-  // tiene que leerse como el mismo objeto a tres o cuatro metros.
-  ancho: 7.4,
-  // Cuánto se hunde en la penumbra del fondo. Es un brillo, no una opacidad: el
-  // objeto está entero, lo que le falta es luz.
-  brillo: 0.52,
-  saturacion: 0.72
+  // Contra la pared del fondo, en y=65%: la línea donde el piso encuentra la
+  // pared, medida sobre la panorámica. Estaba en 71%, que son seis puntos
+  // ADENTRO del piso — o sea en primer plano, a la misma profundidad que Chip.
+  x: 80.5,
+  y: 65,
+
+  // 3% del ancho de la escena, contra el 7,4 de antes. La medida no es una
+  // impresión: la panorámica ya tiene una caja pintada en esa pared y a esa
+  // profundidad, y mide 2,9% del ancho de la escena. Un objeto del mismo tipo,
+  // a la misma distancia, tiene que medir lo mismo.
+  ancho: 3,
+
+  // Y bien sumergida. Es un brillo y no una opacidad: el objeto está entero, lo
+  // que le falta es luz — que es exactamente lo que le pasa a algo que está
+  // lejos en un galpón oscuro. Bajó de 0,52 a 0,34.
+  brillo: 0.34,
+  saturacion: 0.55
 };
 
 export const VARS_CABLE = {
   camino: '--cable-camino',
-  grosor: '--cable-grosor',
+  // El grosor ya no viaja por custom property: lo escribe ui.js POR TRAMO, con
+  // la profundidad de cada uno, para que el cable se afine con la distancia. Un
+  // valor único en :root no puede hacer eso.
   color: '--cable-color',
   brillo: '--cable-brillo',
   energia: '--cable-energia',

@@ -3319,7 +3319,7 @@ body.es-noche .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
 @media (prefers-reduced-motion: reduce) {
   #contenedor-mascota,
   #cabeza-grupo.inclinada,
-  #orugas .cubo,
+  #orugas .reflejo,
   #cable path,
   .pulso-cable,
   #cuerpo.cambiando,
@@ -3528,9 +3528,10 @@ body.sin-movimiento *::after {
    cable de energía industrial: el trazo base va apagado y lo que brilla son los
    pulsos. Ese contraste entre el cable muerto y la energía que lo recorre ES el
    efecto — con el cable ya brillante, los pulsos no tienen contra qué destacar. */
+/* El grosor lo pone ui.js por tramo, con la profundidad de cada uno: cerca es
+   grueso y lejos es fino. Acá sólo queda el color y las puntas. */
 .cable-cuerpo {
   stroke: var(--cable-color);
-  stroke-width: var(--cable-grosor);
   stroke-linejoin: round;
 }
 
@@ -3539,9 +3540,7 @@ body.sin-movimiento *::after {
    un trazo más fino corrido hacia arriba, no con un segundo path. */
 .cable-brillo {
   stroke: var(--cable-brillo);
-  stroke-width: calc(var(--cable-grosor) * 0.22);
   opacity: 0.5;
-  translate: 0 calc(var(--cable-grosor) * -0.26);
 }
 
 /* EL BALANCEO. Muy leve y muy lento: algo que apenas se mueve por su propio
@@ -3658,16 +3657,22 @@ body.sin-movimiento *::after {
 }
 
 /* ============================================================================
-   LAS ORUGAS QUE GIRAN
+   EL REFLEJO QUE RECORRE EL ARO
 
-   Lo que gira es la BARRA DEL CUBO y no el aro. El aro pintado es una elipse
-   lisa —un círculo visto en escorzo— y rotarlo sobre su centro no lo hace
-   rodar: lo acuesta. A 90 grados un círculo en escorzo pasa a estar horizontal,
-   que es exactamente lo contrario de lo que se quiere decir.
+   Los aros ya tienen un reflejo especular pintado. Lo que se anima no es una
+   pieza sino DÓNDE ESTÁ LA LUZ: un metal que gira no cambia de forma, cambia
+   dónde le pega el brillo. Misma lógica que el bulbo de la antena.
 
-   La barra está SIEMPRE, también en reposo, donde se lee como una chaveta del
-   cubo. Lo que cambia es su ángulo. Una marca que aparece sólo al girar se lee
-   como un glitch.
+   La primera versión dibujaba una chaveta cruzando el cubo y la rotaba. Andaba,
+   pero agregaba una pieza mecánica al arte — y el arte no se toca.
+
+   El mecanismo es stroke-dasharray sobre una elipse con pathLength="100": una
+   raya corta y un hueco largo dejan UN solo arco de luz, y animar dashoffset lo
+   hace recorrer el borde. Sin pathLength habría que calcular el perímetro de una
+   elipse, que no tiene fórmula cerrada, y recalcularlo por cada aro.
+
+   Es un ARCO y no un punto: un punto de luz sobre un aro se lee como un LED; un
+   arco se lee como el filo del metal atrapando la luz.
    ============================================================================ */
 
 #orugas {
@@ -3677,48 +3682,54 @@ body.sin-movimiento *::after {
   height: 100%;
   overflow: visible;
   pointer-events: none;
+  /* screen para que el reflejo SUME luz sobre el aro pintado en vez de taparlo.
+     Es un brillo, no una capa encima. */
+  mix-blend-mode: screen;
 }
 
 #orugas[hidden] {
   display: none;
 }
 
-/* EN REPOSO NO GIRAN. Chip está quieto, y una rueda girando sola es lo que hace
-   que un personaje parado se vea como un GIF en loop. */
-.cubo {
-  rotate: var(--giro-oruga, 0deg);
+.reflejo {
+  fill: none;
+  stroke: var(--reflejo-color);
+  stroke-width: var(--reflejo-grosor);
+  stroke-linecap: round;
+  stroke-dasharray: var(--reflejo-arco) var(--reflejo-hueco);
+  stroke-dashoffset: 0;
+  /* EN REPOSO EL REFLEJO ESTÁ QUIETO y tenue, apoyado donde arranca el
+     recorrido: la izquierda del aro, que es de donde entra la luz de la
+     ventana. Ahí no se lee como un efecto sino como el reflejo que el arte ya
+     tenía. Chip está parado; una luz corriendo sola por su rueda se leería como
+     un GIF en loop. */
+  opacity: var(--reflejo-reposo);
 }
 
-/* EL ACOMODO: un cuarto de vuelta rápido al ejecutar una acción, como si se
-   asentara. Va montado en el mismo momento que el salto — es la misma reacción
-   del cuerpo a haber hecho algo. */
-#orugas.acomodando .cubo {
-  animation: acomodar-oruga var(--acomodo-duracion) cubic-bezier(0.2, 0.9, 0.3, 1);
+/* EL ACOMODO: una vuelta rápida al ejecutar una acción, montada en el mismo
+   instante que el salto porque es la misma reacción del cuerpo. */
+#orugas.acomodando .reflejo {
+  animation: correr-reflejo var(--acomodo-duracion) cubic-bezier(0.25, 0.9, 0.35, 1);
 }
 
-@keyframes acomodar-oruga {
-  from { rotate: 0deg; }
-  to { rotate: var(--acomodo-angulo); }
+/* Y en jugando, continuo y lento: un cuerpo que se mece en el lugar, no una
+   rueda libre. Las dos van desfasadas medio ciclo — con las dos luces en el
+   mismo punto del aro se lee como un parpadeo, no como dos ruedas. */
+.estado-jugando #orugas .reflejo {
+  animation: correr-reflejo var(--mecida-ciclo) linear infinite;
 }
 
-/* LA MECIDA de jugando: de ida y vuelta, no una vuelta libre. Chip no se va a
-   ningún lado — se mece, que es lo que hace un cuerpo jugando en el lugar.
-   Las dos orugas van en CONTRAFASE: mecerse es alternar el peso de un lado al
-   otro, y con las dos en fase se leería como un temblor. */
-.estado-jugando #orugas .cubo {
-  animation: mecer-oruga var(--mecida-ciclo) ease-in-out infinite;
-}
-
-/* La contrafase se hace con un DELAY NEGATIVO de medio ciclo y no con
-   animation-direction: reverse. El keyframe es simétrico —arranca y termina en
-   el mismo ángulo— así que invertirlo da exactamente la misma curva y las dos
-   orugas se mecían en fase. Un delay negativo arranca el ciclo por la mitad, que
-   es lo que de verdad las pone en contrafase. */
-.estado-jugando #orugas .cubo:nth-child(2) {
+.estado-jugando #orugas .reflejo:nth-child(2) {
   animation-delay: calc(var(--mecida-ciclo) * -0.5);
 }
 
-@keyframes mecer-oruga {
-  0%, 100% { rotate: calc(var(--mecida-angulo) * -1); }
-  50% { rotate: var(--mecida-angulo); }
+@keyframes correr-reflejo {
+  from {
+    stroke-dashoffset: 0;
+    opacity: var(--reflejo-giro);
+  }
+  to {
+    stroke-dashoffset: -100;
+    opacity: var(--reflejo-giro);
+  }
 }

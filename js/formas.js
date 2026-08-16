@@ -238,28 +238,34 @@ const REPISA = `
   </defs>
   <!-- la sombra que la tabla tira sobre la pared: va primero, debajo de todo -->
   <rect x="3" y="11" width="94" height="6" fill="url(#repisa-caida)"/>
-  <!-- LAS DOS ESCUADRAS. Antes eran dos L finas y no se leían: la tabla parecía
-       flotar contra la pared. Ahora son escuadras de galpón —montante vertical,
-       ala horizontal bajo la tabla y TIRANTE DIAGONAL—, que es lo que dice que
-       algo está sujeto y no apoyado en el aire.
+  <!-- LAS DOS ESCUADRAS. Se reescribieron dos veces y la segunda por una razón
+       medible: se dibujaban SUB-PÍXEL. El viewBox es 100x20 sobre un elemento de
+       98x29 px, así que una unidad vale 0,98 px de ancho y 1,43 de alto — un
+       trazo de 0,8 no llegaba a un píxel y desaparecía.
 
-       La diagonal es la pieza que más aporta y la que faltaba: una L sola puede
-       leerse como una sombra, un triángulo no. Van más claras que antes por la
-       misma razón por la que se les puso filo en su momento: contra una pared de
-       35 de luminancia, 27 no dibuja nada a este tamaño. -->
+       Y el relleno tampoco separaba: #1d1b18 son 27 de luminancia contra una
+       pared que mide 41 al atardecer, 42 al amanecer y 61 al mediodía. Catorce
+       puntos de diferencia no dibujan nada a este tamaño. Lo que separa es el
+       FILO, que está en 112, y para que exista tiene que medir más de un píxel.
+
+       Montante, ala bajo la tabla y TIRANTE DIAGONAL. La diagonal es la que dice
+       que algo está sujeto: una L sola puede leerse como una sombra, un
+       triángulo no. -->
   <g fill="var(--repisa-soporte)">
-    <path d="M15.5 9h3.4v10.5h-3.4z"/>
-    <path d="M15.5 9h7.5v2.4h-7.5z"/>
-    <path d="M80.5 9h3.4v10.5h-3.4z"/>
-    <path d="M76.4 9h7.5v2.4h-7.5z"/>
+    <path d="M15 9h5v10.5h-5z"/>
+    <path d="M15 9h9v2.8h-9z"/>
+    <path d="M79 9h5v10.5h-5z"/>
+    <path d="M74.5 9h9.5v2.8h-9.5z"/>
   </g>
   <!-- los tirantes -->
-  <path d="M18.9 11.4 22.6 11.4 18.9 18.2z" fill="var(--repisa-soporte)" opacity="0.92"/>
-  <path d="M80.5 11.4 76.8 11.4 80.5 18.2z" fill="var(--repisa-soporte)" opacity="0.92"/>
-  <!-- el filo iluminado de cada montante, del lado de la ventana -->
-  <path d="M15.5 9v10.5" stroke="var(--repisa-filo)" stroke-width="0.8" opacity="0.62"/>
-  <path d="M80.5 9v10.5" stroke="var(--repisa-filo)" stroke-width="0.8" opacity="0.62"/>
-  <path d="M18.9 11.4 18.9 18.2" stroke="var(--repisa-filo)" stroke-width="0.5" opacity="0.4"/>
+  <path d="M20 11.8 24.5 11.8 20 19z" fill="var(--repisa-soporte)"/>
+  <path d="M79 11.8 74.5 11.8 79 19z" fill="var(--repisa-soporte)"/>
+  <!-- Los filos, del lado de la ventana. Van a 1,7 de grosor y no a 0,8: es lo
+       que hace falta para pasar el píxel con este viewBox. -->
+  <path d="M15.6 9v10.5" stroke="var(--repisa-filo)" stroke-width="1.7" opacity="0.8"/>
+  <path d="M79.6 9v10.5" stroke="var(--repisa-filo)" stroke-width="1.7" opacity="0.8"/>
+  <path d="M20.4 12 20.4 18.6" stroke="var(--repisa-filo)" stroke-width="1.2" opacity="0.55"/>
+  <path d="M78.6 12 78.6 18.6" stroke="var(--repisa-filo)" stroke-width="1.2" opacity="0.55"/>
   <!-- la cara de arriba, en trapecio: el borde de atrás es más corto -->
   <path d="M4 5.6h92l2 2H2z" fill="var(--repisa-cara)"/>
   <!-- el canto frontal, que es lo que más se ve desde acá abajo -->
@@ -471,77 +477,76 @@ export function svgDeToma() {
   return `<svg viewBox="0 0 40 38" aria-hidden="true">${TOMA}</svg>`;
 }
 
-// EL RECORRIDO DEL CABLE. Función PURA: recibe el conector de Chip y la tabla
-// de puntos, devuelve un `d` de SVG. Vive acá con el resto de la geometría
-// dibujable porque es una cuenta, no un pintado.
+// EL RECORRIDO DEL CABLE. Función pura: recibe el conector y la tabla de puntos,
+// devuelve el camino entero más sus tramos por separado.
 //
-// La primera versión era una catenaria sola y se leía como una línea de
-// interfaz. Un cable de verdad no cae en una curva perfecta: cae, TOCA algo,
-// se acuesta, sobra, y sigue. Cada quiebre de este camino es una de esas
-// cosas, y el conjunto es lo que lo hace leer como un objeto.
+// DOS COSAS DISTINTAS, y esa es la forma. La CAÍDA es una curva —el cable
+// cuelga en el aire y una catenaria es lo que hace algo colgado—. Todo lo que
+// viene después son TRAMOS RECTOS que se quiebran en ángulo, porque un cable
+// tirado en el piso no describe curvas suaves: hace un tramo, dobla, hace otro.
+// La versión anterior era una curva con un rulo y se leía como una cinta.
+//
+// Se devuelven los tramos por separado para poder AFINAR el trazo con la
+// distancia: cada tramo trae su profundidad y el que lo dibuja le da su grosor.
+// Un cable del mismo grosor de punta a punta aplana la escena entera.
 export function caminoDelCable(conector, r) {
   const n = (v) => Math.round(v * 100) / 100;
   const P = (p) => `${n(p.x)} ${n(p.y)}`;
 
-  // 1. LA CAÍDA. La única catenaria del recorrido, y asimétrica: los dos
-  //    puntos de control cuelgan distinto, así la panza queda corrida hacia
-  //    el extremo bajo. Simétrica daría un arco de puente.
-  const apoyo = { x: r.apoyo.x, y: r.apoyo.y };
+  // La caída: catenaria asimétrica, con la panza corrida hacia el extremo bajo.
+  const apoyo = r.apoyo;
   const largo = Math.hypot(apoyo.x - conector.x, apoyo.y - conector.y);
-  const cuelga = largo * r.apoyo.caida;
-  const c1 = { x: conector.x + (apoyo.x - conector.x) * 0.2, y: conector.y + cuelga * 0.7 };
-  const c2 = { x: conector.x + (apoyo.x - conector.x) * 0.62, y: apoyo.y + cuelga * 0.34 };
+  const cuelga = largo * apoyo.caida;
+  const c1 = { x: conector.x + (apoyo.x - conector.x) * 0.24, y: conector.y + cuelga * 0.72 };
+  const c2 = { x: conector.x + (apoyo.x - conector.x) * 0.7, y: apoyo.y + cuelga * 0.3 };
 
-  let d = `M ${P(conector)} C ${P(c1)}, ${P(c2)}, ${P(apoyo)}`;
+  const caida = `M ${P(conector)} C ${P(c1)}, ${P(c2)}, ${P(apoyo)}`;
 
-  // 2. LOS RULOS. Cada uno es una vuelta cerrada que CRUZA sobre sí misma:
-  //    se sale por un lado, se da la vuelta y se vuelve a entrar corrido. Van
-  //    achatados porque están apoyados en el piso y se ven en escorzo — un
-  //    círculo redondo se leería como un aro parado.
-  let actual = apoyo;
-  for (const rulo of r.rulos) {
-    const rx = rulo.radio;
-    const ry = rulo.radio * rulo.achatado;
-    const entra = { x: rulo.x - rx * 0.6, y: rulo.y };
-    const sale = { x: rulo.x + rx * 0.8, y: rulo.y - ry * 0.35 };
+  const tramos = [{ d: caida, z: 0 }];
+  let previo = apoyo;
 
-    // llegar a la boca del rulo
-    d += ` Q ${P({ x: (actual.x + entra.x) / 2, y: Math.max(actual.y, entra.y) + 1.2 })}, ${P(entra)}`;
-    // la vuelta: dos arcos que cierran el óvalo y se cruzan al salir
-    d += ` A ${n(rx)} ${n(ry)} 0 1 1 ${P({ x: rulo.x + rx * 0.5, y: rulo.y + ry * 0.7 })}`;
-    d += ` Q ${P({ x: rulo.x + rx * 0.9, y: rulo.y + ry * 0.4 })}, ${P(sale)}`;
-    actual = sale;
+  for (const q of [...r.quiebres, r.llegada]) {
+    tramos.push({ d: `M ${P(previo)} L ${P(q)}`, z: q.z });
+    previo = q;
   }
 
-  // 3. LA CORRIDA por el suelo, con UN quiebre. Recta pura se ve tendida a
-  //    propósito; el quiebre dice que alguien la dejó ahí de cualquier modo.
-  //    Sube en pantalla mientras avanza porque se ALEJA: es la perspectiva del
-  //    piso, no un cable que trepa.
-  d += ` Q ${P({ x: (actual.x + r.quiebre.x) / 2, y: actual.y + 1.4 })}, ${P(r.quiebre)}`;
-  d += ` Q ${P({ x: (r.quiebre.x + r.llegada.x) / 2, y: r.quiebre.y - 1.8 })}, ${P(r.llegada)}`;
+  // Y el camino completo, de una sola pieza, para que los pulsos lo recorran.
+  const completo =
+    caida + [...r.quiebres, r.llegada].map((q) => ` L ${P(q)}`).join('');
 
-  return d;
+  return { completo, tramos };
 }
 
-// LA BARRA DEL CUBO de una oruga. Función pura: recibe el aro medido y devuelve
-// el grupo SVG, ya con su pivote puesto.
+// EL RECORRIDO DEL REFLEJO sobre un aro. Función pura: recibe el aro medido y
+// devuelve la elipse por la que corre la luz.
 //
-// Dos trazos y no uno: el oscuro es la ranura y el claro es el filo que le pega
-// la luz, que es el mismo tratamiento de todo el metal del galpón. Con un solo
-// trazo la barra se hunde en el cubo y no se ve girar, que es justamente lo
-// único que tiene que hacer.
-export function barraDeCubo(aro, barra) {
-  const lx = aro.rx * barra.largo;
-  const ly = aro.ry * barra.largo;
+// NO agrega ninguna pieza al arte, y esa es la diferencia con la primera
+// versión —una chaveta dibujada que rotaba—. Los aros YA tienen un reflejo
+// especular pintado; lo que se anima es DÓNDE ESTÁ ESA LUZ. Un metal que gira
+// no cambia de forma, cambia dónde le pega el brillo. Misma lógica que el bulbo
+// de la antena: no se toca el dibujo, se mueve la luz.
+//
+// Se traza apenas ADENTRO del aro pintado —al 82% de sus radios— porque el
+// reflejo vive en el filo interno del metal. Encima de la línea taparía el
+// dibujo; adentro, lo enciende.
+//
+// pathLength="100" normaliza el perímetro: así el largo del arco de luz y su
+// avance se escriben en PORCENTAJE del recorrido. Sin eso habría que calcular el
+// perímetro de una elipse —que no tiene fórmula cerrada— y rehacerlo cada vez
+// que un aro cambia de tamaño.
+export function reflejoDeAro(aro) {
   const n = (v) => Math.round(v * 100) / 100;
+  const rx = aro.rx * 0.82;
+  const ry = aro.ry * 0.82;
 
+  // Arranca en la IZQUIERDA del aro. La luz del galpón entra por la ventana,
+  // que está a la izquierda: con el recorrido empezando ahí, el reflejo en
+  // reposo queda donde la luz lo pondría.
   return (
-    `<g class="cubo" style="transform-origin: ${n(aro.x)}px ${n(aro.y)}px">` +
-    `<line x1="${n(aro.x - lx)}" y1="${n(aro.y + ly * 0.34)}" x2="${n(aro.x + lx)}" y2="${n(aro.y - ly * 0.34)}" ` +
-    `stroke="var(--barra-cubo-color)" stroke-width="${barra.grosor * 1.9}" stroke-linecap="round"/>` +
-    `<line x1="${n(aro.x - lx * 0.8)}" y1="${n(aro.y + ly * 0.27)}" x2="${n(aro.x + lx * 0.8)}" y2="${n(aro.y - ly * 0.27)}" ` +
-    `stroke="var(--barra-cubo-brillo)" stroke-width="${barra.grosor * 0.75}" stroke-linecap="round"/>` +
-    `</g>`
+    `<path class="reflejo" pathLength="100" ` +
+    `d="M ${n(aro.x - rx)} ${n(aro.y)} ` +
+    `a ${n(rx)} ${n(ry)} 0 1 1 ${n(rx * 2)} 0 ` +
+    `a ${n(rx)} ${n(ry)} 0 1 1 ${n(-rx * 2)} 0"/>`
   );
 }
 
