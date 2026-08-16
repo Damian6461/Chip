@@ -39,6 +39,7 @@ import {
   RUTAS_OJOS,
   ORIGEN_PARPADEO,
   DURACION_PARPADEO_MS,
+  MARGEN_FIN_PARPADEO_MS,
   PARPADEO_INTERVALO_MIN_MS,
   PARPADEO_INTERVALO_MAX_MS,
   PROBABILIDAD_DOBLE_PARPADEO,
@@ -543,12 +544,37 @@ function intervaloParpadeo() {
   return PARPADEO_INTERVALO_MIN_MS + Math.random() * rango;
 }
 
+// RED DE CONTENCIÓN DEL PARPADEO.
+//
+// Abajo de #ojos hay una capa de color plano recortada con la forma de los ojos
+// —el párpado— que está SIEMPRE pintada. Lo único que la tapa es #ojos. O sea:
+// cualquier cuadro en que #ojos quede achatado y no se recupere deja a Chip con
+// los ojos entrecerrados, que es exactamente la expresión de cansancio de
+// critico. Un estado equivocado, y permanente.
+//
+// La animación tiene fill `both`, así que al terminar se queda en scaleY(1) y
+// se recupera sola. El problema es cuando NO termina: si el reloj de animación
+// se congela a mitad —pestaña en segundo plano, la primera de las cuatro
+// trampas del README— la clase queda puesta con la animación a medio camino.
+//
+// Por eso el temporizador: pase lo que pase, DURACION_PARPADEO_MS + margen
+// después la clase se va y #ojos vuelve a tapar el párpado. No se usa
+// animationend porque animationend es justamente lo que no llega cuando el
+// reloj está congelado — sería pedirle la salida al mismo instrumento que
+// falló.
+let temporizadorFinParpadeo = null;
+
 function unParpadeo() {
   // Sacar, forzar reflow y volver a poner: reinicia la animación aunque el
   // parpadeo anterior no haya terminado. Mismo truco que el salto.
   capaOjos.classList.remove(CLASE_PARPADEO);
   void capaOjos.offsetWidth;
   capaOjos.classList.add(CLASE_PARPADEO);
+
+  clearTimeout(temporizadorFinParpadeo);
+  temporizadorFinParpadeo = setTimeout(() => {
+    capaOjos.classList.remove(CLASE_PARPADEO);
+  }, DURACION_PARPADEO_MS + MARGEN_FIN_PARPADEO_MS);
 }
 
 function cicloParpadeo() {
@@ -564,9 +590,34 @@ function cicloParpadeo() {
   temporizadorParpadeo = setTimeout(cicloParpadeo, extra + intervaloParpadeo());
 }
 
+// Y AL VOLVER A LA APP, LOS OJOS ABIERTOS.
+//
+// El temporizador de arriba cubre el caso normal, pero él mismo se estira: con
+// la pestaña en segundo plano los timers se limitan a uno por segundo. Medido
+// acá: un parpadeo que dura 130 ms se quedó con la clase puesta 1000 ms.
+//
+// El síntoma en producción es justo ese: volvés a la app y Chip te recibe con
+// cara de cansancio, porque lo último que el compositor pintó antes de
+// congelarse fue un cuadro a mitad del parpadeo. No es un estado equivocado de
+// la cadena — es un cuadro viejo.
+//
+// Así que al volver a ser visible se fuerza la apertura y se reengancha el
+// ciclo. Cuesta cuatro líneas y saca de la mesa la única forma que tenía Chip
+// de quedarse con una expresión que no le corresponde.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !rutaOjosActual) return;
+
+  clearTimeout(temporizadorFinParpadeo);
+  capaOjos.classList.remove(CLASE_PARPADEO);
+  clearTimeout(temporizadorParpadeo);
+  temporizadorParpadeo = setTimeout(cicloParpadeo, intervaloParpadeo());
+});
+
 function pararParpadeo() {
   clearTimeout(temporizadorParpadeo);
+  clearTimeout(temporizadorFinParpadeo);
   temporizadorParpadeo = null;
+  temporizadorFinParpadeo = null;
   capaOjos.classList.remove(CLASE_PARPADEO);
 }
 

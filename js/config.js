@@ -1114,6 +1114,11 @@ export const PARPADEO_INTERVALO_MAX_MS = 6000;
 export const PROBABILIDAD_DOBLE_PARPADEO = 0.15;
 export const ESPERA_DOBLE_PARPADEO_MS = 180;
 
+// Cuánto se espera, después de la animación, para sacar la clase a mano. No es
+// un margen de tolerancia: es el seguro de que #ojos vuelva a tapar el párpado
+// aunque la animación nunca haya terminado. Ver la red de contención en ui.js.
+export const MARGEN_FIN_PARPADEO_MS = 120;
+
 export const CLASE_PARPADEO = 'parpadeando';
 
 // ---- Los efectos por estado ----
