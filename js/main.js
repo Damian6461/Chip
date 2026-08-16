@@ -9,10 +9,10 @@ import {
   CATEGORIA_GRANDES,
   DURACION_ESPERANDO_MS,
   ESPERA_SEGUNDO_EVENTO_MS,
-  PROBABILIDAD_CAMBIO_POSE,
   DURACION_CRUCE_FONDO_MS,
   DURACION_CRUCE_APERTURA_MS,
   FRANJAS_DIA,
+  POSES_IDLE,
   PARAM_DEBUG,
   RUTA_SW
 } from './config.js';
@@ -55,7 +55,8 @@ let temporizadorAccion = null;
 let temporizadorDebounce = null;
 let gigantePasando = false; // true mientras se lee un evento de la categoría grandes
 let temporizadoresGigante = [];
-let poseIdle = 0; // qué PNG de idle se está dibujando
+// Sorteada al arrancar y estable toda la sesión. Ver POSES_IDLE en config.js.
+let poseIdle = Math.floor(Math.random() * POSES_IDLE.length);
 let visualForzado = null; // sólo lo escribe el panel de debug
 let horaForzada = null; // ídem: 0-23, o null para el reloj real
 let esNocheActual = null;
@@ -107,16 +108,6 @@ function resolverObjetivo() {
 // propia clave.
 function claveDeSprite() {
   return estadoVisualActual === E.idle ? poseDeIdle(poseIdle) : estadoVisualActual;
-}
-
-// Chip se acomoda. Corre en el tick visual —uno por minuto— y sólo a veces, para
-// que el cambio no sea metronómico: dos poses alternándose cada 60 segundos
-// exactos se leen como una animación lenta, y esto no es una animación.
-function rotarPoseIdle() {
-  if (estadoVisualActual !== E.idle) return false;
-  if (Math.random() >= PROBABILIDAD_CAMBIO_POSE) return false;
-  poseIdle += 1;
-  return true;
 }
 
 // Prende `esperando` en el momento en que cada evento de la categoría grandes
@@ -390,8 +381,7 @@ pintar();
 setInterval(() => {
   const cambioEstado = actualizarVisual();
   const cambioNoche = actualizarNoche();
-  const cambioPose = rotarPoseIdle();
-  if (cambioEstado || cambioNoche || cambioPose) pintar();
+  if (cambioEstado || cambioNoche) pintar();
 }, TICK_VISUAL_MS);
 
 // ---- Service worker ----

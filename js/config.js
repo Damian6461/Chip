@@ -103,10 +103,12 @@ export const RUTAS_SPRITES = {
 // obligaría a inventarle una condición que no tiene.
 export const POSES_IDLE = ['idle', 'idle-manitos'];
 
-// En cada tick visual —uno por minuto— Chip cambia de pose con esta
-// probabilidad. No es cada minuto exacto a propósito: un cambio metronómico se
-// nota como animación, y esto no es una animación, es Chip acomodándose.
-export const PROBABILIDAD_CAMBIO_POSE = 0.5;
+// La pose se sortea UNA VEZ POR SESIÓN y no cambia mientras la app está
+// abierta. La primera versión rotaba cada minuto con una moneda, y estaba mal:
+// Chip cambiando de postura solo, cada tanto, mientras lo mirás, se lee como un
+// glitch — no como que se acomodó. Sorteada al abrir, la pose es simplemente
+// cómo está hoy, y la variación se nota entre visitas, que es donde tiene que
+// notarse.
 
 // Recortes de la región ocular, para el parpadeo. Están alineados al MISMO
 // lienzo de 256x256 que su sprite base, así que la capa se superpone sin
