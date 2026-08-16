@@ -23,6 +23,7 @@ import {
   RUTAS_SPRITES,
   POSICIONES_ANTENA,
   PANTALLAS_PECHO,
+  RUTAS_OJOS,
   ESTADOS_CON_PANTALLA_VIVA,
   ASPECTO_PANTALLA,
   ALTO_NUMERO,
@@ -161,10 +162,29 @@ prueba('desfase: fuera de esas dos ventanas, mundo y Chip coinciden', () => {
 // idle en producción, porque el loader degrada en silencio.
 
 prueba('poses: el índice cicla y nunca se sale de la lista', () => {
+  // Sin índices literales: la lista se achicó a una sola pose cuando
+  // idle-manitos quedó suspendida, y un test atado a POSES_IDLE[1] se rompe por
+  // el largo en vez de por la propiedad que está cuidando.
   igual(poseDeIdle(0), POSES_IDLE[0], 'el 0 es la primera');
   igual(poseDeIdle(POSES_IDLE.length), POSES_IDLE[0], 'da la vuelta');
-  igual(poseDeIdle(POSES_IDLE.length * 3 + 1), POSES_IDLE[1], 'sigue dando la vuelta');
+  for (let i = -7; i <= 20; i++) {
+    igual(POSES_IDLE.includes(poseDeIdle(i)), true, `el índice ${i} cae adentro de la lista`);
+  }
   igual(poseDeIdle(-1), POSES_IDLE[POSES_IDLE.length - 1], 'el negativo no rompe');
+});
+
+// LA REGLA QUE FALTABA, y que costó media sesión de Chip sin parpadear: el
+// parpadeo es una capa aparte que sale de RUTAS_OJOS, y una pose sin recorte de
+// ojos no parpadea en toda la sesión. Como la pose se sortea al abrir, el
+// síntoma aparecía en la mitad de las visitas y desaparecía en la otra mitad,
+// que es la peor forma de un bug.
+//
+// Esto es lo que tiene que fallar el día que idle-manitos vuelva a POSES_IDLE
+// sin su recorte.
+prueba('poses: toda pose de idle tiene recorte de ojos y por lo tanto parpadea', () => {
+  for (const pose of POSES_IDLE) {
+    igual(Boolean(RUTAS_OJOS[pose]), true, `${pose} necesita entrada en RUTAS_OJOS`);
+  }
 });
 
 prueba('poses: todas tienen sprite declarado', () => {

@@ -175,11 +175,17 @@ Los timers viven en `main.js` porque es el único módulo que los tiene. La alte
 
 `render()` recibe por eso dos cosas distintas: `estadoVisual` para la clase y `claveSprite` para el dibujo. Y `pintarClaseEstado` toma las dos, porque **la antena sigue al dibujo y no al estado**: entre `idle` e `idle-manitos` el bulbo se corre 1,7% de ancho y 1,8% de alto, y con una sola entrada de tabla el glow quedaría flotando al lado de la antena en una de las dos poses.
 
-El cambio de pose corre en el **tick visual que ya existía** —uno por minuto— y sólo con probabilidad `PROBABILIDAD_CAMBIO_POSE`. No hace falta un timer nuevo, y el azar es lo que evita que dos poses alternándose cada 60 segundos exactos se lean como una animación lenta. Esto no es una animación: es Chip acomodándose.
+La pose se **sortea una vez por sesión** y no cambia mientras la app está abierta. La primera versión la rotaba cada minuto con una moneda, y estaba mal: Chip cambiando de postura solo mientras lo mirás se lee como un glitch, no como que se acomodó. Sorteada al abrir, la pose es simplemente cómo está hoy, y la variación se nota entre visitas, que es donde tiene que notarse.
 
-**La pose alternativa NO parpadea, y es una decisión medida.** La tentación era reusar `idle-ojos.png`, porque es la misma cara. No sirve: comparando el centro de las dos pupilas entre los dos PNG, el ojo izquierdo se corre **12 px a la derecha y 9 hacia arriba**, y el derecho **6 y 6**. Que los dos ojos se muevan *distinto* quiere decir que la cabeza está a otro ángulo, no simplemente corrida — no hay offset que lo arregle. Un recorte desalineado 6-12 px es exactamente el defecto que apareció con el párpado: no se nota midiendo y canta al 400%.
+**La pose alternativa NO parpadea, y es una decisión medida.** La tentación era reusar `idle-ojos.webp`, porque es la misma cara. No sirve: comparando el centro de las dos pupilas entre los dos PNG, el ojo izquierdo se corre **12 px a la derecha y 9 hacia arriba**, y el derecho **6 y 6**. Que los dos ojos se muevan *distinto* quiere decir que la cabeza está a otro ángulo, no simplemente corrida — no hay offset que lo arregle. Un recorte desalineado 6-12 px es exactamente el defecto que apareció con el párpado: no se nota midiendo y canta al 400%.
 
-El código ya lo soporta sin ramas: una clave sin entrada en `RUTAS_OJOS` no parpadea y esconde la capa. Si algún día la pose tiene que parpadear, lo que falta es `idle-manitos-ojos.png` alineado al mismo lienzo de 256; puesto en la tabla, funciona solo.
+### Y por eso `idle-manitos` está suspendida
+
+Lo que no se pesó al tomar esa decisión fue su **consecuencia combinada con el sorteo por sesión**: media visita al azar con Chip parpadeando y media con la cara completamente quieta. La inconsistencia que el jugador no se puede explicar hace más daño que la falta de variedad — una pose que nunca parpadea se lee como que algo se colgó, no como una postura distinta.
+
+Así que `POSES_IDLE` quedó en `['idle']` solo. **No se borró nada más**: la entrada de `RUTAS_SPRITES`, la de `POSICIONES_ANTENA`, la de `PANTALLAS_PECHO`, la de `RECUADROS_RAYO` y la de `APOYO_ORUGAS` siguen ahí y siguen estando bien medidas. Volver a habilitarla es agregar `idle-manitos-ojos.webp` a `RUTAS_OJOS` y devolver la pose a la lista. Nada más.
+
+Y hay un test que lo cuida: **toda pose de `POSES_IDLE` tiene que tener recorte en `RUTAS_OJOS`**. Es lo que va a fallar el día que alguien devuelva la pose sin su recorte. La regla no existía porque el código soporta el caso sin ramas —una clave sin entrada en `RUTAS_OJOS` simplemente no parpadea y esconde la capa— y eso hizo que el defecto fuera **silencioso**: no rompe nada, sólo apaga media cara media sesión.
 
 ---
 

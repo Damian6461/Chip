@@ -101,7 +101,19 @@ export const RUTAS_SPRITES = {
 // efectos, la clase del CSS y la cadena; la pose sólo decide qué PNG se dibuja,
 // dónde cae la antena y dónde la pantalla del pecho. Meter la pose en la cadena
 // obligaría a inventarle una condición que no tiene.
-export const POSES_IDLE = ['idle', 'idle-manitos'];
+// SUSPENDIDA: idle-manitos está afuera hasta que exista su recorte de ojos.
+//
+// El parpadeo es una capa aparte que sale de RUTAS_OJOS, y ahí sólo hay recortes
+// para idle y feliz. Con idle-manitos elegida, la capa ni se carga: Chip pasaba
+// la sesión ENTERA sin parpadear. Y como la pose se sortea al abrir, era media
+// sesión al azar con la cara quieta y media normal — una inconsistencia que el
+// jugador no se puede explicar, que hace más daño que la falta de variedad.
+//
+// La entrada de RUTAS_SPRITES, la de POSICIONES_ANTENA, la de PANTALLAS_PECHO,
+// la de RECUADROS_RAYO y la de APOYO_ORUGAS se quedan todas donde están: están
+// medidas y siguen siendo correctas. Volver a habilitarla es agregar
+// 'idle-manitos-ojos.webp' a RUTAS_OJOS y devolverla a esta lista. Nada más.
+export const POSES_IDLE = ['idle'];
 
 // La pose se sortea UNA VEZ POR SESIÓN y no cambia mientras la app está
 // abierta. La primera versión rotaba cada minuto con una moneda, y estaba mal:
