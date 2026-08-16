@@ -641,11 +641,48 @@ export const ESTADOS_CON_PANTALLA_VIVA = [
 // dibujados en el sprite: el reemplazo tiene que leerse como el mismo aparato.
 export const SEGMENTOS_PANTALLA = 6;
 
-// Dónde cae cada cosa adentro del cristal, en % de la caja. Medido sobre idle,
-// que es la pose frontal: las barras ocupan de 22% a 53% de alto y de 16% a 84%
-// de ancho; el número, de 69% a 84% de alto.
-export const CAJA_SEGMENTOS = { x: 16, y: 22, ancho: 68, alto: 31 };
-export const CAJA_NUMERO = { y: 66, alto: 20 };
+// LA PANTALLA ES UN LAYOUT FIJO ESCALADO, no un porcentaje de cada recuadro.
+//
+// Ese era el bug, y se ve con la batería en el mismo valor en los siete estados:
+// las barritas cambian de proporción de un estado a otro. Medido en pantalla,
+// alto/ancho de una barrita:
+//
+//   cargando  2,29     jugando  2,32     feliz  2,55
+//   idle      2,84     limpiando 3,17
+//
+// 38% de dispersión. Y el número, de 7,0 px de alto en idle a 10,0 en jugando:
+// 43%. A 7 px una tipografía de píxeles de 3x5 le toca 1,4 px por fila y la
+// última se la come el antialias — de ahí el "el porcentaje sale cortado abajo".
+//
+// LA CAUSA. Las cajas de adentro estaban en % del RECUADRO DE CADA SPRITE, y
+// esos recuadros no tienen la misma proporción: van de 1,186 (jugando, que se
+// inclina hacia adelante) a 1,505 (cargando). Un 27% de diferencia de aspecto
+// que se traslada entero al contenido.
+//
+// LA REGLA AHORA. El contenido vive en una caja de proporción FIJA que se mete
+// adentro del recuadro de cada sprite como un `contain`: se escala hasta el
+// límite que toque y se centra. Lo único que cambia entre estados es DÓNDE se
+// ancla y A QUÉ ESCALA — nunca la geometría de adentro. Si un recuadro tiene
+// otra proporción, sobra un poco de cristal arriba y abajo o a los costados, y
+// eso está bien: es fondo, no contenido.
+//
+// La proporción de referencia es la de idle, que es la pose frontal: 17,2/12,5.
+export const ASPECTO_PANTALLA = 1.376;
+
+// Dónde cae cada cosa adentro de esa caja de contenido, medido sobre idle.webp
+// aislando los píxeles encendidos del display (cian claro) y separándolos por
+// fila. El hueco más grande cae en el 62,5% del alto y parte los dos bloques:
+//
+//   barras   x 15,9%  ancho 70,5%   y 21,9%  alto 37,5%
+//   número   x 25,0%  ancho 54,5%   y 65,6%  alto 21,9%
+export const CAJA_SEGMENTOS = { x: 16, y: 22, ancho: 70, alto: 37 };
+export const CAJA_NUMERO = { y: 65.5, alto: 22 };
+
+// El alto del glifo, en % del alto de la CAJA DE CONTENIDO. Sale de la misma
+// medición: el bloque del número ocupa el 21,9% del display en el arte. Antes
+// eran 15 cqh del recuadro del sprite, que en idle daban 7 px contra los 10 que
+// tiene el arte.
+export const ALTO_NUMERO = 21;
 
 // ---- Las nubes de la ventana ----
 //
@@ -933,7 +970,11 @@ export const VARS_PANTALLA = {
   ancho: '--pantalla-ancho',
   alto: '--pantalla-alto',
   giro: '--pantalla-giro',
-  vidrio: '--pantalla-vidrio'
+  vidrio: '--pantalla-vidrio',
+  contX: '--pantalla-cont-x',
+  contY: '--pantalla-cont-y',
+  contAncho: '--pantalla-cont-ancho',
+  contAlto: '--pantalla-cont-alto'
 };
 
 // ---- La toma de corriente ----

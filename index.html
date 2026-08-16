@@ -85,8 +85,14 @@
            un efecto. Su contenido y su posición los escribe ui.js desde la
            tabla medida de config.js. -->
       <div id="pantalla" aria-hidden="true" hidden>
-        <div id="pantalla-segmentos"></div>
-        <div id="pantalla-numero"></div>
+        <!-- La caja de contenido: proporción fija, metida adentro del recuadro
+             de cada pose como un `contain`. Todo lo de adentro se mide contra
+             ELLA y no contra el recuadro, así las siete pantallas son la misma
+             pantalla a distinta escala. -->
+        <div id="pantalla-contenido">
+          <div id="pantalla-segmentos"></div>
+          <div id="pantalla-numero"></div>
+        </div>
       </div>
 
       <!-- El párpado: el mismo recorte usado como máscara y rellenado de un

@@ -81,6 +81,7 @@ import {
   ESTADOS_CON_PANTALLA_VIVA,
   SEGMENTOS_PANTALLA,
   CAJA_SEGMENTOS,
+  ALTO_NUMERO,
   CAJA_NUMERO,
   VARS_PANTALLA,
   PUNTA_DEL_CABLE,
@@ -111,7 +112,7 @@ import {
   VARS_EFECTOS
 } from './config.js';
 import { aplica, puedeJugar } from './acciones.js';
-import { obtenerSprite } from './sprites.js';
+import { obtenerSprite, cajaDeContenidoPantalla } from './sprites.js';
 import { objetosConEstado } from './coleccion.js';
 import { gigantesConEstado } from './gigantes.js';
 import {
@@ -432,6 +433,7 @@ if (pantalla) {
   raiz.style.setProperty('--pantalla-seg-alto', `${CAJA_SEGMENTOS.alto}%`);
   raiz.style.setProperty('--pantalla-num-y', `${CAJA_NUMERO.y}%`);
   raiz.style.setProperty('--pantalla-num-alto', `${CAJA_NUMERO.alto}%`);
+raiz.style.setProperty('--pantalla-num-glifo', `${ALTO_NUMERO}cqh`);
 }
 
 // Cuántos segmentos prende un stat. Se redondea hacia ARRIBA salvo en cero: con
@@ -458,6 +460,14 @@ function pintarPantalla(estado, estadoVisual) {
   pantalla.style.setProperty(VARS_PANTALLA.alto, `${caja.alto}%`);
   pantalla.style.setProperty(VARS_PANTALLA.giro, `${caja.giro}deg`);
   pantalla.style.setProperty(VARS_PANTALLA.vidrio, caja.vidrio);
+
+  // El contenido se encaja con proporción fija: lo único que cambia entre
+  // estados es dónde se ancla y a qué escala.
+  const cont = cajaDeContenidoPantalla(caja);
+  pantalla.style.setProperty(VARS_PANTALLA.contX, `${cont.x.toFixed(2)}%`);
+  pantalla.style.setProperty(VARS_PANTALLA.contY, `${cont.y.toFixed(2)}%`);
+  pantalla.style.setProperty(VARS_PANTALLA.contAncho, `${cont.ancho.toFixed(2)}%`);
+  pantalla.style.setProperty(VARS_PANTALLA.contAlto, `${cont.alto.toFixed(2)}%`);
 
   estadoUltimo = estado;
   claveUltima = estadoVisual;

@@ -467,11 +467,30 @@ body.es-noche #toma {
   border-radius: 12%/16%;
   overflow: hidden;
   pointer-events: none;
-  /* Contenedor de tamaño, para que el número pueda medirse en cqh —o sea, en %
-     del alto de ESTA pantalla—. Es la única forma limpia de que el tipo escale
-     con la caja de cada pose: las siete miden distinto, de 11,3% a 14,1% del
-     lienzo, y un tamaño atado al alto de Chip quedaría grande en unas y chico
-     en otras. */
+}
+
+/* LA CAJA DE CONTENIDO.
+   Proporción fija —la de idle, la pose frontal— encajada adentro del recuadro
+   de cada sprite como un `contain`: escala hasta el lado que la limita y se
+   centra en el otro. ui.js calcula los cuatro números con una función pura de
+   sprites.js, así el encaje se puede PROBAR en vez de mirarse.
+
+   Todo lo de adentro se mide contra ESTA caja y no contra el recuadro. Es la
+   diferencia entre siete pantallas y una pantalla siete veces: los recuadros
+   de los sprites van de 1,186 de aspecto a 1,505, y ese 27% se le trasladaba
+   entero a las barritas —38% de dispersión medida— y al número —43%.
+
+   Cuando un recuadro tiene otra proporción sobra un poco de cristal a los
+   costados o arriba y abajo. Eso es fondo, no contenido, y sobrar está bien. */
+#pantalla-contenido {
+  position: absolute;
+  left: var(--pantalla-cont-x);
+  top: var(--pantalla-cont-y);
+  width: var(--pantalla-cont-ancho);
+  height: var(--pantalla-cont-alto);
+  /* Contenedor de tamaño para que el glifo del número se mida en cqh, o sea en
+     % del alto de la caja de contenido — que es la única medida que conserva
+     la proporción entre estados. */
   container-type: size;
 }
 
@@ -540,12 +559,18 @@ body.es-noche #toma {
    comparación que vale— quedaba una mancha ilegible al lado del "100%" del
    arte, que es una fuente de display gruesa.
 
-   El alto va en cqh —% del alto del cristal— porque el texto dibujado ocupa el
-   15% de esa caja. El ancho lo decide el viewBox: así "9%" y "100%" tienen los
-   glifos del mismo tamaño y sólo cambia lo que ocupan. */
+   El alto va en cqh de la CAJA DE CONTENIDO, no del recuadro del sprite, y el
+   número sale de medir el arte: el bloque del "100%" ocupa el 21,9% del alto
+   del display en idle.webp. Antes eran 15 cqh del recuadro, que en idle daban
+   7 px de glifo contra los 10 que tiene el dibujo — y a 7 px una tipografía de
+   píxeles de 3x5 tiene 1,4 px por fila y el antialias se come la última. De ahí
+   el "el porcentaje sale cortado abajo".
+
+   El ancho lo decide el viewBox: así "9%" y "100%" tienen los glifos del mismo
+   tamaño y sólo cambia lo que ocupan. */
 #pantalla-numero svg {
   display: block;
-  height: 15cqh;
+  height: var(--pantalla-num-glifo);
   width: auto;
   filter: drop-shadow(0 0 2px color-mix(in srgb, var(--color-bateria) 55%, transparent));
 }
@@ -587,9 +612,13 @@ body.es-noche #toma {
   animation: latir-rayo-suave var(--ciclo-rayo) ease-in-out infinite;
 }
 
+/* El piso subió de 0,1 a 0,24. Con 0,1 y mix-blend-mode: screen encima de un
+   rayo que YA está pintado en cian, el aporte es imperceptible: en la tira de
+   comparación de los siete estados, idle era el único donde el rayo parecía
+   apagado. No estaba mal ubicado — estaba abajo del umbral de visibilidad. */
 @keyframes latir-rayo-suave {
-  0%, 100% { opacity: 0.1; }
-  50% { opacity: 0.34; }
+  0%, 100% { opacity: 0.24; }
+  50% { opacity: 0.52; }
 }
 
 /* Cargando: destella fuerte, en el MISMO ciclo y la MISMA fase que el latido

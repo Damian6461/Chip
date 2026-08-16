@@ -3,6 +3,7 @@
 // corresponde. Quien dibuja es ui.js.
 
 import {
+  ASPECTO_PANTALLA,
   ESTADOS_VISUALES as E,
   RUTAS_SPRITES,
   UMBRAL_CRITICO_BATERIA,
@@ -208,4 +209,31 @@ function imagenDe(nombre) {
 // cantar el error. El placeholder sólo aparece si no cargó ninguno de los dos.
 export function obtenerSprite(nombre) {
   return imagenDe(nombre) ?? imagenDe(ESTADO_POR_DEFECTO);
+}
+
+
+// ---- El encaje del contenido de la pantalla ----
+//
+// Dada la caja medida de un sprite, devuelve dónde va la caja de contenido —en
+// % de esa caja— para que el contenido conserve SIEMPRE la misma proporción.
+//
+// Es un `contain` de manual: se escala hasta que toca el lado que limita y se
+// centra en el otro. Vive acá y no en ui.js porque es geometría pura y hace
+// falta poder probarla: el contrato que garantiza es que las ocho poses den
+// exactamente la misma proporción interna, y eso es una aserción, no una
+// impresión mirando capturas.
+export function cajaDeContenidoPantalla(recuadro) {
+  const aspectoCaja = recuadro.ancho / recuadro.alto;
+
+  // Si el recuadro es más ancho que el contenido, sobra a los costados; si es
+  // más alto, sobra arriba y abajo.
+  const ancho = aspectoCaja > ASPECTO_PANTALLA ? (ASPECTO_PANTALLA / aspectoCaja) * 100 : 100;
+  const alto = aspectoCaja > ASPECTO_PANTALLA ? 100 : (aspectoCaja / ASPECTO_PANTALLA) * 100;
+
+  return {
+    x: (100 - ancho) / 2,
+    y: (100 - alto) / 2,
+    ancho,
+    alto
+  };
 }

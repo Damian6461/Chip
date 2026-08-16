@@ -23,9 +23,19 @@ import {
   RUTAS_SPRITES,
   POSICIONES_ANTENA,
   PANTALLAS_PECHO,
-  ESTADOS_CON_PANTALLA_VIVA
+  ESTADOS_CON_PANTALLA_VIVA,
+  ASPECTO_PANTALLA,
+  ALTO_NUMERO,
+  CAJA_NUMERO,
+  CAJA_SEGMENTOS
 } from '../js/config.js';
-import { resolverEstadoVisual, esDeNoche, franjaDelDia, poseDeIdle } from '../js/sprites.js';
+import {
+  resolverEstadoVisual,
+  esDeNoche,
+  franjaDelDia,
+  poseDeIdle,
+  cajaDeContenidoPantalla
+} from '../js/sprites.js';
 
 const estado = (bateria, humor = 50) => ({ bateria, humor, mantenimiento: 50 });
 
@@ -186,4 +196,57 @@ prueba('pantalla: hay caja medida para cada estado con pantalla viva', () => {
   for (const clave of ESTADOS_CON_PANTALLA_VIVA) {
     igual(typeof PANTALLAS_PECHO[clave], 'object', `${clave} tiene pantalla medida`);
   }
+});
+
+// ---- La pantalla del pecho es UNA pantalla, no siete ----
+//
+// Verificado con la batería en el mismo valor en los cinco estados con pantalla
+// viva, ampliados al 400%: las barritas cambiaban de proporción entre estados
+// —alto/ancho de 2,29 en cargando a 3,17 en limpiando, 38% de dispersión— y el
+// número iba de 7,0 px de alto a 10,0, un 43%.
+//
+// La causa no era el layout, que estaba bien medido: era la caja a la que se
+// aplicaba. Los recuadros de los sprites van de 1,186 de aspecto (jugando, que
+// se inclina hacia adelante) a 1,505 (cargando), y ese 27% se trasladaba entero
+// al contenido.
+//
+// Estas pruebas fijan el contrato: lo único que puede cambiar entre estados es
+// dónde se ancla el contenido y a qué escala. La geometría de adentro, nunca.
+
+prueba('pantalla: las ocho poses dan la MISMA proporción interna', () => {
+  for (const [nombre, recuadro] of Object.entries(PANTALLAS_PECHO)) {
+    const cont = cajaDeContenidoPantalla(recuadro);
+    const aspecto = (recuadro.ancho * cont.ancho) / (recuadro.alto * cont.alto);
+    igual(
+      Math.abs(aspecto - ASPECTO_PANTALLA) < 0.001,
+      true,
+      `${nombre}: aspecto del contenido ${aspecto.toFixed(4)} contra ${ASPECTO_PANTALLA}`
+    );
+  }
+});
+
+prueba('pantalla: el contenido entra en el recuadro y va centrado', () => {
+  for (const [nombre, recuadro] of Object.entries(PANTALLAS_PECHO)) {
+    const cont = cajaDeContenidoPantalla(recuadro);
+    igual(cont.ancho <= 100 && cont.alto <= 100, true, `${nombre}: no se desborda`);
+    igual(cont.ancho === 100 || cont.alto === 100, true, `${nombre}: toca el lado que lo limita`);
+    igual(
+      Math.abs(cont.x * 2 + cont.ancho - 100) < 0.001 && Math.abs(cont.y * 2 + cont.alto - 100) < 0.001,
+      true,
+      `${nombre}: centrado en el eje que sobra`
+    );
+  }
+});
+
+prueba('pantalla: el número entra entero en la caja de contenido', () => {
+  // El glifo mide ALTO_NUMERO de la caja de contenido y vive dentro de la caja
+  // del número. Si el glifo fuera más alto que su caja, se cortaría abajo — que
+  // es exactamente lo que pasaba con 15 cqh del recuadro del sprite.
+  igual(ALTO_NUMERO <= CAJA_NUMERO.alto, true, `glifo ${ALTO_NUMERO} en caja ${CAJA_NUMERO.alto}`);
+  igual(CAJA_NUMERO.y + CAJA_NUMERO.alto <= 100, true, 'la caja del número no se sale por abajo');
+  igual(
+    CAJA_SEGMENTOS.y + CAJA_SEGMENTOS.alto <= CAJA_NUMERO.y,
+    true,
+    'las barras terminan antes de que empiece el número'
+  );
 });

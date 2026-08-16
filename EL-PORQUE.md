@@ -535,3 +535,85 @@ Antes iban también las siluetas en gris de lo que faltaba. Eso convertía la
 repisa en un marcador de progreso, y un marcador es interfaz. Un objeto que Chip
 no encontró todavía no está en el galpón: no hay nada que dibujar. La pregunta
 "¿cuánto me queda?" es de menú; la repisa contesta otra, "¿qué encontré?".
+
+## La pantalla del pecho: una pantalla, no siete
+
+Verificado con la batería en el mismo valor en los cinco estados con pantalla
+viva, ampliados al 400%: las barritas cambiaban de proporción de un estado a
+otro, el número cambiaba de tamaño, y en idle el porcentaje se cortaba abajo.
+
+Medido, alto/ancho de una barrita:
+
+    cargando  2,29     jugando  2,32     feliz  2,55
+    idle      2,84     limpiando 3,17
+
+38% de dispersión. Y el alto del glifo del número, de 7,0 px en idle a 10,0 en
+jugando: 43%.
+
+### La causa no era el layout: era la caja
+
+El layout interno estaba bien medido. Al volver a medirlo sobre `idle.webp`
+—aislando los píxeles encendidos del display y separándolos por fila— dio esto:
+
+    barras   x 15,9%  ancho 70,5%   y 21,9%  alto 37,5%
+    número   x 25,0%  ancho 54,5%   y 65,6%  alto 21,9%
+
+Casi exactamente los valores que ya estaban en config. El problema es que esos
+porcentajes se aplicaban al **recuadro de cada sprite**, y los recuadros no
+tienen la misma proporción: van de 1,186 (jugando, que se inclina hacia
+adelante) a 1,505 (cargando). Ese 27% de diferencia de aspecto se le trasladaba
+entero al contenido.
+
+### La regla ahora
+
+El contenido vive en una caja de proporción **fija** —la de idle, 1,376, que es
+la pose frontal— encajada adentro del recuadro de cada sprite como un `contain`:
+escala hasta el lado que la limita y se centra en el otro. Lo único que cambia
+entre estados es dónde se ancla y a qué escala. La geometría de adentro, nunca.
+
+Cuando un recuadro tiene otra proporción sobra un poco de cristal a los costados
+o arriba y abajo. Eso es fondo, no contenido, y sobrar está bien.
+
+El encaje es una función pura en `sprites.js`, no un cálculo enterrado en el
+render, justamente para poder **probar** el contrato: hay un test que recorre
+las ocho poses y verifica que la caja de contenido dé la misma proporción en
+todas, hasta la milésima. Eso es una aserción, no una impresión mirando
+capturas.
+
+Después del cambio, medido sobre la caja de layout: la dispersión de las
+barritas bajó de 38% a 6%, y la del glifo de 43% a 12%. Lo que queda es la
+diferencia real de escala —en `jugando` el pecho de Chip es genuinamente más
+grande en pantalla— más el redondeo a píxeles enteros de una barrita de 5 px.
+
+### Dos trampas de medición en el camino
+
+**El `getBoundingClientRect` de un elemento rotado miente.** Las poses tienen la
+pantalla inclinada, y el rect devuelve la caja alineada a los ejes, que es más
+grande. La primera medición del "después" daba las barritas todavía dispersas
+—2,39 a 3,29— y no era el layout: era que idle y limpiando tienen giro 0 y
+salían exactas, y las otras tres salían infladas por su propio giro. Con
+`offsetWidth`/`offsetHeight`, que son la caja sin transformar, la dispersión
+real aparece.
+
+**El rayo no está adentro del display.** La premisa de la que partí era que el
+rayo del pecho era un elemento de la pantalla mal ubicado, y los números la
+apoyaban: convertida a coordenadas del display, la tabla del rayo lo pone entre
+el 101,7% y el 107,3% del ancho en las siete poses. Pero al mirar el sprite
+ampliado con las dos cajas dibujadas encima, el arte tiene **dos instrumentos**:
+el display grande con las barras y el número, y una ventanita aparte a su
+derecha con el rayo. Las dos tablas estaban bien. Que las siete den 101-107% no
+era un error sistemático — era la constante que describe "pegado al borde
+derecho, afuera".
+
+Lo que sí estaba mal del rayo era otra cosa: en reposo latía entre 0,1 y 0,34 de
+opacidad, y con `mix-blend-mode: screen` encima de un rayo que ya está pintado en
+cian, 0,1 es imperceptible. En la tira de comparación idle era el único estado
+donde el rayo parecía apagado. No estaba mal ubicado: estaba abajo del umbral de
+visibilidad. Ahora late entre 0,24 y 0,52.
+
+### critico y standby no entran en la comparación, y es a propósito
+
+No tienen pantalla viva: muestran el arte. `critico` muestra la batería vacía en
+rojo, que es exactamente lo que pasa; `standby` muestra una luna. No hay número
+que pueda cortarse porque no hay número. Taparlas sería reemplazar un dibujo
+correcto por uno peor.
