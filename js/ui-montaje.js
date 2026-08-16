@@ -175,6 +175,7 @@ if (menu) {
 // bruma de lejos se lea sobre todo lo demás.
 
 export const contenedorNubes = document.getElementById('nubes');
+export const contenedorLluvia = document.getElementById('lluvia');
 
 export function crearBanda(banda, clases = []) {
   const nodo = document.createElement('div');

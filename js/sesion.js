@@ -32,6 +32,9 @@ import {
   DURACIONES_ACCION,
   DEBOUNCE_VISUAL_MS,
   CATEGORIA_GRANDES,
+  CATEGORIA_COLECCION,
+  EVENTO_LLUVIA,
+  DURACION_FELIZ_MS,
   DURACION_ESPERANDO_MS,
   ESPERA_SEGUNDO_EVENTO_MS,
   DURACION_CRUCE_FONDO_MS,
@@ -61,8 +64,10 @@ export function crearSesion({
   let temporizadorDebounce = null;
   let gigantePasando = false; // true mientras se lee un evento de la categoría grandes
   let leOrdenaron = false; // true mientras dura el fastidio de que le guarden algo
+  let contento = false; // true mientras dura la reacción a algo bueno
   let temporizadoresGigante = [];
   let temporizadorFastidio = null;
+  let temporizadorContento = null;
   let poseIdle = poseInicial;
   let visualForzado = null; // sólo lo escribe el panel de debug
   let esNocheActual = null;
@@ -93,7 +98,8 @@ export function crearSesion({
       ahora: reloj.mundo(),
       accion: accionEnCurso,
       gigantePasando,
-      leOrdenaron
+      leOrdenaron,
+      contento
     });
   }
 
@@ -186,33 +192,82 @@ export function crearSesion({
     guardar(estado);
   }
 
-  // Prende `esperando` en el momento en que cada evento de la categoría grandes
-  // aparece en pantalla, y lo apaga solo. El reloj es el mismo que usa ui.js
-  // para encadenar los eventos, así que la pose y el texto entran juntos: Chip
-  // cruza los brazos cuando se lee que pasó un gigante, no antes ni después.
+  // ---- Ponerse contento ----
+  //
+  // `feliz` dejó de ser un estado de umbral y pasó a ser una REACCIÓN: una
+  // bandera temporal que se enciende cuando pasa algo bueno y se apaga sola,
+  // igual que `esperando`. Ver la cadena en sprites.js para el porqué.
+  //
+  // Lo dispara: una caricia que aplicó, una acción que aplicó —cuando termina su
+  // propio estado visual, no antes—, levantar algo del piso —después del
+  // fastidio— y un evento de la categoría `coleccion`.
+  //
+  // Si el disparador se repite mientras ya está contento, el temporizador se
+  // REINICIA en vez de acumularse: dos caricias seguidas dan una reacción que
+  // dura lo mismo desde la última, no el doble.
+  function ponerseContento() {
+    reloj.cancelar(temporizadorContento);
+    contento = true;
+    if (actualizarVisual({ inmediato: true })) pintar();
+
+    temporizadorContento = reloj.programar(() => {
+      temporizadorContento = null;
+      contento = false;
+      if (actualizarVisual({ inmediato: true })) pintar();
+    }, DURACION_FELIZ_MS);
+  }
+
+  // LA REACCIÓN A CADA EVENTO, en el momento en que ese evento aparece en
+  // pantalla. El reloj es el mismo que usa ui.js para encadenar los textos, así
+  // que la pose y la línea entran juntas: Chip cruza los brazos cuando se lee
+  // que pasó un gigante, no antes ni después.
   //
   // La decisión de estado vive acá y no en ui.js: la alternativa —que ui.js se
   // fije en la categoría al pintar el texto— pondría una decisión de estado en
   // el módulo que sólo pinta.
-  function programarEsperando(eventos) {
+  //
+  // Dos reacciones distintas:
+  //
+  // - `esperando` para los eventos con un GIGANTE PRESENTE. Y esa es la palabra
+  //   clave: no es toda la categoría `grandes`. Con el pool de 36, `grandes`
+  //   pasó de 5 eventos a 13 sobre 48, y si los trece cruzaran los brazos la
+  //   pose se volvería una muletilla. La distinción no es una heurística sobre
+  //   el texto sino una bandera en el dato —`presente`— y la regla es si el
+  //   gigante está ahí AHORA: "pasó un carguero" sí, "una placa se soltó de algo
+  //   grande" no, que es un hallazgo.
+  // - `feliz` para los de `coleccion`, que son los de encontrar algo.
+  function programarReacciones(eventos) {
     temporizadoresGigante.forEach(reloj.cancelar);
     temporizadoresGigante = [];
 
     eventos.forEach((evento, i) => {
-      if (evento.categoria !== CATEGORIA_GRANDES) return;
-
       const arranque = ESPERA_SEGUNDO_EVENTO_MS * i;
 
-      temporizadoresGigante.push(
-        reloj.programar(() => {
-          gigantePasando = true;
-          if (actualizarVisual({ inmediato: true })) pintar();
-        }, arranque),
-        reloj.programar(() => {
-          gigantePasando = false;
-          if (actualizarVisual({ inmediato: true })) pintar();
-        }, arranque + DURACION_ESPERANDO_MS)
-      );
+      if (evento.categoria === CATEGORIA_GRANDES && evento.presente) {
+        temporizadoresGigante.push(
+          reloj.programar(() => {
+            gigantePasando = true;
+            if (actualizarVisual({ inmediato: true })) pintar();
+          }, arranque),
+          reloj.programar(() => {
+            gigantePasando = false;
+            if (actualizarVisual({ inmediato: true })) pintar();
+          }, arranque + DURACION_ESPERANDO_MS)
+        );
+        return;
+      }
+
+      if (evento.categoria === CATEGORIA_COLECCION) {
+        temporizadoresGigante.push(reloj.programar(ponerseContento, arranque));
+      }
+
+      // Y LA LLUVIA, que es el único evento que cambia el mundo y no a Chip.
+      // Se prende cuando su línea aparece —no al abrir— y no se apaga: dura lo
+      // que dura la sesión. A la próxima visita el galpón vuelve a la
+      // normalidad, y eso pasa solo, porque no se persiste en ningún lado.
+      if (evento.id === EVENTO_LLUVIA) {
+        temporizadoresGigante.push(reloj.programar(() => vista.llover?.(), arranque));
+      }
     });
   }
 
@@ -227,6 +282,14 @@ export function crearSesion({
     temporizadorAccion = reloj.programar(() => {
       temporizadorAccion = null;
       accionEnCurso = null;
+      // Y AL TERMINAR, SE PONE CONTENTO. Encadenado y no simultáneo: los estados
+      // de acción le ganan a `feliz` en la cadena, así que prender la bandera al
+      // apretar el botón la dejaría vencerse por dentro de la carga y no se
+      // vería nunca. Queda cargando -> feliz -> idle, que además se lee mejor.
+      //
+      // Sólo se llega acá si la acción APLICÓ: ejecutar() ya cortó antes las que
+      // no hacían falta y las que no cambiaron el estado.
+      ponerseContento();
       if (actualizarVisual({ inmediato: true })) pintar();
       else pintar();
     }, duracionDe(nombreAccion));
@@ -325,7 +388,10 @@ export function crearSesion({
 
     estado = siguiente;
     guardar(estado);
-    pintar();
+    // Se pone contento sólo si la caricia APLICÓ, que es el mismo contrato que
+    // los corazones: con el humor lleno no cambia nada y no hay nada que
+    // festejar. ponerseContento ya pinta.
+    ponerseContento();
     return true;
   }
 
@@ -360,6 +426,11 @@ export function crearSesion({
     temporizadorFastidio = reloj.programar(() => {
       temporizadorFastidio = null;
       leOrdenaron = false;
+      // PRIMERO SE QUEJA Y DESPUÉS SE PONE CONTENTO de tenerlo. El encadenado es
+      // el punto: la queja sola deja la lectura en "no le gustó", y la alegría
+      // sola pierde el chiste de que se lo ordenaste. Las dos seguidas cuentan
+      // la cosa entera.
+      ponerseContento();
       actualizarVisual({ inmediato: true });
       pintar();
     }, DURACION_FASTIDIO_MS);
@@ -421,7 +492,7 @@ export function crearSesion({
     ocupado,
     actualizarVisual,
     actualizarNoche,
-    programarEsperando,
+    programarReacciones,
     sembrarTramoAnterior,
     establecerEstado,
     pintar,

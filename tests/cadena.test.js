@@ -74,12 +74,26 @@ const CASOS = [
   ['la acción gana sobre feliz', { estado: estado(100, 100), ahora: T0, accion: E.jugando }, E.jugando],
 
   // Feliz pide que los DOS stats pasen el umbral, y también es estricto.
-  ['feliz con 80/80', { estado: estado(80, 80), ahora: T0, accion: null }, E.feliz],
-  ['71/70 no es feliz: humor no supera el umbral', { estado: estado(71, 70), ahora: T0, accion: null }, E.idle],
-  ['70/71 no es feliz: bateria no supera el umbral', { estado: estado(70, 71), ahora: T0, accion: null }, E.idle],
+  // FELIZ ES UNA REACCIÓN Y NO UN ESTADO, y estas tres líneas son el guardián.
+  //
+  // Antes era una condición de umbral —bateria > 70 && humor > 70— y por lo
+  // tanto se sostenía sola mientras los stats estuvieran altos. Como cuidar a
+  // Chip sube los stats, el estado natural del juego terminaba siendo feliz
+  // permanente, y una felicidad permanente no comunica nada.
+  //
+  // Ahora mira una bandera que enciende la sesión y se apaga sola. Con los stats
+  // en el máximo y sin que pase nada, Chip está en IDLE, que es quien es.
+  ['con 100/100 y sin que pase nada, es idle y no feliz', { estado: estado(100, 100), ahora: T0, accion: null }, E.idle],
+  ['con 80/80 tampoco: los stats ya no gobiernan feliz', { estado: estado(80, 80), ahora: T0, accion: null }, E.idle],
+  ['feliz sale con la bandera, y con stats mediocres', { estado: estado(50, 50), ahora: T0, accion: null, contento: true }, E.feliz],
+  // El contexto viejo —sin el campo— no puede activar el estado nuevo.
+  ['contento indefinido no es feliz', { estado: estado(100, 100), ahora: T0, accion: null }, E.idle],
 
   // `esperando`: Chip aguanta el paso de un gigante. Va entre standby y feliz.
-  ['esperando gana sobre feliz', { estado: estado(100, 100), ahora: T0, accion: null, gigantePasando: true }, E.esperando],
+  ['esperando gana sobre feliz', { estado: estado(100, 100), ahora: T0, accion: null, gigantePasando: true, contento: true }, E.esperando],
+  ['critico gana sobre feliz: la batería en rojo manda', { estado: estado(10, 100), ahora: T0, accion: null, contento: true }, E.critico],
+  ['standby gana sobre feliz: dormido no se pone contento', { estado: estado(50), ahora: T_MADRUGADA, accion: null, contento: true }, E.standby],
+  ['la acción gana sobre feliz', { estado: estado(50), ahora: T0, accion: E.cargando, contento: true }, E.cargando],
   ['esperando gana sobre idle', { estado: estado(50, 50), ahora: T0, accion: null, gigantePasando: true }, E.esperando],
   ['standby gana sobre esperando: dormido no se entera', { estado: estado(50), ahora: T_MADRUGADA, accion: null, gigantePasando: true }, E.standby],
   ['critico gana sobre esperando: el aviso urgente es el otro', { estado: estado(10), ahora: T0, accion: null, gigantePasando: true }, E.critico],

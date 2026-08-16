@@ -292,8 +292,23 @@ export const VARS_BARRAS = {
 // de juego y el otro es arte. Acoplarlos haría que tocar uno mueva el otro.
 export const UMBRAL_CRITICO_BATERIA = 15; // estricto: bateria < 15
 
-export const UMBRAL_FELIZ_BATERIA = 70; // estricto: > 70
-export const UMBRAL_FELIZ_HUMOR = 70; // estricto: > 70
+// UMBRAL_FELIZ_BATERIA y UMBRAL_FELIZ_HUMOR SE FUERON, y la decisión se anota
+// acá porque el que venga a buscarlos merece saber por qué no están.
+//
+// Gobernaban el estado visual `feliz` cuando feliz era una condición de umbral.
+// Ahora es una bandera temporal que enciende la sesión, así que no queda nadie
+// que los lea.
+//
+// Se evaluó dejarlos como condición adicional —que la caricia sólo ponga
+// contento a Chip si no está mal— y no sirven para eso: la cadena ya resuelve
+// ese caso mejor y antes. `critico` y `standby` están ARRIBA de `feliz`, así que
+// un Chip con la batería en rojo o dormido nunca muestra la pose por más que la
+// bandera esté encendida. Un guard con los umbrales sería una segunda regla que
+// dice lo mismo que el orden de la cadena, y cuando dos reglas dicen lo mismo la
+// que sobra se desincroniza.
+//
+// Dos constantes que nadie lee son deuda, no red de seguridad. Si algún día
+// vuelven a hacer falta, el git log tiene el número: los dos estaban en 70.
 
 export const HORA_STANDBY_INICIO = 23; // inclusive
 export const HORA_STANDBY_FIN = 7; // exclusive -> franja 23:00 a 06:59
@@ -357,6 +372,69 @@ export const CLASE_OCUPADO = 'ocupado';
 // de verdad: el evento decide, el sprite ilustra. Nada de un timer aparte
 // inventando gigantes que el jugador no leyó.
 export const CATEGORIA_GRANDES = 'grandes';
+
+// ---- La lluvia ----
+//
+// "Miró la lluvia por la ventana del fondo. Es su ventana." Es el evento 16 del
+// canon, y NO ES UN QUINTO TRAMO NI UN SISTEMA DE CLIMA. Es un evento que además
+// se ve y se escucha: cuando sale, el ambiente de lluvia reemplaza al de la
+// franja y aparecen líneas sobre la ventana. Dura lo que dura la sesión y a la
+// próxima visita el galpón vuelve a la normalidad.
+//
+// Armarle un sistema de clima —estados, transiciones, probabilidades— sería un
+// sistema entero para un solo caso. Lo que hay es un id, una bandera y dos
+// llamadas.
+export const EVENTO_LLUVIA = 'evento-16';
+
+export const CLASE_LLOVIENDO = 'lloviendo';
+
+// TRES BANDAS DE PROFUNDIDAD, y es el mismo criterio que las nubes: lo que está
+// cerca es más largo, más opaco y más rápido; lo que está lejos es corto, tenue
+// y lento. Una lluvia de líneas todas iguales se lee como una textura, no como
+// agua cayendo a distintas distancias del vidrio.
+//
+// El ángulo es el mismo para las tres —la lluvia cae para el mismo lado— y sólo
+// cambian el largo, la opacidad y la velocidad.
+export const LLUVIA = {
+  angulo: 14,
+  bandas: [
+    { lineas: 16, largo: 13, grosor: 1.7, alfa: 0.55, ciclo: 620, desenfoque: 0 },
+    { lineas: 20, largo: 9, grosor: 1.3, alfa: 0.4, ciclo: 900, desenfoque: 0.4 },
+    { lineas: 24, largo: 6, grosor: 1, alfa: 0.26, ciclo: 1300, desenfoque: 1 }
+  ],
+  // DOS TONOS Y NO UNO, y es la diferencia entre verse y no verse.
+  //
+  // La primera versión era un trazo claro solo, y contra el cielo del atardecer
+  // —que es casi blanco— desaparecía: ampliado al 300% no se distinguía una sola
+  // gota. Un trazo claro no puede leerse sobre un fondo claro, y el fondo de esa
+  // ventana es claro en tres de los cuatro tramos.
+  //
+  // Así que la gota tiene CUERPO OSCURO y PUNTA BRILLANTE, que además es lo que
+  // hace el agua: el cuerpo refracta y oscurece lo que hay detrás, y en el borde
+  // de abajo junta un reflejo. Con los dos tonos se ve contra el cielo del
+  // mediodía y contra el de la noche, sin cambiar de paleta por tramo.
+  cuerpo: '#3f5668',
+  brillo: '#eaf4fb'
+};
+
+export const VARS_LLUVIA = {
+  angulo: '--lluvia-angulo',
+  cuerpo: '--lluvia-cuerpo',
+  brillo: '--lluvia-brillo'
+};
+
+// La categoría de encontrar algo. Es la que pone a Chip contento cuando el
+// evento se lee: `feliz` es una reacción, y encontrar una pieza es una de las
+// cosas a las que reacciona.
+export const CATEGORIA_COLECCION = 'coleccion';
+
+// CUÁNTO DURA LA REACCIÓN DE `feliz`.
+//
+// El número tiene dos límites y los dos importan. Corto de menos y el sprite
+// entra y sale antes de que el ojo lo registre; largo de más y vuelve a ser un
+// estado, que es de lo que lo sacamos. 3,2 s deja ver la pose entera —el
+// parpadeo, el ciclo rápido de respiración— y se va antes de instalarse.
+export const DURACION_FELIZ_MS = 3200;
 
 // Cuánto aguanta la pose. Más largo que una acción (2 s) porque un gigante no
 // pasa en dos segundos, y bastante más corto que la lectura completa de una

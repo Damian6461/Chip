@@ -7,8 +7,6 @@ import {
   ESTADOS_VISUALES as E,
   RUTAS_SPRITES,
   UMBRAL_CRITICO_BATERIA,
-  UMBRAL_FELIZ_BATERIA,
-  UMBRAL_FELIZ_HUMOR,
   HORA_STANDBY_INICIO,
   HORA_STANDBY_FIN,
   FRANJAS_DIA,
@@ -146,24 +144,34 @@ const CADENA_ESTADOS = [
     nombre: E.esperando,
     condicion: (c) => c.gigantePasando === true || c.leOrdenaron === true
   },
-  {
-    nombre: E.feliz,
-    condicion: (c) =>
-      c.estado.bateria > UMBRAL_FELIZ_BATERIA && c.estado.humor > UMBRAL_FELIZ_HUMOR
-  },
+  // FELIZ ES UNA REACCIÓN, NO UN ESTADO, y por eso mira una bandera y no los
+  // stats.
+  //
+  // Era `bateria > umbral && humor > umbral`, o sea una condición de umbral que
+  // se sostiene sola mientras los stats estén altos. Y como cuidar a Chip sube
+  // los stats, el estado natural del juego terminaba siendo `feliz` permanente.
+  // Eso rompe dos cosas: si siempre está feliz, la felicidad deja de comunicar
+  // nada; y `idle` —con su respiración, su parpadeo y su cabeza ladeándose— es
+  // quien Chip ES. Feliz es lo que contesta a algo.
+  //
+  // La bandera la enciende la sesión y se apaga sola, exactamente igual que
+  // `esperando`. Y queda DEBAJO de esperando en la cadena, así que las dos
+  // juntas las resuelve el orden y no una regla aparte.
+  { nombre: E.feliz, condicion: (c) => c.contento === true },
   { nombre: E.idle, condicion: () => true }
 ];
 
 // Fallback de la cadena: si ninguna condición se cumpliera, se cae a idle.
 const ESTADO_POR_DEFECTO = E.idle;
 
-// contexto: { estado, ahora, accion, gigantePasando, leOrdenaron }. `ahora` es un
-// timestamp en ms y no tiene default a propósito — el reloj lo pone el llamador,
-// igual que en aplicarDecay. `accion` es el nombre del estado de acción en curso,
-// o null. `gigantePasando` es true mientras se está leyendo un evento de la
-// categoría `grandes` y `leOrdenaron` mientras dura el fastidio de que le
-// levanten del piso una pieza; los dos los decide la sesión, que es la que tiene
-// los timers. Acá no hay ninguno.
+// contexto: { estado, ahora, accion, gigantePasando, leOrdenaron, contento }.
+// `ahora` es un timestamp en ms y no tiene default a propósito — el reloj lo pone
+// el llamador, igual que en aplicarDecay. `accion` es el nombre del estado de
+// acción en curso, o null. Las otras tres son BANDERAS TEMPORALES que enciende y
+// apaga la sesión, que es la que tiene los timers: `gigantePasando` mientras se
+// lee un evento con un gigante presente, `leOrdenaron` mientras dura el fastidio
+// de que le levanten del piso una pieza, y `contento` mientras dura la reacción
+// de que algo bueno pasó. Acá no hay ningún timer.
 export function resolverEstadoVisual(contexto) {
   for (const entrada of CADENA_ESTADOS) {
     if (entrada.condicion(contexto)) return entrada.nombre;

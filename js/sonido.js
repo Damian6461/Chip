@@ -65,6 +65,7 @@ let cargados = false;
 let pausadoPorFoco = false;
 let ctx = null;
 let cruzando = false;
+let lloviendo = false;
 
 // EL CONTEXTO SE CREA EN EL GESTO, no al importar el módulo. Un AudioContext
 // creado sin gesto nace suspendido y en algunos navegadores queda marcado como
@@ -204,10 +205,30 @@ function vigilarElFinal(capa) {
 // resuelve una vez en la sesión y de ahí salen el sprite, la luz, el fondo y
 // esto. Un reloj propio acá sería una segunda fuente de verdad.
 export function ambientar(franja) {
+  // MIENTRAS LLUEVE, LA FRANJA NO MANDA. El tramo del día sigue cambiando el
+  // fondo y la luz; lo único que la lluvia se apropia es el ambiente. Sin este
+  // corte, la próxima pintada volvería a pedir el ambiente de la hora y la
+  // lluvia se apagaría sola a los segundos.
+  if (lloviendo) return;
   if (!franja || franja === franjaActual) return;
 
   const ruta = rutaDe(franja);
   franjaActual = franja;
+  if (!ruta || !encendido) return;
+
+  asegurarCargado();
+  cruzar(1 - indiceActivo, ruta, SONIDO.cruceMs);
+}
+
+// LA LLUVIA ES UN EVENTO, NO UN TRAMO. Por eso es una bandera y no una entrada
+// más en la tabla de franjas: no tiene hora, no tiene fondo propio y no entra en
+// la rotación. Se prende cuando sale el evento 16 y se apaga al cerrar la app,
+// porque no se persiste en ningún lado.
+export function llover() {
+  if (lloviendo) return;
+  lloviendo = true;
+
+  const ruta = rutaDe('lluvia');
   if (!ruta || !encendido) return;
 
   asegurarCargado();

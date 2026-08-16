@@ -21,7 +21,7 @@ import { hitoPendiente, eventoDeHito, capaPorDias } from './gigantes.js';
 import { cargarSprites, franjaDelDia } from './sprites.js';
 import { abrirVisita } from './visita.js';
 import { crearSesion } from './sesion.js';
-import { ambientar, encender } from './sonido.js';
+import { ambientar, encender, llover as lloverAmbiente } from './sonido.js';
 import {
   render,
   sembrarFondo,
@@ -35,6 +35,7 @@ import {
   conectarPiso,
   ponerEnElPiso,
   conectarDebugOculto,
+  llover,
   animarAccion,
   iniciarAccion,
   celebrarHumor,
@@ -93,7 +94,13 @@ const sesion = crearSesion({
     animarAccion,
     iniciarAccion,
     celebrarHumor,
-    responderEstoyBien
+    responderEstoyBien,
+    // La lluvia toca las dos cosas: el ambiente y el dibujo. Van juntas y desde
+    // acá, que es donde se cablea todo lo que cruza dos módulos.
+    llover() {
+      llover();
+      lloverAmbiente();
+    }
   },
   reloj,
   guardar: guardarEstado
@@ -102,7 +109,7 @@ const sesion = crearSesion({
 const pintar = sesion.pintar;
 
 mostrarEventos(visita.eventos);
-sesion.programarEsperando(visita.eventos);
+sesion.programarReacciones(visita.eventos);
 mostrarColeccion(sesion.estado().coleccion, visita.hallazgos.nuevos);
 // Después de mostrarColeccion y no antes: la pieza del piso saca su nombre del
 // mismo pool que el estante, y el aria-label lo necesita puesto.
@@ -253,6 +260,15 @@ const apiDebug = {
     return falta.id;
   },
 
+  // La lluvia sin esperar a que salga el evento 16, que es uno de cuarenta y
+  // ocho. Pasa por el MISMO camino que el evento: la misma llamada, el mismo
+  // ambiente, el mismo dibujo. No hay un modo lluvia aparte que probar.
+  hacerLlover() {
+    llover();
+    lloverAmbiente();
+    return true;
+  },
+
   // Simula presencia acumulada para ver el arco de los gigantes avanzar sin
   // esperar meses. No recarga: repinta la colección en el lugar, así se puede
   // ver la capa cambiar con el panel abierto.
@@ -277,7 +293,7 @@ const apiDebug = {
     // El mismo par que en el arranque. Si acá faltara, el hito de la grúa —que
     // es de la categoría `grandes`— saldría por debug sin la pose, y el panel
     // estaría probando un camino que no es el del juego.
-    sesion.programarEsperando([evento]);
+    sesion.programarReacciones([evento]);
     mostrarGigantes(sesion.estado().diasDePresencia, sesion.estado().hitosVistos);
     pintar();
     return pendiente.hito;

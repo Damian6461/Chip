@@ -5,7 +5,16 @@
 
 import { prueba, igual, verdadero } from './runner.js';
 import { T0 } from './config.pruebas.js';
-import { VERSION_ESTADO, MAX_EVENTOS_POR_VISITA } from '../js/config.js';
+import {
+  VERSION_ESTADO,
+  MAX_EVENTOS_POR_VISITA,
+  CATEGORIA_GRANDES,
+  EVENTO_LLUVIA,
+  FRANJAS_DIA
+} from '../js/config.js';
+import { readFileSync } from 'node:fs';
+
+const SONIDO_JS = readFileSync(new URL('../js/sonido.js', import.meta.url), 'utf8');
 import { EVENTOS, EVENTOS_POR_CATEGORIA, CATEGORIAS, EVENTO_RARO } from '../js/datos-eventos.js';
 import { elegirEventos } from '../js/eventos.js';
 import { cargarEstado, guardarEstado } from '../js/estado.js';
@@ -203,4 +212,68 @@ prueba('migración: un save ya en la versión actual pasa sin tocarse', () => {
   const cargado = cargarEstado();
   igual(cargado.ultimosEventosIds.join(), 'evento-02,evento-03', 'sobreviven los dos');
   igual(cargado.version, VERSION_ESTADO, 'la versión no cambia');
+});
+
+// ---- Los brazos cruzados, y por qué no son toda la categoría ----
+//
+// `grandes` pasó de 5 eventos a 13 sobre 48 cuando entró el pool de 36. Si los
+// trece dispararan la pose, cruzarse de brazos dejaría de ser una reacción y
+// pasaría a ser una muletilla. La bandera `presente` separa al gigante que ESTÁ
+// del rastro que dejó uno que ya pasó.
+//
+// La banda no es un capricho: menos de seis y la pose casi no se ve; más de
+// ocho y vuelve el problema. Este test la fija.
+
+prueba('gigantes: sólo una parte de `grandes` dispara los brazos cruzados', () => {
+  const grandes = EVENTOS.filter((e) => e.categoria === CATEGORIA_GRANDES);
+  const presentes = grandes.filter((e) => e.presente);
+
+  verdadero(grandes.length > 8, `son ${grandes.length}, así que la distinción hace falta`);
+  verdadero(
+    presentes.length >= 6 && presentes.length <= 8,
+    `disparan ${presentes.length} de ${grandes.length}, y la banda es 6 a 8`
+  );
+});
+
+prueba('gigantes: `presente` es un dato y no una heurística sobre el texto', () => {
+  // Si alguien la reemplaza por una búsqueda de palabras en la línea, esto lo
+  // agarra: la bandera tiene que estar en el objeto.
+  const conBandera = EVENTOS.filter((e) => 'presente' in e);
+  verdadero(conBandera.length > 0, 'hay eventos con la bandera puesta');
+  verdadero(
+    conBandera.every((e) => e.categoria === CATEGORIA_GRANDES),
+    'y ninguno fuera de `grandes` la lleva: no significa nada ahí'
+  );
+});
+
+prueba('gigantes: el evento raro también tiene al gigante presente', () => {
+  // "La grúa vieja bajó el brazo hasta su altura y lo dejó ahí un segundo."
+  // Si ese no cruza los brazos, ninguno.
+  verdadero(EVENTO_RARO.presente === true, 'la grúa está ahí, bajando el brazo');
+});
+
+// ---- La lluvia, que es un evento y no un tramo ----
+
+prueba('lluvia: el evento que la dispara existe en el pool', () => {
+  const suyo = EVENTOS.find((e) => e.id === EVENTO_LLUVIA);
+  verdadero(suyo !== undefined, `${EVENTO_LLUVIA} tiene que estar entre los eventos`);
+  verdadero(/lluvia/i.test(suyo.texto), 'y su texto tiene que ser el de la lluvia');
+});
+
+prueba('lluvia: NO es un quinto tramo del día', () => {
+  // Si alguien la agrega a FRANJAS_DIA, la lluvia pasa a tener hora y a entrar
+  // en la rotación, que es exactamente lo que el canon dice que no es. Es un
+  // evento que además se ve y se escucha.
+  const nombres = FRANJAS_DIA.map((f) => f.nombre);
+  verdadero(!nombres.includes('lluvia'), `las franjas son ${nombres.join(', ')} y nada más`);
+  igual(nombres.length, 4, 'cuatro tramos, los de siempre');
+});
+
+prueba('lluvia: mientras llueve, la franja no le pisa el ambiente', () => {
+  // sonido.js no se importa en Node. Se lee como texto, igual que style.css en
+  // composicion.test.js: sin este corte, la próxima pintada volvería a pedir el
+  // ambiente de la hora y la lluvia se apagaría sola a los segundos.
+  const codigo = SONIDO_JS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  verdadero(/if \(lloviendo\) return;/.test(codigo), 'ambientar corta si está lloviendo');
+  verdadero(/export function llover\(\)/.test(codigo), 'y hay una forma de prenderla');
 });

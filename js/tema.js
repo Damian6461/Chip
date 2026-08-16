@@ -63,6 +63,8 @@ import {
   DURACION_CARICIA_MS,
   VARS_ORUGAS,
   VARS_PISO,
+  VARS_LLUVIA,
+  LLUVIA,
   BRILLO_PISO,
   VUELO_OBJETO,
   REFLEJO_ARO,
@@ -258,6 +260,9 @@ export function variablesDeTema() {
     [VARS_CABLE.energia]: CABLE.energia,
     [VARS_CABLE.sombraPuerto]: CABLE.sombraPuerto,
     [VARS_CABLE.ficha]: CABLE.ficha,
+    [VARS_LLUVIA.angulo]: LLUVIA.angulo + 'deg',
+    [VARS_LLUVIA.cuerpo]: LLUVIA.cuerpo,
+    [VARS_LLUVIA.brillo]: LLUVIA.brillo,
     [VARS_CABLE.cicloPulso]: ms(PULSOS_CABLE.ciclo),
 
     // La caja de conexión, al fondo y sumergida

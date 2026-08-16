@@ -30,7 +30,8 @@ import {
   DURACION_CRUCE_FONDO_MS,
   PROBABILIDAD_OBJETO_PISO,
   ZONA_PISO,
-  DURACION_FASTIDIO_MS
+  DURACION_FASTIDIO_MS,
+  DURACION_FELIZ_MS
 } from '../js/config.js';
 import { OBJETOS } from '../js/datos-objetos.js';
 import { crearEstadoNuevo, cargarEstado, guardarEstado } from '../js/estado.js';
@@ -513,7 +514,15 @@ prueba('sesión: dos acciones seguidas dejan un save con las dos, no con una', (
   // limpiar, `accionEnCurso` ya no existe y la cadena decide sola.
   reloj.avanzar(DURACIONES_ACCION.limpiar + 1);
   verdadero(sesion.estadoVisual() !== E.limpiando, 'al vencer, la acción suelta el sprite');
-  igual(reloj.cuantosTimers(), 0, 'y no queda ningún timer colgado');
+
+  // Y lo que suelta es `feliz`, no `idle`: una acción que aplicó encadena la
+  // reacción. El único timer que queda es el de esa reacción.
+  igual(sesion.estadoVisual(), E.feliz, 'la acción que aplicó deja a Chip contento');
+  igual(reloj.cuantosTimers(), 1, 'y el único timer vivo es el de la reacción');
+
+  reloj.avanzar(DURACION_FELIZ_MS + 1);
+  igual(sesion.estadoVisual(), E.idle, 'que también se apaga sola y vuelve a idle');
+  igual(reloj.cuantosTimers(), 0, 'ahí sí no queda ningún timer colgado');
 });
 
 prueba('sesión: un cambio de tramo entre dos acciones no se come ninguna de las dos', () => {
@@ -688,7 +697,9 @@ prueba('sesión: el evento de un gigante prende y apaga `esperando` solo', () =>
   sesion.actualizarVisual({ inmediato: true });
   const antes = sesion.estadoVisual();
 
-  sesion.programarEsperando([{ id: 'evento-x', texto: '', categoria: CATEGORIA_GRANDES }]);
+  sesion.programarReacciones([
+    { id: 'evento-x', texto: '', categoria: CATEGORIA_GRANDES, presente: true }
+  ]);
 
   reloj.avanzar(1);
   igual(sesion.estadoVisual(), E.esperando, 'cuando se lee el evento, Chip se queda esperando');
@@ -702,7 +713,7 @@ prueba('sesión: un evento común no dispara `esperando` ni programa nada', () =
   const { sesion, reloj } = sesionDePrueba(crearEstadoNuevo(), { ahora: T0 });
 
   sesion.actualizarVisual({ inmediato: true });
-  sesion.programarEsperando([{ id: 'evento-y', texto: '', categoria: 'chicas' }]);
+  sesion.programarReacciones([{ id: 'evento-y', texto: '', categoria: 'chicas' }]);
 
   igual(reloj.cuantosTimers(), 0, 'no hay nada que programar');
   verdadero(sesion.estadoVisual() !== E.esperando, 'y Chip no espera nada');
@@ -710,13 +721,15 @@ prueba('sesión: un evento común no dispara `esperando` ni programa nada', () =
 
 prueba('sesión: una visita nueva cancela los timers de gigante de la anterior', () => {
   const { sesion, reloj } = sesionDePrueba(crearEstadoNuevo(), { ahora: T0 });
-  const grande = { id: 'evento-x', texto: '', categoria: CATEGORIA_GRANDES };
+  // `presente: true`: la pose la dispara el gigante que ESTÁ, no toda la
+  // categoría. Ver programarReacciones.
+  const grande = { id: 'evento-x', texto: '', categoria: CATEGORIA_GRANDES, presente: true };
 
   sesion.actualizarVisual({ inmediato: true });
-  sesion.programarEsperando([grande, grande]);
+  sesion.programarReacciones([grande, grande]);
   igual(reloj.cuantosTimers(), 4, 'dos gigantes programan cuatro momentos');
 
-  sesion.programarEsperando([]);
+  sesion.programarReacciones([]);
   igual(reloj.cuantosTimers(), 0, 'y la tanda siguiente los limpia a todos');
 });
 
@@ -936,8 +949,14 @@ prueba('sesión: levantar del piso lo guarda y pone la cara de fastidio', () => 
   reloj.avanzar(DURACION_FASTIDIO_MS - 1);
   igual(sesion.estadoVisual(), E.esperando, 'y se aguanta los dos segundos');
 
+  // PRIMERO SE QUEJA Y DESPUÉS SE PONE CONTENTO de tenerlo. El encadenado es el
+  // punto: la queja sola se lee como "no le gustó" y la alegría sola pierde el
+  // chiste de que se lo ordenaste.
   reloj.avanzar(2);
-  igual(sesion.estadoVisual(), antes, 'después vuelve a lo que estaba');
+  igual(sesion.estadoVisual(), E.feliz, 'después de la queja, contento de tenerlo');
+
+  reloj.avanzar(DURACION_FELIZ_MS + 1);
+  igual(sesion.estadoVisual(), antes, 'y recién ahí vuelve a lo que estaba');
   verdadero(vista.cuenta.render > 0, 'y todo eso se pintó');
 });
 

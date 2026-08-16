@@ -16,6 +16,20 @@
 // Agregar un evento es agregar una entrada con un `id` nuevo y único en la
 // categoría que le toque; sacarlo es borrar la entrada. La lógica no se toca.
 //
+// `presente` es una bandera del DATO y sólo la llevan algunos eventos de
+// `grandes`: los que describen un gigante que está ahí MIENTRAS Chip mira. Es
+// lo que dispara la pose de brazos cruzados.
+//
+// No es toda la categoría, y esa es la decisión. Con el pool de 36, `grandes`
+// pasó de 5 eventos a 13 sobre 48 —más de una cuarta parte— y si los trece
+// cruzaran los brazos la pose se volvería una muletilla. La clasificación por
+// categoría está bien: esos textos SON gigantes. Lo que no todos son es un
+// gigante presente.
+//
+// Va como bandera y no como heurística sobre el texto a propósito: buscar
+// "pasó" o "esperó" en la línea funcionaría hoy y se rompería con el primer
+// evento nuevo que use otras palabras.
+//
 // El `id` es lo que se persiste para no repetir lo de la visita anterior, así
 // que conviene que sea estable: si cambia, el save viejo apunta a un id que ya
 // no existe (es inofensivo — el filtro simplemente no excluye nada).
@@ -166,26 +180,31 @@ const POR_CATEGORIA = {
   grandes: [
     {
       id: 'evento-11',
+      presente: true,
       texto:
         'Pasó un carguero de siete metros. Chip esperó a que terminara de pasar y después siguió con lo suyo, un poco despeinado por el viento.'
     },
     {
       id: 'evento-12',
+      presente: true,
       texto:
         'Los de mantenimiento pesado hicieron una reunión en el patio. Chip escuchó desde la puerta. No entendió nada, pero le gustó el murmullo.'
     },
     {
       id: 'evento-13',
+      presente: true,
       texto:
         'La grúa vieja trabajó toda la tarde. Chip la miró desde un lugar seguro. Le parece que la grúa hace bien su trabajo, aunque nadie se lo dice.'
     },
     {
       id: 'evento-14',
+      presente: true,
       texto:
         'Algo enorme se cayó del otro lado del galpón. Chip fue a ver, se arrepintió a mitad de camino, y volvió.'
     },
     {
       id: 'evento-15',
+      presente: true,
       texto:
         'Un robot de carga lo esquivó al pasar. Chip pensó en eso el resto del día: lo esquivó, o sea que lo vio.'
     },
@@ -195,6 +214,7 @@ const POR_CATEGORIA = {
     // ellos: Chip no los ve ni les habla, junta lo que se les cae.
     {
       id: 'evento-b1',
+      presente: true,
       texto:
         'Se le cayó un remache al carguero y siguió de largo. Chip esperó a que se fuera para levantarlo.'
     },
@@ -315,6 +335,7 @@ export const EVENTOS = Object.entries(POR_CATEGORIA).flatMap(([categoria, lista]
 // todos los eventos tienen la misma forma miren de donde miren.
 export const EVENTO_RARO = {
   id: 'evento-raro',
+  presente: true,
   categoria: 'grandes',
   texto:
     'La grúa vieja bajó el brazo hasta su altura y lo dejó ahí un segundo, sin motivo. Chip no se lo va a olvidar nunca.'

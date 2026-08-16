@@ -41,6 +41,8 @@ import {
   DURACION_LLEGADA_MS,
   ESPERA_ENTRE_LLEGADAS_MS,
   PIEZAS_POR_ESTANTE,
+  LLUVIA,
+  CLASE_LLOVIENDO,
   CLASE_OBJETO_NUEVO,
   CLASE_OBJETO_OBTENIDO,
   RUTAS_OJOS,
@@ -155,6 +157,7 @@ import {
   estantes,
   resplandor,
   contenedorNubes,
+  contenedorLluvia,
   crearBanda,
   nodoCable,
   escena,
@@ -807,6 +810,61 @@ export function dibujarCable() {
     `<rect class="cable-ficha-cuerpo" x="${(-ficha.largoFicha * 0.18).toFixed(1)}" y="${(-ficha.ancho / 2).toFixed(1)}" width="${ficha.largoFicha.toFixed(1)}" height="${ficha.ancho.toFixed(1)}" rx="${ficha.radio.toFixed(1)}"/>` +
     `<rect class="cable-ficha-filo" x="${(-ficha.largoFicha * 0.18).toFixed(1)}" y="${(-ficha.ancho / 2).toFixed(1)}" width="${(ficha.largoFicha * 0.26).toFixed(1)}" height="${ficha.ancho.toFixed(1)}" rx="${(ficha.radio * 0.8).toFixed(1)}"/>` +
     `</g>`;
+}
+
+// ---- La lluvia del evento 16 ----
+//
+// "Miró la lluvia por la ventana del fondo. Es su ventana."
+//
+// Se dibuja por código, sin arte nuevo, y va RECORTADA A LA ABERTURA: la misma
+// posición y la misma máscara que las nubes, así que se ve a través de la
+// ventana y no sobre la escena. Llover sobre todo el galpón sería llover
+// adentro.
+//
+// Tres bandas de profundidad, mismo criterio que las nubes: cerca es largo,
+// opaco y rápido; lejos es corto, tenue, lento y difuso. Todas caen con el mismo
+// ángulo, porque la lluvia cae para el mismo lado.
+//
+// Se llama UNA vez por sesión y no se apaga: el evento dura lo que dura la app
+// abierta. A la próxima visita el nodo vuelve a nacer vacío.
+let lloviendo = false;
+
+export function llover() {
+  if (lloviendo || !contenedorLluvia) return;
+  lloviendo = true;
+
+  const gotas = [];
+
+  LLUVIA.bandas.forEach((banda, capa) => {
+    // CUÁNTO TIENE QUE VIAJAR ESTA GOTA, en alturas de sí misma. Un porcentaje
+    // en `translate` se mide contra la caja del propio elemento, no contra el
+    // contenedor, así que el recorrido —el alto de la ventana más el largo de la
+    // gota más un margen para que salga de cuadro— hay que convertirlo a las
+    // unidades de la gota. Ver el keyframe `caer`.
+    const viaje = ((100 + banda.largo + 20) / banda.largo) * 100;
+
+    for (let i = 0; i < banda.lineas; i++) {
+      // La posición y el desfase se sortean, pero se sortean UNA vez: una gota
+      // que cambia de carril en cada repintado se lee como ruido, no como agua.
+      const x = ((i + Math.random()) / banda.lineas) * 100;
+      const retardo = Math.random() * banda.ciclo;
+
+      gotas.push(
+        `<i class="gota" style="--x:${x.toFixed(2)}%;` +
+          `--largo:${banda.largo}%;` +
+          `--grosor:${banda.grosor}px;` +
+          `--alfa:${banda.alfa};` +
+          `--ciclo:${banda.ciclo}ms;` +
+          `--retardo:-${retardo.toFixed(0)}ms;` +
+          `--desenfoque:${banda.desenfoque}px;` +
+          `--viaje:${viaje.toFixed(0)}%;` +
+          `--capa:${capa}"></i>`
+      );
+    }
+  });
+
+  contenedorLluvia.innerHTML = gotas.join('');
+  contenedorLluvia.classList.add(CLASE_LLOVIENDO);
 }
 
 // ---- La nube que pasa una vez ----

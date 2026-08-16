@@ -4041,3 +4041,105 @@ body.sin-movimiento *::after {
   filter: brightness(1.35) saturate(1.2);
   transform: translateY(1px);
 }
+
+/* ============================================================================
+   LA LLUVIA DEL EVENTO 16
+
+   "Miró la lluvia por la ventana del fondo. Es su ventana."
+
+   Va RECORTADA A LA ABERTURA, con la misma posición y la misma máscara que las
+   nubes: se ve a través de la ventana y no sobre la escena. Llover sobre todo el
+   galpón sería llover adentro.
+
+   No es un tramo ni un sistema de clima. Es un evento que además se ve.
+   ============================================================================ */
+
+#lluvia {
+  position: absolute;
+  left: var(--ventana-x);
+  top: var(--ventana-y);
+  width: var(--ventana-ancho);
+  height: var(--ventana-alto);
+  /* Delante de las nubes y detrás del marco, igual que ellas. */
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  /* Sin la clase no existe: el nodo está siempre, la lluvia no. */
+  display: none;
+  /* La misma máscara que #nubes, por el mismo motivo: una gota cortada en el
+     filo del marco delata que hay una capa encima. */
+  -webkit-mask-image: radial-gradient(ellipse 78% 88% at 50% 42%, #000 55%, transparent 100%);
+  mask-image: radial-gradient(ellipse 78% 88% at 50% 42%, #000 55%, transparent 100%);
+}
+
+#lluvia.lloviendo {
+  display: block;
+}
+
+/* UNA GOTA. Es una línea, no un punto: a esta velocidad el ojo ve el rastro y no
+   la gota, que es por lo que la lluvia se dibuja con rayas en todos lados.
+
+   La inclinación va en `rotate` y no dentro del keyframe para que la animación
+   pueda ser sólo la caída: si el ángulo viviera en el transform de la animación,
+   cada cuadro tendría que reescribirlo y no se podría componer. */
+#lluvia .gota {
+  /* Los siete valores de cada gota los escribe ui.js inline, uno por gota: son
+     por-elemento y no del tema, así que no pueden vivir en :root. Se declaran
+     igual acá con un valor por defecto por dos razones: el estilo inline gana
+     igual, y una gota a la que le faltara uno dibuja algo en vez de
+     desaparecer. Además es lo que le dice al test del puente que estas siete
+     tienen dueño. */
+  --x: 50%;
+  --largo: 9%;
+  --grosor: 1.2px;
+  --alfa: 0.3;
+  --ciclo: 900ms;
+  --retardo: 0ms;
+  --desenfoque: 0px;
+  --viaje: 1000%;
+
+  position: absolute;
+  left: var(--x);
+  top: 0;
+  width: var(--grosor);
+  height: var(--largo);
+  border-radius: var(--grosor);
+  /* CUERPO OSCURO Y PUNTA BRILLANTE. Ver LLUVIA en config.js: un trazo claro
+     solo desaparecia contra el cielo del atardecer, que es casi blanco. El
+     cuerpo oscuro refracta y la punta junta el reflejo, que es lo que hace una
+     gota de verdad — y con los dos tonos se ve en los cuatro tramos. */
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--lluvia-cuerpo) calc(var(--alfa) * 100%), transparent) 55%,
+    color-mix(in srgb, var(--lluvia-brillo) calc(var(--alfa) * 85%), transparent) 100%
+  );
+  rotate: var(--lluvia-angulo);
+  filter: blur(var(--desenfoque));
+  /* El retardo es NEGATIVO: la animación arranca ya empezada, cada gota en un
+     punto distinto de su caída. Con retardos positivos la primera vuelta entra
+     toda junta desde arriba y se ve el momento en que empieza a llover. */
+  animation: caer var(--ciclo) linear infinite var(--retardo);
+}
+
+/* EL VIAJE VA EN UNIDADES DE LA PROPIA GOTA, y ese fue el bug.
+
+   Estaba escrito como `translate: 0 calc(var(--ventana-alto) + 20%)`, dando por
+   hecho que ese porcentaje se medía contra la ventana. No: un porcentaje en
+   `translate` se resuelve contra la CAJA DEL PROPIO ELEMENTO. Con --ventana-alto
+   en 53%, cada gota se movía 53% de sus 62 px —33 px— y volvía a empezar. Medido:
+   la lluvia oscilaba en una franja de 33 px arriba de todo y el resto de la
+   ventana quedaba seca.
+
+   Ahora ui.js calcula el viaje por banda: cuánto mide el recorrido completo
+   expresado en alturas de esa gota. Se queda en `translate` y no pasa a `top`
+   —que sí acepta porcentajes del contenedor— porque `top` recalcula layout en
+   cada cuadro para las sesenta gotas y `translate` lo resuelve el compositor. */
+@keyframes caer {
+  from {
+    translate: 0 -100%;
+  }
+  to {
+    translate: 0 var(--viaje);
+  }
+}

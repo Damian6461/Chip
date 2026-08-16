@@ -184,6 +184,12 @@ export function iniciarDebug(api) {
   const botonPiso = crearBoton('tirar al piso');
   botonPiso.addEventListener('click', () => api.tirarObjetoAlPiso());
 
+  // ---- Que llueva ----
+  // El evento 16 es uno de cuarenta y ocho: esperarlo para ver si la lluvia
+  // anda no es una forma de verificar nada.
+  const botonLluvia = crearBoton('que llueva');
+  botonLluvia.addEventListener('click', () => api.hacerLlover());
+
   // ---- Simular una apertura con el tramo cambiado ----
   const botonTramo = crearBoton('abrir en otro tramo');
   botonTramo.addEventListener('click', () => api.simularAperturaEnOtroTramo());
@@ -249,6 +255,7 @@ export function iniciarDebug(api) {
     botonHito,
     botonObjeto,
     botonPiso,
+    botonLluvia,
     botonTramo,
     botonPose,
     botonReiniciar,
