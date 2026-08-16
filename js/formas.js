@@ -211,6 +211,23 @@ export function svgDeNumero(texto) {
 const RAYO = `
   <path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="var(--rayo-color)"/>`;
 
+// El panel de mantenimiento: la puerta del menú.
+//
+// Es diegético a propósito — no es un ícono de hamburguesa, es una cosa que
+// está apoyada contra la pared del galpón. Chapa oscura con dos tornillos, una
+// pantallita apagada y una etiqueta. Mismo vocabulario que la toma de
+// corriente y que las teclas: bisel arriba, sombra abajo, bordes duros.
+const PANEL = `
+  <rect x="1.5" y="2" width="21" height="20" rx="1.6" fill="var(--panel-chapa)"
+    stroke="var(--panel-filo)" stroke-width="1.2"/>
+  <rect x="4" y="5" width="16" height="8" rx="0.8" fill="var(--panel-hueco)"/>
+  <path d="M6 8.5h7M6 10.5h4" stroke="var(--panel-linea)" stroke-width="1"
+    stroke-linecap="round"/>
+  <path d="M4.5 16.5h15M4.5 19h9" stroke="var(--panel-linea)" stroke-width="1.2"
+    stroke-linecap="round" opacity="0.75"/>
+  <circle cx="3.6" cy="3.8" r="0.8" fill="var(--panel-filo)"/>
+  <circle cx="20.4" cy="3.8" r="0.8" fill="var(--panel-filo)"/>`;
+
 // ---- La toma de corriente del galpón ----
 //
 // No es un efecto ni un objeto de la colección: es MOBILIARIO. Está siempre, en
@@ -274,6 +291,10 @@ export function svgDeBurbuja() {
 }
 
 // Su propio envoltorio: es la única forma con caja no cuadrada.
+export function svgDePanel() {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${PANEL}</svg>`;
+}
+
 export function svgDeRayo() {
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${RAYO}</svg>`;
 }

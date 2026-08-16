@@ -10,6 +10,10 @@ import {
   DURACION_PRESION_MS,
   VARS_ANIMACION,
   CLASE_SALTO,
+  SECCIONES_MENU,
+  COLORES_PANEL,
+  VERSION_JUEGO,
+  CLASE_SIN_MOVIMIENTO,
   CICLO_LED_MS,
   ESTADOS_DE_ACCION,
   DURACION_SQUASH_MS,
@@ -103,6 +107,7 @@ import {
   svgDePulso,
   svgDeBurbuja,
   svgDeToma,
+  svgDePanel,
   svgDeRayo,
   svgDeNumero
 } from './formas.js';
@@ -228,6 +233,119 @@ if (toma) {
   for (const [tono, valor] of Object.entries(COLORES_TOMA)) {
     raiz.style.setProperty(`--toma-${tono}`, valor);
   }
+}
+
+
+// ---- El menú ----
+//
+// Tres secciones y sólo tres. La colección no se rehace: se MUEVE, tal cual
+// está, al cuerpo del panel. Rehacerla habría creado una segunda vista de lo
+// mismo, que es la forma más rápida de que las dos se desincronicen.
+const menuBoton = document.getElementById('menu-boton');
+const menu = document.getElementById('menu');
+const solapas = menu ? [...menu.querySelectorAll('#menu-solapas button')] : [];
+const secciones = menu ? [...menu.querySelectorAll('.menu-seccion')] : [];
+
+if (menuBoton) {
+  menuBoton.innerHTML = svgDePanel();
+  for (const [tono, valor] of Object.entries(COLORES_PANEL)) {
+    raiz.style.setProperty(`--panel-${tono}`, valor);
+  }
+}
+
+if (menu) {
+  // La vista de colección se muda acá adentro. Es el MISMO nodo que ya llena
+  // mostrarColeccion: no hay una copia que mantener.
+  document.getElementById('menu-coleccion').appendChild(panelColeccion);
+  panelColeccion.hidden = false;
+
+  document.querySelector('.acerca-version').textContent = `Versión ${VERSION_JUEGO}`;
+}
+
+function mostrarSeccion(nombre) {
+  for (const solapa of solapas) {
+    solapa.setAttribute('aria-selected', String(solapa.dataset.seccion === nombre));
+  }
+  for (const seccion of secciones) {
+    seccion.hidden = seccion.id !== `menu-${nombre}`;
+  }
+}
+
+let devolverFoco = null;
+
+function abrirMenu(seccion = SECCIONES_MENU[0]) {
+  devolverFoco = document.activeElement;
+  mostrarSeccion(seccion);
+  menu.hidden = false;
+  solapas[SECCIONES_MENU.indexOf(seccion)]?.focus();
+}
+
+function cerrarMenu() {
+  menu.hidden = true;
+  ocultarConfirmacion();
+  if (devolverFoco && devolverFoco.isConnected) devolverFoco.focus();
+  devolverFoco = null;
+}
+
+function ocultarConfirmacion() {
+  const caja = document.getElementById('confirmar-reinicio');
+  if (caja) caja.hidden = true;
+}
+
+if (menu) {
+  menuBoton.addEventListener('click', () => abrirMenu());
+  document.getElementById('menu-cerrar').addEventListener('click', cerrarMenu);
+  for (const solapa of solapas) {
+    solapa.addEventListener('click', () => mostrarSeccion(solapa.dataset.seccion));
+  }
+
+  // Escape cierra, que es lo que espera cualquiera con teclado.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !menu.hidden) cerrarMenu();
+  });
+}
+
+// El movimiento reducido puede venir de dos lados: del ajuste del juego o de
+// prefers-reduced-motion del sistema. El OR se resuelve acá y el CSS ve una sola
+// clase — así nunca tiene que preguntar dos cosas.
+const preferenciaDelSistema = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+export function aplicarAjustes(ajustes) {
+  const apagado = ajustes.movimientoReducido || preferenciaDelSistema.matches;
+  document.body.classList.toggle(CLASE_SIN_MOVIMIENTO, apagado);
+
+  const casilla = document.getElementById('ajuste-movimiento');
+  if (casilla) casilla.checked = ajustes.movimientoReducido;
+}
+
+// Si el sistema cambia de opinión con la app abierta, se acompaña.
+export function conectarMenu({ onMovimiento, onReiniciar, ajustesActuales }) {
+  if (!menu) return;
+
+  // Si el sistema cambia de opinión con la app abierta, se acompaña sin pisar
+  // lo que el jugador eligió: el OR se recalcula con el ajuste vigente.
+  preferenciaDelSistema.addEventListener('change', () => aplicarAjustes(ajustesActuales()));
+
+  document.getElementById('ajuste-movimiento').addEventListener('change', (e) => {
+    onMovimiento(e.target.checked);
+  });
+
+  const caja = document.getElementById('confirmar-reinicio');
+  document.getElementById('ajuste-reiniciar').addEventListener('click', () => {
+    caja.hidden = false;
+  });
+  document.getElementById('confirmar-no').addEventListener('click', ocultarConfirmacion);
+  document.getElementById('confirmar-si').addEventListener('click', () => {
+    ocultarConfirmacion();
+    cerrarMenu();
+    onReiniciar();
+  });
+}
+
+// El alféizar sigue abriendo la colección, pero ahora entra por la misma puerta:
+// abre el menú en su sección. Una sola vista, dos accesos.
+export function abrirColeccion() {
+  if (menu) abrirMenu('coleccion');
 }
 
 // ---- La pantalla del pecho, viva ----
@@ -524,38 +642,25 @@ document.addEventListener(
   true
 );
 
-// ---- Abrir y cerrar la colección ----
+// ---- El alféizar como atajo ----
 //
-// Mismo mecanismo que el panel de estado, con una diferencia: esta NO se cierra
-// sola. Mirar la colección es una visita, no un vistazo — se sale cuando se
-// terminó de mirar.
+// La colección ya no es un overlay propio: vive adentro del menú. El alféizar
+// sigue abriéndola, pero entrando por la MISMA puerta y a la misma vista. Una
+// sola vista con dos accesos, en vez de dos vistas de lo mismo — que es la
+// forma más rápida de que las dos se desincronicen.
 
 let objetosActuales = [];
 
-function ocultarColeccion() {
-  panelColeccion.classList.remove(CLASE_PANEL_VISIBLE);
-  setTimeout(() => {
-    panelColeccion.hidden = true;
-  }, TRANSICION_PANEL_MS);
-}
-
-function mostrarPanelColeccion() {
-  panelColeccion.hidden = false;
+function irAColeccion() {
   detalleColeccion.replaceChildren();
-  void panelColeccion.offsetWidth; // el mismo reflow que el panel de estado
-  panelColeccion.classList.add(CLASE_PANEL_VISIBLE);
+  abrirColeccion();
 }
 
-function alternarColeccion() {
-  if (panelColeccion.hidden) mostrarPanelColeccion();
-  else ocultarColeccion();
-}
-
-estante.addEventListener('click', alternarColeccion);
+estante.addEventListener('click', irAColeccion);
 estante.addEventListener('keydown', (evento) => {
   if (evento.key !== 'Enter' && evento.key !== ' ') return;
   evento.preventDefault();
-  alternarColeccion();
+  irAColeccion();
 });
 
 grillaColeccion.addEventListener('click', (evento) => {

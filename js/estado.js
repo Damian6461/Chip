@@ -38,6 +38,10 @@ export function crearEstadoNuevo() {
     // anterior en vez de aparecer ya cambiado. null en una partida nueva —no
     // hay desde dónde venir, así que el primer arranque no hace fade.
     ultimaFranja: null,
+    // Lo que el jugador eligió. Es un objeto y no un campo suelto porque va a
+    // crecer —el sonido entra acá cuando exista— y así cada ajuste nuevo lo
+    // trae el merge-con-defaults sin tocar la migración.
+    ajustes: { movimientoReducido: false },
     version: VERSION_ESTADO
   };
 }
@@ -55,6 +59,11 @@ function migrar(guardado) {
   const migrado = {
     ...crearEstadoNuevo(),
     ...guardado,
+    // El merge de arriba es SUPERFICIAL. Para `ajustes`, que es un objeto, eso
+    // alcanza sólo si el save viejo no lo tiene: si lo tiene, se copia entero
+    // y un ajuste agregado después nunca llegaría con su default. Por eso se
+    // fusiona un nivel más adentro, a mano y a propósito.
+    ajustes: { ...crearEstadoNuevo().ajustes, ...(guardado.ajustes ?? {}) },
     version: VERSION_ESTADO
   };
 

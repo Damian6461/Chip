@@ -34,6 +34,8 @@ import {
 import {
   render as renderUI,
   sembrarFondo,
+  aplicarAjustes,
+  conectarMenu,
   mostrarEventos,
   mostrarColeccion,
   mostrarGigantes,
@@ -321,6 +323,30 @@ mostrarEventos(eventos);
 programarEsperando(eventos);
 mostrarColeccion(estado.coleccion, hallazgos.nuevos);
 mostrarGigantes(estado.diasDePresencia, estado.hitosVistos);
+
+// Los ajustes se aplican ANTES del primer pintado: si no, el juego arranca con
+// todo moviéndose y recién después se apaga, que es peor que no tener ajuste.
+aplicarAjustes(estado.ajustes);
+
+conectarMenu({
+  ajustesActuales: () => estado.ajustes,
+  onMovimiento(activado) {
+    estado = { ...estado, ajustes: { ...estado.ajustes, movimientoReducido: activado } };
+    guardarEstado(estado);
+    aplicarAjustes(estado.ajustes);
+  },
+  onReiniciar() {
+    // El mismo camino que el botón del panel de debug, pero con confirmación
+    // adelante. Reiniciar borra la colección, la presencia y los stats.
+    estado = crearEstadoNuevo();
+    guardarEstado(estado);
+    aplicarAjustes(estado.ajustes);
+    mostrarColeccion(estado.coleccion);
+    mostrarGigantes(estado.diasDePresencia, estado.hitosVistos);
+    if (actualizarVisual({ inmediato: true })) pintar();
+    else pintar();
+  }
+});
 
 conectarAcciones({
   onCargar: () => ejecutar(E.cargando, cargar),

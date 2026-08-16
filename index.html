@@ -137,6 +137,66 @@
     </div>
   </div>
 
+  <!-- La puerta del menú. Un panel de mantenimiento apoyado contra la pared,
+       arriba a la derecha: siempre visible pero muy discreto. Antes la
+       colección se abría tocando el alféizar y nada más — un secreto que
+       nadie iba a descubrir. El alféizar sigue andando, como atajo. -->
+  <button id="menu-boton" type="button" aria-label="Abrir el panel"></button>
+
+  <!-- El panel. TRES secciones y sólo tres: la economía del juego es su
+       fuerza, y esto no es donde se acumulan features. -->
+  <div id="menu" hidden role="dialog" aria-modal="true" aria-label="Panel">
+    <div id="menu-solapas" role="tablist">
+      <button type="button" role="tab" data-seccion="coleccion" aria-selected="true">Lo que juntó</button>
+      <button type="button" role="tab" data-seccion="ajustes" aria-selected="false">Ajustes</button>
+      <button type="button" role="tab" data-seccion="acerca" aria-selected="false">Sobre Chip</button>
+    </div>
+
+    <div class="menu-cuerpo">
+      <section id="menu-coleccion" class="menu-seccion"></section>
+
+      <section id="menu-ajustes" class="menu-seccion" hidden>
+        <label class="ajuste">
+          <input type="checkbox" id="ajuste-movimiento">
+          <span>
+            Reducir movimiento
+            <small>Apaga el rebote, las partículas y las transiciones. El sistema ya lo puede pedir solo; esto lo fuerza.</small>
+          </span>
+        </label>
+
+        <div class="ajuste">
+          <span>
+            Sonido
+            <small>Todavía no hay. Cuando lo haya, vive acá.</small>
+          </span>
+        </div>
+
+        <div class="ajuste peligro">
+          <span>
+            Reiniciar la partida
+            <small>Borra la colección, la presencia y los stats. No se puede deshacer.</small>
+          </span>
+          <button type="button" id="ajuste-reiniciar">Reiniciar</button>
+          <div id="confirmar-reinicio" hidden>
+            <p>¿Seguro? Chip empieza de cero y no se acuerda de nada.</p>
+            <button type="button" id="confirmar-si">Sí, reiniciar</button>
+            <button type="button" id="confirmar-no">No</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="menu-acerca" class="menu-seccion" hidden>
+        <p class="acerca-nombre">Chip</p>
+        <p class="acerca-version"></p>
+        <p>Un robot chiquito en un galpón enorme.</p>
+        <p class="acerca-credito">Arte y diseño: Damián.</p>
+        <p><a id="acerca-privacidad" href="#" hidden>Política de privacidad</a></p>
+      </section>
+    </div>
+
+    <button type="button" id="menu-cerrar" aria-label="Cerrar el panel">Cerrar</button>
+  </div>
+
   <!-- El rincón de Chip: lo que juntó, apoyado en el piso bajo su ventana.
        El contenido lo escribe ui.js desde la colección del save. -->
   <div id="estante" role="button" tabindex="0" aria-label="Ver la colección de Chip"></div>

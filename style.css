@@ -1731,6 +1731,213 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
    Es inevitable: un crossfade entre dos dibujos distintos los muestra a los dos.
    Queda sólo el squash, que tapa el cambio con movimiento en vez de mezclarlo. */
 
+
+/* ============================================================================
+   EL MENÚ
+
+   Antes la colección se abría tocando el alféizar y nada más: un secreto que
+   nadie iba a descubrir. La puerta ahora es un panel de mantenimiento apoyado
+   contra la pared, arriba a la derecha — siempre visible pero muy discreto, sin
+   brillo y en sombra. El alféizar sigue andando como atajo.
+   ============================================================================ */
+
+#menu-boton {
+  position: absolute;
+  top: calc(var(--esp-2) + env(safe-area-inset-top, 0px));
+  right: var(--esp-2);
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  /* Discreto de verdad: apagado hasta que lo mirás. Es mobiliario del galpón,
+     no una llamada a la acción. */
+  opacity: 0.42;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
+  transition: opacity var(--duracion-presion) ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#menu-boton:hover,
+#menu-boton:focus-visible {
+  opacity: 0.85;
+}
+
+#menu-boton:active {
+  transform: translateY(1px);
+}
+
+#menu-boton svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#menu {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 10, 14, 0.96);
+  padding: calc(var(--esp-3) + env(safe-area-inset-top, 0px)) var(--esp-2)
+    calc(var(--esp-2) + env(safe-area-inset-bottom, 0px));
+  gap: var(--esp-2);
+}
+
+#menu[hidden] {
+  display: none;
+}
+
+#menu-solapas {
+  display: flex;
+  gap: 2px;
+}
+
+#menu-solapas button {
+  flex: 1;
+  min-height: 40px;
+  padding: 8px 4px;
+  background: linear-gradient(180deg, #232833 0%, #1a1e26 100%);
+  border: 1px solid #10141b;
+  border-bottom-color: transparent;
+  border-radius: 3px 3px 0 0;
+  color: #8b94a3;
+  font-family: var(--fuente-instrumento);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#menu-solapas button[aria-selected='true'] {
+  background: linear-gradient(180deg, #2f3644 0%, #242a35 100%);
+  color: #e6e6e6;
+  /* La solapa activa se conecta con el cuerpo: el borde de abajo se abre. */
+  box-shadow: inset 0 2px 0 var(--color-humor);
+}
+
+.menu-cuerpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--esp-2);
+  background: rgba(20, 23, 30, 0.9);
+  border: 1px solid #10141b;
+  border-radius: 0 0 3px 3px;
+}
+
+.menu-seccion[hidden] {
+  display: none;
+}
+
+/* ---- Ajustes ---- */
+
+.ajuste {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid #232833;
+  font-size: 13px;
+  color: #cdd3dd;
+}
+
+.ajuste small {
+  display: block;
+  margin-top: 3px;
+  color: #8b94a3;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ajuste input[type='checkbox'] {
+  /* 20 px de caja pero 44 de área de toque, con el padding negativo del label:
+     el target no se achica sólo porque el control sea chico. */
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--color-humor);
+  cursor: pointer;
+}
+
+.ajuste.peligro {
+  flex-direction: column;
+  border-bottom: 0;
+}
+
+.ajuste button {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 8px 14px;
+  background: linear-gradient(180deg, #3a2226 0%, #2a181b 100%);
+  border: 1px solid #4a2a2f;
+  border-radius: 3px;
+  color: #e8a9a9;
+  font-family: var(--fuente-instrumento);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#confirmar-reinicio {
+  margin-top: 10px;
+  padding: 10px;
+  background: #1c1114;
+  border: 1px solid #4a2a2f;
+  border-radius: 3px;
+}
+
+#confirmar-reinicio[hidden] {
+  display: none;
+}
+
+#confirmar-reinicio p {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #e8a9a9;
+}
+
+#confirmar-no {
+  background: linear-gradient(180deg, #232833 0%, #1a1e26 100%);
+  border-color: #10141b;
+  color: #cdd3dd;
+}
+
+/* ---- Sobre Chip ---- */
+
+#menu-acerca {
+  font-size: 13px;
+  color: #cdd3dd;
+  line-height: 1.6;
+}
+
+#menu-acerca p {
+  margin: 0 0 10px;
+}
+
+.acerca-nombre {
+  font-family: var(--fuente-instrumento);
+  font-size: 20px;
+  color: #e6e6e6;
+}
+
+.acerca-version,
+.acerca-credito {
+  color: #8b94a3;
+  font-size: 12px;
+}
+
+#menu-cerrar {
+  min-height: 44px;
+  background: linear-gradient(180deg, #2f3644 0%, #242a35 100%);
+  border: 1px solid #10141b;
+  border-radius: 3px;
+  color: #cdd3dd;
+  font-family: var(--fuente-instrumento);
+  font-size: 13px;
+  cursor: pointer;
+}
+
 /* ============================================================================
    EL RINCÓN Y LA COLECCIÓN
 
@@ -1851,36 +2058,25 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 
 /* ---- La vista de colección ---- */
 
+/* Ya NO es un overlay centrado: vive adentro del cuerpo del menú, como una
+   sección más. Lo que era posicionamiento absoluto y transición de entrada lo
+   maneja ahora el panel que la contiene. */
 #coleccion {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  z-index: 3;
-  width: min(340px, calc(100% - var(--esp-3)));
-  max-height: 70%;
-  overflow-y: auto;
+  position: static;
+  left: auto;
+  top: auto;
+  width: 100%;
+  max-height: none;
   display: flex;
   flex-direction: column;
   gap: var(--esp-2);
   padding: var(--esp-2);
 
-  background: rgba(10, 12, 17, 0.95);
-  border: 1px solid #363c49;
-  border-radius: 3px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 10px 30px rgba(0, 0, 0, 0.6);
-
-  opacity: 0;
-  transform: translate(-50%, -48%);
-  transition:
-    opacity var(--transicion-panel) ease-out,
-    transform var(--transicion-panel) ease-out;
-}
-
-#coleccion.visible {
-  opacity: 1;
-  transform: translate(-50%, -50%);
+  /* Sin fondo ni borde propios: el cuerpo del menú ya es la superficie. Una
+     tarjeta adentro de otra tarjeta se lee como un error de anidamiento. */
+  background: none;
+  border: 0;
+  padding: 0;
 }
 
 #coleccion[hidden] {
@@ -2473,4 +2669,27 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   .objeto.llegando {
     animation: none;
   }
+}
+
+/* ---- El ajuste manual de "reducir movimiento" ----
+
+   El bloque @media de arriba es el tratamiento CURADO: apaga cada cosa como
+   corresponde y deja quieto lo que tiene que quedar (la sombra ancla a Chip
+   igual, el LED sigue diciendo que la tecla está viva).
+
+   Esto es el ajuste del juego, y es deliberadamente distinto: una red que apaga
+   TODO lo que se mueve, sin curaduría. La alternativa era duplicar los quince
+   selectores del bloque de arriba con otro prefijo, y dos copias de la misma
+   lista se desincronizan la primera vez que alguien agrega un efecto — que es
+   exactamente el error que ya cometimos tres veces con el shorthand animation.
+
+   ui.js resuelve el OR entre el ajuste y prefers-reduced-motion y escribe una
+   sola clase, así el CSS nunca tiene que preguntar dos cosas. */
+body.sin-movimiento *,
+body.sin-movimiento *::before,
+body.sin-movimiento *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
 }

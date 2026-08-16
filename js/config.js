@@ -14,8 +14,9 @@ export const SAVE_KEY = 'chip.save.v1';
 // los dos campos nuevos del sistema de hallazgos. v5 agregó los del arco de los
 // gigantes: `diasDePresencia`, `ultimoDiaVisitado` y `hitosVistos`. v6 agregó
 // `ultimaFranja`: qué momento del día se vio la última vez, para poder hacer el
-// fade de apertura cuando cambió mientras no estabas.
-export const VERSION_ESTADO = 6;
+// fade de apertura cuando cambió mientras no estabas. v7 agregó `ajustes`, que
+// hoy tiene uno solo: movimientoReducido.
+export const VERSION_ESTADO = 7;
 
 // ---- Estado inicial ----
 
@@ -667,6 +668,35 @@ export const VARS_NUBES = {
   ciclo: '--ciclo-nubes',
   cicloNoche: '--ciclo-nubes-noche'
 };
+
+// ---- El menú ----
+//
+// La colección se abría tocando el alféizar y nada más: un secreto que nadie
+// iba a descubrir. Ahora hay una puerta visible, y el alféizar queda como
+// atajo, no como única entrada.
+//
+// TRES SECCIONES Y SÓLO TRES. No es donde se acumulan features: la economía
+// del juego es su fuerza, y cada sección nueva tiene que justificarse contra
+// esa regla, no contra el espacio que sobre en la pantalla.
+export const SECCIONES_MENU = ['coleccion', 'ajustes', 'acerca'];
+
+// La chapa del panel de mantenimiento que hace de botón. Mismo vocabulario que
+// la toma de corriente: es mobiliario del galpón, no un ícono de interfaz.
+export const COLORES_PANEL = {
+  chapa: '#2b313c',
+  filo: '#0b0e13',
+  hueco: '#12161d',
+  linea: '#5d6675'
+};
+
+// Versión que se muestra en Sobre Chip. Se sube a mano, con el mismo criterio
+// que CACHE_VERSION: es una decisión, no un efecto colateral.
+export const VERSION_JUEGO = '0.9';
+
+// Marca en el body que el movimiento está apagado. Puede venir del ajuste del
+// juego o de prefers-reduced-motion del sistema; ui.js resuelve el OR y escribe
+// esta sola clase, así el CSS no tiene que preguntar dos cosas.
+export const CLASE_SIN_MOVIMIENTO = 'sin-movimiento';
 
 // ---- El rayo del pecho ----
 //
