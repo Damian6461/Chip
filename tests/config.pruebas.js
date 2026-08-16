@@ -14,6 +14,14 @@ export const T_NOCHE = new Date(2026, 0, 15, 23, 0, 0).getTime(); // borde inclu
 export const T_SEIS = new Date(2026, 0, 15, 6, 0, 0).getTime(); // último de la franja
 export const T_SIETE = new Date(2026, 0, 15, 7, 0, 0).getTime(); // borde exclusive
 
+// Los bordes del MUNDO, que desde el recorte 3/9/3/9 ya no son los del standby.
+// Estos cinco instantes son las dos ventanas de desfase deliberadas y sus bordes.
+export const T_VEINTIUNA = new Date(2026, 0, 15, 21, 0, 0).getTime(); // arranca la noche del mundo
+export const T_VEINTE = new Date(2026, 0, 15, 20, 0, 0).getTime(); // último del atardecer
+export const T_DIECIOCHO = new Date(2026, 0, 15, 18, 0, 0).getTime(); // arranca el atardecer
+export const T_NUEVE = new Date(2026, 0, 15, 9, 0, 0).getTime(); // arranca el mediodía
+export const T_DIEZ = new Date(2026, 0, 15, 10, 0, 0).getTime(); // ya no es amanecer
+
 // Horas simuladas de los chequeos de cap y piso.
 export const HORAS_LARGAS = 500;
 export const HORAS_PISO = 200;

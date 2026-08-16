@@ -34,7 +34,7 @@ function enFranjaStandby(hora) {
 // la resuelva con el mismo `ahora` que la cadena, así el sprite y el fondo no
 // pueden discrepar sobre qué hora es.
 export function esDeNoche(ahora) {
-  return enFranjaStandby(horaLocal(ahora));
+  return franjaDelDia(ahora).nombre === 'noche';
 }
 
 // En qué tramo del día estamos. Vive acá con esDeNoche porque es la misma
@@ -43,8 +43,17 @@ export function esDeNoche(ahora) {
 // contradiría solo.
 //
 // El tramo de noche cruza la medianoche, por eso la comparación es un OR, igual
-// que enFranjaStandby. Sus bordes SON los del standby, así que la invariante "si
-// Chip duerme, afuera es de noche" no depende de que dos tablas coincidan.
+// que enFranjaStandby.
+//
+// Sus bordes YA NO son los del standby, a propósito. El mundo se oscurece a las
+// 21 y Chip se duerme a las 23; amanece a las 6 y Chip se despierta a las 7. Las
+// dos ventanas de desfase están explicadas en FRANJAS_DIA y son deliberadas.
+//
+// Lo que sí es una sola fuente de verdad es que TODO lo del mundo —el fondo, la
+// clase es-noche, el charco del piso, la repisa apagada, el latido lento— sale
+// de esta misma función. Cuando esDeNoche colgaba del standby, entre las 21 y
+// las 23 el fondo era nocturno y el resto del galpón seguía iluminado de día:
+// eso no se leía como "Chip está despierto de noche", se leía como un bug.
 export function franjaDelDia(ahora) {
   const hora = horaLocal(ahora);
 

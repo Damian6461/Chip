@@ -56,6 +56,47 @@ body {
 }
 
 /* ============================================================================
+   LA APERTURA
+
+   Android arma la splash de la app instalada por su cuenta: el ícono sobre el
+   background_color del manifest. Lo que sí podemos diseñar es el instante
+   siguiente, que era un corte seco de la pantalla del sistema al galpón.
+
+   Un velo del mismo color que la splash, que se apaga. Nada más: sin pantalla
+   de título, sin logo, sin nada que agregue fricción. Un juego cozy abre
+   directo — sólo que con transición en vez de corte.
+
+   La secuencia queda: fondo oscuro -> aparece el galpón -> aparece Chip.
+   ============================================================================ */
+#apertura {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  background: var(--color-apertura);
+  pointer-events: none;
+  /* forwards y no infinite: esto pasa UNA vez, al cargar, y después queda
+     transparente para siempre. No hace falta que JS lo saque del DOM. */
+  animation: apagar-apertura var(--duracion-apertura) ease-out forwards;
+}
+
+@keyframes apagar-apertura {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Chip entra un instante DESPUÉS que el galpón. El backwards es lo que lo tiene
+   invisible durante el retardo: sin él estaría a opacidad 1 desde el primer
+   cuadro y el escalonado no existiría. */
+#chip {
+  animation: entrar-chip var(--duracion-entrada-chip) ease-out var(--retardo-chip-apertura) backwards;
+}
+
+@keyframes entrar-chip {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ============================================================================
    LA ESCENA
 
    El galpón no es el fondo de una interfaz: es la pantalla. Acá no hay panel,
@@ -159,27 +200,67 @@ body {
   mask-image: radial-gradient(ellipse 78% 88% at 50% 42%, #000 55%, transparent 100%);
 }
 
-/* Cuatro cúmulos de tamaños y alturas distintas. Los radial-gradient son
-   elipses anchas y bajas, que es la forma de un cúmulo visto de lejos; con
-   círculos quedarían pompas. El background-size al 50% es lo que hace que el
-   patrón se repita dos veces en la banda. */
+/* LOS CÚMULOS SE MIDEN EN LONGITUDES, NO EN PORCENTAJES, y ese fue el bug de
+   fondo. `radial-gradient(ellipse 26% 9%)` toma el 26% del ANCHO y el 9% del
+   ALTO del elemento, y la abertura de la ventana mide 138x450: 36 px de ancho
+   por 40 de alto, o sea un CÍRCULO. Los cuatro "cúmulos anchos y bajos" eran
+   cuatro pelotas. Con el alfa bajo no se notaba porque no se veía nada; al
+   subirlo aparecieron como orbes de luz.
+
+   Atadas a --alto-escena escalan con el aparato y mantienen la proporción de un
+   cúmulo visto de lejos —tres o cuatro veces más ancho que alto— en cualquier
+   viewport.
+
+   Y cada nube son DOS elipses corridas, no una: una elipse sola tiene silueta
+   de pastilla, y lo que hace que se lea como nube es que el contorno sea
+   irregular. */
 .banda {
+  --nube-a: calc(var(--alto-escena) * 0.048);
+  --nube-b: calc(var(--alto-escena) * 0.013);
+
   position: absolute;
   inset: 0;
   width: 200%;
   background-image:
-    radial-gradient(ellipse 26% 9% at 18% 22%, rgb(from var(--nube-color) r g b / var(--nube-alfa)) 0%, transparent 70%),
-    radial-gradient(ellipse 20% 7% at 41% 14%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.8)) 0%, transparent 72%),
-    radial-gradient(ellipse 30% 11% at 33% 38%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.65)) 0%, transparent 68%),
-    radial-gradient(ellipse 22% 8% at 8% 52%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.55)) 0%, transparent 70%);
+    /* cúmulo 1, el grande de arriba */
+    radial-gradient(ellipse var(--nube-a) var(--nube-b) at 20% 20%, rgb(from var(--nube-color) r g b / var(--nube-alfa)) 0%, rgb(from var(--nube-color) r g b / var(--nube-alfa)) 34%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 0.62) calc(var(--nube-b) * 0.85) at 13% 18%, rgb(from var(--nube-color) r g b / var(--nube-alfa)) 0%, rgb(from var(--nube-color) r g b / var(--nube-alfa)) 34%, transparent 100%),
+    /* cúmulo 2, chico y alto */
+    radial-gradient(ellipse calc(var(--nube-a) * 0.7) calc(var(--nube-b) * 0.8) at 44% 12%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.85)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.85)) 32%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 0.45) calc(var(--nube-b) * 0.6) at 39% 11%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.85)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.85)) 32%, transparent 100%),
+    /* cúmulo 3, el más ancho, a media altura */
+    radial-gradient(ellipse calc(var(--nube-a) * 1.15) calc(var(--nube-b) * 1.1) at 32% 36%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.72)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.72)) 32%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 0.6) calc(var(--nube-b) * 0.8) at 42% 34%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.72)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.72)) 32%, transparent 100%),
+    /* cúmulo 4, el desflecado de abajo a la izquierda */
+    radial-gradient(ellipse calc(var(--nube-a) * 0.8) calc(var(--nube-b) * 0.75) at 9% 50%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.6)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.6)) 30%, transparent 100%);
   background-size: 50% 100%;
   background-repeat: repeat-x;
   animation: derivar-nubes var(--ciclo-nubes) linear infinite;
 }
 
-/* De noche el movimiento es aún más lento. */
+/* LA BANDA LEJANA. Va al doble de lento, más chica, más tenue y abajo, cerca
+   del horizonte — que es donde caen las nubes lejanas cuando mirás el cielo por
+   una ventana. Arriba estarían las de más cerca.
+
+   Es una segunda capa y no más cúmulos en la misma: lo que da profundidad es la
+   DIFERENCIA de velocidad, no la cantidad de nubes. Con todo a la misma
+   velocidad, agregar cúmulos sólo hace un cielo más cargado y igual de plano. */
+.banda.lejana {
+  background-image:
+    radial-gradient(ellipse calc(var(--nube-a) * 0.58) calc(var(--nube-b) * 0.55) at 26% 66%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.5)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.5)) 32%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 0.42) calc(var(--nube-b) * 0.45) at 47% 76%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.4)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.4)) 30%, transparent 100%),
+    radial-gradient(ellipse calc(var(--nube-a) * 0.66) calc(var(--nube-b) * 0.5) at 10% 82%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.32)) 0%, rgb(from var(--nube-color) r g b / calc(var(--nube-alfa) * 0.32)) 30%, transparent 100%);
+  animation-duration: var(--ciclo-nubes-lejanas);
+}
+
+/* De noche el movimiento afloja, las dos con la misma proporción: si se frena
+   una sola, la profundidad se pierde justo cuando el cielo es más plano. */
 body.es-noche .banda {
   animation-duration: var(--ciclo-nubes-noche);
+}
+
+body.es-noche .banda.lejana {
+  animation-duration: var(--ciclo-nubes-lejanas-noche);
 }
 
 @keyframes derivar-nubes {
@@ -2902,6 +2983,19 @@ body.es-noche #estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
   .objeto.llegando {
     animation: none;
   }
+
+  /* La apertura aparece directo: el galpón y Chip ya están.
+
+     display:none y NO animation:none en el velo: un velo opaco con la animación
+     apagada se queda tapando la escena para siempre, que es el peor bug posible
+     de esta función — la app no abre. */
+  #apertura {
+    display: none;
+  }
+
+  #chip {
+    animation: none;
+  }
 }
 
 /* ---- El ajuste manual de "reducir movimiento" ----
@@ -2922,6 +3016,10 @@ body.sin-movimiento *,
 body.sin-movimiento *::before,
 body.sin-movimiento *::after {
   animation-duration: 0.001ms !important;
+  /* El retardo también, no sólo la duración: una animación con backwards y
+     delay vivo deja el elemento invisible todo el retardo aunque dure cero. Lo
+     descubrió la entrada escalonada de Chip. */
+  animation-delay: 0.001ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
   scroll-behavior: auto !important;

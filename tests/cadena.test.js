@@ -5,7 +5,18 @@
 // no llaman Date.now() y no dependen del reloj ni de la zona horaria.
 
 import { prueba, igual } from './runner.js';
-import { T0, T_MADRUGADA, T_NOCHE, T_SEIS, T_SIETE } from './config.pruebas.js';
+import {
+  T0,
+  T_MADRUGADA,
+  T_NOCHE,
+  T_SEIS,
+  T_SIETE,
+  T_VEINTIUNA,
+  T_VEINTE,
+  T_DIECIOCHO,
+  T_NUEVE,
+  T_DIEZ
+} from './config.pruebas.js';
 import {
   ESTADOS_VISUALES as E,
   POSES_IDLE,
@@ -14,7 +25,7 @@ import {
   PANTALLAS_PECHO,
   ESTADOS_CON_PANTALLA_VIVA
 } from '../js/config.js';
-import { resolverEstadoVisual, esDeNoche, poseDeIdle } from '../js/sprites.js';
+import { resolverEstadoVisual, esDeNoche, franjaDelDia, poseDeIdle } from '../js/sprites.js';
 
 const estado = (bateria, humor = 50) => ({ bateria, humor, mantenimiento: 50 });
 
@@ -75,27 +86,59 @@ for (const [nombre, contexto, esperado] of CASOS) {
   });
 }
 
-// ---- El fondo del galpón usa la MISMA franja que el standby ----
+// ---- El mundo tiene su hora y Chip la suya ----
 //
-// Si esto se desincroniza, Chip duerme con el galpón de día. Los bordes van con
-// los mismos instantes que los casos de arriba a propósito: son el mismo
-// contrato horario, no dos parecidos.
+// Este contrato CAMBIÓ, y el cambio es el punto. Antes los tramos del día eran
+// los del standby, para garantizar "si Chip duerme, afuera es de noche". Pero
+// repartidos así el atardecer duraba seis horas: a las 22, con el cielo real
+// negro hacía rato, el galpón tenía luz dorada de sol poniente.
+//
+// Con 3/9/3/9 el sol manda, y quedan dos ventanas de desfase deliberadas: de 21
+// a 23 el mundo ya es de noche y Chip sigue despierto, y de 6 a 7 amanece y Chip
+// sigue durmiendo. Estas pruebas fijan las dos, para que si alguien "arregla" el
+// desfase se entere de que lo está deshaciendo a propósito.
 
-prueba('noche: la franja del fondo es exactamente la del standby', () => {
-  igual(esDeNoche(T_NOCHE), true, 'las 23 ya son de noche (borde inclusive)');
+prueba('tramos: el reparto es 3/9/3/9 y no parejo', () => {
+  const nombreEn = (t) => franjaDelDia(t).nombre;
+  igual(nombreEn(T_SEIS), 'amanecer', 'las 6 arrancan el amanecer');
+  igual(nombreEn(T_SIETE), 'amanecer', 'las 7 siguen en amanecer');
+  igual(nombreEn(T_NUEVE), 'mediodia', 'a las 9 ya es mediodía');
+  igual(nombreEn(T_DIEZ), 'mediodia', 'a las 10 la luz ya no es rosada');
+  igual(nombreEn(T0), 'mediodia', 'el mediodía es mediodía');
+  igual(nombreEn(T_DIECIOCHO), 'atardecer', 'a las 18 arranca el atardecer');
+  igual(nombreEn(T_VEINTE), 'atardecer', 'las 20 son el último del atardecer');
+  igual(nombreEn(T_VEINTIUNA), 'noche', 'a las 21 el atardecer se terminó');
+  igual(nombreEn(T_NOCHE), 'noche', 'las 23 son de noche');
+  igual(nombreEn(T_MADRUGADA), 'noche', 'las 3 son de noche');
+});
+
+prueba('noche: la del MUNDO sale del tramo, no del standby', () => {
+  igual(esDeNoche(T_VEINTIUNA), true, 'a las 21 el galpón ya es nocturno');
+  igual(esDeNoche(T_VEINTE), false, 'a las 20 todavía es atardecer');
   igual(esDeNoche(T_MADRUGADA), true, 'las 3 son de noche');
-  igual(esDeNoche(T_SEIS), true, 'las 6 siguen siendo de noche');
-  igual(esDeNoche(T_SIETE), false, 'las 7 ya son de día (borde exclusive)');
+  igual(esDeNoche(T_SEIS), false, 'a las 6 ya amaneció, aunque Chip duerma');
   igual(esDeNoche(T0), false, 'el mediodía es de día');
 });
 
-prueba('noche: el fondo acompaña al standby en todos los bordes', () => {
-  for (const instante of [T_NOCHE, T_MADRUGADA, T_SEIS, T_SIETE, T0]) {
+prueba('desfase: de 21 a 23 el mundo es de noche y Chip está despierto', () => {
+  const visual = resolverEstadoVisual({ estado: estado(50), ahora: T_VEINTIUNA, accion: null });
+  igual(esDeNoche(T_VEINTIUNA), true, 'el mundo ya se apagó');
+  igual(visual === E.standby, false, 'y Chip sigue levantado');
+});
+
+prueba('desfase: de 6 a 7 amanece y Chip sigue durmiendo', () => {
+  const visual = resolverEstadoVisual({ estado: estado(50), ahora: T_SEIS, accion: null });
+  igual(esDeNoche(T_SEIS), false, 'afuera ya amaneció');
+  igual(visual, E.standby, 'y Chip se quedó dormido');
+});
+
+prueba('desfase: fuera de esas dos ventanas, mundo y Chip coinciden', () => {
+  for (const instante of [T0, T_MADRUGADA, T_NOCHE, T_DIEZ, T_DIECIOCHO]) {
     const visual = resolverEstadoVisual({ estado: estado(50), ahora: instante, accion: null });
     igual(
       esDeNoche(instante),
       visual === E.standby,
-      `en ${new Date(instante).getHours()}h el fondo y el standby coinciden`
+      `en ${new Date(instante).getHours()}h el mundo y Chip dicen lo mismo`
     );
   }
 });

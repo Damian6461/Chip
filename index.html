@@ -7,7 +7,7 @@
      es la botonera, que se protege con env(safe-area-inset-*) en style.css. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Chip</title>
-<meta name="theme-color" content="#0d0f14">
+<meta name="theme-color" content="#181b1f">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="style.css">
@@ -25,7 +25,10 @@
 
   <!-- Las nubes de la ventana. Van recortadas a la abertura y pasan POR
        DELANTE del cielo pintado, que queda intacto abajo. -->
-  <div id="nubes" aria-hidden="true"><div class="banda"></div></div>
+  <div id="nubes" aria-hidden="true">
+    <div class="banda lejana"></div>
+    <div class="banda"></div>
+  </div>
 
   <!-- Polvo en el aire del galpón, al fondo de todo. Son dieciséis y ocupan la
        escena entera, no sólo el haz: el galpón tiene polvo en todos lados y el
@@ -197,8 +200,6 @@
     <button type="button" id="menu-cerrar" aria-label="Cerrar el panel">Cerrar</button>
   </div>
 
-  <!-- El rincón de Chip: lo que juntó, apoyado en el piso bajo su ventana.
-       El contenido lo escribe ui.js desde la colección del save. -->
   <!-- La repisa alta de la pared derecha y las piezas apoyadas encima. La tabla
        se dibuja por código; las piezas son las mismas formas de la colección. -->
   <div id="repisa" aria-hidden="true"></div>
@@ -264,6 +265,15 @@
       <span>Limpiar</span>
     </button>
   </div>
+
+  <!-- LA APERTURA. Un velo del mismo color que la splash del sistema, que se
+       apaga al cargar. No es una pantalla de título ni un logo: es que el
+       corte entre la splash de Android y el galpón deje de ser un corte.
+
+       Va DENTRO de #escena y último, para que tape todo lo que hay adentro
+       —incluido el menú— y se apague sobre la escena y no sobre el negro de
+       los costados en desktop. -->
+  <div id="apertura" aria-hidden="true"></div>
 
 </div>
 <script type="module" src="js/main.js"></script>

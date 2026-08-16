@@ -70,6 +70,8 @@ import {
   ABERTURA_VENTANA,
   CICLO_NUBES_MS,
   CICLO_NUBES_NOCHE_MS,
+  CICLO_NUBES_LEJANAS_MS,
+  CICLO_NUBES_LEJANAS_NOCHE_MS,
   COLORES_NUBE,
   VARS_NUBES,
   CICLO_RAYO_MS,
@@ -86,6 +88,11 @@ import {
   PERSPECTIVA_TOMA,
   VARS_TOMA,
   VARS_REPISA,
+  VARS_APERTURA,
+  COLOR_APERTURA,
+  DURACION_APERTURA_MS,
+  RETARDO_CHIP_APERTURA_MS,
+  DURACION_ENTRADA_CHIP_MS,
   REPISA,
   ACHATADO_REPISA,
   COLORES_REPISA,
@@ -170,6 +177,10 @@ raiz.style.setProperty('--ciclo-led', `${CICLO_LED_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.transicionPanel, `${TRANSICION_PANEL_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.duracionLlegada, `${DURACION_LLEGADA_MS}ms`);
 raiz.style.setProperty(VARS_CAMBIO.duracionSquash, `${DURACION_SQUASH_MS}ms`);
+raiz.style.setProperty(VARS_APERTURA.color, COLOR_APERTURA);
+raiz.style.setProperty(VARS_APERTURA.duracion, `${DURACION_APERTURA_MS}ms`);
+raiz.style.setProperty(VARS_APERTURA.retardoChip, `${RETARDO_CHIP_APERTURA_MS}ms`);
+raiz.style.setProperty(VARS_APERTURA.duracionChip, `${DURACION_ENTRADA_CHIP_MS}ms`);
 raiz.style.setProperty(VARS_RAYO.ciclo, `${CICLO_RAYO_MS}ms`);
 raiz.style.setProperty(VARS_NUBES.x, `${ABERTURA_VENTANA.x}%`);
 raiz.style.setProperty(VARS_NUBES.y, `${ABERTURA_VENTANA.y}%`);
@@ -177,6 +188,8 @@ raiz.style.setProperty(VARS_NUBES.ancho, `${ABERTURA_VENTANA.ancho}%`);
 raiz.style.setProperty(VARS_NUBES.alto, `${ABERTURA_VENTANA.alto}%`);
 raiz.style.setProperty(VARS_NUBES.ciclo, `${CICLO_NUBES_MS}ms`);
 raiz.style.setProperty(VARS_NUBES.cicloNoche, `${CICLO_NUBES_NOCHE_MS}ms`);
+raiz.style.setProperty(VARS_NUBES.cicloLejanas, `${CICLO_NUBES_LEJANAS_MS}ms`);
+raiz.style.setProperty(VARS_NUBES.cicloLejanasNoche, `${CICLO_NUBES_LEJANAS_NOCHE_MS}ms`);
 raiz.style.setProperty(VARS_RAYO.cicloCritico, `${CICLO_RAYO_CRITICO_MS}ms`);
 raiz.style.setProperty(VARS_RAYO.cicloNoche, `${CICLO_RAYO_NOCHE_MS}ms`);
 

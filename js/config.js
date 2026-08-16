@@ -141,7 +141,8 @@ export const RUTAS_OJOS = {
 // no una regla de style.css.
 //
 // Cuál de los dos se muestra lo decide la MISMA franja horaria que el standby
-// (ver esDeNoche en sprites.js): si Chip duerme, afuera es de noche.
+// (ver esDeNoche en sprites.js): la noche del mundo la manda FRANJAS_DIA, no
+// el standby. Chip puede estar despierto de noche y dormido de madrugada.
 export const RUTAS_FONDOS = {
   dia: 'sprites/fondo-dia.webp',
   noche: 'sprites/fondo-noche.webp'
@@ -182,7 +183,8 @@ export const VARS_FONDO = {
 // Marca en el <body> que es de noche. La imagen ya viaja por la custom property
 // de arriba, pero hay efectos que no cambian de imagen sino de ritmo —la antena
 // late más lento, el polvo del haz de luz no existe— y necesitan un gancho de
-// CSS. Sale del mismo esDeNoche que el fondo: una sola fuente de verdad.
+// CSS. Sale del mismo esDeNoche que el fondo: una sola fuente de verdad, y esa
+// fuente es el tramo del día, no la hora del standby.
 export const CLASE_NOCHE = 'es-noche';
 
 // ---- Paleta de las barras ----
@@ -387,15 +389,36 @@ export const ESPERA_SEGUNDO_EVENTO_MS = 4000;
 //
 // Los cortes horarios, y por qué:
 //
-//   amanecer   7-11   el cielo lila y la luz fría y baja
-//   mediodia  11-17   el cielo azul, la luz blanca y alta
-//   atardecer 17-23   el cielo dorado, la luz larga y naranja
-//   noche     23-7    el cielo con estrellas
+//   amanecer   6-9    3 h   el cielo lila y la luz fría y baja
+//   mediodia   9-18   9 h   el cielo azul, la luz blanca y alta
+//   atardecer 18-21   3 h   el cielo dorado, la luz larga y naranja
+//   noche     21-6    9 h   el cielo con estrellas
 //
-// El corte de la noche NO es un número nuevo: son HORA_STANDBY_INICIO y
-// HORA_STANDBY_FIN, los mismos que deciden el standby. Así la invariante de
-// siempre —si Chip duerme, afuera es de noche— queda garantizada por
-// construcción y no por dos tablas que hay que acordarse de mantener iguales.
+// LOS TRAMOS NO SON PAREJOS, Y NO TIENEN QUE SERLO. El primer reparto fue
+// 4/6/6/8 y se veía solo lo que estaba mal: a las 22, con el cielo real negro
+// hacía rato, Chip estaba en un galpón con luz dorada de sol poniente. El
+// atardecer duraba seis horas. Y el amanecer tenía el problema inverso: a las
+// 10 de la mañana la luz seguía siendo rosada de las 7.
+//
+// El sol no reparte parejo. Mediodía y noche son los ESTADOS largos; amanecer y
+// atardecer son TRANSICIONES cortas. Con 3/9/3/9 el día es mayormente mediodía,
+// la noche es mayormente noche, y los dos crepúsculos duran poco — que es
+// exactamente lo que los hace valer cuando los agarrás.
+//
+// CONSECUENCIA BUSCADA: estos cortes ya NO son los del standby. El standby
+// sigue en 23-7 (HORA_STANDBY_INICIO / HORA_STANDBY_FIN) y el mundo va por su
+// cuenta, así que quedan dos ventanas de desfase, las dos deliberadas:
+//
+//   21-23   el galpón ya es de noche y Chip todavía está despierto. Es la misma
+//           idea del swap sin cortocircuito: el mundo tiene su hora y Chip la
+//           suya, y un robot despierto a las diez de la noche no es un bug.
+//    6-7    amanece y Chip sigue durmiendo. La otra cara: se quedó dormido.
+//
+// Lo que SÍ se movió para que el desfase no se lea como error: la noche del
+// MUNDO —la clase es-noche, el charco de luz, la repisa apagada— ahora la
+// decide esta tabla y no el standby (ver esDeNoche en sprites.js). Si no, a las
+// 21 el fondo cambiaba a nocturno y todo lo demás seguía iluminado de día, que
+// eso sí se ve como un bug.
 //
 // OJO CON LOS NOMBRES DE ARCHIVO. `fondo-dia.webp` es el ATARDECER: mantiene el
 // nombre viejo para no romper referencias. El lila es `fondo-amanecer`, el azul
@@ -410,29 +433,29 @@ export const ESPERA_SEGUNDO_EVENTO_MS = 4000;
 export const FRANJAS_DIA = [
   {
     nombre: 'amanecer',
-    desde: 7,
-    hasta: 11,
+    desde: 6,
+    hasta: 9,
     fondo: 'sprites/fondo-amanecer.webp',
     luz: { x: 18, y: 78, radio: 60, color: '#c9a6ff', fuerza: 0.26 }
   },
   {
     nombre: 'mediodia',
-    desde: 11,
-    hasta: 17,
+    desde: 9,
+    hasta: 18,
     fondo: 'sprites/fondo-mediodia.webp',
     luz: { x: 34, y: 64, radio: 42, color: '#fff6e0', fuerza: 0.2 }
   },
   {
     nombre: 'atardecer',
-    desde: 17,
-    hasta: 23,
+    desde: 18,
+    hasta: 21,
     fondo: 'sprites/fondo-dia.webp',
     luz: { x: 58, y: 80, radio: 66, color: '#ff9440', fuerza: 0.38 }
   },
   {
     nombre: 'noche',
-    desde: 23,
-    hasta: 7,
+    desde: 21,
+    hasta: 6,
     fondo: 'sprites/fondo-noche.webp',
     luz: { x: 66, y: 84, radio: 50, color: '#3a4a7a', fuerza: 0 }
   }
@@ -646,18 +669,43 @@ export const ABERTURA_VENTANA = { x: 2.8, y: 5.6, ancho: 35.5, alto: 53.3 };
 // Generadas, el loop es exacto por construcción —la banda se repite y se
 // desplaza justo un ancho de patrón—, no pesan un byte, y el cielo del artista
 // queda intacto abajo: estas nubes pasan por delante, no lo reemplazan.
-export const CICLO_NUBES_MS = 240_000;
-export const CICLO_NUBES_NOCHE_MS = 540_000;
+// DOS BANDAS A DISTINTA VELOCIDAD, y el ciclo bajado de 240 s a 80.
+//
+// Cuatro minutos por vuelta es el mismo error de calibración que tuvimos con el
+// polvo: sutil hasta volverse inexistente. Una sesión de este género dura menos
+// de un minuto, así que en 240 s de ciclo el jugador ve una foto fija — el
+// movimiento existe y es medible, pero no le pasa a nadie.
+//
+// A 80 s, veinte segundos de mirar la ventana alcanzan para notar que algo se
+// corrió, y sigue siendo un andar de nube y no un timelapse.
+//
+// Y una sola banda deja el cielo plano por más que se mueva: sin nada que se
+// mueva a otra velocidad no hay con qué comparar, y el ojo no lee profundidad.
+// La segunda banda va al DOBLE de lento, más chica y más tenue, y abajo, cerca
+// del horizonte — que es donde caen las nubes lejanas cuando mirás el cielo por
+// una ventana, no arriba.
+export const CICLO_NUBES_MS = 80_000;
+export const CICLO_NUBES_LEJANAS_MS = 165_000;
+
+// De noche el movimiento afloja, pero con la misma proporción entre las dos: si
+// sólo se frena una, la profundidad se pierde justo cuando el cielo es más
+// plano.
+export const CICLO_NUBES_NOCHE_MS = 150_000;
+export const CICLO_NUBES_LEJANAS_NOCHE_MS = 310_000;
 
 // El color de las nubes sale del momento del día: blancas al mediodía, lilas al
 // amanecer, doradas al atardecer y casi invisibles de noche. Es el mismo
 // criterio que el resto de la escena — nada tiene color propio, todo lo toma de
 // la hora.
+// Los alfas SUBIERON, y el que más el del mediodía. El cielo del mediodía es lo
+// más claro del juego y ya trae cúmulos pintados: blanco al 0,3 encima de eso no
+// se ve, medido con dos capturas a 15 segundos. Cuanto más claro el cielo, más
+// alfa necesita la capa para existir — al revés de lo que uno supone.
 export const COLORES_NUBE = {
-  amanecer: { color: '#ffffff', alfa: 0.2 },
-  mediodia: { color: '#ffffff', alfa: 0.3 },
-  atardecer: { color: '#ffe6b8', alfa: 0.26 },
-  noche: { color: '#93a6d8', alfa: 0.07 }
+  amanecer: { color: '#ffffff', alfa: 0.3 },
+  mediodia: { color: '#ffffff', alfa: 0.5 },
+  atardecer: { color: '#ffe6b8', alfa: 0.38 },
+  noche: { color: '#93a6d8', alfa: 0.1 }
 };
 
 export const VARS_NUBES = {
@@ -668,7 +716,9 @@ export const VARS_NUBES = {
   color: '--nube-color',
   alfa: '--nube-alfa',
   ciclo: '--ciclo-nubes',
-  cicloNoche: '--ciclo-nubes-noche'
+  cicloNoche: '--ciclo-nubes-noche',
+  cicloLejanas: '--ciclo-nubes-lejanas',
+  cicloLejanasNoche: '--ciclo-nubes-lejanas-noche'
 };
 
 // ---- "Estoy bien, gracias" ----
@@ -753,6 +803,42 @@ export const VARS_REPISA = {
   ancho: '--repisa-ancho',
   alto: '--repisa-alto',
   achatado: '--repisa-achatado'
+};
+
+// ---- La apertura ----
+//
+// Android arma la splash de la app instalada solo, con el ícono sobre el
+// background_color del manifest. Eso no se diseña: se elige el color y se
+// elige el ícono. Lo que sí se diseña es el instante SIGUIENTE, que era un
+// corte seco de la pantalla del sistema al galpón.
+//
+// EL COLOR ESTÁ MEDIDO, no elegido. Es el promedio del percentil 10 de
+// luminancia de las tres panorámicas de día:
+//
+//   amanecer  #17181c
+//   mediodia  #1d232a
+//   atardecer #151718
+//   promedio  #181b1f  <- background_color, theme_color y el velo
+//
+// O sea: la sombra del galpón. El valor anterior, #0d0f14, era el charcoal de
+// la app —más oscuro que cualquier zona real de la escena— así que el salto a
+// la escena era un flash. Con la sombra del propio galpón, la splash y el
+// primer cuadro son el mismo lugar con la luz apagada.
+export const COLOR_APERTURA = '#181b1f';
+
+// El velo se apaga en 360 ms y Chip entra 160 ms después, ya empezada la
+// escena. El orden es la mitad del efecto: primero está el galpón, después
+// aparece Chip EN el galpón. Si entran juntos se lee como que la imagen tardó
+// en cargar; escalonados se lee como que alguien prendió la luz.
+export const DURACION_APERTURA_MS = 360;
+export const RETARDO_CHIP_APERTURA_MS = 160;
+export const DURACION_ENTRADA_CHIP_MS = 320;
+
+export const VARS_APERTURA = {
+  color: '--color-apertura',
+  duracion: '--duracion-apertura',
+  retardoChip: '--retardo-chip-apertura',
+  duracionChip: '--duracion-entrada-chip'
 };
 
 // ---- El menú ----
@@ -1092,7 +1178,7 @@ export const PREFIJO_CLASE_ESTADO = 'estado-';
 // del mismo largo se sincronizan y el conjunto se vuelve mecánico.
 export const CICLO_ANTENA_MS = 3100;
 
-// De noche el corazón va lento. Ver esDeNoche: es la misma franja del standby.
+// De noche el corazón va lento. Ver esDeNoche: es el tramo nocturno del mundo.
 export const CICLO_ANTENA_NOCHE_MS = 5000;
 
 // Cada "z" del standby tarda esto en nacer, subir y apagarse.
