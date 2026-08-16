@@ -617,3 +617,64 @@ No tienen pantalla viva: muestran el arte. `critico` muestra la batería vacía 
 rojo, que es exactamente lo que pasa; `standby` muestra una luna. No hay número
 que pueda cortarse porque no hay número. Taparlas sería reemplazar un dibujo
 correcto por uno peor.
+
+## El punto de fuga del galpón, y por qué la toma no se veía en perspectiva
+
+La toma figuraba como cerrada y en producción seguía siendo un rectángulo
+frontal con dos ranuras verticales. El commit había entrado; lo que hacía no
+alcanzaba.
+
+El CSS le aplicaba `rotate(-1,6deg) + perspective(160px) + rotateX(14deg)` a una
+**chapa plana**. Inclinar una chapa plana la achata un poco y nada más: no le
+inventa una cara de arriba, porque no hay ninguna cara de arriba que mostrar. La
+perspectiva de un objeto no se transforma — se dibuja.
+
+### Cómo se encuentra el punto de fuga de una panorámica
+
+Con dos rectas del piso y una intersección. Se tomaron dos juntas de baldosa
+—una abajo a la izquierda de la ventana y otra al lado de donde cae la toma—, se
+midieron sus pendientes sobre el arte y se resolvió el cruce:
+
+    recta A   pasa por (135, 735)  pendiente -0,307
+    recta B   pasa por (676, 706)  pendiente -1,168
+    cruce     (835, 520)
+
+La panorámica mide 1672 de ancho: su centro horizontal es 836. **El punto de
+fuga cae en el centro al píxel**, que es la confirmación de que la vista es
+frontal y de que las dos rectas son juntas del piso y no grietas. Una sola recta
+no habría probado nada; dos que se cruzan justo en el centro, sí.
+
+Desde la base de la toma —(497, 793)— la dirección a ese punto es **39° sobre la
+horizontal, hacia la derecha**. Eso manda el dibujo entero: cara de arriba y
+lateral derecho corridos 39° arriba a la derecha. El lateral izquierdo no se ve,
+porque el fondo de la caja va hacia la derecha y esa cara le queda atrás.
+
+### La referencia de tono no es el piso: es lo que ya está apoyado en el piso
+
+La primera calibración se hizo contra el piso crudo de la panorámica —89 de
+luminancia— y salió una caja de 28 a 65. Pero en pantalla el piso mide 138,
+porque encima pasa la capa de luz de la escena. La caja quedaba tres veces más
+oscura que todo lo que la rodea: una mancha negra.
+
+La referencia correcta es la consola que **ya está dibujada en ese mismo piso**,
+a la izquierda de la ventana: mide 136 a 197. El mobiliario de este galpón es
+acero claro, más claro que el piso, no más oscuro. Es la misma lección que la
+repisa alta, al revés: allá el fondo era pared oscura y la tabla tenía que
+bajar; acá el fondo es piso claro y la caja tenía que subir. En los dos casos el
+error fue calibrar contra una idea en vez de contra un vecino.
+
+## Los porcentajes de `radial-gradient` no son del mismo eje
+
+Las nubes generadas eran cuatro "elipses anchas y bajas" definidas como
+`ellipse 26% 9%`. En una abertura de ventana de 138x450 eso da **36 x 40 px**:
+un círculo. El primer porcentaje se mide contra el ancho del elemento y el
+segundo contra el alto, así que en un contenedor angosto y alto una elipse
+declarada 3:1 sale 1:1.
+
+Con el alfa bajo no se notaba porque no se veía nada. Al subir el alfa para que
+el movimiento fuera perceptible, aparecieron como orbes de luz. La corrección es
+declararlas en **longitudes** atadas a `--alto-escena`, que además escalan con el
+aparato sin cambiar de proporción.
+
+Y una nube es dos elipses corridas, no una: una elipse sola tiene silueta de
+pastilla, y lo que la hace leer como nube es que el contorno sea irregular.
