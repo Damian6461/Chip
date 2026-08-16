@@ -330,19 +330,18 @@ body.es-noche .banda.lejana {
   bottom: calc(var(--piso-chip) + var(--alto-chip) * (1 - var(--toma-y)));
   width: calc(var(--alto-chip) * var(--toma-ancho));
   height: calc(var(--alto-chip) * var(--toma-alto-caja));
-  /* El anclaje es el centro de la caja, no su base: la punta del cable entra
-     por el medio de la toma. */
-  margin-bottom: calc(var(--alto-chip) * var(--toma-alto-caja) / -2);
+
+  /* EL ANCLA ES LA BOCA DEL CONECTOR, no el borde ni el centro de la caja. El
+     cable de cargando.png termina en un punto medido, y ese punto tiene que
+     caer donde el cable se enchufa — si no, el cable muere contra la chapa. */
+  margin-left: calc(var(--alto-chip) * var(--toma-ancho) * var(--toma-ancla-x) * -1);
+  margin-bottom: calc(var(--alto-chip) * var(--toma-alto-caja) * (var(--toma-ancla-y) - 1));
   pointer-events: none;
 
-  /* EN PERSPECTIVA, no plana. Una chapa recta sobre un piso con fuga se lee como
-     sticker pegado a la pantalla. El pivote va en la base porque es donde la
-     toma toca el piso: inclinarla desde el centro la hundiría.
-     Los tres números están medidos sobre la panorámica en el punto exacto donde
-     cae la toma — ver PERSPECTIVA_TOMA en config.js. */
-  transform-origin: 50% 100%;
-  transform: rotate(var(--toma-giro)) perspective(var(--toma-fuga))
-    rotateX(var(--toma-inclinacion));
+  /* SIN TRANSFORM. La perspectiva está dibujada en el SVG con la fuga medida.
+     Antes acá había rotate + perspective + rotateX y no se veía: inclinar una
+     chapa plana no le inventa una cara de arriba. Si además de dibujarla se la
+     transformara, la caja quedaría torcida dos veces. */
 }
 
 #toma svg {
@@ -352,25 +351,21 @@ body.es-noche .banda.lejana {
   overflow: visible;
 }
 
-/* La sombra de contacto: sin esto la caja se lee pegada a la pantalla y no
-   apoyada en el piso del galpón. */
-#toma::after {
-  content: '';
-  position: absolute;
-  left: -14%;
-  bottom: -9%;
-  width: 124%;
-  height: 26%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.58) 0%, rgba(0, 0, 0, 0) 72%);
-  filter: blur(2px);
-}
+/* La sombra también está adentro del SVG, en coordenadas del dibujo: así se
+   apoya donde apoya la caja y no donde termina su caja de layout. El ::after de
+   antes tiraba una elipse sobre el borde del div y no se veía nunca. */
+
 
 /* De noche el galpón entero se apaga con la panorámica nocturna, pero la toma
    está dibujada por código y no cambia sola. La capa de luz tampoco la ayuda:
    a esa hora su fuerza es 0. Así que se apaga a mano, con el mismo criterio. */
+/* Con los tonos nuevos —acero claro, calibrado contra la consola del fondo— el
+   0,5 de antes dejaba la caja tres veces más brillante que el piso nocturno: la
+   cosa más iluminada del galpón a las tres de la mañana. Medido: caja 49 contra
+   piso 25. Con 0,3 la caja queda en 30 contra 25, que es una caja oscura sobre
+   un piso oscuro con la tapa apenas encendida. */
 body.es-noche #toma {
-  filter: brightness(0.5) saturate(0.7);
+  filter: brightness(0.3) saturate(0.55);
 }
 
 /* Mientras Chip carga, las ranuras se encienden. Una vez por pulso que sale, no
@@ -383,7 +378,9 @@ body.es-noche #toma {
    estado la sigue poniendo ui.js en #contenedor-mascota y en ningún otro lado.
    Sin esto habría que escribir la misma clase también en la escena, y dos
    lugares que dicen el estado son dos lugares que se pueden contradecir. */
-#escena:has(.estado-cargando) #toma .ranura {
+/* Lo que se enciende ahora es la BOCA del conector y no dos ranuras: el dibujo
+   nuevo no tiene ranuras, tiene un conector cilíndrico con su bore oscuro. */
+#escena:has(.estado-cargando) #toma .boca {
   animation: encender-ranura calc(var(--duracion-pulso) * 0.25) ease-out infinite;
 }
 

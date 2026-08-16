@@ -293,26 +293,115 @@ const PANEL = `
 // es. La caja va con degradé de chapa, el bisel en el naranja del juego, y las
 // dos ranuras son huecos oscuros con clase propia (`ranura`) para que el CSS las
 // pueda encender mientras Chip carga.
+// LA CAJA DE CONEXIÓN DEL PISO.
+//
+// Lo que había era un tomacorriente doméstico: chapa frontal plana, dos ranuras
+// verticales y un borne redondo, con un halo naranja alrededor. Tres problemas,
+// y los tres se veían en zoom al 400%:
+//
+//   CONCEPTO    dos ranuras verticales es un enchufe de pared de casa. Este
+//               mundo tiene un tanque, caños y una consola con pantalla en el
+//               piso; acá va una caja de conexión industrial, con conector
+//               cilíndrico, bulones en las esquinas y una franja naranja
+//               PINTADA —como la placa naranja de la consola del fondo—, no un
+//               contorno encendido.
+//   PERSPECTIVA era un rectángulo de frente. La caja está en el PISO: hay que
+//               ver la cara de arriba y el lateral.
+//   APOYO       no había sombra visible. Flotaba.
+//
+// LA FUGA ESTÁ MEDIDA, no estimada. Se tomaron dos juntas del piso de la
+// panorámica —una abajo a la izquierda de la ventana y otra al lado de donde
+// cae la toma— y se intersectaron sus rectas: se cruzan en el píxel (835, 520)
+// de una panorámica de 1672 de ancho. O sea, el punto de fuga está en el centro
+// horizontal exacto de la imagen, que es la confirmación de que la vista es
+// frontal. Que dos rectas medidas por separado den el centro al píxel es la
+// prueba de que son juntas del piso y no grietas.
+//
+// Desde la base de la toma —píxel (497, 793)— la dirección hacia ese punto es
+// 39° sobre la horizontal, hacia la derecha. Eso manda el dibujo entero: la
+// cara de arriba y el lateral DERECHO se corren 39° arriba a la derecha. El
+// lateral izquierdo no se ve, porque el fondo de la caja va hacia la derecha y
+// esa cara le queda atrás.
+//
+// LOS TONOS, contra el piso del mediodía donde cae (luminancia 89):
+//
+//   cara de arriba   67   mira al techo, es la que más luz recibe
+//   frente           46   la que más se ve
+//   lateral derecho  29   le da la espalda a la ventana, que está a la izquierda
+//
+// Los tres por debajo del piso: es una caja de chapa oscura sobre cemento
+// claro, no al revés.
 const TOMA = `
   <defs>
-    <linearGradient id="chapa-toma" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="var(--toma-alto)"/>
-      <stop offset="0.55" stop-color="var(--toma-chapa)"/>
+    <linearGradient id="toma-frente" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="var(--toma-chapa)"/>
       <stop offset="1" stop-color="var(--toma-bajo)"/>
     </linearGradient>
   </defs>
-  <rect x="1.4" y="1.4" width="17.2" height="21.2" rx="1.8"
-    fill="url(#chapa-toma)" stroke="var(--toma-borde)" stroke-width="1.1"/>
-  <rect x="3.4" y="3.4" width="13.2" height="17.2" rx="1.2"
-    fill="none" stroke="var(--toma-filo)" stroke-width="0.9"/>
-  <path d="M3.6 3.2h12.8" stroke="var(--toma-brillo)" stroke-width="0.7"
-    stroke-linecap="round" opacity="0.5"/>
-  <rect class="ranura" x="6.1" y="7.4" width="2.4" height="6.4" rx="0.9"
-    fill="var(--toma-hueco)"/>
-  <rect class="ranura" x="11.5" y="7.4" width="2.4" height="6.4" rx="0.9"
-    fill="var(--toma-hueco)"/>
-  <circle cx="10" cy="18" r="1.5" fill="var(--toma-hueco)"/>
-  <path d="M9 18h2" stroke="var(--toma-filo)" stroke-width="0.7" stroke-linecap="round"/>`;
+
+  <!-- LA SOMBRA, primero y debajo de todo. La luz entra por la ventana, que
+       está a la izquierda, así que cae hacia la derecha y hacia adelante. Más
+       densa contra la base —donde la caja TOCA— y abierta al alejarse: es la
+       diferencia entre una cosa apoyada y una cosa flotando dos centímetros. -->
+  <ellipse cx="22" cy="34.8" rx="18" ry="2.9" fill="var(--toma-sombra)" opacity="0.3"/>
+  <ellipse cx="19.5" cy="34.5" rx="12.5" ry="1.9" fill="var(--toma-sombra)" opacity="0.55"/>
+  <path d="M2 33.9h30.6v1.1H2z" fill="var(--toma-sombra)" opacity="0.8"/>
+
+  <!-- LA CARA DE ARRIBA. El corrimiento de 6 en x y -4,85 en y son los 39°
+       medidos: la profundidad en pantalla de una caja de este tamaño a esta
+       distancia del horizonte. -->
+  <path d="M2 12h30l6-4.85H8z" fill="var(--toma-arriba)"/>
+  <!-- el filo delantero de la tapa, que es donde pega la luz de la ventana -->
+  <path d="M2.4 11.8h29.2" stroke="var(--toma-brillo)" stroke-width="0.8"
+    stroke-linecap="round" opacity="0.55"/>
+  <!-- la tapa está atornillada: se ve el reborde -->
+  <path d="M5.4 10.1h25.4l3.4-2.75H8.8z" fill="none" stroke="var(--toma-filo)"
+    stroke-width="0.6" opacity="0.6"/>
+
+  <!-- EL LATERAL DERECHO, el más oscuro: le da la espalda a la ventana. -->
+  <path d="M32 12l6-4.85v22L32 34z" fill="var(--toma-lado)"/>
+  <path d="M32 12l6-4.85" stroke="var(--toma-filo)" stroke-width="0.7" opacity="0.7"/>
+
+  <!-- EL FRENTE. -->
+  <rect x="2" y="12" width="30" height="22" fill="url(#toma-frente)"/>
+  <rect x="2.5" y="12.5" width="29" height="21" fill="none"
+    stroke="var(--toma-filo)" stroke-width="0.7"/>
+
+  <!-- La franja naranja PINTADA sobre la chapa, gastada. Es el naranja del
+       juego usado como lo usa el mundo: una placa pintada, no un halo. -->
+  <path d="M3.4 28.6h27.2v3.5H3.4z" fill="var(--toma-naranja)"/>
+  <path d="M3.4 28.6h27.2v0.9H3.4z" fill="var(--toma-naranja-alto)" opacity="0.7"/>
+  <path d="M6 29.6h1.4v1.6H6zM9 29.6h0.9v1.6H9zM11.4 29.6h1.9v1.6h-1.9z"
+    fill="var(--toma-hueco)" opacity="0.55"/>
+
+  <!-- EL CONECTOR CILÍNDRICO: collar roscado, boca oscura y dos bornes. Es lo
+       que reemplaza a las dos ranuras verticales del enchufe de casa. -->
+  <circle cx="17" cy="20.6" r="7" fill="var(--toma-bajo)" stroke="var(--toma-filo)" stroke-width="0.8"/>
+  <circle cx="17" cy="20.6" r="7" fill="none" stroke="var(--toma-brillo)" stroke-width="0.6"
+    stroke-dasharray="1.6 1.5" opacity="0.45"/>
+  <circle cx="17" cy="20.6" r="4.8" fill="var(--toma-chapa)" stroke="var(--toma-filo)" stroke-width="0.7"/>
+  <circle class="boca" cx="17" cy="20.6" r="3.2" fill="var(--toma-hueco)"/>
+  <!-- TRES BORNES EN TRIÁNGULO, uno arriba y dos abajo, más la chaveta del
+       collar. La versión anterior tenía dos bornes al mismo nivel y una raya
+       corta debajo, y a 48 px eso es una CARA: dos ojos y una boca. Un conector
+       trifásico de verdad va en triángulo justamente para que no haya dos
+       posiciones equivalentes, así que la forma correcta es además la que no se
+       lee como cara. -->
+  <circle cx="17" cy="18.6" r="0.8" fill="var(--toma-borne)"/>
+  <circle cx="15.3" cy="21.6" r="0.8" fill="var(--toma-borne)"/>
+  <circle cx="18.7" cy="21.6" r="0.8" fill="var(--toma-borne)"/>
+  <path d="M17 15.6v1.3" stroke="var(--toma-filo)" stroke-width="1.1" stroke-linecap="round"/>
+  <!-- el brillo del collar, arriba a la izquierda: la ventana está de ese lado -->
+  <path d="M12.6 17.2a6.2 6.2 0 0 1 4-2.4" fill="none" stroke="var(--toma-brillo)"
+    stroke-width="0.9" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Los cuatro bulones de las esquinas. -->
+  <circle class="bulon" cx="5.2" cy="15" r="1.25" fill="var(--toma-bajo)" stroke="var(--toma-filo)" stroke-width="0.5"/>
+  <circle class="bulon" cx="28.8" cy="15" r="1.25" fill="var(--toma-bajo)" stroke="var(--toma-filo)" stroke-width="0.5"/>
+  <circle class="bulon" cx="5.2" cy="25.6" r="1.25" fill="var(--toma-bajo)" stroke="var(--toma-filo)" stroke-width="0.5"/>
+  <circle class="bulon" cx="28.8" cy="25.6" r="1.25" fill="var(--toma-bajo)" stroke="var(--toma-filo)" stroke-width="0.5"/>
+  <path d="M4.5 14.6h1.4M28.1 14.6h1.4M4.5 25.2h1.4M28.1 25.2h1.4"
+    stroke="var(--toma-brillo)" stroke-width="0.5" stroke-linecap="round" opacity="0.5"/>`;
 
 // La burbuja de limpiando: redonda, con brillo arriba a la izquierda y un aro
 // más marcado, como las del sprite.
@@ -363,7 +452,10 @@ export function svgDeRayo() {
 }
 
 export function svgDeToma() {
-  return `<svg viewBox="0 0 20 24" aria-hidden="true">${TOMA}</svg>`;
+  // viewBox propio y NO el de 24x24 del resto: la caja se dibuja con su cara de
+  // arriba y su lateral, así que ocupa más ancho que alto y necesita lugar
+  // abajo para la sombra.
+  return `<svg viewBox="0 0 40 38" aria-hidden="true">${TOMA}</svg>`;
 }
 
 export function tieneForma(id) {

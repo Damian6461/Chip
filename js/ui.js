@@ -85,7 +85,7 @@ import {
   VARS_PANTALLA,
   PUNTA_DEL_CABLE,
   TAMANO_TOMA,
-  PERSPECTIVA_TOMA,
+  ANCLA_TOMA,
   VARS_TOMA,
   VARS_REPISA,
   VARS_APERTURA,
@@ -249,9 +249,8 @@ if (toma) {
   raiz.style.setProperty(VARS_TOMA.y, String(PUNTA_DEL_CABLE.y / 100));
   raiz.style.setProperty(VARS_TOMA.ancho, String(TAMANO_TOMA.ancho / 100));
   raiz.style.setProperty(VARS_TOMA.alto, String(TAMANO_TOMA.alto / 100));
-  raiz.style.setProperty(VARS_TOMA.giro, `${PERSPECTIVA_TOMA.giro}deg`);
-  raiz.style.setProperty(VARS_TOMA.inclinacion, `${PERSPECTIVA_TOMA.inclinacion}deg`);
-  raiz.style.setProperty(VARS_TOMA.fuga, `${PERSPECTIVA_TOMA.fuga}px`);
+  raiz.style.setProperty(VARS_TOMA.anclaX, String(ANCLA_TOMA.x));
+  raiz.style.setProperty(VARS_TOMA.anclaY, String(ANCLA_TOMA.y));
 
   for (const [tono, valor] of Object.entries(COLORES_TOMA)) {
     raiz.style.setProperty(`--toma-${tono}`, valor);

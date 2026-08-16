@@ -953,43 +953,84 @@ export const PUNTA_DEL_CABLE = { x: 79.7, y: 98.6 };
 
 // Del tamaño de un puño de Chip: la mano de `cargando` mide ~12% del lienzo.
 // Más alta que ancha, como una toma de verdad.
-export const TAMANO_TOMA = { ancho: 11, alto: 13 }; // % del alto de Chip
+// El lienzo ahora es 40x38 y no 20x24: la caja se dibuja con su cara de arriba
+// y su lateral, así que ocupa más ancho que alto. El frente propiamente dicho
+// sigue midiendo lo mismo que antes en pantalla — lo que se agregó es el
+// volumen, no el tamaño.
+export const TAMANO_TOMA = { ancho: 13, alto: 12.3 }; // % del alto de Chip
 
-// La toma está en el PISO, y un rectángulo plano en un piso con fuga se lee
-// como sticker. Estos tres números salen de medir la panorámica en el punto
-// exacto donde cae la toma, no de estimar:
+// DÓNDE, DENTRO DEL DIBUJO, ENCHUFA EL CABLE. Es el centro del conector
+// cilíndrico: (17, 20,6) de un viewBox de 40x38. Sin esto el CSS anclaba el
+// borde de la caja a la punta del cable y el cable terminaba contra la chapa
+// en vez de contra la boca del conector.
+export const ANCLA_TOMA = { x: 0.425, y: 0.542 };
+
+// LA PERSPECTIVA SE DIBUJA, NO SE TRANSFORMA.
 //
-//   giro         -1,6°  la costura del piso en esa zona sube hacia la derecha.
-//                       Medido siguiendo la fila de mayor gradiente a izquierda
-//                       y derecha de la toma: y=812 en x=430, y=808 en x=570.
-//   inclinacion   14°   cuánto se acuesta la cara hacia atrás. El histograma de
-//                       orientaciones del piso da las costuras de fuga en ±8°,
-//                       y una caja parada en ese plano se ve con esa cara.
-//   fuga         160px  la distancia de perspectiva. Más corta exagera; más
-//                       larga la vuelve plana otra vez.
-export const PERSPECTIVA_TOMA = { giro: -1.6, inclinacion: 14, fuga: 160 };
+// La versión anterior era un rectángulo de frente al que el CSS le aplicaba
+// rotate(-1,6deg) + perspective(160px) + rotateX(14deg). Verificado en zoom al
+// 400% en producción: no se ve. rotateX sobre una chapa plana la achata un poco
+// y nada más — no aparece ninguna cara de arriba, porque no hay ninguna cara de
+// arriba que mostrar. Una chapa inclinada sigue siendo una chapa.
+//
+// Ahora las tres caras están dibujadas en el SVG con la fuga medida, y el CSS no
+// transforma nada. Por eso PERSPECTIVA_TOMA ya no existe: los grados que
+// importan viven en el path, que es donde se pueden ver.
+//
+// La medición está contada entera arriba de TOMA en formas.js: dos juntas del
+// piso intersectadas dan el punto de fuga en (835, 520) de una panorámica de
+// 1672 de ancho —el centro horizontal exacto—, y desde la base de la toma la
+// dirección a ese punto es 39° sobre la horizontal.
 
 export const VARS_TOMA = {
   x: '--toma-x',
   y: '--toma-y',
   ancho: '--toma-ancho',
   alto: '--toma-alto-caja',
-  giro: '--toma-giro',
-  inclinacion: '--toma-inclinacion',
-  fuga: '--toma-fuga'
+  anclaX: '--toma-ancla-x',
+  anclaY: '--toma-ancla-y'
 };
 
-// La chapa sale de la paleta del galpón, no inventada: el gris del metal de las
-// piezas y el naranja que ya usan las hombreras de Chip y el borde del estante.
+// LOS TONOS, MEDIDOS CONTRA LO QUE YA HAY EN ESE PISO.
+//
+// La primera calibración se hizo contra el piso crudo de la panorámica —89 de
+// luminancia— y salió una caja de 28 a 65. En pantalla el piso mide 138, porque
+// encima pasa la capa de luz de la escena, y la caja quedaba tres veces más
+// oscura que todo lo que la rodea: una mancha negra pegada al piso.
+//
+// La referencia correcta no es el piso: es la CONSOLA que ya está dibujada en
+// ese mismo piso, a la izquierda de la ventana. Medida en pantalla, a la misma
+// hora:
+//
+//   consola, cara de arriba   197
+//   consola, frente           159
+//   consola, parte baja       136
+//   piso                      140
+//
+// O sea: el mobiliario de este galpón es acero claro, MÁS claro que el piso, no
+// más oscuro. La caja quedó en ese rango:
+//
+//   arriba   168   mira al techo
+//   frente   119   degradé de chapa a bajo
+//   lado      90   le da la espalda a la ventana
+//
+// El naranja es el mismo del juego, pero usado como lo usa el mundo —una franja
+// pintada y gastada, igual que la placa de la consola— y no como un contorno
+// encendido alrededor de la caja, que era lo que la hacía leer como un icono.
 export const COLORES_TOMA = {
-  alto: '#4a505c',
-  chapa: '#343a45',
-  bajo: '#22262e',
-  borde: '#c8781f',
-  filo: '#0b0e13',
-  hueco: '#05070a',
-  brillo: '#8f98a8'
+  arriba: '#a4a8ad',
+  chapa: '#878c92',
+  bajo: '#5f6469',
+  lado: '#565b60',
+  filo: '#23272c',
+  hueco: '#101317',
+  brillo: '#d7dce2',
+  borne: '#c9a24a',
+  naranja: '#c8781f',
+  'naranja-alto': '#e8a24a',
+  sombra: '#0c0f13'
 };
+
 
 // ---- El parpadeo ----
 
