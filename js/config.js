@@ -1055,7 +1055,35 @@ export const CLASE_ESTOY_BIEN = 'estoy-bien';
 //   portón            chapa, no un saliente. No hay dónde apoyar.
 //
 // La repisa se dibuja por código, con los soportes en L y el canto frontal.
-export const REPISA = { x: 56, y: 19.5, ancho: 40, alto: 4.2 };
+// LA REPISA, remedida y bajada.
+//
+// Estaba en y 19,5% y ahí se le montaba encima a los tubos de la pared. No se
+// eligió el lugar nuevo a ojo: se midió el desvío estándar de luminancia por
+// franja horizontal, sobre la mitad derecha de lo que SE VE de la panorámica —no
+// de la imagen entera, que es más ancha que la escena— y en los CUATRO fondos,
+// porque la repisa está siempre y tiene que caer bien en los cuatro.
+//
+// El perfil sube monótono hacia abajo: 9,9 en y=8,5% y 13,7 en y=24,9%. O sea
+// que la pared se ensucia a medida que baja, y 19,5% cae justo donde arranca la
+// subida. Hay dos zonas limpias:
+//
+//   y = 6 a 12%   la más lisa (sd 10,0), pero ahí arriba está el botón del menú
+//   y = 26 a 28%  un mínimo local (sd 13,0), DEBAJO de los tubos
+//
+// Se elige la segunda. La primera es más lisa pero pelea con el botón del menú,
+// y además la instrucción era bajarla: una repisa alta obliga a mirar arriba y
+// la colección deja de estar a la altura de Chip.
+//
+// Y achicada: de 40% de ancho a 34. Con dos estantes ocupa más alto, y mantener
+// el ancho la habría vuelto el objeto más grande de la pared.
+export const REPISA = { x: 58, y: 26.5, ancho: 34, alto: 3.4 };
+
+// DOS ESTANTES. La separación va en % de la escena, igual que el resto de la
+// geometría de la pared, para que el hueco entre tablas no cambie con el
+// viewport. 6,2% es lo que entra una pieza de las grandes con aire arriba: menos
+// y la fila de abajo se lee apretada contra la de arriba.
+export const ESTANTES = 2;
+export const SEPARACION_ESTANTES = 6.2;
 
 // Está por encima del horizonte —el borde del alféizar, en el 63% del alto— así
 // que se ve DESDE ABAJO. Los objetos se achatan un poco en vertical y su base
@@ -1098,6 +1126,8 @@ export const COLORES_REPISA = {
 };
 
 export const VARS_REPISA = {
+  separacion: '--repisa-separacion',
+  nivel: '--repisa-nivel',
   x: '--repisa-x',
   y: '--repisa-y',
   ancho: '--repisa-ancho',

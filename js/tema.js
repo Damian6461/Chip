@@ -81,6 +81,7 @@ import {
   COLORES_TOMA,
   VARS_REPISA,
   REPISA,
+  SEPARACION_ESTANTES,
   ACHATADO_REPISA,
   COLORES_REPISA,
   COLORES_PANEL
@@ -220,6 +221,7 @@ export function variablesDeTema() {
     [VARS_REPISA.ancho]: pct(REPISA.ancho),
     [VARS_REPISA.alto]: pct(REPISA.alto),
     [VARS_REPISA.achatado]: String(ACHATADO_REPISA),
+    [VARS_REPISA.separacion]: pct(SEPARACION_ESTANTES),
     ...tonos('repisa', COLORES_REPISA),
 
     // El botón del menú

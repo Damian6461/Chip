@@ -41,6 +41,7 @@ import { variablesDeTema } from '../js/tema.js';
 const RAIZ = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const CSS = readFileSync(RAIZ + 'style.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 const UI = readFileSync(RAIZ + 'js/ui.js', 'utf8');
+const MONTAJE = readFileSync(RAIZ + 'js/ui-montaje.js', 'utf8');
 const FORMAS = readFileSync(RAIZ + 'js/formas.js', 'utf8');
 
 const nombres = (texto, re) => new Set([...texto.matchAll(re)].map((m) => m[1]));
@@ -77,8 +78,14 @@ function nombresDeLasTablas() {
   return encontrados;
 }
 
-// Los literales que ui.js todavía escribe a mano, sin pasar por una tabla.
-const LITERALES_DE_UI = nombres(UI, /setProperty\(\s*['"`](--[\w-]+)['"`]/g);
+// Los literales que ui.js y ui-montaje.js todavía escriben a mano, sin pasar por
+// una tabla. Los dos archivos, no sólo ui.js: cuando el montaje empezó a escribir
+// variables propias, el cruce las marcó como huérfanas y tenía razón a medias —
+// el nombre existía, pero en ningún lado donde este test lo buscara.
+const LITERALES_DE_UI = new Set([
+  ...nombres(UI, /setProperty\(\s*['"`](--[\w-]+)['"`]/g),
+  ...nombres(MONTAJE, /setProperty\(\s*['"`](--[\w-]+)['"`]/g)
+]);
 
 // Y `--filo`, que se escribe por pieza en el estante y no en :root.
 const DECLARADAS = new Set([...DEL_TEMA, ...nombresDeLasTablas(), ...LITERALES_DE_UI]);

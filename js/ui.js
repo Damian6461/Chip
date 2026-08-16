@@ -112,6 +112,7 @@ import {
   solapas,
   secciones,
   bulbo,
+  estantes,
   resplandor,
   contenedorNubes,
   crearBanda
@@ -804,13 +805,20 @@ function nodoDeObjeto(objeto, tag = 'div') {
 // Lo que falta se mira en el menú, que es donde el jugador va a preguntar
 // "¿cuánto me queda?". Esa pregunta es de menú; la repisa contesta otra:
 // "¿qué encontré?".
+// Las piezas se reparten entre las tablas: se llena la de ARRIBA primero y la
+// de abajo recibe el sobrante. Al revés —llenar abajo— dejaría la tabla de
+// arriba vacía durante toda la primera mitad del juego, y una repisa con un
+// estante desierto se lee como que falta algo, no como que hay lugar.
 function pintarEstante(objetos, nuevos) {
-  estante.replaceChildren();
+  for (const fila of estantes) fila.replaceChildren();
 
   const recienLlegados = new Set(nuevos.map((o) => o.id));
+  const obtenidos = objetos.filter((o) => o.obtenido);
+  const porFila = Math.ceil(obtenidos.length / estantes.length) || 1;
   let orden = 0;
+  let puestos = 0;
 
-  for (const objeto of objetos.filter((o) => o.obtenido)) {
+  for (const objeto of obtenidos) {
     const nodo = nodoDeObjeto(objeto);
     nodo.style.setProperty('--filo', FILOS_OBJETO[objeto.id] ?? FILO_OBJETO_POR_DEFECTO);
 
@@ -833,7 +841,9 @@ function pintarEstante(objetos, nuevos) {
       }, espera + DURACION_LLEGADA_MS + 200);
     }
 
-    estante.appendChild(nodo);
+    const fila = estantes[Math.min(Math.floor(puestos / porFila), estantes.length - 1)];
+    fila.appendChild(nodo);
+    puestos++;
   }
 }
 

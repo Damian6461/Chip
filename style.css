@@ -2489,14 +2489,20 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
    El detalle que las convierte en objetos y no en iconos es que APOYAN: hay
    una tabla abajo, hay sombra de contacto, y el canto de la tabla les tapa la
    base. Un icono flota; una cosa se apoya en algo. */
-#repisa {
+.repisa {
   position: absolute;
   left: var(--repisa-x);
   /* La tabla se cuelga desde su cara superior, que es la línea donde apoyan las
      piezas: el 28% del alto del SVG (y=5,6 de 20). Así --repisa-y es "dónde
      apoyan" y no "dónde empieza el dibujo", que es el número que uno quiere
      tocar. */
-  top: calc(var(--repisa-y) - var(--repisa-alto) * 0.28);
+  /* Cada nivel baja su separación. El nivel 0 queda donde dice --repisa-y y los
+     de abajo se cuelgan de él, así que mover la repisa entera sigue siendo tocar
+     un solo número. */
+  top: calc(
+    var(--repisa-y) - var(--repisa-alto) * 0.28 +
+      var(--repisa-nivel, 0) * var(--repisa-separacion)
+  );
   width: var(--repisa-ancho);
   height: var(--repisa-alto);
   /* Detrás de las piezas y del resto del mobiliario, como la toma. */
@@ -2504,7 +2510,7 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   pointer-events: none;
 }
 
-#repisa svg {
+.repisa svg {
   display: block;
   width: 100%;
   height: 100%;
@@ -2513,12 +2519,12 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 /* La fila de piezas. El bottom cae EXACTAMENTE en la cara superior de la tabla,
    así que la base de cada pieza es la línea de apoyo y no el borde de una caja
    con aire adentro. */
-#estante {
+.estante {
   position: absolute;
   /* Metidas hacia adentro de la tabla: una pieza al ras del extremo se lee como
      que se va a caer, y con cuatro la última llegaba a sobresalir 2 px del filo. */
   left: calc(var(--repisa-x) + var(--repisa-ancho) * 0.06);
-  bottom: calc(100% - var(--repisa-y));
+  bottom: calc(100% - var(--repisa-y) - var(--repisa-nivel, 0) * var(--repisa-separacion));
   width: calc(var(--repisa-ancho) * 0.88);
   display: flex;
   align-items: flex-end;
@@ -2545,32 +2551,32 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
    Lo que las separa es la profundidad: con muchas piezas, una de cada dos se
    corre para atrás, más chica y más oscura, y entonces cada una se recorta
    contra su vecina en vez de fundirse con ella. */
-#estante:has(.objeto:nth-child(5)) {
+.estante:has(.objeto:nth-child(5)) {
   gap: 0;
   isolation: isolate;
 }
 
-#estante:has(.objeto:nth-child(5)) .objeto {
+.estante:has(.objeto:nth-child(5)) .objeto {
   z-index: 1;
   width: calc(var(--alto-escena) * 0.030);
   height: calc(var(--alto-escena) * 0.030);
 }
 
-#estante:has(.objeto:nth-child(5)) .objeto + .objeto {
+.estante:has(.objeto:nth-child(5)) .objeto + .objeto {
   margin-left: calc(var(--alto-escena) * -0.011);
 }
 
 /* Una de cada dos para atrás. Reemplaza al escalonado de a tres, que con la
    repisa llena dejaba pares de piezas contiguas en el mismo plano. */
-#estante:has(.objeto:nth-child(5)) .objeto:nth-child(3n),
-#estante:has(.objeto:nth-child(5)) .objeto:nth-child(3n + 2) {
+.estante:has(.objeto:nth-child(5)) .objeto:nth-child(3n),
+.estante:has(.objeto:nth-child(5)) .objeto:nth-child(3n + 2) {
   rotate: 0deg;
   translate: 0 13%;
   scale: 1 var(--repisa-achatado);
   filter: saturate(0.88) brightness(0.9) drop-shadow(0 1px 2px rgb(0 0 0 / 0.85));
 }
 
-#estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
+.estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
   rotate: -4deg;
   translate: 0 calc(13% - 3px);
   scale: 0.86 calc(var(--repisa-achatado) * 0.86);
@@ -2578,7 +2584,7 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   /* Detrás de sus dos vecinas, no sólo más oscura: si la de atrás pinta encima
      el recorte se invierte y el amontonamiento se vuelve a leer plano. En 0 y
      no en -1 porque -1 se escaparía hasta #escena y se metería atrás de la
-     tabla; el isolate de #estante mantiene el orden acá adentro. */
+     tabla; el isolate de .estante mantiene el orden acá adentro. */
   z-index: 0;
 }
 
@@ -2591,11 +2597,11 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
    fondo del galpón. A color pleno el amarillo de la arandela y el cian de la
    cosa-sin-nombre eran lo más brillante del cuadro después de Chip, y volvían a
    leerse como iconos encendidos. */
-#estante .objeto.obtenido {
+.estante .objeto.obtenido {
   filter: saturate(0.88) brightness(0.9) drop-shadow(0 1px 2px rgb(0 0 0 / 0.85));
 }
 
-#estante .objeto {
+.estante .objeto {
   width: calc(var(--alto-escena) * 0.034);
   height: calc(var(--alto-escena) * 0.034);
   /* PERSPECTIVA. La repisa está en el 19,5% del alto y el horizonte —el borde
@@ -2632,11 +2638,11 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
    porque una pieza que cambia de inclinación entre render y render se lee como
    un glitch — el mismo motivo por el que la pose de idle se elige una vez por
    sesión y no cada minuto. */
-#estante .objeto:nth-child(3n + 2) {
+.estante .objeto:nth-child(3n + 2) {
   rotate: -5deg;
 }
 
-#estante .objeto:nth-child(3n) {
+.estante .objeto:nth-child(3n) {
   rotate: 4deg;
   /* Un poco más atrás en la tabla: más arriba, más chica y más apagada. Es el
      mismo truco de profundidad que usa el polvo, aplicado a tres píxeles. */
@@ -2649,7 +2655,7 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
    es la sombra de una cosa que TOCA la tabla, no la de una cosa que flota a dos
    centímetros. Casi toda queda tapada por el filo de la tabla, y eso está bien
    — de una repisa alta eso es todo lo que se ve. */
-#estante .objeto::after {
+.estante .objeto::after {
   content: '';
   position: absolute;
   left: 12%;
@@ -2666,7 +2672,7 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   pointer-events: none;
 }
 
-#estante:focus-visible,
+.estante:focus-visible,
 #coleccion .objeto:focus-visible {
   outline: 2px solid var(--color-humor);
   outline-offset: 2px;
@@ -2721,20 +2727,20 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 
    Va como filtro sobre los dos contenedores y no como una segunda paleta en
    config: son los mismos objetos con menos luz encima, no otros objetos. */
-body.es-noche #repisa {
+body.es-noche .repisa {
   filter: brightness(0.72) saturate(0.75);
 }
 
-body.es-noche #estante .objeto,
-body.es-noche #estante .objeto.obtenido {
+body.es-noche .estante .objeto,
+body.es-noche .estante .objeto.obtenido {
   filter: saturate(0.68) brightness(0.62) drop-shadow(0 1px 2px rgb(0 0 0 / 0.9));
 }
 
-body.es-noche #estante .objeto:nth-child(3n) {
+body.es-noche .estante .objeto:nth-child(3n) {
   filter: saturate(0.55) brightness(0.5) drop-shadow(0 1px 2px rgb(0 0 0 / 0.9));
 }
 
-body.es-noche #estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
+body.es-noche .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
   filter: saturate(0.45) brightness(0.42) drop-shadow(0 1px 2px rgb(0 0 0 / 0.92));
 }
 

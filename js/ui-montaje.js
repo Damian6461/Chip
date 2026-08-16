@@ -24,7 +24,7 @@
 // archivos del mismo módulo y ninguno de los dos es importable desde Node. Lo
 // que sí es importable —y es lo que se gana— es tema.js.
 
-import { VERSION_JUEGO, BANDAS_NUBES, VARS_NUBES } from './config.js';
+import { VERSION_JUEGO, BANDAS_NUBES, VARS_NUBES, ESTANTES, VARS_REPISA } from './config.js';
 import { variablesDeTema } from './tema.js';
 import { svgDeToma, svgDeRepisa, svgDePanel } from './formas.js';
 
@@ -99,7 +99,46 @@ for (const [nombre, valor] of Object.entries(variablesDeTema())) {
 // brillo. El botón del menú es lo mismo del lado de la interfaz.
 
 if (toma) toma.innerHTML = svgDeToma();
-if (repisa) repisa.innerHTML = svgDeRepisa();
+
+// LA REPISA, ahora de DOS tablas. La segunda no está en el HTML: se clona acá
+// desde ESTANTES, para que pasar a tres estantes sea cambiar un número.
+//
+// Cada tabla lleva su índice en --repisa-nivel y el CSS la baja
+// nivel * --repisa-separacion. Escribir la segunda a mano en el HTML habría
+// puesto la cantidad de estantes en dos lados.
+export const repisas = [];
+export const estantes = [];
+
+if (repisa && estante) {
+  for (let nivel = 0; nivel < ESTANTES; nivel++) {
+    const tabla = nivel === 0 ? repisa : repisa.cloneNode(false);
+    const fila = nivel === 0 ? estante : estante.cloneNode(false);
+
+    if (nivel > 0) {
+      tabla.id = `repisa-${nivel}`;
+      fila.id = `estante-${nivel}`;
+      // El alféizar de arriba es el que tiene el rol y el tabindex: dos accesos
+      // idénticos al mismo panel serían dos paradas del teclado para lo mismo.
+      fila.removeAttribute('tabindex');
+      fila.removeAttribute('role');
+      fila.removeAttribute('aria-label');
+      repisa.parentNode.insertBefore(tabla, repisa.nextSibling);
+      estante.parentNode.insertBefore(fila, estante.nextSibling);
+    }
+
+    // El estilo cuelga de la CLASE y no del id: la tabla clonada necesita otro
+    // id —dos elementos con el mismo id es HTML inválido— y con selectores de id
+    // se quedaba sin una sola regla. Se vio enseguida: 390 px de ancho contra
+    // los 133 que le tocaban.
+    tabla.classList.add('repisa');
+    fila.classList.add('estante');
+    tabla.style.setProperty(VARS_REPISA.nivel, String(nivel));
+    fila.style.setProperty(VARS_REPISA.nivel, String(nivel));
+    tabla.innerHTML = svgDeRepisa();
+    repisas.push(tabla);
+    estantes.push(fila);
+  }
+}
 if (menuBoton) menuBoton.innerHTML = svgDePanel();
 
 // ---- La mudanza de la colección ----
