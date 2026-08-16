@@ -302,7 +302,44 @@ export const HORA_STANDBY_FIN = 7; // exclusive -> franja 23:00 a 06:59
 
 // Cuánto dura en pantalla el estado disparado por una acción antes de que la
 // cadena se reevalúe.
-export const DURACION_ESTADO_ACCION_MS = 2000;
+// CUÁNTO DURA CADA ACCIÓN, y no duran lo mismo porque no son lo mismo.
+//
+// Antes las tres duraban 2 s y se podía apretar Cargar y Jugar en el mismo
+// segundo: Chip pasaba de enchufado a jugando de un cuadro al otro. Eso rompe la
+// ilusión más que cualquier otra cosa del juego.
+//
+// ESTO NO ES UN COOLDOWN, y la diferencia es todo el modelo. No hay espera
+// DESPUÉS de la acción, no hay penalización, no hay tiempo bloqueado: mientras
+// Chip carga, está cargando, y en el instante en que termina vuelve a estar todo
+// disponible. La restricción es de coherencia, no de ritmo de juego. El modelo
+// sin culpa no se toca — ver `aplica` en acciones.js, que es la otra restricción
+// y también es de estado y no de reloj.
+//
+// Cargar es el más largo por una razón concreta además de la narrativa:
+// enchufarse es un proceso, y son los segundos que el cable y sus pulsos
+// necesitan para leerse. Con 2 s la animación no llegaba a existir.
+export const DURACIONES_ACCION = {
+  cargar: 7000,
+  jugar: 3000,
+  limpiar: 4000
+};
+
+// El que se usa cuando una acción no declara la suya. Ninguna de las tres cae
+// acá hoy; existe para que agregar una acción nueva no rompa nada.
+export const DURACION_ESTADO_ACCION_MS = 3000;
+
+// En cuántos escalones sube la barra durante la acción. La energía no llega de
+// golpe al final: llega mientras dura. Cada escalón usa la transición de 400 ms
+// que la barra ya tenía, así que el efecto es una cuenta que sube a saltos
+// suaves y no una barra animada linealmente — que se leería como una carga de
+// software y no como algo entrando.
+export const ESCALONES_ACCION = 6;
+
+// Clase que apaga los tres botones mientras algo está pasando. Es el MISMO
+// tratamiento visual que el de una acción que no hace falta: si el jugador ya
+// aprendió qué quiere decir esa chapa mate, no hay que enseñarle un segundo
+// idioma.
+export const CLASE_OCUPADO = 'ocupado';
 
 // ---- El estado `esperando` ----
 //
@@ -1282,6 +1319,35 @@ export const ACHATADO_REPISA = 0.88;
 // la regla que salió de los corazones: el negro hunde la forma, y un tono
 // oscuro del mismo tinte la despega sin ensuciarla. Las piezas de metal comparten
 // el azul-gris; las dos de acento tienen el suyo.
+// DÓNDE APOYA CADA SILUETA dentro de su viewBox de 24.
+//
+// Ninguna llega hasta abajo del todo, y NO todas terminan en el mismo lugar: el
+// hueco que dejan abajo va del 10,4% (la arandela) al 20,8% (la-cosa). El código
+// corregía eso con un corrimiento único del 13%, calculado sobre el promedio —y
+// un promedio deja a las dos puntas mal: la arandela se hundía en la tabla y la
+// cosa y el cable flotaban dos píxeles por encima.
+//
+// Medido rasterizando cada silueta a 240 px y buscando su última fila con tinta.
+// Con la tabla, cada pieza se corre lo suyo y las ocho apoyan igual.
+export const BASES_OBJETO = {
+  'tuerca-cabeza': 20.5,
+  'cable-enrollado': 19.2,
+  resorte: 21,
+  'arandela-dorada': 21.5,
+  'cosa-sin-nombre': 19,
+  'tornillo-perfecto': 21,
+  'nota-tanque': 21,
+  'marca-derrape': 21.2
+};
+
+// El alto del viewBox de las siluetas. Vive acá porque la cuenta de la base lo
+// necesita y es el mismo número que usa formas.js.
+export const LIENZO_OBJETO = 24;
+
+// Va en una tabla VARS_* y no como string suelto: el test del puente recolecta
+// los nombres de custom property de ahí, y suelto quedaba invisible para él.
+export const VARS_OBJETO = { base: '--base-objeto' };
+
 export const FILOS_OBJETO = {
   'arandela-dorada': '#5a3a10',
   'cosa-sin-nombre': '#00404d',
@@ -1477,7 +1543,17 @@ export const VARS_PANTALLA = {
 //
 // El conector ocupa x 48,4-57% / y 75,4-85,5% del lienzo; el cable sale del
 // centro de su boca.
-export const CONECTOR_PECHO = { x: 52.9, y: 77.5 };
+// LA BOCA del conector, que es donde se enchufa un cable. 53,2 / 85,8.
+//
+// Estaba en 52,9 / 77,5 y ese punto NO es la boca: es el reborde iluminado de
+// ARRIBA del conector. Salió de tomar el centroide de todo el cian de la pieza,
+// y el cian está concentrado en ese reborde —los 21 píxeles más brillantes están
+// en las filas 76,2 y 76,6— así que el promedio se fue para arriba.
+//
+// La boca es la abertura cian de ABAJO, que se ve ampliando la pieza al 1200%:
+// el conector es un puerto con el reborde encendido arriba y la abertura abajo.
+// Un cable sale de la abertura, no del reborde.
+export const CONECTOR_PECHO = { x: 53.2, y: 85.8 };
 
 // EL CABLE, dibujado y animado por código.
 //
@@ -1503,10 +1579,17 @@ export const CABLE = {
   // Grosor y color: es un cable de energía industrial, no un hilo. El trazo base
   // va OSCURO a propósito; lo que brilla son los pulsos, y ese contraste entre
   // el cable apagado y la energía que lo recorre es el efecto.
-  // Grosor CERCA del conector. Se afina hacia el fondo con la profundidad de
-  // cada tramo, hasta grosorLejos.
-  grosor: 7,
-  grosorLejos: 1.8,
+  // Grosor CERCA del conector. Se afina con la profundidad de cada tramo, pero
+  // NO en línea recta: el tamaño aparente va como 1/distancia, así que el trazo
+  // usa grosor / (1 + caidaGrosor * z). Con una interpolación lineal —lo que
+  // había— el afinado se reparte parejo y en pantalla se lee como un cable de
+  // grosor constante que se adelgaza de golpe al final.
+  //
+  // Con la curva, a media profundidad el cable ya mide un 40% de lo que medía
+  // cerca, que es lo que hace una perspectiva de verdad.
+  grosor: 8,
+  caidaGrosor: 3,
+  grosorMinimo: 1.6,
   color: '#16323d',
   // El filo de arriba: la luz de la ventana pegándole por encima. No es un
   // contorno, es una arista iluminada, como los caños de la panorámica.
@@ -1560,11 +1643,13 @@ export const RECORRIDO_CABLE = {
     { x: 54, y: 76.8, z: 0.42 },
     { x: 62.5, y: 74.2, z: 0.58 },
     { x: 68, y: 70.4, z: 0.76 },
-    { x: 75.5, y: 67.4, z: 0.9 }
+    // El último quiebre es el pie de la pared: de ahí el cable SUBE hasta la
+    // caja, que está atornillada a media altura y no apoyada en el zócalo.
+    { x: 76.5, y: 66.5, z: 0.9 }
   ],
 
   // La boca de la caja de conexión, contra la pared del fondo.
-  llegada: { x: 80.5, y: 65, z: 1 }
+  llegada: { x: 80.5, y: 58.6, z: 1 }
 };
 
 export const PULSOS_CABLE = { cuantos: 5, ciclo: 3200, radio: 4.2 };
@@ -1574,23 +1659,25 @@ export const PULSOS_CABLE = { cuantos: 5, ciclo: 3200, radio: 4.2 };
 // SUMERGIDA: chica, en penumbra y con la luz de esa profundidad. No compite con
 // Chip porque está lejos, que era el problema de tenerla adelante.
 export const TOMA_FONDO = {
-  // Contra la pared del fondo, en y=65%: la línea donde el piso encuentra la
-  // pared, medida sobre la panorámica. Estaba en 71%, que son seis puntos
-  // ADENTRO del piso — o sea en primer plano, a la misma profundidad que Chip.
+  // MONTADA EN LA PARED, a media altura. Estaba en y=65%, que es la línea donde
+  // el piso encuentra la pared: o sea apoyada en el zócalo. Una caja de conexión
+  // industrial va atornillada a la pared, no puesta en el suelo.
+  //
+  // 58% la deja sobre la pared del fondo y por encima de la línea del piso, que
+  // es donde iría en un galpón de verdad.
   x: 80.5,
-  y: 65,
+  y: 58,
 
-  // 3% del ancho de la escena, contra el 7,4 de antes. La medida no es una
-  // impresión: la panorámica ya tiene una caja pintada en esa pared y a esa
-  // profundidad, y mide 2,9% del ancho de la escena. Un objeto del mismo tipo,
-  // a la misma distancia, tiene que medir lo mismo.
-  ancho: 3,
+  // 4,7% del ancho. A 3 quedaba tan sumergida que había que buscarla: el
+  // objeto pintado de referencia mide 2,9%, pero ESE es decorado del fondo y no
+  // tiene que leerse — la caja de Chip sí, porque el cable muere ahí y sin verla
+  // el cable termina en la nada. Se sube hasta que se encuentre sin buscarla,
+  // sin llegar a competir con Chip, que ocupa 95% del alto.
+  ancho: 4.7,
 
-  // Y bien sumergida. Es un brillo y no una opacidad: el objeto está entero, lo
-  // que le falta es luz — que es exactamente lo que le pasa a algo que está
-  // lejos en un galpón oscuro. Bajó de 0,52 a 0,34.
-  brillo: 0.34,
-  saturacion: 0.55
+  // Sumergida, pero encontrable. 0,34 la hacía desaparecer contra la pared.
+  brillo: 0.46,
+  saturacion: 0.62
 };
 
 export const VARS_CABLE = {

@@ -63,11 +63,15 @@ import {
   VARS_PANTALLA,
   FILOS_OBJETO,
   FILO_OBJETO_POR_DEFECTO,
+  BASES_OBJETO,
+  LIENZO_OBJETO,
+  VARS_OBJETO,
   VARS_LUZ,
   PREFIJO_CLASE_ESTADO,
   CLASE_DESTELLO_BULBO,
   DURACION_DESTELLO_BULBO_MS,
   NUBE_RAPIDA,
+  ESCALONES_ACCION,
   AROS_ORUGA,
   GIRO_ORUGAS,
   CLASE_ACOMODO,
@@ -691,10 +695,13 @@ export function dibujarCable() {
   nodoCable.setAttribute('viewBox', `0 0 ${Math.round(escena.width)} ${Math.round(escena.height)}`);
   nodoCable.style.setProperty(VARS_CABLE.camino, `path("${completo}")`);
 
-  // EL TRAZO SE AFINA CON LA DISTANCIA. Cada tramo trae su profundidad de 0 a 1
-  // y de ahí sale su grosor; sin esto el cable mide lo mismo a dos metros que a
-  // ocho, y la escena se aplana.
-  const grosorDe = (z) => CABLE.grosor + (CABLE.grosorLejos - CABLE.grosor) * z;
+  // EL TRAZO SE AFINA CON LA DISTANCIA, y NO en línea recta. El tamaño aparente
+  // va como 1/distancia: con una interpolación lineal —lo que había— el afinado
+  // se reparte parejo y en pantalla se lee como un cable de grosor constante que
+  // se adelgaza de golpe al final. Con la curva, a media profundidad ya mide un
+  // 40% de lo que medía cerca, que es lo que hace una perspectiva de verdad.
+  const grosorDe = (z) =>
+    Math.max(CABLE.grosorMinimo, CABLE.grosor / (1 + CABLE.caidaGrosor * z));
 
   const cuerpo = tramos
     .map(
@@ -1036,6 +1043,17 @@ function pintarEstante(objetos, nuevos) {
     const nodo = nodoDeObjeto(objeto);
     nodo.style.setProperty('--filo', FILOS_OBJETO[objeto.id] ?? FILO_OBJETO_POR_DEFECTO);
 
+    // CUÁNTO HAY QUE BAJARLA para que su base toque la tabla. Ninguna silueta
+    // llega al borde de su viewBox y no todas terminan en el mismo lugar: el
+    // hueco va del 10,4% al 20,8%. El corrimiento único del 13% que había era el
+    // promedio, y un promedio deja a las dos puntas mal — la arandela hundida y
+    // la-cosa flotando dos píxeles.
+    const base = BASES_OBJETO[objeto.id] ?? LIENZO_OBJETO;
+    nodo.style.setProperty(
+      VARS_OBJETO.base,
+      `${(((LIENZO_OBJETO - base) / LIENZO_OBJETO) * 100).toFixed(2)}%`
+    );
+
     // Los que llegaron en esta visita entran con su animación, escalonados para
     // que tres hallazgos no aparezcan de golpe.
     if (recienLlegados.has(objeto.id)) {
@@ -1175,9 +1193,66 @@ cuerpo.addEventListener('animationend', (e) => {
   if (e.animationName === 'aplastar') cuerpo.classList.remove(CLASE_CAMBIO);
 });
 
+// ---- Las acciones ocupan a Chip mientras duran ----
+//
+// La acción es INSTANTÁNEA para el modelo: acciones.js devuelve el estado nuevo
+// y estado.js lo guarda en el acto. Lo que dura es la LECTURA. Por eso todo
+// esto vive en ui.js y no toca ni el save ni la cadena — si el jugador cierra la
+// app a mitad de una carga, la carga ya está hecha.
+//
+// NO ES UN COOLDOWN. Mientras Chip carga está cargando, y en el instante en que
+// termina vuelve a estar todo disponible: no hay espera después, no hay
+// penalización, no hay tiempo bloqueado.
+
+let accionEnCursoUI = null;
+let temporizadorFinAccion = null;
+let temporizadorEscalon = null;
+
+// Lo que las barras MUESTRAN, que durante una acción no es lo que el estado
+// dice. Sin esto, render() —que corre en cada tick— pisaría el escalonado con
+// el valor final en el primer repintado.
+let valoresMostrados = null;
+
+export function iniciarAccion({ accion, duracion, anterior, siguiente }) {
+  clearTimeout(temporizadorFinAccion);
+  clearInterval(temporizadorEscalon);
+
+  accionEnCursoUI = accion;
+
+  // La barra sube EN ESCALONES a lo largo de la acción, no de golpe al final.
+  // Cada escalón usa la transición de 400 ms que la barra ya tenía, así que se
+  // lee como energía que va entrando y no como una barra de progreso de
+  // software. Los stats que no cambian se muestran directo.
+  valoresMostrados = { ...anterior };
+  let escalon = 0;
+
+  temporizadorEscalon = setInterval(() => {
+    escalon++;
+    const t = Math.min(1, escalon / ESCALONES_ACCION);
+    for (const nombre of Object.keys(barras)) {
+      valoresMostrados[nombre] = anterior[nombre] + (siguiente[nombre] - anterior[nombre]) * t;
+    }
+    actualizarBarras(siguiente);
+    if (t >= 1) clearInterval(temporizadorEscalon);
+  }, duracion / ESCALONES_ACCION);
+
+  // Red de contención, igual que la del parpadeo: si algo interrumpe los
+  // escalones —pestaña en segundo plano, timers clampeados— los botones tienen
+  // que volver igual. Sin esto, una pestaña oculta dejaría a Chip ocupado para
+  // siempre.
+  temporizadorFinAccion = setTimeout(() => {
+    accionEnCursoUI = null;
+    valoresMostrados = null;
+    clearInterval(temporizadorEscalon);
+    actualizarBarras(siguiente);
+  }, duracion + 80);
+}
+
 function actualizarBarras(estado) {
+  const fuente = valoresMostrados ?? estado;
+
   for (const nombre of Object.keys(barras)) {
-    const valor = clampVisual(estado[nombre]);
+    const valor = clampVisual(fuente[nombre]);
     barras[nombre].fill.style.width = `${valor}%`;
     barras[nombre].valor.textContent = Math.round(valor);
   }
@@ -1194,11 +1269,21 @@ function actualizarBarras(estado) {
   //                  decir y no hay nada que hacer hasta cargarlo.
   //
   // Ninguno de los dos es un cooldown. No hay reloj en ninguna parte de esto.
-  apagarSiNoHaceFalta(btnCargar, aplica('cargar', estado));
-  apagarSiNoHaceFalta(btnLimpiar, aplica('limpiar', estado));
+  // Y hay un TERCER motivo, que es el nuevo: mientras una acción está en curso
+  // se apagan las tres, incluida la que se está ejecutando —para que no se pueda
+  // re-disparar encima—. Usa el MISMO tratamiento visual que "no hace falta": si
+  // el jugador ya aprendió qué quiere decir esa chapa mate, no hay que enseñarle
+  // un segundo idioma.
+  //
+  // Sigue sin haber cooldown. Esto se apaga mientras algo pasa y se prende en el
+  // instante en que termina; no hay ninguna espera de por medio.
+  const ocupado = accionEnCursoUI !== null;
+
+  apagarSiNoHaceFalta(btnCargar, !ocupado && aplica('cargar', estado));
+  apagarSiNoHaceFalta(btnLimpiar, !ocupado && aplica('limpiar', estado));
 
   btnJugar.disabled = !puedeJugar(estado);
-  apagarSiNoHaceFalta(btnJugar, btnJugar.disabled || aplica('jugar', estado));
+  apagarSiNoHaceFalta(btnJugar, !ocupado && (btnJugar.disabled || aplica('jugar', estado)));
 }
 
 function apagarSiNoHaceFalta(boton, hace) {

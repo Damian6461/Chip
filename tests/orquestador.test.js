@@ -21,6 +21,7 @@ import {
   MAX_OBJETOS_POR_VISITA,
   ESTADOS_VISUALES as E,
   DURACION_ESTADO_ACCION_MS,
+  DURACIONES_ACCION,
   DEBOUNCE_VISUAL_MS,
   DURACION_ESPERANDO_MS,
   CATEGORIA_GRANDES,
@@ -382,8 +383,80 @@ prueba('sesión: la acción que SÍ aplica guarda, salta y marca su estado visua
   igual(sesion.estadoVisual(), E.cargando, 'y el sprite es el de cargando');
 
   // El estado de acción vence solo y devuelve la cadena a lo que corresponda.
-  reloj.avanzar(DURACION_ESTADO_ACCION_MS + 1);
+  // La duración es la DE CARGAR y no una sola para las tres: ver DURACIONES_ACCION.
+  reloj.avanzar(DURACIONES_ACCION.cargar + 1);
   verdadero(sesion.estadoVisual() !== E.cargando, 'cuando vence, deja de ser cargando');
+});
+
+// ---- Las acciones ocupan a Chip mientras duran ----
+//
+// Antes las tres duraban lo mismo y se podía apretar Cargar y Jugar en el mismo
+// segundo: Chip pasaba de enchufado a jugando de un cuadro al otro.
+//
+// NO ES UN COOLDOWN, y estas pruebas fijan la diferencia porque es todo el
+// modelo: no hay espera DESPUÉS, no hay penalización, no hay tiempo bloqueado.
+// Mientras Chip carga está cargando, y en el instante en que termina vuelve a
+// estar todo disponible.
+
+prueba('acciones: las tres duran distinto, porque no son lo mismo', () => {
+  verdadero(
+    DURACIONES_ACCION.cargar > DURACIONES_ACCION.limpiar,
+    'cargar tiene que durar más que limpiar: enchufarse es un proceso'
+  );
+  verdadero(
+    DURACIONES_ACCION.limpiar > DURACIONES_ACCION.jugar,
+    'limpiar tiene que durar más que jugar: jugar es un gesto'
+  );
+});
+
+prueba('acciones: con una en curso, la siguiente no entra', () => {
+  const { sesion, vista, guardados } = sesionDePrueba({
+    ...crearEstadoNuevo(),
+    bateria: 20,
+    mantenimiento: 20
+  });
+
+  sesion.actualizarVisual({ inmediato: true });
+  sesion.ejecutar(E.cargando, cargar, 'cargar');
+
+  const guardadosTrasLaPrimera = guardados();
+  const saltosTrasLaPrimera = vista.cuenta.animarAccion;
+
+  sesion.ejecutar(E.limpiando, limpiar, 'limpiar');
+
+  igual(sesion.estado().mantenimiento, 20, 'la segunda no se aplicó');
+  igual(guardados(), guardadosTrasLaPrimera, 'y no guardó nada');
+  igual(vista.cuenta.animarAccion, saltosTrasLaPrimera, 'ni saltó');
+  // En silencio: los botones ya están apagados, así que contestarle "estoy bien"
+  // sería explicarle algo que la pantalla ya le está diciendo.
+  igual(vista.cuenta.estoyBien, 0, 'y no contesta nada');
+  igual(sesion.estadoVisual(), E.cargando, 'sigue cargando');
+});
+
+prueba('acciones: NO es un cooldown — al terminar, la siguiente entra al instante', () => {
+  const { sesion, reloj } = sesionDePrueba({
+    ...crearEstadoNuevo(),
+    bateria: 20,
+    mantenimiento: 20
+  });
+
+  sesion.actualizarVisual({ inmediato: true });
+  sesion.ejecutar(E.cargando, cargar, 'cargar');
+
+  // Justo antes de terminar sigue ocupado.
+  reloj.avanzar(DURACIONES_ACCION.cargar - 10);
+  igual(sesion.ocupado(), true, 'a 10 ms del final todavía está cargando');
+
+  // Y apenas termina, sin un milisegundo de espera extra, la siguiente aplica.
+  reloj.avanzar(20);
+  igual(sesion.ocupado(), false, 'terminó y ya no está ocupado');
+
+  sesion.ejecutar(E.limpiando, limpiar, 'limpiar');
+  cerca(
+    sesion.estado().mantenimiento,
+    20 + VALORES_ACCION.limpiar.mantenimiento,
+    'la limpieza entra sin ninguna espera de por medio'
+  );
 });
 
 prueba('sesión: jugar con el humor al máximo gasta batería pero no festeja', () => {
@@ -413,9 +486,11 @@ prueba('sesión: dos acciones seguidas dejan un save con las dos, no con una', (
 
   sesion.actualizarVisual({ inmediato: true });
 
-  // Sin avanzar el reloj entre las dos: es el caso del jugador que aprieta los
-  // dos botones al toque.
+  // Las dos seguidas, pero con la primera terminada: apretar los dos botones en
+  // el mismo segundo YA NO aplica las dos —ver "con una en curso"— así que lo
+  // que se prueba acá es que dos acciones consecutivas no se pisen el save.
   sesion.ejecutar(E.cargando, cargar, 'cargar');
+  reloj.avanzar(DURACIONES_ACCION.cargar + 1);
   sesion.ejecutar(E.limpiando, limpiar, 'limpiar');
 
   const enMemoria = sesion.estado();
@@ -432,7 +507,7 @@ prueba('sesión: dos acciones seguidas dejan un save con las dos, no con una', (
 
   // Y el timer de la primera acción no revive a la segunda: cuando vence el de
   // limpiar, `accionEnCurso` ya no existe y la cadena decide sola.
-  reloj.avanzar(DURACION_ESTADO_ACCION_MS + 1);
+  reloj.avanzar(DURACIONES_ACCION.limpiar + 1);
   verdadero(sesion.estadoVisual() !== E.limpiando, 'al vencer, la acción suelta el sprite');
   igual(reloj.cuantosTimers(), 0, 'y no queda ningún timer colgado');
 });
@@ -454,6 +529,9 @@ prueba('sesión: un cambio de tramo entre dos acciones no se come ninguna de las
   reloj.ponerHoraDelMundo(T_VEINTIUNA);
   sesion.tick();
 
+  // Se espera a que la carga termine: con una acción en curso la siguiente no
+  // entra, y lo que esta prueba cuida es el save, no esa regla.
+  reloj.avanzar(DURACIONES_ACCION.cargar + 1);
   sesion.ejecutar(E.limpiando, limpiar, 'limpiar');
 
   const enDisco = cargarEstado();
@@ -582,9 +660,12 @@ prueba('sesión: el debounce suprime el cambio pero converge cuando vence', () =
   const { sesion, reloj } = sesionDePrueba({ ...crearEstadoNuevo(), bateria: 40 }, { ahora: T0 });
 
   sesion.actualizarVisual({ inmediato: true });
-  sesion.ejecutar(E.cargando, cargar, 'cargar');
 
-  // Bajar la batería a rojo justo después: el cambio a critico se suprime.
+  // SIN acción de por medio, y es a propósito. La primera versión de esta
+  // prueba disparaba `cargar` para forzar un cambio, y dejó de valer cuando las
+  // acciones pasaron a durar lo suyo: el debounce vence a los 2 s pero cargar
+  // dura 7, así que la cadena seguía devolviendo `cargando` —que le gana a
+  // critico— y la prueba fallaba por una razón que no era la suya.
   sesion.establecerEstado({ ...sesion.estado(), bateria: 5 });
   igual(sesion.actualizarVisual(), false, 'el cambio se suprime');
 

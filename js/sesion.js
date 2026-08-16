@@ -29,6 +29,7 @@
 import {
   ESTADOS_VISUALES as E,
   DURACION_ESTADO_ACCION_MS,
+  DURACIONES_ACCION,
   DEBOUNCE_VISUAL_MS,
   CATEGORIA_GRANDES,
   DURACION_ESPERANDO_MS,
@@ -212,7 +213,10 @@ export function crearSesion({
   }
 
   // Marca el estado visual disparado por una acción y programa su vencimiento.
-  function marcarAccion(nombreVisual) {
+  //
+  // La duración sale de la ACCIÓN y no es una sola para las tres: cargar dura
+  // 7 s, limpiar 4 y jugar 3, porque no son lo mismo. Ver DURACIONES_ACCION.
+  function marcarAccion(nombreVisual, nombreAccion) {
     reloj.cancelar(temporizadorAccion);
     accionEnCurso = nombreVisual;
 
@@ -220,13 +224,38 @@ export function crearSesion({
       temporizadorAccion = null;
       accionEnCurso = null;
       if (actualizarVisual({ inmediato: true })) pintar();
-    }, DURACION_ESTADO_ACCION_MS);
+      else pintar();
+    }, duracionDe(nombreAccion));
+  }
+
+  // Cuánto dura una acción. Se exporta para que ui.js pueda escalonar la barra a
+  // lo largo del mismo tiempo: si los dos números salieran de lugares distintos
+  // se separarían a la primera.
+  function duracionDe(nombreAccion) {
+    return DURACIONES_ACCION[nombreAccion] ?? DURACION_ESTADO_ACCION_MS;
+  }
+
+  // Si hay una acción en curso, no entra otra. NO es un cooldown: en el instante
+  // en que la acción termina vuelve a estar todo disponible, y no hay
+  // penalización de ningún tipo. Es que mientras Chip carga, está cargando.
+  function ocupado() {
+    return accionEnCurso !== null;
   }
 
   // Si la acción devuelve el mismo estado, no aplicó (ej: jugar sin batería):
   // no se guarda ni se redibuja. Las tres acciones tienen estado visual propio;
   // `nombreVisual` acepta null por si alguna futura no lo tuviera.
   function ejecutar(nombreVisual, accion, nombreAccion) {
+    // Con una acción en curso no entra otra, ni siquiera la misma. Sin esto se
+    // podía apretar Cargar y Jugar en el mismo segundo y Chip pasaba de
+    // enchufado a jugando de un cuadro al otro.
+    //
+    // Sale en silencio y no con "estoy bien": los botones ya están apagados
+    // mientras dura, así que el jugador no debería llegar acá — y si llega, por
+    // teclado o por un doble toque, contestarle sería explicarle algo que la
+    // pantalla ya le está diciendo.
+    if (ocupado()) return;
+
     // Si la acción no hace falta —el stat ya está al máximo— Chip contesta en
     // vez de no hacer nada. No es un rechazo: es "ya estoy atendido".
     if (nombreAccion && !aplica(nombreAccion, estado)) {
@@ -242,13 +271,24 @@ export function crearSesion({
     // acción se aplica igual —gasta batería— pero no hay nada que festejar. Así
     // la regla vale también para cualquier acción futura que suba humor.
     const subioElHumor = siguiente.humor > estado.humor;
+    const anterior = estado;
 
     estado = siguiente;
     guardar(estado);
 
     if (subioElHumor) vista.celebrarHumor();
 
-    if (nombreVisual) marcarAccion(nombreVisual);
+    if (nombreVisual) marcarAccion(nombreVisual, nombreAccion);
+
+    // La vista necesita tres cosas para escalonar la barra: de dónde viene, a
+    // dónde va y cuánto tiene. El save YA tiene el valor final —la acción es
+    // instantánea para el modelo— y lo que dura es la lectura, no el efecto.
+    vista.iniciarAccion?.({
+      accion: nombreAccion,
+      duracion: duracionDe(nombreAccion),
+      anterior,
+      siguiente
+    });
 
     // Salta sólo si la acción se aplicó: el early return de arriba ya filtró
     // los casos en que no pasó nada, y un salto sin efecto sería mentirle al
@@ -308,6 +348,7 @@ export function crearSesion({
     esNoche: () => esNocheActual,
     // el juego
     ejecutar,
+    ocupado,
     actualizarVisual,
     actualizarNoche,
     programarEsperando,

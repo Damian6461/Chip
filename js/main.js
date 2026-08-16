@@ -31,6 +31,7 @@ import {
   mostrarGigantes,
   conectarAcciones,
   animarAccion,
+  iniciarAccion,
   celebrarHumor,
   responderEstoyBien
 } from './ui.js';
@@ -81,6 +82,7 @@ const sesion = crearSesion({
     },
     sembrarFondo,
     animarAccion,
+    iniciarAccion,
     celebrarHumor,
     responderEstoyBien
   },

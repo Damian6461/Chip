@@ -2585,14 +2585,14 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 .estante:has(.objeto:nth-child(5)) .objeto:nth-child(3n),
 .estante:has(.objeto:nth-child(5)) .objeto:nth-child(3n + 2) {
   rotate: 0deg;
-  translate: 0 13%;
+  translate: 0 var(--base-objeto, 13%);
   scale: 1 var(--repisa-achatado);
   filter: saturate(0.88) brightness(0.9) drop-shadow(0 1px 2px rgb(0 0 0 / 0.85));
 }
 
 .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
   rotate: -4deg;
-  translate: 0 calc(13% - 3px);
+  translate: 0 calc(var(--base-objeto, 13%) - 3px);
   scale: 0.86 calc(var(--repisa-achatado) * 0.86);
   filter: saturate(0.7) brightness(0.66) drop-shadow(0 1px 2px rgb(0 0 0 / 0.9));
   /* Detrás de sus dos vecinas, no sólo más oscura: si la de atrás pinta encima
@@ -2638,7 +2638,7 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
      (20,5 de 24). El sobrante entre siluetas queda en ±1,2 px, que no se ve —
      y que además ayuda, porque cuatro piezas alineadas al píxel vuelven a
      leerse como una fila de iconos. */
-  translate: 0 13%;
+  translate: 0 var(--base-objeto, 13%);
 }
 
 /* PIEZAS APOYADAS, NO FORMADAS EN FILA.
@@ -2660,7 +2660,7 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   rotate: 4deg;
   /* Un poco más atrás en la tabla: más arriba, más chica y más apagada. Es el
      mismo truco de profundidad que usa el polvo, aplicado a tres píxeles. */
-  translate: 0 calc(13% - 2px);
+  translate: 0 calc(var(--base-objeto, 13%) - 2px);
   scale: 0.92 calc(var(--repisa-achatado) * 0.92);
   filter: saturate(0.82) brightness(0.82) drop-shadow(0 1px 2px rgb(0 0 0 / 0.85));
 }
