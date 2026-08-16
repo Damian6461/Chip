@@ -2341,7 +2341,17 @@ export const SONIDO = {
   // La primera entrada, al prender el sonido: más lenta, para que no aparezca
   // de golpe.
   entradaMs: 1800,
-  pasoCruceMs: 50
+  // Cuántos puntos tiene la curva de igual potencia que se le pasa a
+  // setValueCurveAtTime. No es una frecuencia de refresco —la curva la
+  // interpola el motor de audio, muestra por muestra— sino cuántos puntos
+  // definen su forma. 128 sobre un seno de un cuarto de vuelta deja el error de
+  // interpolación por debajo de 0,01 dB, que es inaudible.
+  //
+  // Reemplaza a `pasoCruceMs`, que era el intervalo del setInterval que movía la
+  // ganancia a mano. Ese intervalo se estrangulaba en segundo plano y dejaba al
+  // que salía con ganancia todavía arriba cuando el archivo terminaba: un corte
+  // seco. Ahora la rampa la programa el reloj de audio de una sola vez.
+  pasosCurva: 128
 };
 
 export const PARAM_DEBUG = 'debug';

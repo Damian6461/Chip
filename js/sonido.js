@@ -22,32 +22,79 @@
 //    -27 en el medio— así que en bucle dejaban un pozo de diez segundos por
 //    vuelta. Los fades se recortaron, y lo que queda es un salto de fase en la
 //    unión, que es lo que el crossfade tapa.
+//
+// ---- POR QUÉ EL CROSSFADE PASÓ A WEB AUDIO ----
+//
+// La primera versión ya cruzaba dos <audio>, y el empalme se notaba igual. Dos
+// defectos, los dos de reloj y de curva, y ninguno se arregla tocando números:
+//
+// A. LA CURVA ERA LINEAL. Dos grabaciones de ambiente no están correlacionadas,
+//    así que sus potencias se suman, no sus amplitudes: con ganancias lineales,
+//    en el medio del cruce las dos valen 0,5 y la potencia total cae a
+//    sqrt(0,5² + 0,5²) = 0,707, o sea -3 dB. Un pozo de 3 dB en el medio de cada
+//    vuelta es exactamente "el empalme se nota". La curva de igual potencia
+//    —seno y coseno— mantiene la suma de cuadrados en 1 y no tiene pozo.
+//
+// B. EL RELOJ ERA setTimeout, PROGRAMADO A UN MINUTO VISTA. Un timer de 61
+//    segundos en un teléfono se atrasa y se estrangula, y si llega tarde el
+//    archivo que sale YA TERMINÓ: silencio, y después el otro arranca en seco.
+//    Y la rampa corría en un setInterval de 50 ms, que se estrangula igual, así
+//    que el que salía podía llegar al final del archivo con la ganancia todavía
+//    arriba — un corte seco, que es un click.
+//
+// La versión de ahora usa dos relojes y ninguno es el de JS:
+//
+//   - las rampas van sobre el RELOJ DE AUDIO (`ctx.currentTime`), que es
+//     exacto a nivel de muestra y no lo afecta que la pestaña esté en segundo
+//     plano. Se programan de una y el navegador las ejecuta solo.
+//   - el disparo de la vuelta va sobre el RELOJ DEL MEDIO (`timeupdate` del
+//     propio <audio>), que avanza con la reproducción y no con el event loop.
+//
+// Los <audio> se quedan: son los que permiten que el archivo se transmita en vez
+// de decodificarse entero en memoria —un ambiente de 64 s en PCM son 22 MB— y
+// que `preload: 'none'` siga valiendo. Lo que cambia es que su salida pasa por un
+// GainNode en vez de por su propiedad `volume`.
 
 import { AMBIENTES, SONIDO } from './config.js';
 
-// Dos elementos por ambiente: mientras uno termina, el otro ya arrancó. Es la
-// única forma de cruzar un audio consigo mismo — un solo <audio> con `loop`
-// vuelve al principio de golpe.
-let capas = [];
+let capas = []; // { audio, ganancia }
 let indiceActivo = 0;
 let franjaActual = null;
 let encendido = false;
 let cargados = false;
-let temporizadorCruce = null;
 let pausadoPorFoco = false;
+let ctx = null;
+let cruzando = false;
+
+// EL CONTEXTO SE CREA EN EL GESTO, no al importar el módulo. Un AudioContext
+// creado sin gesto nace suspendido y en algunos navegadores queda marcado como
+// bloqueado para siempre.
+function contexto() {
+  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  return ctx;
+}
 
 function crearCapa() {
   const audio = new Audio();
   audio.preload = 'none';
-  audio.volume = 0;
-  // `loop` queda en false a propósito: el bucle lo maneja programarCruce, que
-  // arranca la otra capa ANTES de que ésta termine.
+  // El volumen del elemento se queda en 1 y no se toca nunca: quien manda es el
+  // GainNode. Mezclar los dos controles daría una ganancia que es el producto de
+  // dos cosas y ninguna de las dos sabría de la otra.
+  audio.volume = 1;
+  // `loop` en false a propósito: el bucle lo hace el crossfade, que arranca la
+  // otra capa ANTES de que ésta termine.
   audio.loop = false;
   document.body.appendChild(audio);
-  return audio;
+
+  const c = contexto();
+  const fuente = c.createMediaElementSource(audio);
+  const ganancia = c.createGain();
+  ganancia.gain.value = 0;
+  fuente.connect(ganancia).connect(c.destination);
+
+  return { audio, ganancia };
 }
 
-// La descarga, que pasa una sola vez y sólo si alguien prende el sonido.
 function asegurarCargado() {
   if (cargados) return;
   cargados = true;
@@ -58,60 +105,97 @@ function rutaDe(franja) {
   return AMBIENTES[franja] ?? null;
 }
 
+// LAS DOS CURVAS DE IGUAL POTENCIA. seno para el que entra, coseno para el que
+// sale: sen²+cos² = 1, así que la potencia total es constante todo el cruce.
+//
+// Se arman como arrays y se pasan a setValueCurveAtTime en vez de encadenar
+// rampas lineales, porque una rampa lineal entre dos puntos vuelve a ser una
+// recta y el pozo vuelve.
+function curvasDeCruce(pasos, volumen) {
+  const entra = new Float32Array(pasos);
+  const sale = new Float32Array(pasos);
+
+  for (let i = 0; i < pasos; i++) {
+    const t = (i / (pasos - 1)) * (Math.PI / 2);
+    entra[i] = Math.sin(t) * volumen;
+    sale[i] = Math.cos(t) * volumen;
+  }
+
+  return { entra, sale };
+}
+
 // El crossfade, que sirve para las dos cosas: cruzar de un tramo del día a otro
 // y cruzar el archivo consigo mismo al terminar. Es el mismo mecanismo porque es
 // el mismo problema — dos fuentes y una transición.
-function cruzar(hacia, ruta, duracion) {
+function cruzar(hacia, ruta, duracionMs) {
+  const c = contexto();
   const entra = capas[hacia];
   const sale = capas[1 - hacia];
 
-  if (entra.getAttribute('src') !== ruta) entra.src = ruta;
-  entra.currentTime = 0;
-  entra.volume = 0;
-  entra.play().catch(() => {
+  if (entra.audio.getAttribute('src') !== ruta) entra.audio.src = ruta;
+
+  // `currentTime = 0` sólo cuando ya hay metadatos. Antes de eso el navegador lo
+  // ignora o tira, y de todos modos un elemento recién cargado arranca en 0.
+  if (entra.audio.readyState > 0) entra.audio.currentTime = 0;
+  entra.audio.play().catch(() => {
     // Sin gesto previo el navegador rechaza. No es un error que valga la pena
     // reportar: el toggle lo va a volver a intentar.
   });
 
-  const pasos = Math.max(1, Math.round(duracion / SONIDO.pasoCruceMs));
-  let paso = 0;
+  const dur = duracionMs / 1000;
+  const ahora = c.currentTime;
+  const { entra: subida, sale: bajada } = curvasDeCruce(SONIDO.pasosCurva, SONIDO.volumen);
 
-  clearInterval(temporizadorCruce);
-  temporizadorCruce = setInterval(() => {
-    paso++;
-    const t = Math.min(1, paso / pasos);
-    entra.volume = SONIDO.volumen * t;
-    sale.volume = SONIDO.volumen * (1 - t);
+  for (const capa of [entra, sale]) {
+    capa.ganancia.gain.cancelScheduledValues(ahora);
+    // Anclar el valor actual antes de la curva: sin esto, setValueCurveAtTime
+    // salta al primer punto de la curva y ese salto ES un click.
+    capa.ganancia.gain.setValueAtTime(capa.ganancia.gain.value, ahora);
+  }
 
-    if (t >= 1) {
-      clearInterval(temporizadorCruce);
-      sale.pause();
-    }
-  }, SONIDO.pasoCruceMs);
+  entra.ganancia.gain.setValueCurveAtTime(subida, ahora, dur);
+  sale.ganancia.gain.setValueCurveAtTime(bajada, ahora, dur);
 
   indiceActivo = hacia;
-  programarCruce();
+  cruzando = true;
+
+  // El que sale se pausa cuando su ganancia YA ES CERO, no antes. El timer acá
+  // no puede producir un click aunque llegue tarde: llega a un elemento que ya
+  // está en silencio.
+  setTimeout(() => {
+    cruzando = false;
+    if (capas[indiceActivo] !== entra) return;
+    sale.audio.pause();
+  }, duracionMs + 120);
 }
 
-// El bucle. Se programa el cruce consigo mismo para que arranque ANTES del final
-// del archivo, con el mismo largo que el cruce entre tramos.
-function programarCruce() {
-  const activo = capas[indiceActivo];
+// EL DISPARO DE LA VUELTA VA SOBRE EL RELOJ DEL MEDIO.
+//
+// `timeupdate` lo emite el propio elemento mientras reproduce, así que avanza
+// con el audio y no con el event loop: si la pestaña se estrangula, el evento se
+// espacia pero NO se adelanta ni se atrasa respecto de la música. Un setTimeout
+// programado a un minuto vista sí se atrasa, y ahí está el corte.
+function vigilarElFinal(capa) {
+  capa.audio.addEventListener('timeupdate', () => {
+    if (!encendido || pausadoPorFoco || cruzando) return;
+    if (capas[indiceActivo] !== capa) return;
 
-  const alTanto = () => {
-    const dura = activo.duration;
+    const dura = capa.audio.duration;
     if (!Number.isFinite(dura)) return;
 
-    const faltan = (dura - activo.currentTime) * 1000 - SONIDO.cruceMs;
-    setTimeout(() => {
-      if (!encendido || pausadoPorFoco) return;
-      if (capas[indiceActivo] !== activo) return; // ya cruzó por cambio de tramo
-      cruzar(1 - indiceActivo, activo.getAttribute('src'), SONIDO.cruceMs);
-    }, Math.max(0, faltan));
-  };
+    if (dura - capa.audio.currentTime <= SONIDO.cruceMs / 1000) {
+      cruzar(1 - indiceActivo, capa.audio.getAttribute('src'), SONIDO.cruceMs);
+    }
+  });
 
-  if (Number.isFinite(activo.duration)) alTanto();
-  else activo.addEventListener('loadedmetadata', alTanto, { once: true });
+  // Red de contención. Si por lo que sea el archivo llega al final sin haber
+  // cruzado —un `timeupdate` que no llegó, una duración que apareció tarde— la
+  // vuelta se da igual. Sin esto el galpón se queda mudo y nada lo dice.
+  capa.audio.addEventListener('ended', () => {
+    if (!encendido || pausadoPorFoco) return;
+    if (capas[indiceActivo] !== capa) return;
+    cruzar(1 - indiceActivo, capa.audio.getAttribute('src'), SONIDO.cruceMs);
+  });
 }
 
 // ---- La interfaz del módulo ----
@@ -134,12 +218,31 @@ export function encender(activo) {
   encendido = activo;
 
   if (!activo) {
-    clearInterval(temporizadorCruce);
-    for (const capa of capas) capa.pause();
+    // Sin contexto no hay nada que apagar: nadie prendió el sonido todavía. Pasa
+    // en el arranque y al reiniciar la partida, que llaman a encender(false) sin
+    // que haya habido gesto.
+    if (!ctx) return;
+
+    for (const capa of capas) {
+      capa.ganancia.gain.cancelScheduledValues(ctx.currentTime);
+      capa.ganancia.gain.setValueAtTime(0, ctx.currentTime);
+      capa.audio.pause();
+    }
     return;
   }
 
   asegurarCargado();
+  // El contexto puede haber nacido suspendido: este click es el gesto que lo
+  // habilita.
+  contexto().resume();
+
+  if (!capas[0].vigilada) {
+    for (const capa of capas) {
+      vigilarElFinal(capa);
+      capa.vigilada = true;
+    }
+  }
+
   const ruta = rutaDe(franjaActual);
   if (ruta) cruzar(indiceActivo, ruta, SONIDO.entradaMs);
 }
@@ -152,9 +255,9 @@ document.addEventListener('visibilitychange', () => {
   if (!encendido || !cargados) return;
 
   if (pausadoPorFoco) {
-    for (const capa of capas) capa.pause();
+    for (const capa of capas) capa.audio.pause();
   } else {
-    capas[indiceActivo].play().catch(() => {});
-    programarCruce();
+    contexto().resume();
+    capas[indiceActivo].audio.play().catch(() => {});
   }
 });

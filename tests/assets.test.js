@@ -19,7 +19,7 @@
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { prueba, igual, verdadero } from './runner.js';
-import { RUTAS_SPRITES, RUTAS_OJOS, RUTAS_FONDOS, AMBIENTES } from '../js/config.js';
+import { RUTAS_SPRITES, RUTAS_OJOS, RUTAS_FONDOS, AMBIENTES, SONIDO } from '../js/config.js';
 import {
   LIMITES_PESO,
   PRESUPUESTO_TOTAL_KB,
@@ -153,4 +153,90 @@ prueba('sonido: toda ruta de AMBIENTES existe en el disco', () => {
       `${franja} apunta a ${ruta}, que no está en el repo`
     );
   }
+});
+
+// ---- El crossfade del loop ----
+//
+// sonido.js no se puede importar en Node —crea elementos y escucha en document—
+// así que se lee como texto, igual que style.css en composicion.test.js. Lo que
+// se defiende acá no es una implementación sino dos propiedades que ya fallaron
+// una vez en producción: el empalme se escuchaba en el teléfono.
+
+const SONIDO_JS = readFileSync(join(RAIZ, 'js/sonido.js'), 'utf8');
+
+// LA CURVA TIENE QUE SER DE IGUAL POTENCIA, y esto no es preferencia.
+//
+// Dos grabaciones de ambiente no están correlacionadas, así que en la mezcla se
+// suman sus POTENCIAS, no sus amplitudes. Con ganancias lineales, en el medio
+// del cruce las dos valen 0,5 y la potencia total queda en sqrt(0,5²+0,5²) =
+// 0,707: un pozo de 3 dB en cada vuelta. Con seno y coseno, sen²+cos² = 1 y no
+// hay pozo.
+prueba('sonido: el crossfade usa curvas de igual potencia y no rampas lineales', () => {
+  verdadero(
+    /Math\.sin\(/.test(SONIDO_JS) && /Math\.cos\(/.test(SONIDO_JS),
+    'las curvas se arman con seno y coseno'
+  );
+  verdadero(
+    SONIDO_JS.includes('setValueCurveAtTime'),
+    'y se programan de una sobre el reloj de audio'
+  );
+});
+
+// Y la propiedad en sí, calculada igual que en el módulo: la suma de potencias
+// no puede moverse. Si alguien cambia la forma de la curva, esto lo agarra
+// aunque siga habiendo un Math.sin en el archivo.
+prueba('sonido: la suma de potencias del cruce es plana', () => {
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (let i = 0; i < SONIDO.pasosCurva; i++) {
+    const u = i / (SONIDO.pasosCurva - 1);
+    const p = Math.sin((u * Math.PI) / 2) ** 2 + Math.cos((u * Math.PI) / 2) ** 2;
+    min = Math.min(min, p);
+    max = Math.max(max, p);
+  }
+
+  const rizado = 20 * Math.log10(Math.sqrt(max) / Math.sqrt(min));
+  verdadero(rizado < 0.01, `el rizado es ${rizado.toFixed(4)} dB y tiene que ser inaudible`);
+});
+
+// EL RELOJ DE JS NO PUEDE MOVER LA GANANCIA. La versión anterior movía el
+// volumen con un setInterval de 50 ms y disparaba la vuelta con un setTimeout
+// programado a un minuto vista. En un teléfono los dos se estrangulan: si el
+// timer llega tarde el archivo que sale YA TERMINÓ —silencio y arranque en
+// seco— y si la rampa se estrangula, el que sale llega al final con la ganancia
+// arriba, que es un click.
+prueba('sonido: la ganancia no la mueve ningún timer de JS', () => {
+  // SE MIRA EL CÓDIGO, NO LOS COMENTARIOS. La cabecera de sonido.js explica por
+  // qué el setInterval se fue, así que buscar la palabra en el archivo entero da
+  // rojo sobre código correcto. Dos intentos anteriores de este test fallaron
+  // así —uno por el comentario y otro por un lookahead que no frenaba el
+  // retroceso del \s*— y un test que da rojo por su propia expresión regular es
+  // peor que no tenerlo.
+  const codigo = SONIDO_JS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+  verdadero(!codigo.includes('setInterval'), 'no queda ningún setInterval moviendo ganancia');
+
+  // Y las asignaciones a .volume se extraen y se comparan por valor, en vez de
+  // intentar describir "distinto de 1" con una clase de caracteres.
+  const asignaciones = [...codigo.matchAll(/\.volume\s*=\s*([^;\n]+)/g)].map((m) => m[1].trim());
+  igual(
+    asignaciones.filter((v) => v !== '1').join(', '),
+    '',
+    'el volumen del elemento se queda en 1: quien manda es el GainNode'
+  );
+});
+
+// Y la vuelta se dispara con el reloj del MEDIO, que avanza con la
+// reproducción. Si la pestaña se estrangula, timeupdate se espacia pero no se
+// desfasa respecto del audio; un setTimeout largo sí.
+prueba('sonido: la vuelta la dispara el reloj del medio, no el de JS', () => {
+  verdadero(SONIDO_JS.includes("'timeupdate'"), 'escucha timeupdate del propio elemento');
+  verdadero(SONIDO_JS.includes("'ended'"), 'y tiene la red de contención por si no llega');
+});
+
+// El loop nativo NO alcanza, y es la razón de que todo esto exista: reinicia en
+// seco, así que siempre deja discontinuidad en la unión.
+prueba('sonido: el loop nativo queda apagado', () => {
+  verdadero(/loop\s*=\s*false/.test(SONIDO_JS), 'audio.loop en false: el bucle lo hace el cruce');
 });
