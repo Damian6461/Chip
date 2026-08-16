@@ -300,6 +300,11 @@ export const VARS_ANIMACION = {
 };
 
 // Clase que dispara el salto. La declara style.css, la pone y la saca ui.js.
+// El LED de las teclas disponibles. Va fuera de fase con la antena y con el
+// rayo del pecho: tres latidos del mismo largo se sincronizan y el aparato
+// entero se vuelve un metrónomo.
+export const CICLO_LED_MS = 2400;
+
 export const CLASE_SALTO = 'saltando';
 
 // ---- El cambio de sprite ----

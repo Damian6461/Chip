@@ -10,6 +10,7 @@ import {
   DURACION_PRESION_MS,
   VARS_ANIMACION,
   CLASE_SALTO,
+  CICLO_LED_MS,
   ESTADOS_DE_ACCION,
   DURACION_SQUASH_MS,
   CLASE_CAMBIO,
@@ -150,6 +151,7 @@ raiz.style.setProperty(VARS_ANIMACION.cicloRebote, `${CICLO_REBOTE_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.duracionSalto, `${DURACION_SALTO_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.transicionBarra, `${TRANSICION_BARRA_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.duracionPresion, `${DURACION_PRESION_MS}ms`);
+raiz.style.setProperty('--ciclo-led', `${CICLO_LED_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.transicionPanel, `${TRANSICION_PANEL_MS}ms`);
 raiz.style.setProperty(VARS_ANIMACION.duracionLlegada, `${DURACION_LLEGADA_MS}ms`);
 raiz.style.setProperty(VARS_CAMBIO.duracionSquash, `${DURACION_SQUASH_MS}ms`);

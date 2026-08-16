@@ -2164,6 +2164,7 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 }
 
 #acciones button {
+  position: relative;
   flex: 1;
   /* Target de pulgar: 44 px es el mínimo cómodo, y con el ícono arriba del
      texto la tecla queda más alta que eso igual. */
@@ -2173,44 +2174,136 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 6px 0;
-  background: linear-gradient(180deg, #242a35 0%, #191d26 100%);
-  border: 1px solid #3a4150;
-  border-radius: 2px;
-  color: #e6e6e6;
+  padding: 8px 0 6px;
+  overflow: hidden;
+
+  /* CHAPA CON RELIEVE, no una caja gris.
+     El degradé tiene un quiebre marcado en el 52%: arriba la cara que recibe
+     luz, abajo la que queda en sombra. Un degradé parejo se lee como plástico;
+     el quiebre es lo que dice "esto es metal doblado". */
+  background:
+    linear-gradient(180deg, #39414f 0%, #2b323d 52%, #1c212a 52.5%, #141821 100%);
+  border: 1px solid #10141b;
+  border-radius: 3px;
+  color: #cdd3dd;
   font-size: 12px;
+  letter-spacing: 0.02em;
   cursor: pointer;
+
+  /* Bisel claro arriba, sombra abajo, y el canto que le da espesor. */
   box-shadow:
-    0 2px 0 rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+    0 2px 0 #0a0d12,
+    0 3px 4px rgba(0, 0, 0, 0.45);
   transition:
     transform var(--duracion-presion) ease-out,
     box-shadow var(--duracion-presion) ease-out,
-    border-color var(--duracion-presion) ease-out;
+    filter var(--duracion-presion) ease-out;
 }
 
-/* El hover toma el naranja de los acentos de Chip, el mismo de la barra de
-   humor: el acento del aparato es el del personaje. */
+/* EL ÍCONO VA GRABADO, no dibujado encima. El truco es de dos capas: el trazo
+   propio en un gris apenas más oscuro que la chapa, y debajo una copia
+   desplazada un píxel hacia abajo en casi blanco. Eso es exactamente lo que se
+   ve en un metal estampado: el filo de abajo del surco atrapa la luz. */
+#acciones button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: #10141b;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.13));
+  transition: stroke var(--duracion-presion) ease-out;
+}
+
+/* El botón Cargar tiene el rayo relleno, no trazado. */
+#btn-cargar svg {
+  fill: #10141b;
+  stroke: none;
+}
+
+/* LUZ PROPIA cuando la acción está disponible. Un LED chico arriba a la
+   derecha: es lo que convierte una chapa en un aparato encendido. */
+.led {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-bateria);
+  box-shadow: 0 0 4px 1px color-mix(in srgb, var(--color-bateria) 70%, transparent);
+  animation: latir-led var(--ciclo-led) ease-in-out infinite;
+}
+
+@keyframes latir-led {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
 #acciones button:hover:not(:disabled) {
-  border-color: var(--color-humor);
+  filter: brightness(1.12);
   color: #fff;
 }
 
+/* SE HUNDE DE VERDAD: baja 2 px —el espesor entero del canto— y el canto
+   desaparece. Con 1 px y el canto puesto, la tecla se movía pero no se hundía. */
 #acciones button:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: translateY(2px);
   box-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 2px 5px rgba(0, 0, 0, 0.6),
+    0 0 0 #0a0d12;
 }
 
-/* Deshabilitado tiene que cantarse de un vistazo, no adivinarse: sin borde, sin
-   canto y muy apagado. Una tecla que no está no se puede confundir con una que
-   sí. El :not(:disabled) de las reglas de arriba deja el hover afuera solo. */
+/* El ícono destella un instante al tocar: el surco se llena de luz. */
+#acciones button:active:not(:disabled) svg {
+  stroke: var(--color-bateria);
+  filter: drop-shadow(0 0 4px var(--color-bateria));
+}
+
+#btn-cargar:active:not(:disabled) svg {
+  fill: var(--color-bateria);
+  stroke: none;
+}
+
+/* Y el LED pulsa fuerte, una sola vez. */
+#acciones button:active:not(:disabled) .led {
+  animation: pulso-led var(--duracion-presion) ease-out;
+}
+
+@keyframes pulso-led {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(2.4); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Deshabilitado tiene que cantarse de un vistazo, no adivinarse: la chapa se
+   apaga, el relieve se aplana y el LED se APAGA del todo. Que el LED esté o no
+   esté es la diferencia más rápida de leer que hay — antes que el color, antes
+   que el contraste. */
 #acciones button:disabled {
-  opacity: 0.28;
-  border-color: transparent;
-  box-shadow: none;
+  background: linear-gradient(180deg, #22262e 0%, #1a1e25 52%, #14171d 52.5%, #101319 100%);
+  color: #6b727e;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 1px 0 #0a0d12;
   cursor: not-allowed;
+}
+
+#acciones button:disabled .led {
+  display: none;
+}
+
+#acciones button:disabled svg {
+  stroke: #2a2f39;
+  filter: none;
+}
+
+#btn-cargar:disabled svg {
+  fill: #2a2f39;
 }
 
 /* Los íconos son tres trazos cada uno y no llevan significado propio: el texto
@@ -2275,6 +2368,17 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
      cambio de estado, no movimiento— pero sin viaje ni transición. */
   #acciones button {
     transition: none;
+  }
+
+  /* El LED se queda prendido y quieto: sigue diciendo que la acción está
+     disponible, que es su trabajo. Lo que se va es el latido. */
+  .led {
+    animation: none;
+    opacity: 1;
+  }
+
+  #acciones button:active:not(:disabled) .led {
+    animation: none;
   }
 
   #acciones button:active:not(:disabled) {
