@@ -333,14 +333,35 @@ export const RESPIRACION_SOMBRA = { x: 0.94, opacidad: 0.82 };
 
 // Salto de acción: sube y vuelve, montado encima de la respiración. Sigue siendo
 // TRASLACIÓN, a propósito — ahí sí se quiere que despegue del piso.
-export const DURACION_SALTO_MS = 300;
+// EL SALTO TIENE TRES TIEMPOS, no dos. Subir y bajar simétrico es lo que hace
+// que un salto se vea mecánico: un cuerpo con masa se agacha antes de saltar,
+// despega rápido, y cae más lento de lo que subió porque en la subida el impulso
+// pelea contra el peso y en la bajada van los dos para el mismo lado.
+//
+// La anticipación es lo que más aporta y lo que más se olvida: sin ella el salto
+// arranca de la nada y se lee como un corte de montaje.
+export const SALTO = {
+  anticipacion: 80, // se agacha
+  impulso: 120, // despega, ease-out
+  caida: 250, // vuelve, con rebote al aterrizar
+  agacha: 3, // px hacia abajo antes de despegar
+  altura: 8, // px de despegue
+  rebote: 2 // px de sobrepaso al aterrizar
+};
+
+export const DURACION_SALTO_MS = SALTO.anticipacion + SALTO.impulso + SALTO.caida;
 
 // Cuánto tarda una barra en viajar hasta su nuevo ancho en vez de saltar.
 export const TRANSICION_BARRA_MS = 400;
 
 // Cuánto tarda un botón en hundirse y volver. Corto a propósito: es el acuse de
 // recibo del dedo, no una animación. Más lento se siente lento, no suave.
-export const DURACION_PRESION_MS = 90;
+// SOLTAR ES MÁS LENTO QUE APRETAR, siempre. El dedo baja de golpe y el material
+// vuelve solo; que las dos mitades duren lo mismo es lo que hace que un botón se
+// sienta de plástico duro. 60 abajo y 140 arriba.
+export const PRESION_BOTON = { baja: 60, sube: 140 };
+
+export const DURACION_PRESION_MS = PRESION_BOTON.baja + PRESION_BOTON.sube;
 
 // La otra punta de estos tres números está en style.css, que no puede importar
 // un módulo. En vez de duplicarlos ahí (sería un cuarto carve-out de la regla
@@ -349,6 +370,17 @@ export const DURACION_PRESION_MS = 90;
 // que corresponde.
 export const VARS_ANIMACION = {
   cicloRespiracion: '--ciclo-respiracion',
+  saltoAgacha: '--salto-agacha',
+  saltoAltura: '--salto-altura',
+  saltoRebote: '--salto-rebote',
+  presionBaja: '--presion-baja',
+  presionSube: '--presion-sube',
+  llegadaDesde: '--llegada-desde',
+  llegadaAplaste: '--llegada-aplaste',
+  zetaDesde: '--zeta-desde',
+  zetaHasta: '--zeta-hasta',
+  corazonGiro: '--corazon-giro',
+  corazonBamboleo: '--corazon-bamboleo',
   respiracionY: '--respiracion-y',
   respiracionX: '--respiracion-x',
   sombraX: '--sombra-respiracion-x',
@@ -417,7 +449,21 @@ export const CLASE_PANEL_VISIBLE = 'visible';
 
 // Cuánto dura la llegada de un objeto nuevo al estante: escala de 0 a 1 con un
 // rebotecito. Corta — es un "apareció", no una ceremonia.
-export const DURACION_LLEGADA_MS = 400;
+// LA LLEGADA AL ESTANTE ES UNA CAÍDA, no una aparición. Un objeto que aparece
+// creciendo desde cero se lee como UI; uno que cae desde arriba y golpea contra
+// la madera se lee como una cosa con peso.
+//
+// El squash del aterrizaje dura poquísimo a propósito: 60 ms es lo que tarda un
+// golpe. Más largo y deja de ser un impacto para ser una animación de goma.
+export const LLEGADA = {
+  caida: 260, // desde 20 px arriba, acelerando
+  golpe: 60, // el squash contra el estante
+  recupera: 120,
+  desde: 20, // px por encima de su lugar
+  aplaste: 0.85 // scaleY en el golpe
+};
+
+export const DURACION_LLEGADA_MS = LLEGADA.caida + LLEGADA.golpe + LLEGADA.recupera;
 
 // Escalonado entre objetos cuando llegan varios en la misma visita, para que no
 // aparezcan los tres de golpe.
@@ -1432,6 +1478,12 @@ export const DURACION_PULSO_MS = 900;
 export const DURACION_BURBUJA_MS = 2200;
 
 // Un corazón tarda esto en nacer, subir en arco y apagarse.
+// EL CORAZÓN SE TAMBALEA. Uno que sube perfectamente derecho parece un ícono;
+// uno que oscila y gira parece que flota. El giro CAMBIA DE SENTIDO a mitad de
+// camino —es una hoja cayendo al revés— y ese cambio es lo que lo hace leer como
+// algo liviano en el aire y no como un sprite con una curva.
+export const CORAZON = { giro: 8, bamboleo: 5 }; // grados y px
+
 export const DURACION_CORAZON_MS = 2400;
 export const ESPERA_ENTRE_CORAZONES_MS = 800;
 
@@ -1484,6 +1536,12 @@ export const PREFIJO_CLASE_ESTADO = 'estado-';
 // el conjunto se vuelve un metrónomo.
 
 // Cada "z" del standby tarda esto en nacer, subir y apagarse.
+// Las Z se ACERCAN mientras suben —escalan de 0,6 a 1,1— y se apagan ANTES de
+// terminar el viaje, así se disuelven en el aire en vez de desaparecer en un
+// punto. Una Z que se apaga justo al final del recorrido se lee como que la
+// cortaron.
+export const ZETA = { desde: 0.6, hasta: 1.1, seApagaEn: 0.78 };
+
 export const CICLO_ZETA_MS = 4000;
 
 // Una chispa de carga. El estado `cargando` dura DURACION_ESTADO_ACCION_MS

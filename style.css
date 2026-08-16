@@ -881,7 +881,9 @@ body.es-noche #rayo {
    derecho, interno izquierdo, externo derecho— para que el abanico no se lea
    como dos pares saliendo al mismo tiempo. */
 .estado-feliz #corazones .corazon {
-  animation: flotar-corazon var(--duracion-corazon) ease-out infinite;
+  animation:
+    flotar-corazon var(--duracion-corazon) infinite,
+    girar-corazon var(--duracion-corazon) ease-in-out infinite;
 }
 
 .estado-feliz #corazones .corazon:nth-child(3) {
@@ -899,20 +901,48 @@ body.es-noche #rayo {
 /* Sube separándose del cuerpo: primero casi derecho, después abriéndose hacia su
    lado. Un corazón que sube en vertical parece un globo; uno que cruza al otro
    lado le pasa por encima a la antena. Este hace las dos cosas bien. */
+/* EL CORAZÓN SE TAMBALEA. Uno que sube perfectamente derecho parece un ícono;
+   uno que oscila y gira parece que flota.
+
+   Tres cosas se suman:
+   - Sube DESACELERANDO (ease-out): nace rápido y se va frenando, como algo
+     liviano que pierde impulso en el aire.
+   - Bamboleo horizontal: se va para un lado, vuelve, y recién ahí se abre hacia
+     su costado. Es una hoja cayendo, al revés.
+   - GIRO QUE CAMBIA DE SENTIDO a mitad de camino. Ese cambio es el detalle: un
+     giro monótono se lee como un sprite con una curva; uno que se arrepiente se
+     lee como algo empujado por el aire.
+
+   El giro va en rotate y el viaje en transform: son propiedades distintas y
+   se componen solas, así que se pueden escribir por separado sin pisarse. */
 @keyframes flotar-corazon {
   0% {
     transform: translate(0, 0) scale(0.6);
     opacity: 0;
+    animation-timing-function: ease-out;
   }
   30% {
     opacity: 1;
   }
   55% {
-    transform: translate(calc(var(--lado, 1) * 4px), -18px) scale(1);
+    transform: translate(calc(var(--lado, 1) * var(--corazon-bamboleo) * -0.6), -18px) scale(1);
+    animation-timing-function: ease-out;
   }
   100% {
     transform: translate(calc(var(--lado, 1) * 9px), -34px) scale(0.85);
     opacity: 0;
+  }
+}
+
+@keyframes girar-corazon {
+  0% {
+    rotate: calc(var(--lado, 1) * var(--corazon-giro) * -1);
+  }
+  50% {
+    rotate: calc(var(--lado, 1) * var(--corazon-giro) * 0.5);
+  }
+  100% {
+    rotate: calc(var(--lado, 1) * var(--corazon-giro) * -0.7);
   }
 }
 
@@ -943,7 +973,9 @@ body.es-noche #rayo {
 
 /* La tanda por evento: una sola pasada, sin loop, y en cualquier estado. */
 #corazones-extra.celebrando .corazon {
-  animation: flotar-corazon var(--duracion-corazon) ease-out;
+  animation:
+    flotar-corazon var(--duracion-corazon),
+    girar-corazon var(--duracion-corazon) ease-in-out;
 }
 
 #corazones-extra.celebrando .corazon:nth-child(2) {
@@ -1713,9 +1745,16 @@ body.es-noche #resplandor {
   font-size: calc(var(--alto-chip) * 0.082);
 }
 
+/* LAS Z SE ACERCAN Y SE DISUELVEN. Escalan de 0,6 a 1,1 mientras suben —o sea
+   se acercan a la cámara— y se apagan ANTES de terminar el viaje: una Z que se
+   apaga justo en el último fotograma se lee como que la cortaron, no como que se
+   desvaneció.
+
+   Sale del linear que tenía: ninguna animación de este juego usa linear salvo
+   las nubes y el polvo, que son fondo y no cuerpos. */
 .estado-standby .zeta {
   display: block;
-  animation: flotar var(--ciclo-zeta) linear infinite;
+  animation: flotar var(--ciclo-zeta) ease-out infinite;
 }
 
 /* LOS DESFASAJES VAN DESPUÉS Y ADENTRO DEL ESTADO, y no arriba con el tamaño de
@@ -1744,19 +1783,30 @@ body.es-noche #resplandor {
    Antes la opacidad subía a 0,8 en el 25% y caía en línea recta hasta el 100%:
    la mitad del ciclo cada Z estaba por debajo de 0,4 y no se veía. Con delays
    negativos, además, el ciclo arranca ya poblado en vez de empezar vacío. */
+/* La Z SE ACERCA mientras sube —de 0,6 a 1,1— en vez de quedarse del mismo
+   tamaño: es lo que la despega del dibujo y la pone en el aire, entre Chip y la
+   cámara.
+
+   Y se apaga ANTES de terminar el viaje: a los 78% del recorrido ya está en
+   cero y los últimos 22% los hace invisible. Una Z que se apaga justo en el
+   último fotograma se lee como que la cortaron; esta se disuelve. */
 @keyframes flotar {
   0% {
-    transform: translate(0, 0) scale(0.75);
+    transform: translate(0, 0) scale(var(--zeta-desde));
     opacity: 0;
   }
   12% {
     opacity: 0.85;
   }
-  78% {
+  55% {
     opacity: 0.85;
   }
+  78% {
+    opacity: 0;
+  }
   100% {
-    transform: translate(calc(var(--alto-chip) * 0.03), calc(var(--alto-chip) * -0.06)) scale(1);
+    transform: translate(calc(var(--alto-chip) * 0.03), calc(var(--alto-chip) * -0.06))
+      scale(var(--zeta-hasta));
     opacity: 0;
   }
 }
@@ -2009,10 +2059,39 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   }
 }
 
+/* EL SALTO TIENE TRES TIEMPOS, no dos. Subir y bajar simétrico es lo que hace
+   que un salto se vea mecánico.
+
+   1. ANTICIPACIÓN (0 a 17,8%): se agacha. Sin esto el salto arranca de la nada y
+      se lee como un corte de montaje. Es lo que más aporta y lo que más se
+      olvida.
+   2. IMPULSO (hasta 44,4%): despega rápido y frena arriba — ease-out, porque el
+      impulso pelea contra el peso.
+   3. CAÍDA (el resto): más lenta que la subida, porque ahí impulso y peso van
+      para el mismo lado. Y un sobrepaso de 2 px al aterrizar: la masa sigue de
+      largo un instante antes de asentarse.
+
+   Los porcentajes salen de SALTO en config.js: 80, 120 y 250 ms sobre 450. */
 @keyframes saltar {
-  0% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-  100% { transform: translateY(0); }
+  0% {
+    transform: translateY(0);
+    animation-timing-function: ease-in;
+  }
+  17.8% {
+    transform: translateY(var(--salto-agacha));
+    animation-timing-function: ease-out;
+  }
+  44.4% {
+    transform: translateY(calc(var(--salto-altura) * -1));
+    animation-timing-function: ease-in;
+  }
+  84% {
+    transform: translateY(var(--salto-rebote));
+    animation-timing-function: ease-out;
+  }
+  100% {
+    transform: translateY(0);
+  }
 }
 
 #contenedor-mascota {
@@ -2061,8 +2140,11 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   inset: 0;
 }
 
+/* Sin easing global: cada tramo declara el suyo adentro del keyframe. Poner uno
+   acá lo aplicaría a los cuatro tramos por igual y el sobrepaso perdería el
+   golpe. */
 #cuerpo.saltando {
-  animation: saltar var(--duracion-salto) ease-out;
+  animation: saltar var(--duracion-salto);
 }
 
 /* EL SQUASH DEL CAMBIO AMBIENTAL.
@@ -2086,12 +2168,28 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 /* Si por casualidad se juntan —una acción que termina justo cuando cambia el
    ambiente— corren las dos, cada una sobre su propiedad. */
 #cuerpo.saltando.cambiando {
-  animation: saltar var(--duracion-salto) ease-out, aplastar var(--duracion-squash) ease-out;
+  animation: saltar var(--duracion-salto), aplastar var(--duracion-squash) ease-out;
 }
 
 @keyframes aplastar {
   0% { scale: 1 1; }
   45% { scale: 1.035 0.955; }
+  100% { scale: 1 1; }
+}
+
+/* LA SOMBRA ACOMPAÑA AL SQUASH. El peso de una reacción se lee en el piso: si
+   Chip se aplasta y su huella no se entera, el aplaste es del dibujo y no del
+   cuerpo. Va en `scale` para no pelearse con el `transform` de respirar-sombra,
+   que sigue corriendo abajo. */
+#chip:has(.cambiando) #sombra {
+  animation-name: respirar-sombra, ensanchar-huella;
+  animation-duration: var(--ciclo-respiracion), var(--duracion-squash);
+  animation-iteration-count: infinite, 1;
+}
+
+@keyframes ensanchar-huella {
+  0% { scale: 1 1; }
+  45% { scale: 1.07 1; }
   100% { scale: 1 1; }
 }
 
@@ -2180,6 +2278,30 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 
 #menu[hidden] {
   display: none;
+}
+
+/* EL MENÚ SALE DE DONDE LO TOCASTE. Escalaba desde el centro de la pantalla, y
+   eso desconecta el panel del botón: el gesto pasa a ser "apareció algo" en vez
+   de "esto se abrió". El origen es la esquina superior derecha, que es donde
+   está #menu-boton.
+
+   El fondo entra por opacidad y el cuerpo por escala: si escalara el fondo
+   también, la cortina crecería desde un punto y se vería el galpón asomando por
+   los costados a mitad de camino. */
+#menu:not([hidden]) {
+  animation: entrar-menu var(--transicion-panel) cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: 100% 0%;
+}
+
+@keyframes entrar-menu {
+  0% {
+    opacity: 0;
+    scale: 0.86;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
 }
 
 #menu-solapas {
@@ -2627,16 +2749,40 @@ body.es-noche #estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
    bug de layout, es el escalonado medido en el momento justo. Lo que sí era un
    riesgo real —que animationend no llegue y la pieza quede en cero para
    siempre— lo cierra ui.js sacando la clase por temporizador. */
+/* LA LLEGADA ES UNA CAÍDA, no una aparición. Era scale(0) -> scale(1) con
+   rebote, y un objeto que aparece creciendo desde cero se lee como UI. Uno que
+   cae desde arriba y golpea contra la madera se lee como una cosa con peso.
+
+   Tres tiempos otra vez: cae ACELERANDO (ease-in, que es lo que hace la
+   gravedad), golpea y se achata 60 ms, y se recupera. El golpe dura poquísimo a
+   propósito: más largo deja de ser un impacto y pasa a ser goma.
+
+   El pivote va abajo: un objeto que se aplasta contra un estante se aplasta
+   CONTRA el estante, no alrededor de su centro. */
 .objeto.llegando {
-  animation: llegar var(--duracion-llegada) cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  transform-origin: 50% 100%;
+  animation: llegar var(--duracion-llegada) backwards;
 }
 
 @keyframes llegar {
   0% {
-    transform: scale(0);
+    transform: translateY(calc(var(--llegada-desde) * -1));
+    opacity: 0;
+    animation-timing-function: ease-in;
+  }
+  20% {
+    opacity: 1;
+  }
+  57.8% {
+    transform: translateY(0) scaleY(1);
+    animation-timing-function: ease-out;
+  }
+  71.1% {
+    transform: translateY(0) scaleY(var(--llegada-aplaste));
+    animation-timing-function: ease-out;
   }
   100% {
-    transform: scale(1);
+    transform: translateY(0) scaleY(1);
   }
 }
 
@@ -2976,10 +3122,14 @@ body.es-noche #estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
     inset 0 -1px 0 rgba(0, 0, 0, 0.55),
     0 2px 0 #0a0d12,
     0 3px 4px rgba(0, 0, 0, 0.45);
+  /* SOLTAR ES MÁS LENTO QUE APRETAR. El dedo baja de golpe y el material vuelve
+     solo; con las dos mitades iguales el botón se siente de plástico duro. La
+     transición de reposo usa el tiempo LARGO —o sea el de volver— y la de
+     :active lo pisa con el corto. */
   transition:
-    transform var(--duracion-presion) ease-out,
-    box-shadow var(--duracion-presion) ease-out,
-    filter var(--duracion-presion) ease-out;
+    transform var(--presion-sube) ease-out,
+    box-shadow var(--presion-sube) ease-out,
+    filter var(--presion-sube) ease-out;
 }
 
 /* EL ÍCONO VA GRABADO, no dibujado encima. El truco es de dos capas: el trazo
@@ -3030,8 +3180,15 @@ body.es-noche #estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
 
 /* SE HUNDE DE VERDAD: baja 2 px —el espesor entero del canto— y el canto
    desaparece. Con 1 px y el canto puesto, la tecla se movía pero no se hundía. */
+/* La OTRA mitad del gesto: apretar va con el tiempo corto y pisa al de arriba,
+   que es el de volver. Bajar 60 ms y volver 140 es la proporción que hace que un
+   botón se sienta de un material y no de plástico duro. */
 #acciones button:active:not(:disabled):not([aria-disabled='true']) {
   transform: translateY(2px);
+  transition:
+    transform var(--presion-baja) ease-in,
+    box-shadow var(--presion-baja) ease-in,
+    filter var(--presion-baja) ease-in;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     inset 0 2px 5px rgba(0, 0, 0, 0.6),

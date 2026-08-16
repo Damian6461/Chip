@@ -20,7 +20,12 @@ import {
   RESPIRACION,
   RESPIRACION_POR_ESTADO,
   RESPIRACION_SOMBRA,
+  SALTO,
   DURACION_SALTO_MS,
+  PRESION_BOTON,
+  LLEGADA,
+  ZETA,
+  CORAZON,
   TRANSICION_BARRA_MS,
   DURACION_PRESION_MS,
   TRANSICION_PANEL_MS,
@@ -83,6 +88,7 @@ import {
 
 const ms = (n) => `${n}ms`;
 const pct = (n) => `${n}%`;
+const px = (n) => `${n}px`;
 
 // La respiración de un estado: su ciclo y su amplitud, escalada sobre la base.
 // El multiplicador se aplica a la DISTANCIA respecto de 1, no al valor, porque
@@ -123,6 +129,17 @@ export function variablesDeTema() {
     ),
     // Ritmo de la interfaz
     [VARS_ANIMACION.duracionSalto]: ms(DURACION_SALTO_MS),
+    [VARS_ANIMACION.saltoAgacha]: px(SALTO.agacha),
+    [VARS_ANIMACION.saltoAltura]: px(SALTO.altura),
+    [VARS_ANIMACION.saltoRebote]: px(SALTO.rebote),
+    [VARS_ANIMACION.presionBaja]: ms(PRESION_BOTON.baja),
+    [VARS_ANIMACION.presionSube]: ms(PRESION_BOTON.sube),
+    [VARS_ANIMACION.llegadaDesde]: px(LLEGADA.desde),
+    [VARS_ANIMACION.llegadaAplaste]: String(LLEGADA.aplaste),
+    [VARS_ANIMACION.zetaDesde]: String(ZETA.desde),
+    [VARS_ANIMACION.zetaHasta]: String(ZETA.hasta),
+    [VARS_ANIMACION.corazonGiro]: `${CORAZON.giro}deg`,
+    [VARS_ANIMACION.corazonBamboleo]: px(CORAZON.bamboleo),
     [VARS_ANIMACION.transicionBarra]: ms(TRANSICION_BARRA_MS),
     [VARS_ANIMACION.duracionPresion]: ms(DURACION_PRESION_MS),
     [VARS_ANIMACION.transicionPanel]: ms(TRANSICION_PANEL_MS),
