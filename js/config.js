@@ -2316,7 +2316,27 @@ export const ICONOS = {
   zonaSegura: 0.8
 };
 
-export const COLOR_APERTURA = '#181b1f';
+// ESTE COLOR VIVE EN CINCO LUGARES y ninguno de los otros lo puede leer de acá,
+// porque los cuatro primeros tienen que existir ANTES que el JS:
+//
+//   manifest.json    "background_color"    la splash que pinta el sistema
+//   manifest.json    "theme_color"         la barra en la app instalada
+//   index.html       <meta theme-color>    la barra en el navegador
+//   index.html       el <style> inline     el primer frame, antes de la hoja
+//   config.js        esto                  el velo de #apertura
+//
+// Y style.css lo usa una sexta vez para el negro de alrededor de la escena.
+//
+// ERAN TRES COLORES DISTINTOS para la misma cosa: #181b1f en el manifest, en el
+// theme-color y en el velo, y #05070a en el body. La cadena del arranque es
+// splash -> primer frame -> velo -> escena, y cualquier cuadro de otro color en
+// el medio es una costura que se ve.
+//
+// Unificado en #05070a, que es el que ya usaba el body: para este lado el mismo
+// color sirve para el arranque Y para el negro de alrededor, y no queda ninguna
+// segunda cadena que mantener. Lo cruza un test, porque es exactamente la clase
+// de par que se desincroniza en silencio.
+export const COLOR_APERTURA = '#05070a';
 
 // EL VELO DURA 820 ms Y NO 360, y el escalonado se abrió a la par.
 //

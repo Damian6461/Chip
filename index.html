@@ -7,9 +7,36 @@
      es la botonera, que se protege con env(safe-area-inset-*) en style.css. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Chip</title>
-<meta name="theme-color" content="#181b1f">
+<meta name="theme-color" content="#05070a">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon-192.png">
+
+<!-- EL PRIMER FRAME, ANTES DE QUE CARGUE LA HOJA.
+
+     `style.css` son 174 KB y un `<link>` BLOQUEA el primer pintado: en un
+     teléfono con red mala, todo ese tiempo el usuario está mirando una pantalla
+     que no es Chip. Y el `<html>` no tenía fondo propio —computaba
+     rgba(0,0,0,0)—, así que lo que se veía era el blanco del navegador.
+
+     Va en `html` y no sólo en `body`: el color del canvas lo propaga el
+     elemento raíz, y sin él el body pinta sólo su caja.
+
+     EL COLOR ESTÁ EN CUATRO LUGARES Y AHORA ES UNO SOLO. Había tres valores
+     para lo mismo. La cadena del arranque es splash del sistema -> primer frame
+     -> velo de #apertura -> escena, y cualquier cuadro de otro color en el medio
+     es una costura que se ve. Los cuatro consumidores necesitan el dato antes de
+     que exista el JS, así que no hay forma de que lo lean de un solo lado:
+
+       manifest.json   "background_color"   la splash que pinta el sistema
+       index.html      <meta theme-color>   la barra del navegador
+       index.html      este <style>         el primer frame
+       js/config.js    COLOR_APERTURA       el velo de entrada
+
+     Se eligió #05070a y no #181b1f porque es el que YA usa el body para el negro
+     de alrededor de la escena: unificando para este lado, el mismo color sirve
+     para las dos cosas y no queda ninguna segunda cadena. Lo cruza un test.  -->
+<style>html,body{background:#05070a;margin:0}</style>
+
 <link rel="stylesheet" href="style.css">
 </head>
 <body>

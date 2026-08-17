@@ -37,6 +37,7 @@ import {
   RITMOS_RAYO,
   UMBRAL_CRITICO_BATERIA,
   COLOR_PARPADO,
+  COLOR_APERTURA,
   RADIO_EXCLUSION_ANTENA,
   FRANJA_EFECTOS,
   POSICIONES_ANTENA,
@@ -596,6 +597,55 @@ prueba('rayo: la banda de abajo no le pisa el trabajo a critico', () => {
   verdadero(
     /\.estado-critico #rayo/.test(CSS),
     'y la regla de critico tiene que seguir existiendo, que es quien cuenta esa banda'
+  );
+});
+
+// ---- El color del arranque, que vive en cinco lugares ----
+//
+// La cadena es: splash del sistema -> primer frame -> velo de #apertura ->
+// escena. Cualquier cuadro de otro color en el medio es una costura que se ve, y
+// eran TRES colores distintos para lo mismo.
+//
+// Ninguno de los cinco puede leer el valor de los otros: los cuatro primeros
+// tienen que existir antes de que exista el JS. O sea que la única forma de que
+// no se separen es un test que los mire a todos.
+//
+// El <style> inline además tiene que ir ANTES del <link>: si va después, el
+// navegador ya bloqueó el primer pintado esperando la hoja y el inline no llega
+// a tiempo — que es todo el punto de tenerlo.
+
+const MANIFEST = JSON.parse(readFileSync(RAIZ + 'manifest.json', 'utf8'));
+
+prueba('arranque: los cinco lugares dicen el mismo color', () => {
+  const inline = HTML.match(/<style>html,body\{background:(#[0-9a-f]{6});/i)?.[1];
+  const meta = HTML.match(/<meta name="theme-color" content="(#[0-9a-f]{6})"/i)?.[1];
+
+  const lugares = {
+    'manifest background_color': MANIFEST.background_color,
+    'manifest theme_color': MANIFEST.theme_color,
+    'index <meta theme-color>': meta,
+    'index <style> inline': inline,
+    'config COLOR_APERTURA': COLOR_APERTURA
+  };
+
+  const distintos = [...new Set(Object.values(lugares))];
+  igual(
+    distintos.length,
+    1,
+    'el color del arranque tiene que ser uno: ' +
+      Object.entries(lugares).map(([d, v]) => `${d}=${v}`).join(', ')
+  );
+});
+
+prueba('arranque: el <style> inline va antes del <link> de la hoja', () => {
+  const iStyle = HTML.indexOf('<style>html,body{');
+  const iLink = HTML.indexOf('<link rel="stylesheet"');
+
+  verdadero(iStyle >= 0, 'tiene que haber un <style> inline con el fondo');
+  verdadero(iLink >= 0, 'y el <link> de style.css');
+  verdadero(
+    iStyle < iLink,
+    'el inline después del link no sirve: el link ya bloqueó el primer pintado'
   );
 });
 
