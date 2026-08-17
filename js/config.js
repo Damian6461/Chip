@@ -53,9 +53,41 @@ export const MAX_DECAY_HOURS = 24;
 export const JUGAR_BATERIA_MINIMA = 15;
 
 export const VALORES_ACCION = {
-  cargar: { bateria: 40 },
+  // `cargar` YA NO ESTÁ ACÁ, y no es un olvido: cargar dejó de ser un salto de
+  // valor y pasó a ser un proceso que dura lo que lo sostengas. Ver
+  // CARGA_RETENIDA más abajo. Un número acá sería la mitad de la mecánica vieja
+  // esperando a que alguien lo vuelva a usar.
   jugar: { humor: 30, bateria: -10 },
   limpiar: { mantenimiento: 50 }
+};
+
+// ---- CARGAR ES UNA RETENCIÓN, no un botón ----
+//
+// Antes: un tap llevaba la batería de 10 a 90 DE GOLPE —medido— y después había
+// siete segundos de animación mirando algo que ya había pasado. El gesto y el
+// efecto estaban separados, y por eso la animación se sentía de relleno.
+//
+// Ahora se mantiene apretado y Chip carga mientras lo hagas. Soltás y para,
+// conservando lo cargado. Eso es lo que hace que el gesto TENGA sentido: estás
+// viendo el efecto de lo que estás haciendo, no el recuerdo de lo que hiciste.
+//
+// Y por eso la pantalla del pecho sube en vivo: es el mismo estado pintándose en
+// cada tick, no una animación aparte que haya que sincronizar.
+//
+// `segundos` es cuánto tarda de 0 a 100 sosteniendo sin soltar. Seis y medio: en
+// menos, el gesto no llega a leerse como un proceso y vuelve a ser un botón con
+// pasos; en más, cargar del todo se vuelve tedioso y la gente suelta antes.
+//
+// `tick` es cada cuánto se suma. 90 ms es más rápido que lo que el ojo separa en
+// una barra que crece, así que se ve continuo, y es más lento que un cuadro: no
+// tiene sentido tocar el estado sesenta veces por segundo para mover una barra
+// de seis segmentos.
+//
+// NO HAY COSTO NI PENALIDAD por soltar antes, y eso es el modelo sin culpa: lo
+// cargado queda cargado. Soltar no es abandonar, es haber cargado un poco.
+export const CARGA_RETENIDA = {
+  segundos: 6.5,
+  tick: 90
 };
 
 // ---- Estados visuales ----

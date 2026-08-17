@@ -44,11 +44,19 @@ export function aplica(nombre, estado) {
   return stat ? estado[stat] < STAT_MAX : true;
 }
 
-export function cargar(estado) {
-  return {
-    ...estado,
-    bateria: clampAccion(estado.bateria + VALORES_ACCION.cargar.bateria)
-  };
+// CARGAR TOMA CUÁNTO, porque dejó de ser un salto fijo: ahora es un proceso que
+// la sesión llama muchas veces, una por tick de retención, con lo que le toca a
+// ese tick. La función sigue siendo pura y sigue respetando el contrato de la
+// referencia — si la batería ya está al máximo devuelve el MISMO estado y quien
+// llama se entera.
+//
+// El default existe para que `cargar(estado)` siga queriendo decir algo en un
+// test que no le importe el ritmo.
+export function cargar(estado, cuanto = STAT_MAX) {
+  const siguiente = clampAccion(estado.bateria + cuanto);
+  if (siguiente === estado.bateria) return estado;
+
+  return { ...estado, bateria: siguiente };
 }
 
 export function jugar(estado) {

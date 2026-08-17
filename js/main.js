@@ -156,7 +156,11 @@ conectarMenu({
 });
 
 conectarAcciones({
-  onCargar: () => sesion.ejecutar(E.cargando, cargar, 'cargar'),
+  // Cargar no pasa por `ejecutar`: dejó de ser un salto de valor con una
+  // animación encima y pasó a ser un proceso que dura lo que lo sostengas. La
+  // sesión es la dueña del proceso; acá sólo se dice cuándo baja y sube el dedo.
+  onCargarAbajo: () => sesion.arrancarCarga(),
+  onCargarArriba: () => sesion.soltarCarga(),
   onJugar: () => sesion.ejecutar(E.jugando, jugar, 'jugar'),
   onLimpiar: () => sesion.ejecutar(E.limpiando, limpiar, 'limpiar')
 });

@@ -29,6 +29,7 @@ import {
   CATEGORIA_GRANDES,
   TIERS_OBJETO,
   VALORES_ACCION,
+  CARGA_RETENIDA,
   DURACION_CRUCE_FONDO_MS,
   PROBABILIDAD_OBJETO_PISO,
   ZONA_PISO,
@@ -396,24 +397,34 @@ prueba('sesión: una acción que no hace falta no guarda, no salta y no festeja'
 prueba('sesión: la acción que SÍ aplica guarda, salta y marca su estado visual', () => {
   const { sesion, vista, reloj, guardados } = sesionDePrueba({
     ...crearEstadoNuevo(),
-    bateria: 40
+    bateria: 40,
+    mantenimiento: 20
   });
 
   sesion.actualizarVisual({ inmediato: true });
   const guardadosAntes = guardados();
 
-  sesion.ejecutar(E.cargando, cargar, 'cargar');
+  // Con LIMPIAR y no con cargar, y el cambio es de fondo: cargar dejó de pasar
+  // por `ejecutar`. Es una retención con su propio camino —ver el bloque de la
+  // carga retenida más abajo— así que probar `ejecutar` con cargar sería probar
+  // un camino que la app ya no usa.
+  sesion.ejecutar(E.limpiando, limpiar, 'limpiar');
 
   igual(vista.cuenta.estoyBien, 0, 'acá no contesta: hace');
   igual(vista.cuenta.animarAccion, 1, 'salta una vez');
   igual(guardados(), guardadosAntes + 1, 'y guarda una vez');
-  cerca(sesion.estado().bateria, 40 + VALORES_ACCION.cargar.bateria, 'la batería subió');
-  igual(sesion.estadoVisual(), E.cargando, 'y el sprite es el de cargando');
+  cerca(
+    sesion.estado().mantenimiento,
+    20 + VALORES_ACCION.limpiar.mantenimiento,
+    'el mantenimiento subió'
+  );
+  igual(sesion.estadoVisual(), E.limpiando, 'y el sprite es el de limpiando');
 
   // El estado de acción vence solo y devuelve la cadena a lo que corresponda.
-  // La duración es la DE CARGAR y no una sola para las tres: ver DURACIONES_ACCION.
-  reloj.avanzar(DURACIONES_ACCION.cargar + 1);
-  verdadero(sesion.estadoVisual() !== E.cargando, 'cuando vence, deja de ser cargando');
+  // La duración es la DE LIMPIAR y no una sola para las tres: ver
+  // DURACIONES_ACCION.
+  reloj.avanzar(DURACIONES_ACCION.limpiar + 1);
+  verdadero(sesion.estadoVisual() !== E.limpiando, 'cuando vence, deja de ser limpiando');
 });
 
 // ---- Las acciones ocupan a Chip mientras duran ----
@@ -517,14 +528,18 @@ prueba('sesión: dos acciones seguidas dejan un save con las dos, no con una', (
   // Las dos seguidas, pero con la primera terminada: apretar los dos botones en
   // el mismo segundo YA NO aplica las dos —ver "con una en curso"— así que lo
   // que se prueba acá es que dos acciones consecutivas no se pisen el save.
-  sesion.ejecutar(E.cargando, cargar, 'cargar');
-  reloj.avanzar(DURACIONES_ACCION.cargar + 1);
+  // La carga va por su camino real —retención— y no por `ejecutar`: cargar dejó
+  // de ser una acción de un paso. Diez ticks sostenidos y suelta.
+  sesion.arrancarCarga();
+  reloj.avanzar(CARGA_RETENIDA.tick * 10 + 1);
+  sesion.soltarCarga();
   sesion.ejecutar(E.limpiando, limpiar, 'limpiar');
 
   const enMemoria = sesion.estado();
   const enDisco = cargarEstado();
 
-  cerca(enMemoria.bateria, 20 + VALORES_ACCION.cargar.bateria, 'la carga está');
+  const porDiezTicks = (STAT_MAX * CARGA_RETENIDA.tick * 10) / (CARGA_RETENIDA.segundos * 1000);
+  cerca(enMemoria.bateria, 20 + porDiezTicks, 'la carga está');
   cerca(
     enMemoria.mantenimiento,
     20 + VALORES_ACCION.limpiar.mantenimiento,
@@ -557,7 +572,10 @@ prueba('sesión: un cambio de tramo entre dos acciones no se come ninguna de las
   sesion.actualizarVisual({ inmediato: true });
   sesion.actualizarNoche();
 
-  sesion.ejecutar(E.cargando, cargar, 'cargar');
+  // La carga por su camino real. Diez ticks y suelta, antes de cruzar el tramo.
+  sesion.arrancarCarga();
+  reloj.avanzar(CARGA_RETENIDA.tick * 10 + 1);
+  sesion.soltarCarga();
 
   // El tick del minuto cruza a la noche y guarda el tramo. Ese guardado escribe
   // el estado ENTERO, así que si leyera una copia vieja se llevaría puesta la
@@ -565,13 +583,11 @@ prueba('sesión: un cambio de tramo entre dos acciones no se come ninguna de las
   reloj.ponerHoraDelMundo(T_VEINTIUNA);
   sesion.tick();
 
-  // Se espera a que la carga termine: con una acción en curso la siguiente no
-  // entra, y lo que esta prueba cuida es el save, no esa regla.
-  reloj.avanzar(DURACIONES_ACCION.cargar + 1);
   sesion.ejecutar(E.limpiando, limpiar, 'limpiar');
 
   const enDisco = cargarEstado();
-  cerca(enDisco.bateria, 20 + VALORES_ACCION.cargar.bateria, 'la carga sobrevivió al cruce');
+  const porDiezTicks = (STAT_MAX * CARGA_RETENIDA.tick * 10) / (CARGA_RETENIDA.segundos * 1000);
+  cerca(enDisco.bateria, 20 + porDiezTicks, 'la carga sobrevivió al cruce');
   cerca(
     enDisco.mantenimiento,
     20 + VALORES_ACCION.limpiar.mantenimiento,
@@ -1134,6 +1150,137 @@ prueba('gestos: la caricia da más que el toque', () => {
   cerca(conCaricia, CARICIA_HUMOR, 'la caricia sube lo que dice config');
   cerca(conToque, TOQUE_HUMOR, 'y el toque lo suyo');
   verdadero(conToque < conCaricia, `${conToque} es menos que ${conCaricia}`);
+});
+
+// ---- CARGAR ES UNA RETENCIÓN ----
+//
+// Antes: un tap llevaba la batería de 10 a 90 de golpe y después había siete
+// segundos de animación mirando algo que ya había pasado. Ahora carga mientras
+// lo sostengas, y lo que estas pruebas fijan es lo que hace que el gesto
+// signifique algo: que el efecto siga al dedo y que soltar no castigue.
+
+prueba('carga: entra mientras se sostiene y para al soltar', () => {
+  const { sesion, reloj } = sesionDePrueba({ ...crearEstadoNuevo(), bateria: 20 });
+
+  igual(sesion.arrancarCarga(), true, 'arranca');
+  igual(sesion.estadoVisual(), E.cargando, 'y el sprite es el de cargando');
+
+  reloj.avanzar(CARGA_RETENIDA.tick * 5 + 1);
+  const aMitad = sesion.estado().bateria;
+  verdadero(aMitad > 20, `a cinco ticks ya subió: ${aMitad.toFixed(1)}`);
+
+  sesion.soltarCarga();
+  const alSoltar = sesion.estado().bateria;
+
+  // Y DESPUÉS DE SOLTAR NO ENTRA MÁS. Si el timer siguiera vivo, Chip cargaría
+  // solo para siempre — que es el peor final posible de esta mecánica.
+  reloj.avanzar(CARGA_RETENIDA.tick * 20);
+  igual(sesion.estado().bateria, alSoltar, 'soltar corta de verdad');
+});
+
+prueba('carga: soltar antes NO devuelve nada, que es el modelo sin culpa', () => {
+  const { sesion, reloj } = sesionDePrueba({ ...crearEstadoNuevo(), bateria: 20 });
+
+  sesion.arrancarCarga();
+  reloj.avanzar(CARGA_RETENIDA.tick * 8 + 1);
+  const cargado = sesion.estado().bateria;
+  sesion.soltarCarga();
+
+  verdadero(cargado > 20, 'algo entró');
+  igual(sesion.estado().bateria, cargado, 'y lo cargado queda cargado');
+  igual(cargarEstado().bateria, cargado, 'también en el save');
+});
+
+prueba('carga: sostener sin soltar llena en los segundos que dice config', () => {
+  const { sesion, reloj } = sesionDePrueba({ ...crearEstadoNuevo(), bateria: 0 });
+
+  sesion.arrancarCarga();
+  reloj.avanzar(CARGA_RETENIDA.segundos * 1000 + CARGA_RETENIDA.tick * 2);
+
+  igual(sesion.estado().bateria, STAT_MAX, 'llegó a 100');
+
+  // Y TERMINÓ SOLA: a partir de acá no está pasando nada, así que no se queda
+  // esperando a que el dedo se vaya.
+  verdadero(sesion.estadoVisual() !== E.cargando, 'y la acción se cerró sin que nadie soltara');
+  igual(sesion.ocupado(), false, 'Chip ya no está ocupado');
+});
+
+prueba('carga: a mitad de camino tarda lo que tiene que tardar', () => {
+  // El ritmo es la mitad de la mecánica: si carga demasiado rápido vuelve a ser
+  // un botón con pasos, y si tarda de más la gente suelta antes. Se cruza contra
+  // los dos números de config y no contra un tercero escrito acá.
+  const { sesion, reloj } = sesionDePrueba({ ...crearEstadoNuevo(), bateria: 0 });
+
+  sesion.arrancarCarga();
+  reloj.avanzar((CARGA_RETENIDA.segundos * 1000) / 2);
+  const mitad = sesion.estado().bateria;
+  sesion.soltarCarga();
+
+  // La tolerancia es UN TICK y no un número redondo: la carga avanza a saltos de
+  // `porTick`, así que a mitad de camino el valor exacto depende de si el último
+  // tick entró antes o después del corte. Pedir igualdad sería pedirle al test
+  // que adivine de qué lado del borde cae.
+  const porTick = (STAT_MAX * CARGA_RETENIDA.tick) / (CARGA_RETENIDA.segundos * 1000);
+  verdadero(
+    Math.abs(mitad - STAT_MAX / 2) <= porTick,
+    `a la mitad del tiempo tiene que estar en ${STAT_MAX / 2} ± ${porTick.toFixed(2)}, y está en ${mitad.toFixed(2)}`
+  );
+});
+
+prueba('carga: con la batería llena contesta en vez de arrancar', () => {
+  const { sesion, vista } = sesionDePrueba({ ...crearEstadoNuevo(), bateria: STAT_MAX });
+
+  igual(sesion.arrancarCarga(), false, 'no arranca');
+  igual(vista.cuenta.estoyBien, 1, 'contesta que ya está atendido');
+  igual(sesion.ocupado(), false, 'y no queda ocupado');
+});
+
+prueba('carga: mientras carga, Chip está ocupado y no entra otra acción', () => {
+  const { sesion, reloj } = sesionDePrueba({ ...crearEstadoNuevo(), bateria: 20, mantenimiento: 20 });
+
+  sesion.arrancarCarga();
+  igual(sesion.ocupado(), true, 'está cargando');
+
+  const antes = sesion.estado().mantenimiento;
+  sesion.ejecutar(E.limpiando, limpiar, 'limpiar');
+  igual(sesion.estado().mantenimiento, antes, 'limpiar no entra');
+
+  // Y un segundo pointerdown tampoco abre una segunda carga en paralelo.
+  igual(sesion.arrancarCarga(), false, 'y no se puede arrancar dos veces');
+
+  sesion.soltarCarga();
+  reloj.avanzar(1);
+  igual(sesion.ocupado(), false, 'al soltar, libre');
+});
+
+prueba('carga: al soltar se pone contento sólo si la batería subió', () => {
+  const { sesion, reloj } = sesionDePrueba({ ...crearEstadoNuevo(), bateria: 20 });
+  sesion.actualizarVisual({ inmediato: true });
+
+  sesion.arrancarCarga();
+  reloj.avanzar(CARGA_RETENIDA.tick * 4 + 1);
+  sesion.soltarCarga();
+  igual(sesion.estadoVisual(), E.feliz, 'cargó, así que queda contento');
+
+  // Y el caso de al lado: apretar y soltar sin que pase un solo tick. No entró
+  // nada, así que no hay nada que festejar — es el mismo contrato de la caricia
+  // y de celebrarHumor.
+  const otra = sesionDePrueba({ ...crearEstadoNuevo(), bateria: 20 });
+  otra.sesion.actualizarVisual({ inmediato: true });
+  const visualAntes = otra.sesion.estadoVisual();
+  otra.sesion.arrancarCarga();
+  otra.sesion.soltarCarga();
+  igual(otra.sesion.estadoVisual(), visualAntes, 'sin ticks no hay festejo');
+});
+
+prueba('carga: soltar sin haber arrancado no hace nada', () => {
+  const { sesion } = sesionDePrueba({ ...crearEstadoNuevo(), bateria: 20 });
+  const antes = sesion.estado();
+
+  sesion.soltarCarga();
+
+  igual(sesion.estado(), antes, 'el estado es el mismo objeto');
+  igual(sesion.ocupado(), false, 'y no quedó ocupado');
 });
 
 // ---- La señal del enojo ----

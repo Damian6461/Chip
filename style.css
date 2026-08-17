@@ -4515,9 +4515,16 @@ body.sin-movimiento *::after {
    Quedaron DOS gestos sostenidos, no tres. El del panel de debug se fue: se le
    pusieron las cuatro cosas y con el dedo seguía sin abrir, así que dejó de ser
    un long-press y pasó a ser cinco toques en la esquina. Un tap no necesita nada
-   de esto — que es justamente por qué se eligió. */
+   de esto — que es justamente por qué se eligió.
+
+   Y AHORA SON TRES OTRA VEZ: cargar pasó a ser una retención, así que #btn-cargar
+   necesita exactamente lo mismo. Sin `touch-action: none`, arrastrar apenas el
+   pulgar mientras se carga hace que el navegador lo lea como scroll y cancele el
+   puntero — la carga se corta sola y parece un bug del juego. Los otros dos
+   botones NO lo llevan: son un tap y no lo necesitan. */
 #zona-chip,
-#piso {
+#piso,
+#btn-cargar {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;

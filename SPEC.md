@@ -485,6 +485,78 @@ Es la menos importante de todas.
 
 ---
 
+# 11. Los íconos — AGREGADO 17/08, después del primer commit
+
+**Los tres archivos ya están en `C:\Chip\icons`, sin commitear.** Solo hay que
+commitearlos y hacer lo del generador.
+
+## Qué se cambió y por qué
+
+Los íconos que estaban eran **un archivo congelado**: se generaron una vez, el arte
+cambió y ellos no. Tenían otro encuadre — Chip chiquito adentro de una escena ancha, que
+a 192 px en una pantalla de inicio no se lee.
+
+Los nuevos salen de `icons/generador.html`, que lee el encuadre de `ICONOS` en
+`config.js`, así que ya no se pueden separar del arte.
+
+| archivo | antes | ahora |
+|---|---|---|
+| `icon-192.png` | 19.923 | 24.232 |
+| `icon-512.png` | 98.544 | 94.926 |
+| `icon-512-maskable.png` | 87.931 | 103.314 |
+| **total** | **202 KB** | **217 KB** |
+
+Guardados con paleta de 256 colores **y dithering**. Verificado: `paletteBitDepth: 8`,
+192×192 y 512×512, y el círculo punteado de la zona segura **no** quedó horneado en el
+maskable — es solo de la previsualización.
+
+## El bandeo: no se pudo reproducir
+
+El comentario de `generador.html` culpa a la indexación a 256 colores por el bandeo de la
+splash de Android. Comparé el mismo origen a 256 colores con dither y sin dither,
+ampliado sobre el cielo, y **no hay diferencia visible**. Se dejó el dither igual porque
+cuesta poco y es lo que corresponde contra el bandeo.
+
+Lo único que no se pudo probar es la splash de Android. **Lo mira Damián en el teléfono**
+después de deployar.
+
+## LA TRAMPA DEL GENERADOR — esto sí hay que arreglar
+
+Los tres PNG tal como los **baja el navegador** pesan **806 KB**, contra los 202 KB que
+había. `canvas.toDataURL('image/png')` es un mal compresor: escribe RGBA sin paleta y con
+compresión floja.
+
+O sea que el flujo que la propia página indica —"Movelos a `/icons/` pisando los que ya
+están"— **cuadruplica el peso de los íconos sin que nada avise.** Sobre una instalación
+de ~1,6 MB, los íconos pasarían a ser la mitad.
+
+Medido:
+
+| | peso |
+|---|---|
+| lo que baja el navegador | 806 KB |
+| RGBA bien comprimido, sin paleta | 799 KB |
+| paleta 256 con dither ← **lo que se guardó** | 217 KB |
+| paleta 256 sin dither | 195 KB |
+
+Dos cosas:
+
+1. **Un test que falle si algún PNG de `icons/` supera un techo** — 260 KB entre los tres
+   deja margen y atrapa el caso. Es el mismo tipo de guardia que el de `CACHE_VERSION`: el
+   error es invisible y el test es la única forma de que avise.
+2. **Un aviso en `generador.html`**, arriba, diciendo que lo que baja el navegador está sin
+   comprimir y hay que pasarlo por un compresor de PNG antes de moverlo a `icons/`. Y si
+   se puede, que la página misma lo diga con el peso al lado de cada botón.
+
+## Y una nota sobre el `file://`
+
+`generador.html` no funciona abriéndolo con doble clic: usa
+`<script type="module">` con `import { ICONOS } from '../js/config.js'`, y los módulos ES
+están bloqueados sobre `file://`. Hay que servirlo por HTTP. Vale ponerlo en el texto de
+la página, porque el próximo que la abra va a ver un cartel vacío igual que Damián.
+
+---
+
 # Lo que NO hay que tocar
 
 Estas cinco cosas se reportaron como bugs y **estaban bien**. Van acá para que nadie las

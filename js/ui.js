@@ -2471,8 +2471,55 @@ export function animarAccion() {
   cuerpo.classList.add(CLASE_SALTO);
 }
 
-export function conectarAcciones({ onCargar, onJugar, onLimpiar }) {
-  btnCargar.addEventListener('click', onCargar);
+// JUGAR Y LIMPIAR SIGUEN SIENDO UN CLICK. No todo tiene que ser igual: cargar es
+// un proceso y los otros dos son gestos, y forzarlos a la misma forma le sacaría
+// significado a la diferencia.
+//
+// CARGAR ES UNA RETENCIÓN, y por eso necesita las mismas cuatro cosas que el
+// gesto sobre Chip — están contadas arriba, en el bloque del puntero, y en el
+// README bajo la trampa del touch-action:
+//
+//   setPointerCapture   el dedo puede salirse del botón sin cortar la carga
+//   pointercancel       el navegador avisando que el puntero se fue de verdad
+//   contextmenu cortado el long-press nativo emite pointercancel y aborta todo
+//   touch-action: none  en el CSS, para que no lo lea como scroll
+//
+// Sin `click`: con la retención, el click llegaría DESPUÉS del pointerup y
+// dispararía una segunda carga de un tick.
+export function conectarAcciones({ onCargarAbajo, onCargarArriba, onJugar, onLimpiar }) {
   btnJugar.addEventListener('click', onJugar);
   btnLimpiar.addEventListener('click', onLimpiar);
+
+  btnCargar.addEventListener('pointerdown', (evento) => {
+    if (evento.button !== undefined && evento.button !== 0) return;
+    // El botón deshabilitado no arranca nada. `disabled` lo pone el navegador
+    // solo para el click, pero pointerdown llega igual — y `aria-disabled` no lo
+    // frena nunca, porque es una anotación y no un comportamiento.
+    if (btnCargar.disabled || btnCargar.getAttribute('aria-disabled') === 'true') return;
+    capturar(btnCargar, evento);
+    onCargarAbajo();
+  });
+
+  for (const fin of ['pointerup', 'pointercancel', 'pointerleave']) {
+    btnCargar.addEventListener(fin, onCargarArriba);
+  }
+
+  btnCargar.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // El teclado también carga por retención: mantener Enter o Espacio con el
+  // botón enfocado. Sin esto, cargar sería la única acción sin camino de teclado.
+  //
+  // `repeat` se ignora: el autorepetición del sistema manda keydown muchas veces
+  // y la carga ya arrancó en el primero.
+  btnCargar.addEventListener('keydown', (evento) => {
+    if (evento.key !== 'Enter' && evento.key !== ' ') return;
+    evento.preventDefault();
+    if (evento.repeat) return;
+    onCargarAbajo();
+  });
+
+  btnCargar.addEventListener('keyup', (evento) => {
+    if (evento.key !== 'Enter' && evento.key !== ' ') return;
+    onCargarArriba();
+  });
 }

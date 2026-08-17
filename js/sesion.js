@@ -39,9 +39,11 @@ import {
   ESPERA_SEGUNDO_EVENTO_MS,
   DURACION_CRUCE_FONDO_MS,
   DURACION_FASTIDIO_MS,
+  CARGA_RETENIDA,
+  STAT_MAX,
   POSES_IDLE
 } from './config.js';
-import { aplica, acariciar, tocar } from './acciones.js';
+import { aplica, acariciar, tocar, cargar } from './acciones.js';
 import { resolverEstadoVisual, esDeNoche, franjaDelDia, luzDelMomento, poseDeIdle } from './sprites.js';
 
 export function crearSesion({
@@ -374,6 +376,92 @@ export function crearSesion({
     pintar();
   }
 
+  // ---- CARGAR, que es una retención y no un botón ----
+  //
+  // Vive acá y no en ui.js por lo mismo de siempre: es el MODELO cambiando en el
+  // tiempo. ui.js dice cuándo empieza y cuándo termina el dedo; cuánto entra por
+  // tick, si aplica y qué estado visual corresponde lo decide la sesión.
+  //
+  // Y usa `reloj`, no setInterval: es el mismo reloj que el resto de la sesión,
+  // así que el panel de debug puede acelerarlo y los tests pueden avanzarlo sin
+  // esperar seis segundos y medio.
+
+  let temporizadorCarga = null;
+  let cargoAlgo = false;
+
+  // Cuánto entra por tick. Sale de los dos números de CARGA_RETENIDA en vez de
+  // ser un tercero suelto: si mañana el tick cambia, el ritmo NO cambia.
+  const porTick = (STAT_MAX * CARGA_RETENIDA.tick) / (CARGA_RETENIDA.segundos * 1000);
+
+  function arrancarCarga() {
+    // Mientras otra acción corre no entra, igual que las otras dos. Y si ya está
+    // cargando, un segundo pointerdown no abre un segundo intervalo.
+    if (ocupado()) return false;
+
+    // Con la batería llena contesta "estoy bien" y no arranca nada, que es el
+    // mismo trato que ya reciben jugar y limpiar cuando no hacen falta.
+    if (!aplica('cargar', estado)) {
+      vista.responderEstoyBien();
+      return false;
+    }
+
+    cargoAlgo = false;
+    accionEnCurso = E.cargando;
+    actualizarVisual({ inmediato: true });
+    pintar();
+
+    // Un timer que se REPROGRAMA solo, y no un setInterval: el reloj de la
+    // sesión sólo sabe programar y cancelar, y no vale la pena agrandarle la
+    // interfaz por esto. El reloj falso de los tests ya corre este caso —un
+    // timer que programa otro adentro de la misma ventana— y está anotado allá.
+    temporizadorCarga = reloj.programar(unTickDeCarga, CARGA_RETENIDA.tick);
+    return true;
+  }
+
+  function unTickDeCarga() {
+    temporizadorCarga = null;
+    const siguiente = cargar(estado, porTick);
+
+    // Llegó a 100 sosteniendo: la acción termina SOLA. No se queda esperando a
+    // que el dedo se vaya, porque a partir de ahí no está pasando nada y el
+    // botón ya se apagó.
+    if (siguiente === estado) {
+      terminarCarga();
+      return;
+    }
+
+    cargoAlgo = true;
+    estado = siguiente;
+    guardar(estado);
+    // La pantalla del pecho y las barras salen del estado, así que pintar en
+    // cada tick ES la carga en vivo. No hay una animación aparte que sincronizar.
+    pintar();
+
+    temporizadorCarga = reloj.programar(unTickDeCarga, CARGA_RETENIDA.tick);
+  }
+
+  // Soltar el dedo. Es lo que llama la vista; `terminarCarga` es el cierre real,
+  // y están separados porque llegar a 100 también termina la carga sin que nadie
+  // haya soltado nada.
+  function soltarCarga() {
+    if (accionEnCurso !== E.cargando) return;
+    terminarCarga();
+  }
+
+  function terminarCarga() {
+    reloj.cancelar(temporizadorCarga);
+    temporizadorCarga = null;
+    accionEnCurso = null;
+
+    // Se pone contento sólo si la batería SUBIÓ de verdad. Es el mismo contrato
+    // que la caricia y que celebrarHumor: se festeja el efecto, no el gesto.
+    if (cargoAlgo) ponerseContento();
+    cargoAlgo = false;
+
+    actualizarVisual({ inmediato: true });
+    pintar();
+  }
+
   // ---- La caricia ----
   //
   // Es un GESTO y no una acción, y el contrato lo dice: no marca estado visual,
@@ -547,6 +635,8 @@ export function crearSesion({
     esNoche: () => esNocheActual,
     // el juego
     ejecutar,
+    arrancarCarga,
+    soltarCarga,
     acariciar: acariciarAChip,
     tocar: tocarAChip,
     fastidiar,
