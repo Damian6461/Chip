@@ -141,6 +141,102 @@ export const RUTAS_CABEZA = {
 // El pivote, en % del lienzo: la base del casco. Sale de (128, 140) sobre 256.
 export const PIVOTE_CABEZA = { x: 50, y: 54.7 };
 
+// ---- LOS BRAZOS ----
+//
+// Son lo único de Chip que nunca se movía. Después de los ojos son la parte que
+// más cambia la lectura: de "sprite con efectos encima" a "algo que está ahí".
+//
+// UN GRUPO POR BRAZO y no uno compartido: los dos tienen que poder moverse por
+// separado, y de hecho casi todos los gestos son asimétricos. Cada uno con su
+// propio pivote en el hombro, igual que #cabeza-grupo con la base del casco.
+//
+// Los pivotes vienen medidos sobre el lienzo de 256 y se guardan en % para que
+// no dependan del tamaño en pantalla.
+export const BRAZOS = {
+  idle: {
+    izq: { x: 66.4, y: 56.6 }, // (170, 145)
+    der: { x: 30.5, y: 57.4 } // (78, 147)
+  },
+  feliz: {
+    izq: { x: 63.7, y: 67.2 }, // (163, 172)
+    der: { x: 31.3, y: 63.7 } // (80, 163)
+  }
+};
+
+// EL ÁNGULO ESTÁ EN 2° Y LA SPEC PEDÍA 3 A 5, y la diferencia es una deuda de
+// arte, no una decisión de gusto.
+//
+// El recorte del brazo rota ENCIMA del sprite entero, que sigue teniendo el
+// brazo dibujado, así que en el borde queda a la vista el de abajo corrido unos
+// píxeles — el mismo problema que la cabeza, y peor, porque el brazo es chico
+// respecto de su palanca. Medido sobre los cuatro recortes:
+//
+//    3°  ->  8-9% del brazo destapado,   3,8 px de lienzo  ( 6,1 en pantalla)
+//    6°  -> 16-18%,                      7,5 px            (12,2)
+//   12°  -> 27-31%,                     15,0 px            (24,3)
+//   14°  -> 29-35%,                     19,4 px            (31,4)
+//
+// A 12° eso es un brazo con un fantasma al lado, no un brazo que se mueve. La
+// verificación que ya estaba hecha —"aguanta hasta 12° sin descubrir hueco"— es
+// de OTRA falla: mira el hueco en la articulación del hombro, que efectivamente
+// aguanta. El fleco del sprite de abajo es una falla distinta.
+//
+// A 2° el corrimiento es de 2,5 px de lienzo (4,1 en pantalla), que entra en el
+// grosor del propio contorno del dibujo.
+//
+// El arreglo limpio es el MISMO que el de la cabeza y con un solo archivo por
+// pose se resuelven los dos: un cuerpo sin cabeza y sin brazos —`idle-cuerpo`,
+// `feliz-cuerpo`— para que las capas que rotan sean las únicas que los dibujan.
+// Con eso este número sube a 5 y el de la cabeza a 3 sin tocar nada más.
+export const ANGULO_BRAZO = 2;
+
+// Acomodarse en reposo: cada tanto un brazo rota y vuelve. Los dos brazos van
+// por separado y con rangos anchos, por lo mismo que la inclinación de cabeza:
+// un gesto con período fijo deja de ser un gesto y pasa a ser un reloj. Y si los
+// dos coincidieran se vería coreografiado.
+export const ACOMODO_BRAZO = { min: 25000, max: 45000, duracion: 1200 };
+
+// En `feliz` uno de los dos sube. Ahora que feliz dura pocos segundos, el brazo
+// puede acompañar el estado entero.
+//
+// LA SPEC PEDÍA 10-12° Y ESTÁ EN 3, por el mismo motivo que ANGULO_BRAZO: es el
+// sprite de abajo el que limita, no el gesto. A 10° el brazo de `feliz` deja a
+// la vista casi una cuarta parte del que está pintado, corrido unos 19 px en
+// pantalla — un brazo con un fantasma al lado.
+//
+// Es el mismo techo y se levanta con el mismo archivo: un cuerpo sin brazos.
+export const SALUDO_BRAZO = { angulo: 3, entra: 260, vuelve: 520 };
+
+// Durante la caricia, el brazo del lado hacia donde va el dedo se levanta
+// apenas, como acercándose.
+export const BRAZO_CARICIA = 5;
+
+export const CLASE_ACOMODANDO_BRAZO = 'acomodando';
+export const CLASE_SALUDANDO = 'saludando';
+export const CLASE_BAJANDO_BRAZO = 'bajando';
+
+export const VARS_BRAZOS = {
+  pivoteIzqX: '--brazo-izq-x',
+  pivoteIzqY: '--brazo-izq-y',
+  pivoteDerX: '--brazo-der-x',
+  pivoteDerY: '--brazo-der-y',
+  angulo: '--brazo-angulo',
+  acomodo: '--brazo-acomodo',
+  saludo: '--brazo-saludo',
+  saludoEntra: '--brazo-saludo-entra',
+  saludoVuelve: '--brazo-saludo-vuelve',
+  caricia: '--brazo-caricia',
+  lado: '--brazo-lado'
+};
+
+// Los recortes por pose. Mismo criterio que RUTAS_OJOS: una pose sin entrada
+// simplemente no tiene brazos que mover, y el sprite base los dibuja como
+// siempre. En `critico` NO hay, y eso es deliberado — la quietud es información.
+export const RUTAS_BRAZOS = {
+  idle: { izq: 'sprites/idle-brazo-izq.webp', der: 'sprites/idle-brazo-der.webp' },
+  feliz: { izq: 'sprites/feliz-brazo-izq.webp', der: 'sprites/feliz-brazo-der.webp' }
+};
+
 // Tres tiempos, y el del medio es el que cuenta la historia: ladea, SE QUEDA
 // mirando, y vuelve. Sin la pausa el gesto se lee como un tic.
 //

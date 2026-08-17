@@ -19,7 +19,17 @@
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { prueba, igual, verdadero } from './runner.js';
-import { RUTAS_SPRITES, RUTAS_OJOS, RUTAS_FONDOS, AMBIENTES, SONIDO } from '../js/config.js';
+import {
+  RUTAS_SPRITES,
+  RUTAS_OJOS,
+  RUTAS_FONDOS,
+  AMBIENTES,
+  SONIDO,
+  RUTAS_BRAZOS,
+  BRAZOS,
+  ANGULO_BRAZO,
+  SALUDO_BRAZO
+} from '../js/config.js';
 import {
   LIMITES_PESO,
   PRESUPUESTO_TOTAL_KB,
@@ -239,4 +249,76 @@ prueba('sonido: la vuelta la dispara el reloj del medio, no el de JS', () => {
 // seco, así que siempre deja discontinuidad en la unión.
 prueba('sonido: el loop nativo queda apagado', () => {
   verdadero(/loop\s*=\s*false/.test(SONIDO_JS), 'audio.loop en false: el bucle lo hace el cruce');
+});
+
+// ---- Los brazos ----
+//
+// Mismo criterio que el guardián de POSES_IDLE y el de RUTAS_OJOS: si el código
+// declara una capa, su recorte tiene que existir. Un src que da 404 no rompe
+// nada visible —la capa queda vacía y el sprite base sigue dibujando el brazo—
+// así que sin esto se descubre mirando, o no se descubre.
+
+prueba('brazos: todo recorte declarado existe en el disco', () => {
+  for (const [pose, lados] of Object.entries(RUTAS_BRAZOS)) {
+    for (const [lado, ruta] of Object.entries(lados)) {
+      verdadero(existsSync(join(RAIZ, ruta)), `${pose}/${lado} apunta a ${ruta}, que no está`);
+    }
+  }
+});
+
+prueba('brazos: toda pose con recortes tiene su pivote, y al revés', () => {
+  igual(
+    Object.keys(RUTAS_BRAZOS).sort().join(','),
+    Object.keys(BRAZOS).sort().join(','),
+    'las poses de RUTAS_BRAZOS y las de BRAZOS son las mismas'
+  );
+
+  for (const [pose, lados] of Object.entries(BRAZOS)) {
+    for (const lado of ['izq', 'der']) {
+      const p = lados[lado];
+      verdadero(p && p.x > 0 && p.x < 100, `${pose}/${lado}: x=${p?.x} está adentro del lienzo`);
+      verdadero(p && p.y > 0 && p.y < 100, `${pose}/${lado}: y=${p?.y} está adentro del lienzo`);
+    }
+  }
+});
+
+// EL ÁNGULO ESTÁ LIMITADO POR EL SPRITE DE ABAJO, y esto lo fija.
+//
+// El recorte rota ENCIMA del sprite entero, que sigue teniendo el brazo
+// dibujado: en el borde queda a la vista el de abajo, corrido. Medido sobre los
+// cuatro recortes, con el punto más lejano a ~73 px del pivote en un lienzo de
+// 256 que se muestra a 1,62x:
+//
+//    2° ->  2,5 px de lienzo (4,1 en pantalla)
+//    3° ->  3,8 px          ( 6,1)
+//    6° ->  7,5 px          (12,2)
+//   12° -> 15,0 px          (24,3)
+//
+// Hasta que exista un cuerpo sin brazos, el ángulo no puede pasar de donde el
+// corrimiento entra en el grosor del contorno del dibujo.
+prueba('brazos: el ángulo no pasa de lo que el sprite de abajo aguanta', () => {
+  const PALANCA = 73;
+  const ESCALA = 1.62;
+  const corrimiento = PALANCA * Math.sin((ANGULO_BRAZO * Math.PI) / 180) * ESCALA;
+
+  verdadero(
+    corrimiento <= 5,
+    `a ${ANGULO_BRAZO}° el brazo de abajo asoma ${corrimiento.toFixed(1)} px en pantalla`
+  );
+
+  // El saludo tiene el MISMO techo, y por eso está acá y no en su propio test:
+  // si se levanta uno hay que levantar los dos, porque los dos dependen del
+  // mismo archivo de arte que falta.
+  const saludo = PALANCA * Math.sin((SALUDO_BRAZO.angulo * Math.PI) / 180) * ESCALA;
+  verdadero(
+    saludo <= 7,
+    `el saludo a ${SALUDO_BRAZO.angulo}° asoma ${saludo.toFixed(1)} px en pantalla`
+  );
+});
+
+// En `critico` los brazos quedan quietos, y eso es diseño y no un olvido: la
+// ausencia de movimiento es información.
+prueba('brazos: critico no tiene recortes, y es a propósito', () => {
+  verdadero(!('critico' in RUTAS_BRAZOS), 'sin recorte no hay nada que mover');
+  verdadero(!('standby' in RUTAS_BRAZOS), 'dormido tampoco');
 });

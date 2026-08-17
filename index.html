@@ -177,6 +177,23 @@
       <div id="antena" aria-hidden="true"></div>
       </div>
 
+      <!-- LOS BRAZOS. Un grupo por brazo y no uno compartido: los dos tienen
+           que poder moverse por separado, y casi todos los gestos son
+           asimétricos. Cada uno gira sobre su propio hombro, igual que
+           #cabeza-grupo gira sobre la base del casco.
+
+           Van DESPUÉS de la cabeza y ANTES del rayo del pecho: los brazos de
+           Chip tapan el torso pero no la cara. Y no lleva nada dibujado por
+           código encima —el rayo cae en el pecho, entre los dos brazos— así que
+           no hay ninguna capa que se despegue al rotar, que es lo que pasó con
+           la antena y la cabeza. -->
+      <div id="brazo-izq-grupo" aria-hidden="true">
+        <img id="brazo-izq" alt="" hidden>
+      </div>
+      <div id="brazo-der-grupo" aria-hidden="true">
+        <img id="brazo-der" alt="" hidden>
+      </div>
+
       <!-- El rayo del pecho. NO reemplaza al dibujado en el sprite: se apoya
            encima con mezcla `screen`, así que lo enciende. La forma la pone
            ui.js y la caja sale de la tabla medida de config.js. -->

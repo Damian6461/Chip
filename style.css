@@ -4256,3 +4256,109 @@ body.sin-movimiento *::after {
   animation: colgar var(--cable-balanceo-ciclo) ease-in-out infinite;
   transform-origin: 0% 0%;
 }
+
+/* ============================================================================
+   LOS BRAZOS
+
+   Un grupo por brazo, cada uno girando sobre su propio hombro. No un grupo
+   compartido: los dos tienen que poder moverse por separado, y casi todos los
+   gestos son asimétricos.
+
+   Los cuatro movimientos son chicos a propósito. Un brazo que se mueve mucho se
+   lee como un muñeco articulado; uno que se mueve poco se lee como un cuerpo.
+   ============================================================================ */
+
+#brazo-izq-grupo,
+#brazo-der-grupo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#brazo-izq-grupo {
+  transform-origin: var(--brazo-izq-x) var(--brazo-izq-y);
+}
+
+#brazo-der-grupo {
+  transform-origin: var(--brazo-der-x) var(--brazo-der-y);
+}
+
+#brazo-izq,
+#brazo-der {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+#brazo-izq[hidden],
+#brazo-der[hidden] {
+  display: none;
+}
+
+/* ACOMODARSE. Cada tanto un brazo rota y vuelve, y los dos van por separado con
+   su propio temporizador: si coincidieran se vería coreografiado.
+
+   El sentido lo pone ui.js en --brazo-angulo, así que el mismo keyframe sirve
+   para los dos lados y para los dos brazos. */
+#brazo-izq-grupo.acomodando,
+#brazo-der-grupo.acomodando {
+  animation: acomodar-brazo var(--brazo-acomodo) ease-in-out;
+}
+
+@keyframes acomodar-brazo {
+  0% { rotate: 0deg; }
+  /* Llega rápido y vuelve lento, que es la asimetría de siempre en este
+     proyecto: el impulso es corto y el desinterés es largo. */
+  32% { rotate: var(--brazo-angulo); }
+  55% { rotate: var(--brazo-angulo); }
+  100% { rotate: 0deg; }
+}
+
+/* SALUDAR. En `feliz` uno de los dos sube y baja al terminar el estado. Con
+   overshoot al subir y vuelta más lenta que la ida. */
+#brazo-izq-grupo.saludando,
+#brazo-der-grupo.saludando {
+  animation: saludar var(--brazo-saludo-entra) ease-out forwards;
+}
+
+@keyframes saludar {
+  0% { rotate: 0deg; }
+  /* Se pasa apenas y se acomoda: el follow-through de una masa que se detiene. */
+  70% { rotate: calc(var(--brazo-saludo) * 1.12); }
+  100% { rotate: var(--brazo-saludo); }
+}
+
+/* LA CARICIA. El brazo del lado hacia donde va el dedo se levanta apenas, como
+   acercándose. Va con transition y no con animación porque sigue al dedo: no
+   tiene principio ni final propios, dura lo que dure el gesto. */
+#chip.acariciando #brazo-izq-grupo,
+#chip.acariciando #brazo-der-grupo {
+  transition: rotate 300ms ease-out;
+}
+
+#chip.volviendo #brazo-izq-grupo,
+#chip.volviendo #brazo-der-grupo {
+  transition-duration: var(--caricia-vuelta);
+}
+
+/* La vuelta del saludo: más lenta que la ida, como el resto de las animaciones
+   del proyecto. Va por clase y no por un transition inline en JS, para que la
+   duración la lea el CSS de su propia variable y no viaje como número. */
+#brazo-izq-grupo.bajando,
+#brazo-der-grupo.bajando {
+  transition: rotate var(--brazo-saludo-vuelve) ease-out;
+}
+
+/* EL BRAZO QUE ACOMPAÑA LA CARICIA. El JS pone sólo el LADO —1 o -1— y el ángulo
+   lo pone el CSS de su propia variable. Con el ángulo escrito desde JS, la
+   custom property no la leía nadie en la hoja, y el test del puente tiene razón
+   en marcarlo: si el CSS no la usa, nada garantiza que exista.
+
+   Sin --brazo-lado el calc da 0 y el brazo no se mueve, así que la regla puede
+   estar siempre puesta. */
+#chip.acariciando #brazo-izq-grupo,
+#chip.acariciando #brazo-der-grupo {
+  rotate: calc(var(--brazo-caricia) * var(--brazo-lado, 0));
+}

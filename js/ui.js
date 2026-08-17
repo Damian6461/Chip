@@ -10,6 +10,7 @@ import {
   SECCIONES_MENU,
   CLASE_SIN_MOVIMIENTO,
   ESTADOS_DE_ACCION,
+  ESTADOS_VISUALES,
   CLASE_CAMBIO,
   // Las duraciones de cruce NO se importan acá: llegan como argumento `cruce` de
   // render(). Quién decide cuánto dura una transición es la sesión, no el módulo
@@ -48,6 +49,16 @@ import {
   DURACION_LLEGADA_MS,
   ESPERA_ENTRE_LLEGADAS_MS,
   PIEZAS_POR_ESTANTE,
+  BRAZOS,
+  RUTAS_BRAZOS,
+  ANGULO_BRAZO,
+  ACOMODO_BRAZO,
+  SALUDO_BRAZO,
+  BRAZO_CARICIA,
+  VARS_BRAZOS,
+  CLASE_ACOMODANDO_BRAZO,
+  CLASE_SALUDANDO,
+  CLASE_BAJANDO_BRAZO,
   LLUVIA,
   CLASE_LLOVIENDO,
   CLASE_OBJETO_NUEVO,
@@ -139,6 +150,10 @@ import {
   contenedorMascota,
   nodoOrugas,
   capaCabeza,
+  grupoBrazoIzq,
+  grupoBrazoDer,
+  capaBrazoIzq,
+  capaBrazoDer,
   grupoCabeza,
   capaOjos,
   capaParpado,
@@ -475,6 +490,167 @@ export function responderEstoyBien() {
 // Lo último que se pintó, para poder volver al número cuando el tilde se va.
 let estadoUltimo = null;
 let claveUltima = null;
+
+// ---- LOS BRAZOS ----
+//
+// Eran lo único de Chip que nunca se movía. Cuatro movimientos, todos chicos:
+// un brazo que se mueve mucho se lee como un muñeco articulado.
+//
+//   acomodarse   en reposo, cada 25-45 s, cada brazo por su cuenta
+//   saludar      en `feliz`, uno de los dos sube y baja al terminar
+//   la caricia   el del lado hacia donde va el dedo se levanta apenas
+//   quietos      en `critico`, y la ausencia de movimiento es información
+//
+// SÓLO HAY RECORTES DE `idle` Y `feliz`. En las otras poses los brazos son los
+// del sprite y no se mueven — igual que la cabeza, que sólo tiene recorte de
+// idle. Eso deja afuera el movimiento durante las acciones (`cargando`,
+// `jugando`, `limpiando`), que pedía la spec y no se puede hacer todavía.
+
+const brazos = {
+  izq: { grupo: grupoBrazoIzq, capa: capaBrazoIzq, temporizador: null, fin: null },
+  der: { grupo: grupoBrazoDer, capa: capaBrazoDer, temporizador: null, fin: null }
+};
+
+// Qué pose de brazos le toca a esta clave de sprite. Las poses de idle
+// —idle, idle-manitos— comparten los recortes de idle: es el mismo cuerpo.
+function poseDeBrazos(clave) {
+  if (clave in RUTAS_BRAZOS) return clave;
+  if (String(clave).startsWith('idle')) return 'idle';
+  return null;
+}
+
+// El pivote se mueve con la pose: el hombro de `feliz` no está donde el de
+// `idle`, porque en feliz los brazos ya están levantados. Sin esto el brazo
+// rotaría alrededor de un punto que en esa pose es aire.
+function ponerBrazos(clave) {
+  const pose = poseDeBrazos(clave);
+
+  if (!pose) {
+    for (const lado of ['izq', 'der']) {
+      brazos[lado].capa.hidden = true;
+      cancelarBrazo(lado);
+    }
+    return;
+  }
+
+  const pivotes = BRAZOS[pose];
+
+  for (const lado of ['izq', 'der']) {
+    const brazo = brazos[lado];
+    const ruta = RUTAS_BRAZOS[pose][lado];
+
+    if (brazo.capa.getAttribute('src') !== ruta) brazo.capa.src = ruta;
+    brazo.capa.hidden = false;
+
+    brazo.grupo.style.setProperty(
+      lado === 'izq' ? VARS_BRAZOS.pivoteIzqX : VARS_BRAZOS.pivoteDerX,
+      `${pivotes[lado].x}%`
+    );
+    brazo.grupo.style.setProperty(
+      lado === 'izq' ? VARS_BRAZOS.pivoteIzqY : VARS_BRAZOS.pivoteDerY,
+      `${pivotes[lado].y}%`
+    );
+  }
+}
+
+function cancelarBrazo(lado) {
+  const brazo = brazos[lado];
+  clearTimeout(brazo.temporizador);
+  clearTimeout(brazo.fin);
+  brazo.temporizador = null;
+  brazo.fin = null;
+  brazo.grupo.classList.remove(CLASE_ACOMODANDO_BRAZO, CLASE_SALUDANDO);
+  brazo.grupo.style.removeProperty('rotate');
+}
+
+// ACOMODARSE. Cada brazo lleva SU propio temporizador y su propio sorteo: si
+// compartieran uno, los dos se moverían juntos y se vería coreografiado. Es el
+// mismo criterio que la inclinación de cabeza — un gesto con período fijo deja
+// de ser un gesto y pasa a ser un reloj.
+function esperaDeAcomodo() {
+  return ACOMODO_BRAZO.min + Math.random() * (ACOMODO_BRAZO.max - ACOMODO_BRAZO.min);
+}
+
+function acomodarUnBrazo(lado) {
+  const brazo = brazos[lado];
+  brazo.temporizador = setTimeout(() => acomodarUnBrazo(lado), esperaDeAcomodo());
+
+  // Sólo en reposo. Con una acción en curso, saludando o en una pose sin
+  // recortes, el brazo no se acomoda solo.
+  if (brazo.capa.hidden) return;
+  if (brazo.grupo.classList.contains(CLASE_SALUDANDO)) return;
+  if (cajaChip.classList.contains(CLASE_ACARICIANDO)) return;
+
+  // El lado se sortea en cada gesto: siempre para el mismo se vuelve muletilla.
+  const signo = Math.random() < 0.5 ? 1 : -1;
+  brazo.grupo.style.setProperty(VARS_BRAZOS.angulo, `${signo * ANGULO_BRAZO}deg`);
+
+  brazo.grupo.classList.remove(CLASE_ACOMODANDO_BRAZO);
+  void brazo.grupo.offsetWidth;
+  brazo.grupo.classList.add(CLASE_ACOMODANDO_BRAZO);
+
+  // Red de contención, igual que el parpadeo: si animationend no llega —pestaña
+  // en segundo plano, animación cancelada— la clase se va igual.
+  clearTimeout(brazo.fin);
+  brazo.fin = setTimeout(() => {
+    brazo.grupo.classList.remove(CLASE_ACOMODANDO_BRAZO);
+  }, ACOMODO_BRAZO.duracion + 120);
+}
+
+for (const lado of ['izq', 'der']) {
+  brazos[lado].temporizador = setTimeout(() => acomodarUnBrazo(lado), esperaDeAcomodo());
+}
+
+// SALUDAR. En `feliz` uno de los dos sube. Uno solo, y sorteado: los dos a la
+// vez se lee como un gesto de robot y no como alegría.
+let saludando = null;
+
+function saludar(activo) {
+  if (activo) {
+    if (saludando) return;
+    const lado = Math.random() < 0.5 ? 'izq' : 'der';
+    if (brazos[lado].capa.hidden) return;
+
+    saludando = lado;
+    // El signo hace que el brazo suba HACIA AFUERA en los dos lados: el
+    // izquierdo rota positivo y el derecho negativo, o si no uno saluda y el
+    // otro se mete en el torso.
+    const signo = lado === 'izq' ? -1 : 1;
+    brazos[lado].grupo.style.setProperty(VARS_BRAZOS.saludo, `${signo * SALUDO_BRAZO.angulo}deg`);
+    brazos[lado].grupo.classList.add(CLASE_SALUDANDO);
+    return;
+  }
+
+  if (!saludando) return;
+  const brazo = brazos[saludando];
+  brazo.grupo.classList.remove(CLASE_SALUDANDO);
+  // Vuelve más lento de lo que fue, como el resto de las animaciones.
+  brazo.grupo.classList.add(CLASE_BAJANDO_BRAZO);
+  brazo.grupo.style.removeProperty('rotate');
+  setTimeout(() => brazo.grupo.classList.remove(CLASE_BAJANDO_BRAZO), SALUDO_BRAZO.vuelve + 60);
+  saludando = null;
+}
+
+// LA CARICIA. El brazo del lado hacia donde va el dedo se levanta apenas, como
+// acercándose. No es un movimiento con principio y final: dura lo que dure el
+// gesto, así que va por transition y no por animación.
+function brazosHaciaLaMano(dx) {
+  if (Math.abs(dx) < 1) return;
+  const lado = dx > 0 ? 'izq' : 'der';
+  const otro = lado === 'izq' ? 'der' : 'izq';
+  const signo = lado === 'izq' ? -1 : 1;
+
+  // JS pone el LADO y el CSS pone el ángulo. Así config sigue siendo el único
+  // hogar del valor y el puente lo ve: una custom property que sólo lee un
+  // string de JS es, para el test, una variable que no lee nadie — y tiene
+  // razón, porque si el CSS no la usa nada garantiza que exista.
+  brazos[lado].grupo.style.setProperty(VARS_BRAZOS.lado, String(signo));
+  brazos[otro].grupo.style.removeProperty(VARS_BRAZOS.lado);
+}
+
+function soltarBrazosDeLaCaricia() {
+  for (const lado of ['izq', 'der']) brazos[lado].grupo.style.removeProperty(VARS_BRAZOS.lado);
+}
 
 // ---- El parpadeo ----
 //
@@ -1161,6 +1337,7 @@ function terminarCaricia() {
     cajaChip.classList.remove(CLASE_ACARICIANDO);
     cajaChip.classList.add(CLASE_VOLVIENDO);
     cajaChip.style.removeProperty(VARS_CARICIA_GESTO.inclinacion);
+    soltarBrazosDeLaCaricia();
 
     temporizadorVuelta = setTimeout(() => {
       cajaChip.classList.remove(CLASE_VOLVIENDO);
@@ -1256,7 +1433,10 @@ function moverGesto(evento) {
     empezarCaricia();
   }
 
-  if (gesto.acariciando) inclinarHaciaLaMano(evento.clientX - gesto.x);
+  if (gesto.acariciando) {
+    inclinarHaciaLaMano(evento.clientX - gesto.x);
+    brazosHaciaLaMano(evento.clientX - gesto.x);
+  }
   gesto.x = evento.clientX;
 }
 
@@ -2036,6 +2216,10 @@ export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = 
   dibujarMascota(claveSprite, !ESTADOS_DE_ACCION.includes(estadoVisual));
   pintarOrugas(claveSprite);
   pintarCabeza(claveSprite);
+  ponerBrazos(claveSprite);
+  // El saludo va atado al ESTADO y no a la clave: feliz es una reacción que dura
+  // pocos segundos, y el brazo la acompaña completa.
+  saludar(estadoVisual === ESTADOS_VISUALES.feliz);
   pintarOjos(claveSprite);
   pintarPantalla(estado, claveSprite);
   pintarRayo(claveSprite);

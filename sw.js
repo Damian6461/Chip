@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v76';
+const CACHE_VERSION = 'chip-cache-v77';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -95,10 +95,10 @@ const ARCHIVOS_CACHE = [
   // día que se usen —el candidato obvio es que los brazos reaccionen a la
   // caricia—, pero nadie los carga todavía. Ojo: son los únicos .png de la
   // carpeta; los demás son .webp.
-  './sprites/idle-brazo-izq.png',
-  './sprites/idle-brazo-der.png',
-  './sprites/feliz-brazo-izq.png',
-  './sprites/feliz-brazo-der.png',
+  './sprites/idle-brazo-izq.webp',
+  './sprites/idle-brazo-der.webp',
+  './sprites/feliz-brazo-izq.webp',
+  './sprites/feliz-brazo-der.webp',
   './sprites/feliz.webp',
   './sprites/critico.webp',
   './sprites/standby.webp',
