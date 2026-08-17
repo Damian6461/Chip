@@ -377,6 +377,28 @@ La escena va a plena luz, así que **ningún texto se apoya directamente sobre e
 
 Los tres pasan AA (4,5:1) con margen. Las teclas deshabilitadas quedan al 28% y no llegan: WCAG exime a los controles deshabilitados, y que se lean apagadas es justamente el punto.
 
+### El cable no cambia de tono; el piso sí
+
+Un caso que vale como método. Reporte: *"el cable casi no se ve con los climas"*. La lectura fácil es "poco contraste, subile el tono", y es la lectura equivocada. Medido en pantalla sobre el tramo lejano —el que sube a la toma, ya afinado— en los seis fondos, en valores de 0 a 255:
+
+| fondo | piso | cable | cómo se lee |
+|---|---|---|---|
+| mediodía | ~190 | 49-57 | oscuro sobre claro |
+| amanecer | ~130 | 49-57 | oscuro sobre claro |
+| atardecer | 66 a 150 | 49-57 | oscuro sobre claro |
+| noche | 17 a 28 | 43-50 | **claro** sobre oscuro, y se lee bien |
+| tormenta | 24 a 37 | 48-51 | claro sobre oscuro, al límite |
+| niebla | 29 a **47** | 42-47 | **se cruzan**: no hay nada que separar |
+
+**El cable se pinta siempre del mismo gris.** Lo que cambia es el piso, y con la niebla sube justo hasta la banda donde el cable ya estaba: abajo del todo el cable queda *por debajo* del piso. No es un problema de grado, es un cruce.
+
+Dos cosas salieron de tener la tabla y no la impresión:
+
+- **La dirección.** Bajar el tono también separaría del piso de la niebla, y hundiría el cable en el de la noche. Sólo sirve subirlo, y por eso el test lo fija: `el cable del clima ACLARA, nunca oscurece`.
+- **Qué NO tocar.** La noche mide 1,32 de contraste, más cerca de la tormenta (1,19) que de los tramos claros, y sin embargo se lee perfecto a tamaño real. Es la prueba de que el mecanismo alcanza y la referencia de cuánto hace falta — no una sexta cosa para arreglar. Los climas quedaron en 2,03 y 2,32.
+
+El tono va en la tabla `CLIMAS`, al lado de `nube` y por el mismo motivo: es un dato del clima, y el tercero que aparezca trae el suyo. Lo escribe `pintarFondo` junto con el fondo, que es la función que sabe cuál está puesto, y cae en `CABLE` cuando no hay clima — sin eso, el cable se aclara en el primer clima de la sesión y se queda aclarado sobre el piso blanco del mediodía.
+
 ### Por qué la escena recorta y Chip no
 
 `#escena` lleva `overflow: hidden` —es la pantalla, nada se le escapa— pero Chip vive adentro con aire de sobra arriba: el sprite de `jugando` tiene 1,3 px de margen transparente y el salto sube 8, y a 371 px de alto le quedan más de 100 px de galpón por encima de la antena. El recorte que antes había que evitar era el del panel de 320, que ya no existe.

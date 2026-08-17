@@ -11,6 +11,7 @@ import {
   CATEGORIA_GRANDES,
   EVENTO_LLUVIA,
   CLIMAS,
+  CABLE,
   FRANJAS_DIA
 } from '../js/config.js';
 import { readFileSync } from 'node:fs';
@@ -335,6 +336,80 @@ prueba('climas: cada uno trae su fondo, y el fondo existe', () => {
       `${clima.fondo} no puede estar además en la rotación horaria`
     );
   }
+});
+
+// ---- El cable con clima ----
+//
+// El cable se pinta siempre del mismo gris y lo que cambia con el fondo es el
+// PISO detrás. Medido en pantalla en los seis fondos: con la niebla el piso sube
+// hasta 47 sobre 255 y el cable estaba en 42-47, o sea que se cruzaban y el
+// tramo lejano desaparecía. Ver CLIMAS en config.js, que tiene la tabla.
+//
+// Lo que estas pruebas fijan es la DIRECCIÓN de la corrección, que es la parte
+// que se puede perder en un retoque: más claro y no más oscuro. Bajar el tono
+// también separaría del piso de la niebla, y hundiría el cable en el de la
+// noche, que es el fondo más oscuro de los seis y hoy se lee bien.
+
+const canalLineal = (v) => {
+  const s = v / 255;
+  return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+};
+
+function luminancia(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return (
+    0.2126 * canalLineal((n >> 16) & 255) +
+    0.7152 * canalLineal((n >> 8) & 255) +
+    0.0722 * canalLineal(n & 255)
+  );
+}
+
+prueba('climas: cada uno trae su par de tonos para el cable', () => {
+  for (const [nombre, clima] of Object.entries(CLIMAS)) {
+    verdadero(!!clima.cable, `${nombre} tiene que traer su cable`);
+    for (const parte of ['color', 'brillo']) {
+      verdadero(
+        /^#[0-9a-f]{6}$/.test(clima.cable[parte]),
+        `${nombre}.cable.${parte} tiene que ser un hex de seis, y es ${clima.cable[parte]}`
+      );
+    }
+  }
+});
+
+prueba('climas: el cable del clima ACLARA, nunca oscurece', () => {
+  const base = luminancia(CABLE.color);
+  const baseBrillo = luminancia(CABLE.brillo);
+
+  for (const [nombre, clima] of Object.entries(CLIMAS)) {
+    const suyo = luminancia(clima.cable.color);
+    verdadero(
+      suyo > base * 2,
+      `${nombre}: el cuerpo pasa de ${base.toFixed(4)} a ${suyo.toFixed(4)}, y tiene que al menos duplicar`
+    );
+    verdadero(
+      luminancia(clima.cable.brillo) > baseBrillo,
+      `${nombre}: el lomo también sube, o el cuerpo aclarado se lo come`
+    );
+    verdadero(
+      luminancia(clima.cable.brillo) > suyo,
+      `${nombre}: el lomo sigue siendo la arista iluminada y no puede quedar debajo del cuerpo`
+    );
+  }
+});
+
+prueba('climas: salir del clima devuelve el cable de config', () => {
+  // Sin esto el cable se aclara al primer clima de la sesión y queda aclarado
+  // para siempre, que es peor que el defecto original: un cable de tormenta
+  // sobre el piso blanco del mediodía.
+  const codigo = UI_JS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  verdadero(
+    /const cable = clima\?\.cable \?\? CABLE;/.test(codigo),
+    'pintarFondo cae en CABLE cuando no hay clima'
+  );
+  verdadero(
+    /setProperty\(VARS_CABLE\.color, cable\.color\)/.test(codigo),
+    'y escribe el color en cada pintada, no una sola vez'
+  );
 });
 
 prueba('climas: sólo la tormenta trae lluvia', () => {

@@ -579,6 +579,34 @@ export const CLASE_LLOVIENDO = 'lloviendo';
 // del atardecer quedaban flotando sobre un cielo de plomo. El clima trae su
 // propio tono para esa capa, por el mismo motivo por el que cada tramo trae el
 // suyo.
+//
+// ---- Y `cable`, por lo mismo pero medido ----
+//
+// EL CABLE SE PINTA SIEMPRE DEL MISMO GRIS y lo que cambia es el piso. Medido
+// en pantalla sobre el tramo lejano —el que sube a la toma, donde el cable ya
+// está afinado— en los seis fondos, en valores de 0 a 255:
+//
+//   fondo       piso        cable    cómo se lee
+//   atardecer   66 a 150    49-57    oscuro sobre claro
+//   mediodía    ~190        49-57    oscuro sobre claro
+//   amanecer    ~130        49-57    oscuro sobre claro
+//   noche       17 a 28     43-50    CLARO sobre oscuro, y se lee bien
+//   tormenta    24 a 37     48-51    claro sobre oscuro, al límite
+//   niebla      29 a 47     42-47    se CRUZAN: el cable desaparece
+//
+// O sea que el defecto no es "poco contraste" en general: es que el piso de la
+// niebla sube justo hasta la banda en la que el cable ya estaba. Abajo del todo,
+// donde el piso llega a 47, el cable queda POR DEBAJO del piso y no hay nada que
+// separar.
+//
+// La noche es la prueba de que el mecanismo alcanza: con el piso en 17-28 el
+// mismo cable se lee perfecto, verificado a tamaño real y no sólo por el número.
+// Por eso la noche NO se toca — su luz plana es otra cosa que la de una tormenta,
+// y lo que anda no se arregla.
+//
+// El clima trae entonces su propio par de tonos, y son más claros y no más
+// oscuros: un día de tormenta o de niebla es luz difusa y sin dirección, y en esa
+// luz todo tiende al gris medio. Bajar el cable lo hundiría en la noche.
 export const CLIMAS = {
   tormenta: {
     evento: EVENTO_LLUVIA,
@@ -587,7 +615,12 @@ export const CLIMAS = {
     // propósito sin gotas dibujadas: la imagen da la atmósfera y el cielo, el
     // código da el movimiento. Las dos cosas juntas.
     llueve: true,
-    nube: { color: '#8d939c', alfa: 0.5 }
+    nube: { color: '#8d939c', alfa: 0.5 },
+    // El piso de la tormenta llega a 37. El cuerpo sube a gris 92 y el lomo a
+    // 128 compuesto: separación de 55 contra el piso más claro de este fondo,
+    // el doble de la que tiene hoy la noche —que se lee bien— y sin llegar a
+    // competir con el cian de los pulsos, que es lo único que brilla.
+    cable: { color: '#505b68', brillo: '#a8b2be' }
   },
   niebla: {
     evento: EVENTO_NIEBLA,
@@ -596,7 +629,12 @@ export const CLIMAS = {
     // la cuenta; sumarla por código sería taparle la cara a Chip. La niebla se
     // siente por lo que NO hay.
     llueve: false,
-    nube: { color: '#c9cdd2', alfa: 0.22 }
+    nube: { color: '#c9cdd2', alfa: 0.22 },
+    // El de la niebla es el caso peor y por eso es el que fija el número: su piso
+    // llega a 47, cuatro puntos por ENCIMA del cable de hoy. Mismo par que la
+    // tormenta —la falla es la misma y dos tonos distintos para el mismo arreglo
+    // serían dos cosas que mantener— y contra ese piso quedan 45 de separación.
+    cable: { color: '#505b68', brillo: '#a8b2be' }
   }
 };
 

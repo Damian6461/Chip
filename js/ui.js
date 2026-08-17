@@ -2184,6 +2184,19 @@ function pintarFondo(franja, esNoche, cruce = null) {
   raiz.style.setProperty(VARS_NUBES.color, nube.color);
   raiz.style.setProperty(VARS_NUBES.alfa, String(nube.alfa));
 
+  // Y EL CABLE, por el mismo motivo y con el mismo mecanismo. El cable se pinta
+  // siempre del mismo gris; lo que cambia con el fondo es el PISO detrás. Con la
+  // niebla el piso sube hasta 47 y el cable queda en 42-47: se cruzan, y el tramo
+  // lejano desaparece. El clima trae su par de tonos y acá se escriben — ver
+  // CLIMAS en config.js, que tiene la medición de los seis fondos.
+  //
+  // Va con el fondo y no en el tema porque depende del fondo puesto, que es
+  // exactamente lo que decide esta función. Sin clima vuelven los de config, así
+  // que salir de un clima no deja el cable aclarado.
+  const cable = clima?.cable ?? CABLE;
+  raiz.style.setProperty(VARS_CABLE.color, cable.color);
+  raiz.style.setProperty(VARS_CABLE.brillo, cable.brillo);
+
   // Y el mismo dato como clase, para lo que cambia de ritmo y no de imagen.
   document.body.classList.toggle(CLASE_NOCHE, esNoche);
   // La nube ocasional consulta esto para no salir de noche. Se guarda en vez de
