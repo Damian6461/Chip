@@ -35,6 +35,7 @@ import {
   OBJETO_PISO,
   SILUETA_CHIP,
   DURACION_FASTIDIO_MS,
+  CLIMAS,
   DURACION_FELIZ_MS,
   CARICIA_HUMOR,
   TOQUE_HUMOR,
@@ -124,6 +125,7 @@ function vistaFalsa() {
   const cuenta = { render: 0, sembrarFondo: 0, animarAccion: 0, celebrarHumor: 0, estoyBien: 0 };
   let ultimoRender = null;
   let fondoSembrado = null;
+  const climas = [];
 
   return {
     cuenta,
@@ -139,7 +141,14 @@ function vistaFalsa() {
     },
     animarAccion: () => cuenta.animarAccion++,
     celebrarHumor: () => cuenta.celebrarHumor++,
-    responderEstoyBien: () => cuenta.estoyBien++
+    responderEstoyBien: () => cuenta.estoyBien++,
+    // El doble tiene que TENER ponerClima aunque no se use en todas las pruebas:
+    // la sesión la llama con `?.`, así que un doble sin el método deja pasar en
+    // silencio una sesión que dejó de despacharlo.
+    ponerClima(nombre, cruce) {
+      climas.push({ nombre, cruce });
+    },
+    climas: () => climas
   };
 }
 
@@ -1120,6 +1129,46 @@ prueba('gestos: la caricia da más que el toque', () => {
   cerca(conCaricia, CARICIA_HUMOR, 'la caricia sube lo que dice config');
   cerca(conToque, TOQUE_HUMOR, 'y el toque lo suyo');
   verdadero(conToque < conCaricia, `${conToque} es menos que ${conCaricia}`);
+});
+
+// ---- El disparador de los climas ----
+//
+// Que el fondo exista, que la tabla lo nombre y que el evento esté en el pool no
+// dicen nada sobre si el clima LLEGA A PRENDERSE. La cadena entera es: el evento
+// sale sorteado -> ui.js escribe su línea -> la sesión ve el id en la tabla y
+// llama a vista.ponerClima cuando esa línea aparece. Faltaba el test del último
+// eslabón, y es el único que no se ve leyendo config.js.
+//
+// La llamada va con `?.`, o sea que una sesión que dejara de despacharla no
+// rompería nada: seguiría el fondo del tramo y nadie se enteraría. Por eso el
+// doble de vista tiene el método aunque casi ninguna prueba lo mire.
+prueba('climas: el evento de cada clima lo prende cuando su línea aparece', () => {
+  for (const [nombre, clima] of Object.entries(CLIMAS)) {
+    const { sesion, reloj, vista } = sesionDePrueba(crearEstadoNuevo());
+    const evento = EVENTOS.find((e) => e.id === clima.evento);
+    verdadero(evento !== undefined, `${clima.evento} tiene que estar en el pool`);
+
+    sesion.programarReacciones([evento]);
+    igual(vista.climas().length, 0, `${nombre} no se prende antes de que corra el reloj`);
+
+    reloj.avanzar(1);
+    igual(vista.climas().length, 1, `${nombre} se prende cuando aparece su línea`);
+    igual(vista.climas()[0].nombre, nombre, 'y es el clima de ese evento');
+  }
+});
+
+prueba('climas: un evento cualquiera NO prende ningún clima', () => {
+  // La red del de arriba: si `programarReacciones` prendiera un clima por cada
+  // evento —un `find` mal escrito que devuelva la primera entrada siempre—, el
+  // test anterior pasaría igual.
+  const idsDeClima = new Set(Object.values(CLIMAS).map((c) => c.evento));
+  const otro = EVENTOS.find((e) => !idsDeClima.has(e.id));
+
+  const { sesion, reloj, vista } = sesionDePrueba(crearEstadoNuevo());
+  sesion.programarReacciones([otro]);
+  reloj.avanzar(1000);
+
+  igual(vista.climas().length, 0, `${otro.id} no trae clima`);
 });
 
 // LOS TRES GESTOS NO PUEDEN DEJAR UN POZO EN EL MEDIO. La decisión vive en
