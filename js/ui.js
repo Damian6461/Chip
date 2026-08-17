@@ -606,6 +606,20 @@ for (const lado of ['izq', 'der']) {
 let saludando = null;
 
 function saludar(activo) {
+  // DURANTE LA CARICIA NO SALUDA, y esto no es una preferencia: es que los dos
+  // gestos se pelean por el mismo brazo.
+  //
+  // La caricia pone contento a Chip, y estar contento dispara el saludo. Así que
+  // acariciar levantaba un brazo por saludo mientras el otro seguía la mano — y
+  // encima el saludo va por animación con `forwards`, que le gana a la regla de
+  // la caricia, así que el brazo que saludaba dejaba de responder al dedo.
+  //
+  // La caricia tiene su propio movimiento de brazos y manda ella mientras dura.
+  if (activo && cajaChip.classList.contains(CLASE_ACARICIANDO)) {
+    if (saludando) saludar(false);
+    return;
+  }
+
   if (activo) {
     if (saludando) return;
     const lado = Math.random() < 0.5 ? 'izq' : 'der';

@@ -20,7 +20,7 @@ http://127.0.0.1:5500/index.html
 
 ## Tests
 
-163 pruebas, mismos archivos en dos entrypoints:
+237 pruebas, mismos archivos en dos entrypoints:
 
 ```bash
 node tests/correr.mjs        # sale 0 si pasa todo, 1 si no
@@ -60,6 +60,8 @@ Sin el parámetro, `js/debug.js` ni se descarga (import dinámico).
 | sumar días | suma presencia acumulada, para ver el arco de los gigantes avanzar |
 | disparar hito | dispara el hito pendiente sin esperar a la próxima apertura |
 | sumar objeto | agrega el primer objeto que falte, para poblar el estante |
+| tirar al piso | deja una pieza tirada en el piso sin esperar la moneda del 15%. Con la colección completa le saca la última a la colección para poder volver a encontrarla — sólo el panel hace eso |
+| que llueva | dispara el evento 16 sin esperar a que salga uno de cuarenta y ocho |
 | cambiar pose | avanza el índice de pose de idle sin recargar (hoy `POSES_IDLE` tiene una sola, así que no cambia nada) |
 | reiniciar partida | save nuevo en 100/100/100 |
 

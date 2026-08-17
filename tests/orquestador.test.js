@@ -31,7 +31,10 @@ import {
   PROBABILIDAD_OBJETO_PISO,
   ZONA_PISO,
   DURACION_FASTIDIO_MS,
-  DURACION_FELIZ_MS
+  DURACION_FELIZ_MS,
+  CARICIA_HUMOR,
+  TOQUE_HUMOR,
+  STAT_MAX
 } from '../js/config.js';
 import { OBJETOS } from '../js/datos-objetos.js';
 import { crearEstadoNuevo, cargarEstado, guardarEstado } from '../js/estado.js';
@@ -1000,4 +1003,122 @@ prueba('sesión: el fastidio no ocupa a Chip', () => {
   // acción ARRIBA de esperando, así que la acción le gana al fastidio.
   sesion.ejecutar(E.limpiando, limpiar, 'limpiar');
   igual(sesion.estadoVisual(), E.limpiando, 'limpiar entró igual y le ganó a la cara');
+});
+
+// ---- Los tres gestos, del lado del modelo ----
+//
+// ui.js decide CUÁL gesto fue —eso es interpretación de punteros y no se puede
+// probar sin navegador— y la sesión decide qué significa cada uno. Esto prueba
+// lo segundo, que es donde están las reglas.
+//
+// Lo que hace que los tres signifiquen cosas distintas es que DEN cosas
+// distintas: si acariciar y tocar dieran lo mismo, arrastrar el dedo sería una
+// forma más incómoda de tocar.
+
+prueba('gestos: la caricia da más que el toque', () => {
+  const { sesion: a } = sesionDePrueba({ ...crearEstadoNuevo(), humor: 50 });
+  igual(a.acariciar(), true, 'la caricia aplica');
+  const conCaricia = a.estado().humor - 50;
+
+  const { sesion: b } = sesionDePrueba({ ...crearEstadoNuevo(), humor: 50 });
+  igual(b.tocar(), true, 'el toque aplica');
+  const conToque = b.estado().humor - 50;
+
+  cerca(conCaricia, CARICIA_HUMOR, 'la caricia sube lo que dice config');
+  cerca(conToque, TOQUE_HUMOR, 'y el toque lo suyo');
+  verdadero(conToque < conCaricia, `${conToque} es menos que ${conCaricia}`);
+});
+
+prueba('gestos: con el humor lleno ninguno de los dos aplica', () => {
+  const { sesion } = sesionDePrueba({ ...crearEstadoNuevo(), humor: STAT_MAX });
+
+  igual(sesion.acariciar(), false, 'la caricia no aplica');
+  igual(sesion.tocar(), false, 'el toque tampoco');
+  igual(sesion.estado().humor, STAT_MAX, 'y el humor no se movió');
+});
+
+// LA CARICIA PONE CONTENTO Y EL TOQUE NO, y esa es la diferencia que hace que
+// los dos gestos digan cosas distintas del personaje. Un toque es un sobresalto,
+// no una alegría.
+prueba('gestos: la caricia pone contento; el toque, no', () => {
+  const { sesion: a } = sesionDePrueba({ ...crearEstadoNuevo(), humor: 50 });
+  a.actualizarVisual({ inmediato: true });
+  a.acariciar();
+  igual(a.estadoVisual(), E.feliz, 'acariciar deja a Chip contento');
+
+  const { sesion: b } = sesionDePrueba({ ...crearEstadoNuevo(), humor: 50 });
+  b.actualizarVisual({ inmediato: true });
+  const antes = b.estadoVisual();
+  b.tocar();
+  igual(b.estadoVisual(), antes, 'tocar no cambia el estado visual');
+});
+
+prueba('gestos: fastidiarse pone la cara y se pasa solo', () => {
+  const { sesion, reloj } = sesionDePrueba({ ...crearEstadoNuevo(), humor: 50 });
+  sesion.actualizarVisual({ inmediato: true });
+  const antes = sesion.estadoVisual();
+
+  igual(sesion.estaFastidiado(), false, 'arranca tranquilo');
+  sesion.fastidiar();
+  igual(sesion.estaFastidiado(), true, 'y se fastidia');
+  igual(sesion.estadoVisual(), E.esperando, 'con los brazos cruzados');
+
+  reloj.avanzar(DURACION_FASTIDIO_MS - 1);
+  igual(sesion.estadoVisual(), E.esperando, 'se lo aguanta');
+
+  reloj.avanzar(2);
+  igual(sesion.estaFastidiado(), false, 'y se le pasa solo');
+  igual(sesion.estadoVisual(), antes, 'volviendo a lo que estaba');
+});
+
+// EL FASTIDIO NO ENCADENA EN FELIZ, a diferencia del de que le levanten algo
+// del piso. Ahí primero se queja y después se pone contento de tenerlo; acá no
+// hay nada que agradecer, lo estuviste picando con el dedo.
+prueba('gestos: el fastidio del toque NO termina en feliz', () => {
+  const { sesion, reloj } = sesionDePrueba({ ...crearEstadoNuevo(), humor: 50 });
+  sesion.actualizarVisual({ inmediato: true });
+
+  sesion.fastidiar();
+  reloj.avanzar(DURACION_FASTIDIO_MS + 1);
+
+  verdadero(sesion.estadoVisual() !== E.feliz, 'no se pone contento después de fastidiarse');
+});
+
+// NO BAJA NINGÚN STAT. Es la única forma de molestarlo que tiene el juego y es
+// graciosa, no punitiva — el modelo sin culpa no se toca.
+prueba('gestos: fastidiarse no cuesta nada', () => {
+  const { sesion } = sesionDePrueba({ ...crearEstadoNuevo(), bateria: 60, humor: 55, mantenimiento: 70 });
+  const antes = sesion.estado();
+
+  sesion.fastidiar();
+  const despues = sesion.estado();
+
+  igual(despues.bateria, antes.bateria, 'la batería no baja');
+  igual(despues.humor, antes.humor, 'el humor tampoco');
+  igual(despues.mantenimiento, antes.mantenimiento, 'ni el mantenimiento');
+});
+
+// Y no ocupa a Chip: es una cara, no un estado de juego. Las tres teclas siguen
+// funcionando mientras dura.
+prueba('gestos: fastidiado, las acciones siguen entrando', () => {
+  const { sesion } = sesionDePrueba({ ...crearEstadoNuevo(), mantenimiento: 40 });
+  sesion.actualizarVisual({ inmediato: true });
+
+  sesion.fastidiar();
+  igual(sesion.ocupado(), false, 'no está ocupado');
+
+  sesion.ejecutar(E.limpiando, limpiar, 'limpiar');
+  igual(sesion.estadoVisual(), E.limpiando, 'y limpiar le gana a la cara');
+});
+
+// Mientras Chip está ocupado con una acción, ni la caricia ni el toque entran.
+// Es la misma regla que ya valía: mientras carga, está cargando.
+prueba('gestos: con una acción en curso no entra ninguno de los dos', () => {
+  const { sesion } = sesionDePrueba({ ...crearEstadoNuevo(), bateria: 30, humor: 50 });
+  sesion.actualizarVisual({ inmediato: true });
+  sesion.ejecutar(E.cargando, cargar, 'cargar');
+
+  igual(sesion.ocupado(), true, 'está cargando');
+  igual(sesion.acariciar(), false, 'la caricia no entra');
+  igual(sesion.tocar(), false, 'el toque tampoco');
 });
