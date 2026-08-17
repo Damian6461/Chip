@@ -188,6 +188,36 @@ Las burbujas de `limpiando` nunca tuvieron el problema, y no por suerte: su regl
 
 Tres veces es patrón, no casualidad. Por eso está arriba, entre las reglas de arquitectura.
 
+### La regla del `[hidden]` contra el `display`
+
+De la misma familia que la anterior, y la más traicionera de las tres: **cosas que funcionan hasta que otro cambio, perfectamente legítimo, las apaga en silencio.**
+
+`elemento.hidden = true` no esconde nada por sí solo. Lo esconde la regla `[hidden] { display: none }` de la hoja del **user agent**, y esa hoja pierde contra cualquier declaración de autor. Un `display: grid` en `style.css` deja el `hidden` sin efecto: no hay error, no hay consola, y el atributo queda puesto en el DOM como si funcionara.
+
+Lo que la hace distinta del shorthand es **el retardo**. El defecto no aparece cuando alguien escribe el `hidden`; en ese momento anda. Aparece meses después, cuando otra persona —o la misma— le agrega un `display` al elemento por un motivo que no tiene nada que ver:
+
+| elemento | por qué le llegó el `display` | qué se rompió |
+|---|---|---|
+| `#estado` | `flex` para acomodar las tres barras | quedó anotado a tiempo |
+| `#eventos` | `flex` para la línea de texto | quedó anotado a tiempo |
+| `#piso` | `grid` para centrar la pieza adentro de la caja táctil de 44 px | la pieza volaba al estante **y quedaba también en el piso** |
+
+Los dos primeros tienen un comentario en la hoja avisando de la trampa, escrito por quien la sufrió. Y volvió a pasar igual, porque **un comentario protege el lugar donde está, no la clase de error**. Entre el `hidden` de `#piso` y el `display` que lo apagó pasaron meses y una tarea entera de otra cosa.
+
+Por eso ahora hay un test (`tests/composicion.test.js`) que cruza los dos archivos: saca de `ui.js` y `ui-montaje.js` qué nodos esconde el JS con `.hidden` —resolviendo el id desde su `getElementById`— y busca en `style.css` cuáles de esos tienen un `display` propio sin repetir la regla `[hidden]`. Son doce nodos.
+
+Un detalle que lo hace servir: **el id tiene que ser el sujeto de la regla, no un ancestro.** `#rayo svg { display: block }` le da display al `svg`, no a `#rayo`, y contarlo sería un falso positivo — que es la única aserción con nombre propio del test.
+
+**Las tres reglas de esta familia**, juntas porque el modo de falla es el mismo:
+
+| regla | qué la apaga | cómo se detecta |
+|---|---|---|
+| `animation-delay` por `:nth-child` | una regla posterior con el shorthand `animation` | leyendo el `delay` computado; mirar no alcanza |
+| `transform` de una capa | otra regla que declara `transform` y lo pisa entero, porque no se suman | leyendo el `transform` computado |
+| `hidden` de un nodo | un `display` de autor en cualquier regla que lo matchee | cruzando JS contra CSS |
+
+Ninguna de las tres tira error. Ninguna se ve al escribirla. Las tres se cierran con un test o con un longhand, nunca con disciplina.
+
 ### Cuando el instrumento miente
 
 Una y otra vez, una medición dio un número correcto de una cosa que no era la
