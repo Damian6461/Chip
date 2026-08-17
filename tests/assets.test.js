@@ -420,17 +420,34 @@ prueba('ojos: cada cara de la caricia tiene su ajuste, y al revés', () => {
   );
 });
 
-prueba('ojos: los dos recortes se AGRANDAN, porque vienen de poses más chicas', () => {
-  // Medido: el par entero mide un 87% del de idle en los dos recortes, así que
-  // la corrección tiene que ser mayor que 1. Si alguien la toca y la deja abajo
-  // de 1, la expresión cambia Y ADEMÁS los ojos se achican — el salto que la
-  // alineación viene a evitar.
+prueba('ojos: cada OJO tiene su propio ajuste, y los dos agrandan', () => {
+  // El ajuste va por ojo y no por capa: medido, los dos ojos de cada recorte
+  // están desnivelados —y el desnivel cambia de signo entre contento y cerrado—
+  // y cada uno pide una escala distinta. Un solo número por capa deja bien uno y
+  // saca el otro un 10%.
+  //
+  // Los recortes vienen de poses con la cabeza más chica, así que las dos
+  // escalas tienen que ser mayores que 1. Si alguien las deja abajo, la
+  // expresión cambia Y ADEMÁS los ojos se achican.
   for (const [cara, a] of Object.entries(AJUSTE_OJOS)) {
-    verdadero(a.escala > 1, `${cara}: escala ${a.escala}, y el recorte es más chico que idle`);
-    verdadero(a.escala < 1.3, `${cara}: escala ${a.escala} es demasiada para un ajuste de encuadre`);
     verdadero(
-      Number.isFinite(a.x) && Number.isFinite(a.y),
-      `${cara}: el corrimiento tiene que ser un par de números`
+      a.corte > 30 && a.corte < 60,
+      `${cara}: el corte del hueco está en ${a.corte}%, y tiene que caer cerca del medio`
     );
+
+    for (const lado of ['izq', 'der']) {
+      const o = a[lado];
+      verdadero(o, `${cara}: falta el ojo ${lado}`);
+      verdadero(o.escala > 1, `${cara}/${lado}: escala ${o.escala}, y el recorte es más chico que idle`);
+      verdadero(o.escala < 1.3, `${cara}/${lado}: escala ${o.escala} es demasiada para un encuadre`);
+      verdadero(
+        Number.isFinite(o.x) && Number.isFinite(o.y),
+        `${cara}/${lado}: el corrimiento tiene que ser un par de números`
+      );
+      // Los dos gestos caen BAJOS respecto de idle, así que la corrección
+      // vertical sube en los cuatro casos. Un signo positivo acá sería empujar
+      // el ojo todavía más abajo, que es el defecto que esto viene a arreglar.
+      verdadero(o.y < 0, `${cara}/${lado}: y = ${o.y}, y los dos gestos hay que SUBIRLOS`);
+    }
   }
 });

@@ -408,45 +408,97 @@ export const RUTAS_OJOS_GESTO = {
   cerrado: 'sprites/idle-ojos-cerrado.webp'
 };
 
-// LA ALINEACIÓN, Y ACÁ HUBO UN DESVÍO QUE VALE DECLARAR.
+// LA ALINEACIÓN VA POR OJO Y NO POR CAPA, y el intento anterior está contado
+// abajo porque explica por qué no alcanzaba.
 //
-// El pedido era compensar con un OFFSET por capa. Medida la huella alfa de las
-// tres sobre el lienzo de 256, el offset solo no alcanza: hay ESCALA. Los dos
-// recortes vienen de poses con la cabeza dibujada más chica.
+// EL ORDEN DE CSS, MEDIDO Y NO RAZONADO, porque es de lo que dependen todos los
+// números de acá y es fácil decirlo al revés. Un cuadrado de 100 px con
+// `translate: 10%` y `scale: 2` sobre su centro cae en [-40, 160]. Si el
+// translate se escalara caería en [-30, 170]. O sea:
 //
-//   capa       ojo izquierdo      ojo derecho        separación de centros
-//   idle       55x58 en x=85      54x58 en x=152,5   67,5
-//   contento   47x51 en x=83      51x53 en x=140     57,0
-//   cerrado    47x50 en x=79      50x50 en x=137,5   58,5
+//   EL TRANSLATE NO SE MULTIPLICA POR EL SCALE.
 //
-// O sea que el par entero mide un 87% de lo que mide en idle. Con solo mover las
-// capas, la expresión cambiaría Y ADEMÁS los ojos se achicarían un 13%, que es
-// exactamente el salto que el pedido quiere evitar. Así que cada capa lleva
-// escala y traslación, calculadas para que su caja de par caiga sobre la de
-// idle: ancho 122, centro (118,5 · 97,5).
+// Dicho como fórmula, que no admite dos lecturas:
 //
-// LO QUE ESTO NO ARREGLA, dicho en voz alta: adentro de cada recorte los dos
-// ojos no están a la misma altura —contento tiene 5 px de diferencia entre uno
-// y otro, cerrado 4— porque las poses de origen tenían la cabeza inclinada. Eso
-// es del dibujo y no de la alineación; emparejarlo sería editarle el arte al
-// ilustrador. A tamaño real se nota poco; queda para que Damián lo juzgue con el
-// dedo.
+//   p' = T + s·(p − origen) + origen
 //
-// `x` e `y` en % del lienzo, `escala` como factor. El orden importa: primero
-// escala sobre el centro, después traslada.
+// Evito a propósito "primero escala" o "primero traslada": el orden de la matriz
+// se lee al revés que el orden en que uno escribe las propiedades, y esa frase
+// manda a la persona equivocada para el lado equivocado.
+//
+// LAS MEDICIONES, ojo por ojo, cortando cada recorte por el hueco de columnas
+// vacías que separa los dos:
+//
+//   capa       ojo izquierdo          ojo derecho            desnivel   hueco
+//   idle       centro (85 · 97,5)     centro (152,5 · 97,5)    0,0 px   113-125
+//              55x58                  54x58
+//   contento   centro (83 · 107)      centro (140 · 102)      -5,0 px   107-114
+//              47x51                  51x53
+//   cerrado    centro (79 · 115,5)    centro (137,5 · 119,5)  +4,0 px   103-112
+//              47x50                  50x50
+//
+// Tres cosas salen de ahí, y las tres son la razón de partir las capas:
+//
+//   1. En idle los dos ojos están EXACTAMENTE a nivel. En los dos gestos no, y
+//      el desnivel CAMBIA DE SIGNO: contento inclina para un lado y cerrado para
+//      el otro. O sea que durante la caricia la cara se bambolea.
+//   2. Los dos gestos caen bajos. Cerrado hasta 22 px de lienzo por debajo, que
+//      sobre los ~371 px de pantalla son más de 30. Eso es el arco pegado abajo
+//      del hueco crema que se veía.
+//   3. Cada ojo pide una escala DISTINTA: 1,170 el izquierdo y 1,059 el derecho
+//      en contento. Un solo scale por capa deja bien uno y saca el otro un 10%.
+//
+// Un solo scale y un solo translate no pueden con dos ojos que piden cosas
+// distintas. Por eso cada gesto se parte en dos mitades por su hueco —que está
+// limpio, son columnas sin un solo píxel— y cada mitad lleva su número.
+//
+// NO SE TOCA EL DIBUJO. Partir por el hueco y mover cada mitad es colocar, no
+// editar: los píxeles son los mismos. Esto reemplaza la nota vieja que decía que
+// emparejar los ojos sería editarle el arte al ilustrador.
+//
+// `corte` es dónde parte el hueco, en % del lienzo. `x` e `y` en % también, y
+// salen de T = destino − 128 − s·(centro − 128), con el destino siendo el ojo de
+// idle que le toca a cada uno.
 export const AJUSTE_OJOS = {
-  contento: { escala: 1.151, x: 3.26, y: -1.12 },
-  cerrado: { escala: 1.14, x: 4.75, y: -7.24 }
+  contento: {
+    corte: 43.16,
+    izq: { escala: 1.17, x: 3.773, y: -2.315 },
+    der: { escala: 1.059, x: 4.607, y: -1.16 }
+  },
+  cerrado: {
+    corte: 41.99,
+    izq: { escala: 1.17, x: 5.602, y: -6.2 },
+    der: { escala: 1.08, x: 5.562, y: -8.328 }
+  }
 };
 
+// EL INTENTO ANTERIOR, y por qué no alcanzaba. Había un solo `escala`, `x` e `y`
+// por capa, calculados para que la CAJA DEL PAR entero cayera sobre la de idle.
+// Eso funcionaba: el par caía con 1 a 3 px de error. Pero la caja del par no es
+// la unidad correcta — adentro de ella los dos ojos pueden estar desnivelados y
+// pedir escalas distintas, y lo estaban. Un ajuste bien calculado sobre la
+// unidad equivocada.
+
+// LA NOTA VIEJA, como registro de por qué el intento anterior parecía completo:
+//
+// El pedido original era compensar con un OFFSET por capa, y la medición mostró
+// que además hacía falta ESCALA, porque los recortes vienen de poses con la
+// cabeza dibujada más chica —el par entero mide un 87% del de idle—. Eso se
+// resolvió bien.
+//
+// Y quedó escrito que los dos ojos desnivelados adentro de cada recorte eran del
+// dibujo y que emparejarlos sería editarle el arte al ilustrador. Eso era lo
+// equivocado: partir por el hueco y colocar cada mitad no toca un solo píxel.
+
+// Los nombres se arman por convención —--ojos-<gesto>-<lado>-<qué>— en vez de
+// declarar doce a mano. Lo que importa es que salgan de AJUSTE_OJOS, y de ahí
+// salen: ver tema.js, que los recorre.
 export const VARS_OJOS_GESTO = {
-  contentoEscala: '--ojos-contento-escala',
-  contentoX: '--ojos-contento-x',
-  contentoY: '--ojos-contento-y',
-  cerradoEscala: '--ojos-cerrado-escala',
-  cerradoX: '--ojos-cerrado-x',
-  cerradoY: '--ojos-cerrado-y',
-  cruce: '--ojos-cruce'
+  cruce: '--ojos-cruce',
+  corte: (gesto) => `--ojos-${gesto}-corte`,
+  escala: (gesto, lado) => `--ojos-${gesto}-${lado}-escala`,
+  x: (gesto, lado) => `--ojos-${gesto}-${lado}-x`,
+  y: (gesto, lado) => `--ojos-${gesto}-${lado}-y`
 };
 
 // LA PROGRESIÓN. Es lo que hace un gato al que le rascan bien: primero entrecierra

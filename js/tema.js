@@ -267,12 +267,18 @@ export function variablesDeTema() {
     // Las dos caras de la caricia, cada una con la corrección que la pone
     // exactamente donde están los ojos de idle. Ver AJUSTE_OJOS en config.js,
     // que trae la medición de las tres capas y por qué hace falta escala.
-    [VARS_OJOS_GESTO.contentoEscala]: String(AJUSTE_OJOS.contento.escala),
-    [VARS_OJOS_GESTO.contentoX]: pct(AJUSTE_OJOS.contento.x),
-    [VARS_OJOS_GESTO.contentoY]: pct(AJUSTE_OJOS.contento.y),
-    [VARS_OJOS_GESTO.cerradoEscala]: String(AJUSTE_OJOS.cerrado.escala),
-    [VARS_OJOS_GESTO.cerradoX]: pct(AJUSTE_OJOS.cerrado.x),
-    [VARS_OJOS_GESTO.cerradoY]: pct(AJUSTE_OJOS.cerrado.y),
+    // Dos gestos por dos ojos: doce nombres que se arman recorriendo la tabla en
+    // vez de escribirse a mano. Si mañana entra una tercera cara, alcanza con
+    // agregarla a AJUSTE_OJOS.
+    ...Object.entries(AJUSTE_OJOS).reduce((acc, [gesto, ajuste]) => {
+      const salida = { ...acc, [VARS_OJOS_GESTO.corte(gesto)]: pct(ajuste.corte) };
+      for (const lado of ['izq', 'der']) {
+        salida[VARS_OJOS_GESTO.escala(gesto, lado)] = String(ajuste[lado].escala);
+        salida[VARS_OJOS_GESTO.x(gesto, lado)] = pct(ajuste[lado].x);
+        salida[VARS_OJOS_GESTO.y(gesto, lado)] = pct(ajuste[lado].y);
+      }
+      return salida;
+    }, {}),
     [VARS_OJOS_GESTO.cruce]: ms(CARICIA_OJOS.cruce),
     [VARS_ZONA_CHIP.forma]: poligonoDeSilueta(SILUETA_CHIP),
     [VARS_DEBUG.esquina]: px(ESQUINA_DEBUG),

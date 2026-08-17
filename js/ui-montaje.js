@@ -47,8 +47,12 @@ export const capaBrazoIzq = document.getElementById('brazo-izq');
 export const capaBrazoDer = document.getElementById('brazo-der');
 export const grupoCabeza = document.getElementById('cabeza-grupo');
 export const capaOjos = document.getElementById('ojos');
-export const capaOjosContento = document.getElementById('ojos-contento');
-export const capaOjosCerrado = document.getElementById('ojos-cerrado');
+// Cuatro capas y no dos: cada gesto va partido en sus dos ojos, porque cada uno
+// pide su propia escala y su propio corrimiento. Ver AJUSTE_OJOS en config.js.
+export const capasOjosGesto = {
+  contento: ['ojos-contento-izq', 'ojos-contento-der'].map((id) => document.getElementById(id)),
+  cerrado: ['ojos-cerrado-izq', 'ojos-cerrado-der'].map((id) => document.getElementById(id))
+};
 export const capaParpado = document.getElementById('parpado');
 export const contenedorCorazones = document.getElementById('corazones');
 export const contenedorDestellos = document.getElementById('destellos');

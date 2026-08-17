@@ -207,8 +207,20 @@
            Cada una lleva su escala y su corrimiento —ver AJUSTE_OJOS en
            config.js—: son recortes de `limpiando` y de `standby`, y esas poses
            tienen la cabeza dibujada más chica. -->
-      <img id="ojos-contento" class="ojos-gesto" alt="" aria-hidden="true" hidden>
-      <img id="ojos-cerrado" class="ojos-gesto" alt="" aria-hidden="true" hidden>
+      <!-- SON CUATRO Y NO DOS: cada gesto va partido en sus dos ojos.
+
+           Medido ojo por ojo, los dos de cada recorte están desnivelados —y el
+           desnivel cambia de signo entre contento y cerrado, así que la cara se
+           bamboleaba durante la caricia— y cada uno pide una escala distinta. Un
+           solo scale y un solo translate por capa no pueden con eso.
+
+           Las mitades salen del MISMO archivo, recortadas con clip-path por el
+           hueco de columnas vacías que separa los dos ojos. No hay assets nuevos
+           y no se toca un píxel del dibujo: se coloca cada mitad, nada más. -->
+      <img id="ojos-contento-izq" class="ojos-gesto" alt="" aria-hidden="true" hidden>
+      <img id="ojos-contento-der" class="ojos-gesto" alt="" aria-hidden="true" hidden>
+      <img id="ojos-cerrado-izq" class="ojos-gesto" alt="" aria-hidden="true" hidden>
+      <img id="ojos-cerrado-der" class="ojos-gesto" alt="" aria-hidden="true" hidden>
 
       <!-- LA LUZ DE LA CABEZA VA ADENTRO DEL GRUPO, y no es una preferencia de
            orden: es que el poste está PINTADO en el sprite, así que cuando la

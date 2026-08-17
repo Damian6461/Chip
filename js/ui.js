@@ -165,8 +165,7 @@ import {
   capaBrazoDer,
   grupoCabeza,
   capaOjos,
-  capaOjosContento,
-  capaOjosCerrado,
+  capasOjosGesto,
   capaParpado,
   contenedorCorazones,
   contenedorDestellos,
@@ -812,12 +811,13 @@ function pintarOjos(estadoVisual) {
   // Donde no hay recorte de ojos —critico, standby— no hay nada que cruzar y
   // estas se esconden con la capa de abajo.
   const conGesto = Boolean(ruta);
-  for (const [nombre, capa] of [
-    ['contento', capaOjosContento],
-    ['cerrado', capaOjosCerrado]
-  ]) {
-    capa.hidden = !conGesto;
-    if (conGesto) capa.src = RUTAS_OJOS_GESTO[nombre];
+  // Las dos mitades de cada gesto salen del MISMO archivo: lo que las separa es
+  // el clip-path, no el src.
+  for (const [nombre, mitades] of Object.entries(capasOjosGesto)) {
+    for (const capa of mitades) {
+      capa.hidden = !conGesto;
+      if (conGesto) capa.src = RUTAS_OJOS_GESTO[nombre];
+    }
   }
   if (!conGesto) soltarOjosDeLaCaricia();
 

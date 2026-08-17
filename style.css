@@ -845,14 +845,50 @@ body.es-noche #rayo {
   display: none;
 }
 
-#ojos-contento {
-  translate: var(--ojos-contento-x) var(--ojos-contento-y);
-  scale: var(--ojos-contento-escala);
+/* CADA OJO POR SEPARADO. Las cuatro capas salen del mismo par de archivos: lo
+   que las hace mitades es el clip-path, cortado por el hueco de columnas vacías
+   que separa los dos ojos en el recorte.
+
+   El clip va en la caja SIN transformar y el transform se aplica encima, que es
+   el orden que hace falta: se corta por el hueco del dibujo y después se coloca
+   la mitad entera.
+
+   EL ORDEN DE translate Y scale, medido y no razonado: un cuadrado de 100 px con
+   `translate: 10%` y `scale: 2` cae en [-40, 160], no en [-30, 170]. O sea que
+   EL TRANSLATE NO SE MULTIPLICA POR EL SCALE. Los números de AJUSTE_OJOS están
+   calculados con p' = T + s·(p − origen) + origen. */
+#ojos-contento-izq,
+#ojos-cerrado-izq {
+  clip-path: inset(0 calc(100% - var(--corte)) 0 0);
 }
 
-#ojos-cerrado {
-  translate: var(--ojos-cerrado-x) var(--ojos-cerrado-y);
-  scale: var(--ojos-cerrado-escala);
+#ojos-contento-der,
+#ojos-cerrado-der {
+  clip-path: inset(0 0 0 var(--corte));
+}
+
+#ojos-contento-izq {
+  --corte: var(--ojos-contento-corte);
+  translate: var(--ojos-contento-izq-x) var(--ojos-contento-izq-y);
+  scale: var(--ojos-contento-izq-escala);
+}
+
+#ojos-contento-der {
+  --corte: var(--ojos-contento-corte);
+  translate: var(--ojos-contento-der-x) var(--ojos-contento-der-y);
+  scale: var(--ojos-contento-der-escala);
+}
+
+#ojos-cerrado-izq {
+  --corte: var(--ojos-cerrado-corte);
+  translate: var(--ojos-cerrado-izq-x) var(--ojos-cerrado-izq-y);
+  scale: var(--ojos-cerrado-izq-escala);
+}
+
+#ojos-cerrado-der {
+  --corte: var(--ojos-cerrado-corte);
+  translate: var(--ojos-cerrado-der-x) var(--ojos-cerrado-der-y);
+  scale: var(--ojos-cerrado-der-escala);
 }
 
 /* LA PROGRESIÓN. Acariciar prende `contento`; sostener dos segundos prende
@@ -862,8 +898,10 @@ body.es-noche #rayo {
 
    Las clases van en #chip y no en las capas para que el orden lo decida una
    sola regla y no dos temporizadores peleándose. */
-#chip.ojos-contento #ojos-contento,
-#chip.ojos-cerrado #ojos-cerrado {
+#chip.ojos-contento #ojos-contento-izq,
+#chip.ojos-contento #ojos-contento-der,
+#chip.ojos-cerrado #ojos-cerrado-izq,
+#chip.ojos-cerrado #ojos-cerrado-der {
   opacity: 1;
 }
 
