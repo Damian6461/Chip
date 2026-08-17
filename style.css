@@ -1902,9 +1902,31 @@ body.es-noche #resplandor {
   /* La sombra nace EN la línea de apoyo, así que se sube media altura para
      quedar centrada en ella en vez de colgando desde ahí. */
   margin-top: -3%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0) 72%);
-  filter: blur(3px);
+  /* DOS MANCHAS Y NO UNA ELIPSE. Chip apoya en dos orugas y entre ellas no hay
+     nada: una elipse del ancho entero del apoyo se lee como una mancha debajo,
+     no como sombra, y encima lo despega — una sombra de contacto es el área que
+     TOCA, y siempre es más chica que el objeto.
+
+     El hueco del medio es la mitad del efecto. Las dos manchas caen donde caen
+     las orugas, medidas sobre la huella de contacto real, y siguen a la pose
+     porque van en fracciones de la caja de apoyo, que ya viene por pose.
+
+     Sin border-radius: la forma la dan los degradés, y un radio encima les
+     cortaría los bordes contra una elipse que no es la de ninguna de las dos. */
+  background:
+    radial-gradient(
+        ellipse at center,
+        rgba(0, 0, 0, var(--sombra-alfa)) 0%,
+        rgba(0, 0, 0, 0) var(--sombra-caida)
+      )
+      var(--sombra-huella-1-x) 50% / var(--sombra-huella-1-ancho) 100% no-repeat,
+    radial-gradient(
+        ellipse at center,
+        rgba(0, 0, 0, var(--sombra-alfa)) 0%,
+        rgba(0, 0, 0, 0) var(--sombra-caida)
+      )
+      var(--sombra-huella-2-x) 50% / var(--sombra-huella-2-ancho) 100% no-repeat;
+  filter: blur(var(--sombra-desenfoque));
   animation: respirar-sombra var(--ciclo-respiracion) infinite;
 }
 
@@ -3006,6 +3028,40 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   /* Una sola declaración de filter: dos seguidas no se suman, gana la última,
      y la primera era ruido que hacía pensar que el grayscale seguía puesto. */
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85));
+}
+
+/* LA SOMBRA DE CONTACTO de lo que apoya: las piezas de la repisa y la que quedó
+   tirada en el piso.
+
+   NO reemplaza al drop-shadow de arriba, se suma. Son dos cosas distintas: el
+   drop-shadow sigue la silueta y despega la pieza del fondo —es la sombra
+   ARROJADA—, y esta es la mancha corta y densa del punto de apoyo. Una silueta
+   borrosa un píxel más abajo se lee como relieve; lo que apoya es esto.
+
+   Va MÁS ANGOSTA que la pieza, que es el error clásico al revés: una sombra tan
+   ancha como el objeto lo despega. La de contacto es lo que toca el piso.
+
+   Sólo en la repisa y en el piso. En la grilla de la colección las piezas no
+   apoyan en nada —están en un catálogo— y ahí una sombra de contacto sería una
+   mancha sin causa. */
+.estante .objeto.obtenido::after,
+.objeto.en-piso::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: var(--sombra-objeto-ancho);
+  height: var(--sombra-objeto-alto);
+  translate: -50% 45%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, var(--sombra-objeto-alfa)) 0%,
+    rgba(0, 0, 0, 0) 68%
+  );
+  filter: blur(var(--sombra-objeto-desenfoque));
+  z-index: -1;
+  pointer-events: none;
 }
 
 .objeto svg {

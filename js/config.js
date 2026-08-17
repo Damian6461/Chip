@@ -1614,6 +1614,51 @@ export const VARS_ORUGAS = {
 
 export const CLASE_ACOMODO = 'acomodando';
 
+// ---- LA SOMBRA SON DOS MANCHAS, no una elipse ----
+//
+// "Todo flota" era el reporte, y la sombra de Chip es la que más pesa porque es
+// el objeto más grande. Era UNA elipse del ancho entero del apoyo, y eso tiene
+// dos problemas que se ven aunque no se sepan nombrar: una mancha pareja debajo
+// de un objeto se lee como una mancha, no como sombra; y una sombra tan ancha
+// como el objeto lo despega en vez de apoyarlo.
+//
+// Chip apoya en DOS ORUGAS y entre ellas no hay nada. Medida la huella de
+// contacto —las columnas con alfa en los últimos 4 px antes de la línea de
+// apoyo, donde ya no hay cuerpo y sólo quedan las orugas—:
+//
+//   idle       x 29,9 ancho 12,5   |   x 64,6 ancho 15,6
+//   feliz      x 26,4 ancho 10,9   |   x 63,7 ancho 14,5
+//   critico    x 25,8 ancho 11,3   |   x 62,9 ancho 15,2
+//   standby    x 27,9 ancho  7,8   |   x 63,3 ancho 15,2
+//   limpiando  x 30,3 ancho 11,7   |   x 63,9 ancho 14,1
+//   esperando  x 30,5 ancho 15,2   |   x 64,8 ancho 15,2
+//
+// `cargando` y `jugando` devuelven UNA sola huella, y no es un error de la
+// medición: en esas dos poses una oruga está más alta y no toca el piso a la
+// misma altura que la otra. Por eso las manchas NO van en una tabla por pose
+// sino en fracciones de la caja de apoyo, que ya viene por pose de APOYO_ORUGAS:
+// así siguen a la pose sin necesitar una fila por cada una, y las dos poses
+// asimétricas no quedan con media sombra.
+//
+// Las fracciones salen de la tabla de arriba. Para idle, con la caja de apoyo en
+// x 21,5 y ancho 54,7, las huellas caen en el 15,4% y el 78,8% de la caja y
+// miden el 22,9% y el 28,5% de su ancho. Redondeado y promediado sobre las seis
+// poses simétricas queda esto.
+export const SOMBRA_CHIP = {
+  huellas: [
+    { x: 16, ancho: 26 },
+    { x: 79, ancho: 30 }
+  ],
+  // Más densa en el punto de contacto y muriendo rápido: es lo que separa una
+  // sombra de una mancha. El alfa lo multiplica después la opacidad del keyframe
+  // de la respiración — ojo con eso, ya mordió una vez.
+  alfa: 0.78,
+  // Dónde se termina cada mancha, en % de su propio radio. Corto: una caída
+  // larga vuelve a dar la mancha pareja que se quiere evitar.
+  caida: 58,
+  desenfoque: 2.5
+};
+
 export const APOYO_ORUGAS = {
   idle: { y: 96.5, x: 21.5, ancho: 54.7 },
   feliz: { y: 96.9, x: 17.6, ancho: 58.6 },
@@ -1631,10 +1676,44 @@ export const APOYO_ORUGAS = {
   'idle-manitos': { y: 96.1, x: 19.5, ancho: 56.6 }
 };
 
+// LA MISMA SOMBRA DE CONTACTO, para lo que apoya y no es Chip: las piezas de la
+// repisa y la que quedó tirada en el piso.
+//
+// Hoy las piezas tienen un `drop-shadow` que sigue la silueta y va 1 px abajo.
+// Eso es una sombra ARROJADA —la que un objeto proyecta— y sirve para despegarlo
+// del fondo, pero no lo apoya: una silueta borrosa un píxel más abajo se lee
+// como relieve, no como contacto. Lo que apoya es una mancha corta y densa
+// DEBAJO, y las dos cosas no se pisan, se suman.
+//
+// `ancho` en % del objeto, y va abajo de 100 a propósito: el error clásico es
+// hacerla del ancho del objeto o más, y eso lo despega. La sombra de contacto es
+// lo que TOCA el piso, que siempre es menos que la silueta.
+export const SOMBRA_OBJETO = {
+  ancho: 62,
+  alto: 5,
+  alfa: 0.6,
+  desenfoque: 1.5
+};
+
 export const VARS_SOMBRA = {
   y: '--apoyo-y',
   x: '--apoyo-x',
-  ancho: '--apoyo-ancho'
+  ancho: '--apoyo-ancho',
+  // Y la forma de adentro de esa caja: las dos manchas, su densidad y su caída.
+  // Van en esta tabla y no en una propia porque son del mismo sujeto — dónde
+  // apoya Chip y cómo se ve esa huella. Ver SOMBRA_CHIP arriba.
+  alfa: '--sombra-alfa',
+  caida: '--sombra-caida',
+  desenfoque: '--sombra-desenfoque',
+  huella1X: '--sombra-huella-1-x',
+  huella1Ancho: '--sombra-huella-1-ancho',
+  huella2X: '--sombra-huella-2-x',
+  huella2Ancho: '--sombra-huella-2-ancho',
+  // Y la de las piezas que apoyan en la repisa y en el piso.
+  objetoAncho: '--sombra-objeto-ancho',
+  objetoAlto: '--sombra-objeto-alto',
+  objetoAlfa: '--sombra-objeto-alfa',
+  objetoDesenfoque: '--sombra-objeto-desenfoque'
 };
 
 // ---- La pantalla del pecho ----

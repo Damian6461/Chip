@@ -101,6 +101,9 @@ import {
   DIAMETRO_BULBO,
   ANTENA_INERCIA,
   VARS_ANTENA,
+  SOMBRA_CHIP,
+  SOMBRA_OBJETO,
+  VARS_SOMBRA,
   ENOJO,
   VARS_ENOJO,
   COLORES_BULBO,
@@ -371,6 +374,28 @@ export function variablesDeTema() {
     // —cada una con su caja— había que dividir, y hacían falta DOS números
     // porque el halo es más grande que el bulbo. Ver ANTENA_INERCIA en config.
     [VARS_ANTENA.pivote]: pct(ANTENA_INERCIA.pivote),
+
+    // LA SOMBRA EN DOS MANCHAS. `background-position` en % NO coloca el centro
+    // de la capa: coloca su caja adentro del sobrante, o sea que 0% es pegado a
+    // la izquierda y 100% pegado a la derecha. La conversión desde "quiero el
+    // centro en C con un ancho W" es (C - W/2) / (100 - W), y se hace acá y no
+    // en un calc() de la hoja porque es una cuenta que hay que poder revisar
+    // contra la medición. Ver SOMBRA_CHIP en config.js.
+    ...SOMBRA_CHIP.huellas.reduce((acc, h, i) => {
+      const posicion = ((h.x - h.ancho / 2) / (100 - h.ancho)) * 100;
+      return {
+        ...acc,
+        [VARS_SOMBRA[`huella${i + 1}X`]]: pct(+posicion.toFixed(2)),
+        [VARS_SOMBRA[`huella${i + 1}Ancho`]]: pct(h.ancho)
+      };
+    }, {}),
+    [VARS_SOMBRA.alfa]: String(SOMBRA_CHIP.alfa),
+    [VARS_SOMBRA.caida]: pct(SOMBRA_CHIP.caida),
+    [VARS_SOMBRA.desenfoque]: px(SOMBRA_CHIP.desenfoque),
+    [VARS_SOMBRA.objetoAncho]: pct(SOMBRA_OBJETO.ancho),
+    [VARS_SOMBRA.objetoAlto]: px(SOMBRA_OBJETO.alto),
+    [VARS_SOMBRA.objetoAlfa]: String(SOMBRA_OBJETO.alfa),
+    [VARS_SOMBRA.objetoDesenfoque]: px(SOMBRA_OBJETO.desenfoque),
 
     // El enojo, que usa el mismo pivote de la antena para su sacudida.
     [VARS_ENOJO.ciclo]: ms(ENOJO.ciclo),
