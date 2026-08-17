@@ -455,15 +455,30 @@ const RAYO = `
 //
 // El viewBox es 100x20 porque es una tabla ancha: así el CSS le da el largo sin
 // deformar el grosor.
-const REPISA = `
+// EL ID DEL GRADIENTE SALE DEL NIVEL, y esa es la única forma de que no se
+// repita. Este SVG se inyecta UNA VEZ POR TABLA, y con el id escrito a mano
+// quedaban dos `<linearGradient id="repisa-caida">` en el mismo documento.
+//
+// `url(#repisa-caida)` resuelve SIEMPRE al primero, así que la segunda tabla se
+// estaba pintando con el gradiente de la primera. Hoy no se ve porque los dos
+// tienen los mismos stops; el día que uno necesite otro valor, el cambio no va
+// a tener efecto y no va a haber error en ninguna parte — que es la peor forma
+// de fallar.
+//
+// Renombrar el segundo a mano no sirve: el bug vuelve con el tercer estante. Lo
+// que lo cierra es que el id del gradiente y el id de la tabla salgan del MISMO
+// dato, que es el nivel.
+const repisaCaida = (nivel) => `repisa-${nivel}-caida`;
+
+const REPISA = (nivel) => `
   <defs>
-    <linearGradient id="repisa-caida" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="${repisaCaida(nivel)}" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="var(--repisa-sombra)" stop-opacity="0.72"/>
       <stop offset="100%" stop-color="var(--repisa-sombra)" stop-opacity="0"/>
     </linearGradient>
   </defs>
   <!-- la sombra que la tabla tira sobre la pared: va primero, debajo de todo -->
-  <rect x="3" y="11" width="94" height="6" fill="url(#repisa-caida)"/>
+  <rect x="3" y="11" width="94" height="6" fill="url(#${repisaCaida(nivel)})"/>
   <!-- LAS DOS ESCUADRAS. Se reescribieron dos veces y la segunda por una razón
        medible: se dibujaban SUB-PÍXEL. El viewBox es 100x20 sobre un elemento de
        98x29 px, así que una unidad vale 0,98 px de ancho y 1,43 de alto — un
@@ -680,8 +695,11 @@ export function svgDeBurbuja() {
 }
 
 // Su propio envoltorio: es la única forma con caja no cuadrada.
-export function svgDeRepisa() {
-  return `<svg viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true">${REPISA}</svg>`;
+// `nivel` no tiene default a propósito: si alguien llama a esto sin decir cuál
+// tabla es, el id vuelve a repetirse. Que falte el dato tiene que doler acá y no
+// tres meses después, en un gradiente que no se aplica y no avisa.
+export function svgDeRepisa(nivel) {
+  return `<svg viewBox="0 0 100 20" preserveAspectRatio="none" aria-hidden="true">${REPISA(nivel)}</svg>`;
 }
 
 export function svgDeTilde() {

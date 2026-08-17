@@ -153,7 +153,10 @@ if (repisa && estante) {
     fila.classList.add('estante');
     tabla.style.setProperty(VARS_REPISA.nivel, String(nivel));
     fila.style.setProperty(VARS_REPISA.nivel, String(nivel));
-    tabla.innerHTML = svgDeRepisa();
+    // El nivel va también al SVG: adentro hay un gradiente con id, y dos tablas
+    // con el mismo id dejan a la segunda pintando con el gradiente de la
+    // primera. Es el mismo dato que le da el id a la tabla.
+    tabla.innerHTML = svgDeRepisa(nivel);
     repisas.push(tabla);
     estantes.push(fila);
   }

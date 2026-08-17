@@ -28,6 +28,7 @@
 
 import { readFileSync } from 'node:fs';
 import { prueba, igual, verdadero } from './runner.js';
+import { svgDeRepisa } from '../js/formas.js';
 import {
   INHALACION,
   INCLINACION_CABEZA,
@@ -596,4 +597,51 @@ prueba('rayo: la banda de abajo no le pisa el trabajo a critico', () => {
     /\.estado-critico #rayo/.test(CSS),
     'y la regla de critico tiene que seguir existiendo, que es quien cuenta esa banda'
   );
+});
+
+// ---- IDs únicos ----
+//
+// Había DOS `<linearGradient id="repisa-caida">` en el mismo documento, uno por
+// tabla, porque el SVG de la repisa se inyecta una vez por nivel con el id
+// escrito a mano. `url(#repisa-caida)` resuelve SIEMPRE al primero, así que la
+// segunda tabla se pintaba con el gradiente de la primera.
+//
+// No se veía nada porque los dos tenían los mismos stops. El día que uno
+// necesitara otro valor, el cambio no iba a tener efecto y no iba a haber error
+// en ninguna parte: falla en silencio y a destiempo, como las otras tres de esa
+// familia.
+//
+// El test que pide la spec es sobre el DOM vivo, y esa comprobación no se puede
+// hacer desde Node. Lo que sí se puede es cubrir las dos fuentes de ids que hay:
+// los estáticos del HTML y los que dibuja formas.js. Entre las dos está todo.
+
+const HTML = readFileSync(RAIZ + 'index.html', 'utf8');
+
+prueba('ids: los del index no se repiten', () => {
+  const ids = [...HTML.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
+  const repetidos = ids.filter((id, i) => ids.indexOf(id) !== i);
+  igual([...new Set(repetidos)].join(', '), '', 'ids repetidos en index.html');
+  verdadero(ids.length > 30, `sólo se encontraron ${ids.length} ids, el parser no está mirando`);
+});
+
+prueba('ids: cada tabla de la repisa trae su propio gradiente', () => {
+  const cero = svgDeRepisa(0);
+  const uno = svgDeRepisa(1);
+
+  const idsDe = (svg) => [...svg.matchAll(/id="([^"]+)"/g)].map((m) => m[1]);
+  const refsDe = (svg) => [...svg.matchAll(/url\(#([^)]+)\)/g)].map((m) => m[1]);
+
+  verdadero(idsDe(cero).length > 0, 'el SVG de la repisa tiene que declarar algún id');
+  igual(
+    idsDe(cero).filter((id) => idsDe(uno).includes(id)).join(', '),
+    '',
+    'dos tablas no pueden compartir un id: el segundo gradiente no se aplica nunca'
+  );
+
+  // Y que cada referencia caiga en un id de SU PROPIO svg. Un id parametrizado
+  // con la referencia escrita a mano sería el mismo bug con más pasos.
+  for (const [nivel, svg] of [[0, cero], [1, uno]]) {
+    const sueltas = refsDe(svg).filter((r) => !idsDe(svg).includes(r));
+    igual(sueltas.join(', '), '', `nivel ${nivel}: referencias url(#...) sin id en el mismo svg`);
+  }
 });
