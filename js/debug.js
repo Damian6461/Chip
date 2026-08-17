@@ -11,7 +11,8 @@ import {
   HORAS_DEBUG_INICIAL,
   OPCION_DEBUG_AUTO,
   HORAS_DEL_DIA,
-  DIAS_DEBUG_INICIAL
+  DIAS_DEBUG_INICIAL,
+  CLIMAS
 } from './config.js';
 
 function crearPanel() {
@@ -184,11 +185,16 @@ export function iniciarDebug(api) {
   const botonPiso = crearBoton('tirar al piso');
   botonPiso.addEventListener('click', () => api.tirarObjetoAlPiso());
 
-  // ---- Que llueva ----
-  // El evento 16 es uno de cuarenta y ocho: esperarlo para ver si la lluvia
-  // anda no es una forma de verificar nada.
-  const botonLluvia = crearBoton('que llueva');
-  botonLluvia.addEventListener('click', () => api.hacerLlover());
+  // ---- Los dos climas ----
+  // Cada uno sale de un evento que es uno de cuarenta y nueve: esperarlos para
+  // ver si el fondo cambia no es una forma de verificar nada. Un botón por
+  // clima, sacado de la tabla, así el tercero aparece solo el día que exista.
+  const filaClima = crearFila();
+  for (const nombre of Object.keys(CLIMAS)) {
+    const boton = crearBoton(`clima: ${nombre}`);
+    boton.addEventListener('click', () => api.ponerClima(nombre));
+    filaClima.appendChild(boton);
+  }
 
   // ---- Simular una apertura con el tramo cambiado ----
   const botonTramo = crearBoton('abrir en otro tramo');
@@ -255,7 +261,7 @@ export function iniciarDebug(api) {
     botonHito,
     botonObjeto,
     botonPiso,
-    botonLluvia,
+    filaClima,
     botonTramo,
     botonPose,
     botonReiniciar,

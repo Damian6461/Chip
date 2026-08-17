@@ -194,10 +194,17 @@ body {
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
-  /* Se desvanece contra los bordes de la abertura: sin esto, una nube cortada
-     en el filo del marco delata que hay una capa encima. */
-  -webkit-mask-image: radial-gradient(ellipse 78% 88% at 50% 42%, #000 55%, transparent 100%);
-  mask-image: radial-gradient(ellipse 78% 88% at 50% 42%, #000 55%, transparent 100%);
+  /* RECORTADO AL VIDRIO, no a la caja. Ver VIDRIO_VENTANA en config.js: el
+     hueco tiene el marco en perspectiva y el borde de arriba baja en diagonal,
+     y la elipse que había acá tapaba las esquinas pero dejaba los bordes de en
+     medio. Ahora el corte coincide con el filo del marco, así que una nube
+     cortada ahí se lee cortada POR el marco, que es lo que pasa cuando mirás el
+     cielo por una ventana.
+     La máscara se queda, pero sólo para los extremos de arriba y de abajo: un
+     desvanecido suave donde el recorte tiene menos que ver con el dibujo. */
+  clip-path: var(--vidrio-ventana);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 7%, #000 90%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 7%, #000 90%, transparent 100%);
 }
 
 /* LOS CÚMULOS SE MIDEN EN LONGITUDES, NO EN PORCENTAJES, y ese fue el bug de
@@ -4256,10 +4263,15 @@ body.sin-movimiento *::after {
   pointer-events: none;
   /* Sin la clase no existe: el nodo está siempre, la lluvia no. */
   display: none;
-  /* La misma máscara que #nubes, por el mismo motivo: una gota cortada en el
-     filo del marco delata que hay una capa encima. */
-  -webkit-mask-image: radial-gradient(ellipse 78% 88% at 50% 42%, #000 55%, transparent 100%);
-  mask-image: radial-gradient(ellipse 78% 88% at 50% 42%, #000 55%, transparent 100%);
+  /* EL MISMO RECORTE QUE #nubes, y por el mismo motivo — pero acá el defecto se
+     veía. Con la elipse había gotas cayendo sobre el filo del marco: una lluvia
+     que moja la chapa de adentro del galpón.
+     La máscara sigue existiendo para el desvanecido de abajo, y esa parte NO es
+     cosmética: las gotas no se apagan solas al final de su caída, así que con un
+     corte duro se ven partidas al medio contra el borde de la caja. */
+  clip-path: var(--vidrio-ventana);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 6%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 6%, #000 88%, transparent 100%);
 }
 
 #lluvia.lloviendo {

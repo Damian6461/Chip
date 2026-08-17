@@ -63,7 +63,7 @@ Sin el parámetro, `js/debug.js` ni se descarga (import dinámico).
 | disparar hito | dispara el hito pendiente sin esperar a la próxima apertura |
 | sumar objeto | agrega el primer objeto que falte, para poblar el estante |
 | tirar al piso | deja una pieza tirada en el piso sin esperar la moneda del 15%. Con la colección completa le saca la última a la colección para poder volver a encontrarla — sólo el panel hace eso |
-| que llueva | dispara el evento 16 sin esperar a que salga uno de cuarenta y ocho |
+| clima: tormenta / niebla | pone el clima sin esperar a que salga su evento, que es uno de cuarenta y nueve. Un botón por entrada de `CLIMAS`: el tercero aparece solo el día que exista |
 | cambiar pose | avanza el índice de pose de idle sin recargar (hoy `POSES_IDLE` tiene una sola, así que no cambia nada) |
 | reiniciar partida | save nuevo en 100/100/100 |
 
@@ -178,6 +178,15 @@ razonables. Se detectan sabiendo que existen.
 | `setTimeout(fn, 30)` en la pestaña oculta | un timer de **un segundo**: el navegador clampea los timers de las pestañas en segundo plano | treinta milisegundos |
 | una medición del contorno hecha sobre **una** pose | los extremos de esa pose | los de las nueve |
 | la captura de la extensión | el viewport **reescalado** a su ancho máximo, y las regiones de `zoom` van en esas coordenadas, no en px de CSS | píxeles de CSS uno a uno |
+| `getBoundingClientRect` sobre un hijo de un `overflow: hidden` | dónde estaría el elemento **si nadie lo recortara** | dónde se ve |
+
+La octava explica un reporte que parecía peor de lo que era: las gotas de lluvia
+medían de y −0,3% a y 81,6%, muy por debajo del vidrio, y por ese número el
+defecto parecía ser "la lluvia se desborda media pantalla". El `overflow: hidden`
+del contenedor las recortaba: lo que de verdad se pintaba afuera era el filo del
+marco, unos pocos píxeles. El defecto existía —y se arregló—, pero para verlo hay
+que **mirar los píxeles**, no los rects. Se confirma pintando las gotas de rojo y
+sacando la máscara: ahí no hay nada que interpretar.
 
 La sexta es la que dejó pasar un bug entero. `ZONA_PISO` decía "abajo de la mitad
 ninguna pose pasa de x 18,2% ni de x 74,7%", y esos dos números son los de

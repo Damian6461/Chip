@@ -45,6 +45,8 @@ import {
   CICLO_RAYO_NOCHE_MS,
   VARS_NUBES,
   ABERTURA_VENTANA,
+  VIDRIO_VENTANA,
+  VARS_VIDRIO,
   DEFORMACION_NUBE,
   FACTOR_NUBES_NOCHE,
   VARS_FONDO,
@@ -215,6 +217,7 @@ export function variablesDeTema() {
     [VARS_NUBES.y]: pct(ABERTURA_VENTANA.y),
     [VARS_NUBES.ancho]: pct(ABERTURA_VENTANA.ancho),
     [VARS_NUBES.alto]: pct(ABERTURA_VENTANA.alto),
+    [VARS_VIDRIO.forma]: `polygon(${VIDRIO_VENTANA.map(([x, y]) => x + '% ' + y + '%').join(', ')})`,
     [VARS_NUBES.deformacion]: String(DEFORMACION_NUBE),
     [VARS_NUBES.factorNoche]: String(FACTOR_NUBES_NOCHE),
 

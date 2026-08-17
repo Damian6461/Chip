@@ -222,7 +222,7 @@ export function ambientar(franja) {
 
 // LA LLUVIA ES UN EVENTO, NO UN TRAMO. Por eso es una bandera y no una entrada
 // más en la tabla de franjas: no tiene hora, no tiene fondo propio y no entra en
-// la rotación. Se prende cuando sale el evento 16 y se apaga al cerrar la app,
+// la rotación. Se prende cuando sale su evento y se apaga al cerrar la app,
 // porque no se persiste en ningún lado.
 export function llover() {
   if (lloviendo) return;
@@ -233,6 +233,21 @@ export function llover() {
 
   asegurarCargado();
   cruzar(1 - indiceActivo, ruta, SONIDO.cruceMs);
+}
+
+// Y LA VUELTA, que existe por los climas y no por la lluvia sola.
+//
+// Los dos climas son excluyentes, y si en una misma visita salen los dos —el
+// pool sortea dos eventos y los dos están adentro— el que entra segundo tiene
+// que dejar el mundo en UN estado. Sin esto, la niebla se llevaría el fondo y el
+// ambiente seguiría siendo el de la tormenta: llovería sin llover.
+//
+// Suelta la franja además de la bandera, así la próxima pintada vuelve a pedir
+// el ambiente de la hora en vez de creer que ya lo tiene puesto.
+export function dejarDeLlover() {
+  if (!lloviendo) return;
+  lloviendo = false;
+  franjaActual = null;
 }
 
 export function encender(activo) {

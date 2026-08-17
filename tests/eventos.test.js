@@ -10,11 +10,15 @@ import {
   MAX_EVENTOS_POR_VISITA,
   CATEGORIA_GRANDES,
   EVENTO_LLUVIA,
+  CLIMAS,
+  RUTAS_FONDOS,
   FRANJAS_DIA
 } from '../js/config.js';
 import { readFileSync } from 'node:fs';
 
 const SONIDO_JS = readFileSync(new URL('../js/sonido.js', import.meta.url), 'utf8');
+const UI_JS = readFileSync(new URL('../js/ui.js', import.meta.url), 'utf8');
+const ESTADO_JS = readFileSync(new URL('../js/estado.js', import.meta.url), 'utf8');
 import { EVENTOS, EVENTOS_POR_CATEGORIA, CATEGORIAS, EVENTO_RARO } from '../js/datos-eventos.js';
 import { elegirEventos } from '../js/eventos.js';
 import { cargarEstado, guardarEstado } from '../js/estado.js';
@@ -276,4 +280,67 @@ prueba('lluvia: mientras llueve, la franja no le pisa el ambiente', () => {
   const codigo = SONIDO_JS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
   verdadero(/if \(lloviendo\) return;/.test(codigo), 'ambientar corta si está lloviendo');
   verdadero(/export function llover\(\)/.test(codigo), 'y hay una forma de prenderla');
+});
+
+// ---- Los dos climas ----
+//
+// Son eventos que además cambian el MUNDO, no tramos del día. La distinción no
+// es semántica: si entraran en la rotación tendrían hora, saldrían todos los
+// días a la misma y dejarían de sorprender, que es de dónde sale su valor.
+
+prueba('climas: cada uno sale de un evento que existe en el pool', () => {
+  for (const [nombre, clima] of Object.entries(CLIMAS)) {
+    const suyo = EVENTOS.find((e) => e.id === clima.evento);
+    verdadero(suyo !== undefined, `${nombre} apunta a ${clima.evento}, que tiene que estar en el pool`);
+    igual(suyo.categoria, 'resto', `${nombre} es de la familia de Chip parando a mirar algo`);
+  }
+});
+
+prueba('climas: ninguno es un tramo del día', () => {
+  const nombres = FRANJAS_DIA.map((f) => f.nombre);
+  for (const nombre of Object.keys(CLIMAS)) {
+    verdadero(!nombres.includes(nombre), `${nombre} no puede estar entre las franjas`);
+  }
+  igual(nombres.length, 4, 'cuatro tramos, los de siempre');
+});
+
+prueba('climas: son excluyentes por construcción y no por una condición', () => {
+  // ui.js guarda UN clima activo, no una lista. Es lo que hace estructuralmente
+  // imposible que haya niebla y tormenta a la vez: para que las hubiera habría
+  // que cambiar la forma del dato, no olvidarse de un if.
+  const codigo = UI_JS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  verdadero(/let climaActivo = null;/.test(codigo), 'hay un solo clima activo');
+  verdadero(
+    /climaActivo = nombre;/.test(codigo),
+    'y ponerClima lo REEMPLAZA, no lo acumula'
+  );
+  verdadero(
+    !/climaActivo\.push|climaActivo\.add/.test(codigo),
+    'nada de listas de climas'
+  );
+});
+
+prueba('climas: cada uno trae su fondo, y el fondo existe', () => {
+  for (const [nombre, clima] of Object.entries(CLIMAS)) {
+    verdadero(
+      typeof clima.fondo === 'string' && clima.fondo.endsWith('.webp'),
+      `${nombre} tiene que traer su fondo`
+    );
+    verdadero(
+      !RUTAS_FONDOS || !Object.values(RUTAS_FONDOS).includes(clima.fondo),
+      `${clima.fondo} no puede estar además en la rotación horaria`
+    );
+  }
+});
+
+prueba('climas: sólo la tormenta trae lluvia', () => {
+  igual(CLIMAS.tormenta.llueve, true, 'la tormenta llueve');
+  igual(CLIMAS.niebla.llueve, false, 'la niebla no: se siente por lo que no hay');
+});
+
+prueba('climas: no se persisten, así que a la próxima visita el mundo vuelve', () => {
+  // Si `climaActivo` entrara al estado guardado, un día de tormenta duraría para
+  // siempre. Vive en una variable de módulo de ui.js y en ningún save.
+  const codigo = ESTADO_JS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  verdadero(!/clima/i.test(codigo), 'estado.js no sabe que existen los climas');
 });

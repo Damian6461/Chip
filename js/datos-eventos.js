@@ -282,6 +282,13 @@ const POR_CATEGORIA = {
       texto:
         'Practicó frenadas en el sector encerado. Su mejor marca: dos metros y medio de derrape. No hay testigos, lo cual la hace oficial.'
     },
+    // El segundo evento que cambia el mundo y no a Chip. Va en `resto` y no en
+    // otra categoría: no es colección ni gigantes, es Chip parando a mirar algo
+    // que no es trabajo — la misma familia que la hoja que entra por la ventana.
+    {
+      id: 'evento-21',
+      texto: 'Hoy no se ve nada por la ventana. Chip se quedó mirando igual.'
+    },
 
     // ---- Familia C: lo que entra de afuera ----
     // El mundo colándose por la ventana. Es lo único orgánico de una colección

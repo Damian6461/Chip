@@ -12,7 +12,7 @@
 // el reloj de pared, los timers de verdad, el service worker y el panel de
 // debug. Y el estado vivo ya no vive acá: lo tiene la sesión.
 
-import { MS_POR_HORA, FRANJAS_DIA, DURACION_CRUCE_APERTURA_MS, TICK_VISUAL_MS, ESTADOS_VISUALES as E, PARAM_DEBUG, RUTA_SW, ZONA_PISO } from './config.js';
+import { MS_POR_HORA, FRANJAS_DIA, DURACION_CRUCE_APERTURA_MS, DURACION_CRUCE_FONDO_MS, TICK_VISUAL_MS, ESTADOS_VISUALES as E, PARAM_DEBUG, RUTA_SW, ZONA_PISO, CLIMAS } from './config.js';
 import { crearEstadoNuevo, cargarEstado, guardarEstado } from './estado.js';
 import { aplicarDecay } from './decay.js';
 import { cargar, jugar, limpiar } from './acciones.js';
@@ -21,7 +21,7 @@ import { hitoPendiente, eventoDeHito, capaPorDias } from './gigantes.js';
 import { cargarSprites, franjaDelDia } from './sprites.js';
 import { abrirVisita } from './visita.js';
 import { crearSesion } from './sesion.js';
-import { ambientar, encender, llover as lloverAmbiente } from './sonido.js';
+import { ambientar, encender, llover as lloverAmbiente, dejarDeLlover as dejarDeLloverAmbiente } from './sonido.js';
 import {
   render,
   sembrarFondo,
@@ -35,7 +35,7 @@ import {
   conectarPiso,
   ponerEnElPiso,
   conectarDebugOculto,
-  llover,
+  ponerClima,
   animarAccion,
   iniciarAccion,
   celebrarHumor,
@@ -95,11 +95,16 @@ const sesion = crearSesion({
     iniciarAccion,
     celebrarHumor,
     responderEstoyBien,
-    // La lluvia toca las dos cosas: el ambiente y el dibujo. Van juntas y desde
-    // acá, que es donde se cablea todo lo que cruza dos módulos.
-    llover() {
-      llover();
-      lloverAmbiente();
+    // UN CLIMA TOCA TRES COSAS: el fondo, el dibujo de encima y el ambiente.
+    // Las tres se juntan acá, que es donde se cablea todo lo que cruza módulos.
+    //
+    // El ambiente sólo lo cambia la tormenta. La niebla no tiene sonido propio a
+    // propósito: se siente por lo que NO hay, así que sigue el ambiente de la
+    // franja como cualquier otro día.
+    ponerClima(nombre, cruce) {
+      ponerClima(nombre, cruce);
+      if (CLIMAS[nombre]?.llueve) lloverAmbiente();
+      else dejarDeLloverAmbiente();
     }
   },
   reloj,
@@ -267,12 +272,13 @@ const apiDebug = {
     return falta.id;
   },
 
-  // La lluvia sin esperar a que salga el evento 16, que es uno de cuarenta y
-  // ocho. Pasa por el MISMO camino que el evento: la misma llamada, el mismo
-  // ambiente, el mismo dibujo. No hay un modo lluvia aparte que probar.
-  hacerLlover() {
-    llover();
-    lloverAmbiente();
+  // Un clima sin esperar a que salga su evento, que es uno de cuarenta y nueve.
+  // Pasa por el MISMO camino que el evento: la misma llamada, el mismo fondo, el
+  // mismo ambiente. No hay un modo clima aparte que probar.
+  ponerClima(nombre) {
+    ponerClima(nombre, DURACION_CRUCE_FONDO_MS);
+    if (CLIMAS[nombre]?.llueve) lloverAmbiente();
+    else dejarDeLloverAmbiente();
     return true;
   },
 

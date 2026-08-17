@@ -547,7 +547,52 @@ export const CATEGORIA_GRANDES = 'grandes';
 // llamadas.
 export const EVENTO_LLUVIA = 'evento-16';
 
+// Y LA NIEBLA, que es el segundo. Con dos ya conviene una tabla, pero sigue sin
+// ser un sistema de clima: no hay transiciones ni probabilidades propias: son
+// dos eventos del pool que además cambian el fondo.
+export const EVENTO_NIEBLA = 'evento-21';
+
 export const CLASE_LLOVIENDO = 'lloviendo';
+
+// ---- LOS DOS CLIMAS ----
+//
+// NO SON TRAMOS HORARIOS. La rotación amanecer / mediodía / atardecer / noche
+// sigue corriendo por debajo sin enterarse; lo que hace un clima es TAPAR su
+// fondo mientras está activo, con el mismo crossfade que usan los tramos entre
+// sí. Si la sesión se estira y el tramo cambia, el clima gana igual.
+//
+// Duran lo que dura la sesión y no se persisten en ningún lado, así que a la
+// próxima visita el mundo vuelve solo. Es el mismo mecanismo que ya tenía la
+// lluvia; lo único nuevo es el fondo.
+//
+// SON EXCLUYENTES: no puede haber niebla y tormenta a la vez. Lo resuelve la
+// forma del dato —hay UN clima activo, no una lista— y no una condición.
+//
+// `nube` es un desvío declarado: la spec no lo pide. Las nubes de código pasan
+// por delante del cielo pintado, y con el fondo de tormenta las nubes doradas
+// del atardecer quedaban flotando sobre un cielo de plomo. El clima trae su
+// propio tono para esa capa, por el mismo motivo por el que cada tramo trae el
+// suyo.
+export const CLIMAS = {
+  tormenta: {
+    evento: EVENTO_LLUVIA,
+    fondo: 'sprites/fondo-tormenta.webp',
+    // La lluvia por código va ENCIMA del fondo nuevo. El fondo se generó a
+    // propósito sin gotas dibujadas: la imagen da la atmósfera y el cielo, el
+    // código da el movimiento. Las dos cosas juntas.
+    llueve: true,
+    nube: { color: '#8d939c', alfa: 0.5 }
+  },
+  niebla: {
+    evento: EVENTO_NIEBLA,
+    fondo: 'sprites/fondo-niebla.webp',
+    // NADA DE PARTÍCULAS ADENTRO DEL GALPÓN. La niebla está afuera y el fondo ya
+    // la cuenta; sumarla por código sería taparle la cara a Chip. La niebla se
+    // siente por lo que NO hay.
+    llueve: false,
+    nube: { color: '#c9cdd2', alfa: 0.22 }
+  }
+};
 
 // TRES BANDAS DE PROFUNDIDAD, y es el mismo criterio que las nubes: lo que está
 // cerca es más largo, más opaco y más rápido; lo que está lejos es corto, tenue
@@ -1540,6 +1585,45 @@ export const ALTO_NUMERO = 21;
 // Son 171 x 502 px de escena — una ventana alta y angosta, que ahora ocupa más
 // de la mitad del alto.
 export const ABERTURA_VENTANA = { x: 2.8, y: 5.6, ancho: 35.5, alto: 53.3 };
+
+// EL VIDRIO, que no es la caja de arriba.
+//
+// La caja es el rectángulo que envuelve a la ventana; el hueco de verdad tiene
+// el marco dibujado EN PERSPECTIVA, con el borde de arriba bajando en diagonal
+// hacia la derecha y la esquina redondeada. La lluvia se recortaba con una
+// elipse —`ellipse 78% 88% at 50% 42%`— que tapaba las esquinas pero dejaba
+// pasar los bordes de en medio, así que caía sobre la chapa del marco. Se ve en
+// captura, y se ve mejor todavía pintando las gotas de rojo y sacando la
+// máscara, que es como se confirmó.
+//
+// OJO CON CÓMO SE MIDE ESTO. El reporte decía que las gotas van de y -0,3% a
+// y 81,6%, o sea muy por debajo del vidrio, y ese número sale de
+// getBoundingClientRect sobre las gotas: un rect no sabe nada del `overflow:
+// hidden` del padre, así que devuelve dónde estaría la gota si nadie la
+// recortara. Recortada está. Lo que sí se pinta afuera es otra cosa y más chica:
+// el filo del marco. Décima entrada de la tabla del README.
+//
+// La forma sale del arte. En `fondo-dia` el cielo mide entre 180 y 235 de
+// luminancia y el marco entre 40 y 130 —separación limpia, alcanza un umbral— y
+// el hueco resulta ser: x 148 a 319 de la panorámica, y 58 a 578, con el borde
+// de arriba barriendo de x=163 en y=60 hasta x=319 en y=150. Es el mismo agujero
+// en la misma pared en los cuatro fondos, así que alcanza con medirlo en uno.
+//
+// Los pares van en % de la CAJA —no de la escena— porque es ahí donde se aplica
+// el clip-path, y llevan 1 punto de retiro contra el filo medido.
+export const VIDRIO_VENTANA = [
+  [1.5, 2.2],
+  [10.3, 2.6],
+  [33.8, 6.5],
+  [58.6, 10.5],
+  [82.7, 14.5],
+  [97.5, 17.6],
+  [99, 20.6],
+  [99, 100],
+  [1.5, 100]
+];
+
+export const VARS_VIDRIO = { forma: '--vidrio-ventana' };
 
 // DECISIÓN: las nubes se generan por código y se mueven ENCIMA del cielo
 // pintado, en vez de recortar las de la panorámica y desplazarlas.

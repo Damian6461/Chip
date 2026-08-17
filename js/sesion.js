@@ -33,7 +33,7 @@ import {
   DEBOUNCE_VISUAL_MS,
   CATEGORIA_GRANDES,
   CATEGORIA_COLECCION,
-  EVENTO_LLUVIA,
+  CLIMAS,
   DURACION_FELIZ_MS,
   DURACION_ESPERANDO_MS,
   ESPERA_SEGUNDO_EVENTO_MS,
@@ -261,12 +261,20 @@ export function crearSesion({
         temporizadoresGigante.push(reloj.programar(ponerseContento, arranque));
       }
 
-      // Y LA LLUVIA, que es el único evento que cambia el mundo y no a Chip.
-      // Se prende cuando su línea aparece —no al abrir— y no se apaga: dura lo
-      // que dura la sesión. A la próxima visita el galpón vuelve a la
+      // Y LOS CLIMAS, que son los eventos que cambian el MUNDO y no a Chip.
+      // Se prenden cuando su línea aparece —no al abrir— y no se apagan: duran
+      // lo que dura la sesión. A la próxima visita el galpón vuelve a la
       // normalidad, y eso pasa solo, porque no se persiste en ningún lado.
-      if (evento.id === EVENTO_LLUVIA) {
-        temporizadoresGigante.push(reloj.programar(() => vista.llover?.(), arranque));
+      //
+      // La tabla es la que dice cuál evento trae cuál clima, así que agregar el
+      // tercero es agregar una entrada en CLIMAS y nada más. La lluvia por
+      // código la prende `ponerClima` con la bandera de su propio clima: acá no
+      // se sabe qué hace cada uno, sólo cuándo entra.
+      const clima = Object.keys(CLIMAS).find((c) => CLIMAS[c].evento === evento.id);
+      if (clima) {
+        temporizadoresGigante.push(
+          reloj.programar(() => vista.ponerClima?.(clima, DURACION_CRUCE_FONDO_MS), arranque)
+        );
       }
     });
   }

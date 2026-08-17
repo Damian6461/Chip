@@ -61,6 +61,7 @@ import {
   CLASE_BAJANDO_BRAZO,
   LLUVIA,
   CLASE_LLOVIENDO,
+  CLIMAS,
   CLASE_OBJETO_NUEVO,
   CLASE_OBJETO_OBTENIDO,
   RUTAS_OJOS,
@@ -1101,6 +1102,17 @@ export function llover() {
   contenedorLluvia.classList.add(CLASE_LLOVIENDO);
 }
 
+// La vuelta. No existe para "que pare de llover" —una vez que llueve, llueve
+// toda la sesión— sino para el cruce entre los dos climas: ver ponerClima. Las
+// gotas se sacan del DOM y no sólo se esconden, porque son sesenta nodos con su
+// animación y no hay motivo para dejarlos corriendo detrás de una clase.
+function pararLluvia() {
+  if (!lloviendo || !contenedorLluvia) return;
+  lloviendo = false;
+  contenedorLluvia.classList.remove(CLASE_LLOVIENDO);
+  contenedorLluvia.replaceChildren();
+}
+
 // ---- La nube que pasa una vez ----
 //
 // Cada tres a seis minutos cruza una sola nube, rápido, y después no está más.
@@ -2100,8 +2112,45 @@ const capaAnterior = document.getElementById('fondo-anterior');
 
 // `cruce` es null cuando no hay que hacer transición, o la duración en ms
 // cuando sí. Lo decide main.js: acá se pinta lo que se recibe.
+// EL CLIMA ACTIVO, o null. Es UNO y no una lista: los dos climas son
+// excluyentes por la forma del dato y no por una condición que alguien pueda
+// olvidarse de escribir. No se persiste: a la próxima visita el mundo vuelve
+// solo, que es todo lo que hace falta para que dure "lo que dura la sesión".
+let climaActivo = null;
+
+// Lo último que pidió el reloj, para poder repintar cuando el clima entra sin
+// esperar al próximo tick.
+let ultimaFranja = null;
+let ultimaNoche = false;
+
+// `cruce` llega desde la sesión, igual que en render(): quién decide cuánto dura
+// una transición no es el módulo que la pinta. Ver el comentario de los imports.
+export function ponerClima(nombre, cruce = null) {
+  const clima = CLIMAS[nombre];
+  if (!clima || climaActivo === nombre) return;
+
+  climaActivo = nombre;
+
+  // Un clima que entra de golpe se lee como que se cambió la imagen, no como que
+  // cambió el tiempo: por eso el repintado va con el mismo cruce que los tramos.
+  if (ultimaFranja) pintarFondo(ultimaFranja, ultimaNoche, cruce);
+
+  // El clima que entra deja el mundo en UN estado. Si en la misma visita salen
+  // los dos eventos, la niebla tiene que llevarse también las gotas: si no,
+  // quedaría lloviendo sobre un cielo de niebla.
+  if (clima.llueve) llover();
+  else pararLluvia();
+}
+
 function pintarFondo(franja, esNoche, cruce = null) {
-  const ruta = franja.fondo;
+  ultimaFranja = franja;
+  ultimaNoche = esNoche;
+
+  // EL CLIMA TAPA AL TRAMO. La rotación horaria sigue corriendo por debajo y
+  // esta función se sigue llamando con su franja —de ahí salen el color de las
+  // nubes y la clase de noche— pero la imagen es la del clima mientras dure.
+  const clima = climaActivo ? CLIMAS[climaActivo] : null;
+  const ruta = clima ? clima.fondo : franja.fondo;
   if (ruta === fondoActual) return;
 
   const saliente = fondoActual;
@@ -2113,8 +2162,10 @@ function pintarFondo(franja, esNoche, cruce = null) {
   raiz.style.setProperty(VARS_FONDO.actual, `url("${ruta}")`);
 
   // Las nubes toman el color del momento: blancas al mediodía, doradas al
-  // atardecer, casi invisibles de noche.
-  const nube = COLORES_NUBE[franja.nombre] ?? COLORES_NUBE.mediodia;
+  // atardecer, casi invisibles de noche. Y el del CLIMA cuando hay uno, por el
+  // mismo motivo: las nubes de código pasan por delante del cielo pintado, y las
+  // doradas del atardecer sobre un cielo de plomo se leen como un error.
+  const nube = clima?.nube ?? COLORES_NUBE[franja.nombre] ?? COLORES_NUBE.mediodia;
   raiz.style.setProperty(VARS_NUBES.color, nube.color);
   raiz.style.setProperty(VARS_NUBES.alfa, String(nube.alfa));
 
