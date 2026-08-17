@@ -557,6 +557,116 @@ la página, porque el próximo que la abra va a ver un cartel vacío igual que D
 
 ---
 
+# 12. Los ojos de la caricia no caen sobre los de idle
+
+Damián lo reportó: *"los ojos últimos que pusimos, hay escenas que no están bien
+cuadrados"*, en la caricia, y pasa **tanto en idle como en feliz**.
+
+Verificado, y **el ajuste que ya existe no está roto**: `AJUSTE_OJOS` se aplica bien —vía
+las propiedades independientes `scale` y `translate`, no `transform`— y la caja del par
+entero cae sobre la de idle con 1 a 3 px de error. Eso funciona.
+
+El problema es que **la caja del par no es la unidad correcta**. Medido ojo por ojo,
+cortando cada recorte por el hueco que separa los dos:
+
+| recorte | ojo izquierdo | ojo derecho | desnivel |
+|---|---|---|---|
+| `idle-ojos` | centro (85,5 · 97) 56×59 | centro (152 · 97) 55×59 | **0,0 px** |
+| `idle-ojos-contento` | centro (82,5 · 107) 48×53 | centro (140 · 101,5) 51×54 | **−5,5 px** |
+| `idle-ojos-cerrado` | centro (79,5 · 116) 48×51 | centro (137,5 · 119,5) 52×52 | **+3,5 px** |
+
+Tres cosas salen de ahí:
+
+1. **En idle los dos ojos están perfectamente a nivel.** En los dos gestos no, y el
+   desnivel **cambia de signo**: contento inclina para un lado y cerrado para el otro. O
+   sea que durante la caricia la cara se bambolea.
+2. **Los dos gestos están bajos.** Contento 4,5 y 10 px por debajo de idle, cerrado 19 y
+   22,5. Sobre el lienzo de 256, que en pantalla son ~371 px: hasta **33 px de caída**
+   para cerrado. Eso es lo que se ve como el arco pegado abajo del hueco crema.
+3. **Cada ojo necesita una escala distinta.** El izquierdo pide 1,167 y el derecho 1,078
+   en contento. Con un solo `scale` de capa —hoy 1,151— el izquierdo queda bien y el
+   derecho sale ~7% grande.
+
+Un solo `scale` y un solo `translate` por capa no pueden satisfacer dos ojos que
+necesitan cosas distintas. Por eso el ajuste actual, aunque esté bien calculado, no puede
+cuadrar esto.
+
+## Se resuelve por código, no con arte nueva
+
+Cada recorte tiene un **hueco limpio de columnas vacías** entre los dos ojos:
+`idle` en 114-124, `contento` en 107-114, `cerrado` en 104-111. Así que cada gesto se
+puede partir en **dos capas independientes** por ese hueco, y darle a cada ojo su propia
+escala y su propio corrimiento.
+
+Los números, ya medidos, en px del lienzo de 256:
+
+| | escala | mover x | mover y |
+|---|---|---|---|
+| contento izquierdo | 1,167 | +3,0 | −10,0 |
+| contento derecho | 1,078 | +12,0 | −4,5 |
+| cerrado izquierdo | 1,167 | +6,0 | −19,0 |
+| cerrado derecho | 1,058 | +14,5 | −22,5 |
+
+**El objetivo es que cada ojo caiga sobre el ojo de idle que le corresponde**: izquierdo
+en (85,5 · 97) con 56×59, derecho en (152 · 97) con 55×59.
+
+Ojo con el orden: las propiedades independientes de CSS aplican **`translate` primero y
+`scale` después**, al revés de lo que dice el comentario de `AJUSTE_OJOS` en
+`config.js`. Los números de hoy están calculados para el orden real de CSS y dan bien; los
+de arriba también hay que expresarlos para ese orden. **Corregir el comentario**, que dice
+lo contrario y va a hacer tropezar al próximo.
+
+Esto reemplaza la nota vieja de "no se toca porque sería editarle el arte al ilustrador":
+partir por el hueco y mover cada mitad **no toca el dibujo**, sólo lo coloca.
+
+## Cómo verificarlo
+
+Mirándolo. Capturar la cabeza en los tres momentos —reposo, contento, cerrado— y ponerlos
+uno al lado del otro al mismo aumento. Los dos arcos tienen que quedar a la misma altura
+entre sí, y a la altura donde estaban las pupilas en reposo. Hoy quedan abajo y torcidos.
+
+Y hacer la caricia **sin `?debug=1`** — ver el punto 13.
+
+---
+
+# 13. El panel de debug tapa a Chip
+
+Encontrado mientras probaba la caricia: mis toques no llegaban a Chip.
+
+El panel que crea `?debug=1` es un **`div` sin `id` y sin clase**, con
+`position: fixed` y `z-index: 9999`. A 390 px de ancho ocupa de x=172 a x=382 y de y=8 a
+y=587 — o sea **la mitad derecha de la pantalla, encima de Chip**, con
+`pointer-events: auto`.
+
+En un teléfono, `?debug=1` deja media escena sin poder tocar. Y como el panel no tiene
+`id` ni clase, tampoco hay forma de apuntarle desde un test.
+
+**Qué hacer:** darle un `id`, y que en pantallas angostas no se superponga con la escena
+—que sea un panel plegable, o que ocupe el ancho completo abajo, o que arranque cerrado.
+Va junto con el punto 9, que es el otro problema del debug en el teléfono.
+
+---
+
+# 14. El párpado tiene que volver al crema
+
+Damián: *"yo le dije el parpadeo sea gris hace tiempo, quedó malísimo, hay que volver al
+color crema que tienen los ojos"*.
+
+Hoy `COLOR_PARPADO = '#676c77'` en `config.js`, que es el gris de la chapa de la cabeza.
+
+**El crema es `#ffc899`.** Está medido sobre `sprites/idle-ojos.webp`, descartando la
+pupila: es el tono dominante de la cuenca. Y no es un color nuevo — **es el durazno de la
+paleta cerrada del proyecto**, el mismo que ya está declarado.
+
+Cambiar `COLOR_PARPADO` a `#ffc899` y actualizar el comentario, que hoy justifica el gris
+diciendo que sale de la chapa de la cabeza.
+
+**Verificación, mirándolo:** el párpado se ve cuando `#ojos` se achata o se corre. Con el
+crema, un ojo entrecerrado tiene que leerse como un párpado de la misma cuenca; con el
+gris se leía como un agujero en la cara.
+
+---
+
 # Lo que NO hay que tocar
 
 Estas cinco cosas se reportaron como bugs y **estaban bien**. Van acá para que nadie las

@@ -17,6 +17,10 @@ import {
 
 function crearPanel() {
   const panel = document.createElement('div');
+  // ID Y CLASE, y no es cosmética: sin ellos no hay forma de apuntarle desde un
+  // test ni desde una regla de CSS, y este panel resultó tapar media escena sin
+  // que nada pudiera denunciarlo.
+  panel.id = 'panel-debug';
   Object.assign(panel.style, {
     position: 'fixed',
     top: PANEL_DEBUG.margen,
@@ -34,6 +38,54 @@ function crearPanel() {
     gap: PANEL_DEBUG.separacion
   });
   return panel;
+}
+
+// EL PLEGADO. Arranca cerrado siempre: el panel es una superficie de desarrollo
+// y no puede decidir por su cuenta taparle media escena a quien abrió el juego.
+//
+// En pantallas angostas, desplegado va ABAJO y a lo ancho —que es donde no está
+// Chip— con tope de alto y scroll propio. En anchas se queda al costado, que es
+// donde nunca molestó.
+function armarPlegado(panel, cuerpo) {
+  const angosta = () => window.innerWidth < PANEL_DEBUG.anchoAngosto;
+  let abierto = false;
+
+  const manija = crearBoton('debug ▾');
+  manija.style.width = '100%';
+
+  function aplicar() {
+    cuerpo.style.display = abierto ? 'flex' : 'none';
+    manija.textContent = abierto ? 'debug ▴' : 'debug ▾';
+
+    if (abierto && angosta()) {
+      Object.assign(panel.style, {
+        top: 'auto',
+        bottom: PANEL_DEBUG.margen,
+        left: PANEL_DEBUG.margen,
+        right: PANEL_DEBUG.margen,
+        width: 'auto'
+      });
+      Object.assign(cuerpo.style, { maxHeight: PANEL_DEBUG.altoMaximoAngosto, overflowY: 'auto' });
+      return;
+    }
+
+    Object.assign(panel.style, {
+      top: PANEL_DEBUG.margen,
+      bottom: 'auto',
+      left: 'auto',
+      right: PANEL_DEBUG.margen,
+      width: abierto ? PANEL_DEBUG.ancho : 'auto'
+    });
+    Object.assign(cuerpo.style, { maxHeight: 'none', overflowY: 'visible' });
+  }
+
+  manija.addEventListener('click', () => {
+    abierto = !abierto;
+    aplicar();
+  });
+
+  aplicar();
+  return manija;
 }
 
 function crearFila() {
@@ -251,7 +303,16 @@ export function iniciarDebug(api) {
   // que el panel nace vacío si no se llena una vez acá.
   refrescarStats();
 
-  panel.append(
+  // Todo lo que había suelto en el panel pasa a vivir adentro de un cuerpo que
+  // se pliega. El panel queda siendo la manija más eso.
+  const cuerpo = document.createElement('div');
+  Object.assign(cuerpo.style, {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: PANEL_DEBUG.separacion
+  });
+
+  cuerpo.append(
     filaMultiplicador,
     filaHoras,
     botonVolver,
@@ -267,6 +328,8 @@ export function iniciarDebug(api) {
     botonReiniciar,
     stats
   );
+
+  panel.append(armarPlegado(panel, cuerpo), cuerpo);
   document.body.appendChild(panel);
 
   // main.js llama a esto en cada pintada. Sin eso la lectura se queda vieja al

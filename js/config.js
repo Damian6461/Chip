@@ -2426,7 +2426,7 @@ export const COLORES_PANEL = {
 //
 // LOS GRISES NO SON NUEVOS: son los de al lado.
 //
-//   Chip, la chapa de la cabeza      #676c77   (medido, ver COLOR_PARPADO)
+//   Chip, la chapa de la cabeza      #676c77   (medido, ver GRIS_CHAPA_CABEZA)
 //   la toma del fondo                #878c92   (medida contra la panorámica)
 //   la botonera, antes               #39414f a #141821
 //
@@ -3182,30 +3182,54 @@ export const ORIGEN_PARPADEO = '38%';
 // este color, tapando los ojos del cuerpo. Queda debajo de la capa de ojos, así
 // que en reposo no se ve nada distinto; sólo aparece cuando el ojo se cierra.
 //
-// EL COLOR ES EL DE LA CHAPA DE LA CABEZA, y antes no lo era.
+// EL GRIS DE LA CHAPA DE LA CABEZA. Vive acá y no adentro de otra constante
+// porque es una MEDICIÓN del arte y la usan dos cosas que no tienen nada que ver
+// entre sí: la calibración de la botonera —que tiene que estar en la familia del
+// metal de Chip— y, hasta hoy, el párpado.
 //
-// Era #ffc493: el crema con el que el artista dibujó los ojos cerrados de
-// `standby`. Para el parpadeo entero funcionaba —la capa de ojos se achata a
-// cero y lo que queda es la cuenca completa, que en el sprite es crema— pero la
-// caricia deja los ojos a media asta durante SEGUNDOS, y ahí lo que el párpado
-// tapa es otra cosa. Medido sobre los dos recortes: la banda de arriba que
-// queda al descubierto al achatar al 45% es contorno NEGRO —286 px en idle, 263
-// en feliz— y no cuenca. O sea que el crema no estaba tapando una cuenca crema:
-// estaba poniendo una banda clara donde el dibujo tiene el filo oscuro del ojo.
-// Por eso se veía postizo.
+// Sale de la chapa que hay justo arriba de la región ocular, descartando el
+// contorno y todo lo que no sea gris: mediana de 1067 px en idle (#696e7a) y de
+// 947 px en feliz (#646973). El punto medio de los dos, a dos unidades de cada
+// uno.
 //
-// El valor nuevo sale de la chapa que hay JUSTO ARRIBA de la región ocular, en
-// los sprites, descartando el contorno y todo lo que no sea gris: mediana de
-// 1067 px en idle (#696e7a) y de 947 px en feliz (#646973). El punto medio de
-// los dos, que queda a dos unidades de cada uno.
+// Estaba guardado adentro de COLOR_PARPADO, que valía lo mismo por una razón que
+// dejó de existir. Cuando el párpado volvió al crema, el número se habría ido con
+// él y el test de la botonera se habría quedado comparando contra un durazno.
+export const GRIS_CHAPA_CABEZA = '#676c77';
+
+// EL COLOR ES EL CREMA DE LA CUENCA, y volvió a serlo. Vale contar las dos
+// vueltas, porque la segunda no deshace la primera: la deshabilita.
 //
-// Un párpado es la propia cabeza bajando sobre el ojo. Si es de otro color, se
-// lee como una mancha encima.
+// Original: #ffc493, el crema con el que el artista dibujó los ojos cerrados de
+// `standby`.
+//
+// Se cambió a gris #676c77 —la chapa de la cabeza— por una razón medida y buena
+// EN SU MOMENTO: la caricia dejaba los ojos a media asta achatando la capa al
+// 45%, y la banda que quedaba al descubierto era contorno NEGRO —286 px en idle,
+// 263 en feliz— y no cuenca. El crema ponía una banda clara donde el dibujo
+// tiene el filo oscuro del ojo, y por eso se veía postizo.
+//
+// ESA CONDICIÓN YA NO EXISTE. El achatado se fue cuando la caricia pasó a usar
+// recortes de verdad —ver RUTAS_OJOS_GESTO—: hoy el párpado sólo participa del
+// PARPADEO, que son 130 ms y en el que la capa de ojos se achata a CERO. Lo que
+// queda al descubierto ahí es la cuenca entera, que en el sprite es crema. O sea
+// que el argumento del gris se apoyaba en un comportamiento que ya se borró.
+//
+// El valor sale de medir sobre idle-ojos.webp descartando la pupila y el
+// contorno —sólo píxeles claros y cálidos, r > 150 y r − b > 30—: 2212 px, y el
+// racimo dominante es #ffca9b / #ffca9a / #ffc899 / #ffc89a / #ffc99b, todos
+// adentro de un par de unidades. #ffc899 cae en el medio. Feliz da lo mismo
+// (#ffcb9f, #ffcda1, #ffc896).
+//
+// Y no es un color nuevo: es el durazno de la paleta cerrada del proyecto.
+//
+// Un párpado es la propia cuenca cerrándose. Si es de otro color se lee como un
+// agujero en la cara, que es exactamente lo que se veía con el gris.
 //
 // No depende de la franja horaria: el sprite de Chip no lleva filtro por hora
 // —lo único que cambia de noche es la escala del halo del bulbo— así que el
-// párpado y la chapa que lo rodea reciben siempre la misma luz.
-export const COLOR_PARPADO = '#676c77';
+// párpado y la cuenca que lo rodea reciben siempre la misma luz.
+export const COLOR_PARPADO = '#ffc899';
 
 // 130 ms en total. El reparto interno —cierre 50, mantener 20, apertura 60— vive
 // en los porcentajes del keyframe, porque es la forma del movimiento y no un
@@ -3722,6 +3746,18 @@ export const DIAS_DEBUG_INICIAL = 10;
 
 // Estilos inline del panel, por simetría con PLACEHOLDER: es una superficie de
 // desarrollo y no justifica ensuciar style.css, que es del juego.
+// EL PANEL ARRANCA PLEGADO, y eso es un arreglo y no una preferencia.
+//
+// Medido a 390 px de ancho: el panel ocupaba de x=172 a x=382 y de y=8 a y=587
+// —la mitad derecha de la pantalla, encima de Chip— con `pointer-events: auto`.
+// O sea que abrir el juego con ?debug=1 en un teléfono dejaba media escena sin
+// poder tocar. Fue lo que hizo que la caricia "no funcionara" al probarla.
+//
+// Y no tenía `id` ni clase, así que tampoco había forma de apuntarle desde un
+// test para denunciarlo.
+//
+// Plegado es una barrita en la esquina. Se despliega tocándola, y en pantallas
+// angostas se despliega ABAJO y a lo ancho, que es donde no está Chip.
 export const PANEL_DEBUG = {
   ancho: '210px',
   margen: '8px',
@@ -3732,7 +3768,12 @@ export const PANEL_DEBUG = {
   color: '#e6e6e6',
   fuente: '12px system-ui, sans-serif',
   separacion: '8px',
-  zIndex: '9999'
+  zIndex: '9999',
+  // Abajo de este ancho, desplegado va abajo y a lo ancho en vez de al costado.
+  // 720: arriba de eso hay lugar para la columna del juego y el panel al lado.
+  anchoAngosto: 720,
+  // Cuánto de la pantalla puede ocupar desplegado en angosto. El resto scrollea.
+  altoMaximoAngosto: '45vh'
 };
 
 // ---- Placeholder del canvas (cuando no hay sprite disponible) ----

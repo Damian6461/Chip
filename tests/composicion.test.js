@@ -36,7 +36,8 @@ import {
   ANTENA_INERCIA,
   RITMOS_RAYO,
   UMBRAL_CRITICO_BATERIA,
-  COLOR_PARPADO,
+  GRIS_CHAPA_CABEZA,
+  PANEL_DEBUG,
   COLOR_APERTURA,
   RADIO_EXCLUSION_ANTENA,
   FRANJA_EFECTOS,
@@ -396,7 +397,11 @@ prueba('botonera: el texto sigue en AA sobre la chapa nueva', () => {
 // alguien la vuelve a oscurecer, la botonera vuelve a leerse como interfaz.
 prueba('botonera: la chapa está en la familia de la chapa de Chip', () => {
   const suya = luminancia(COLORES_BOTON.chapa);
-  const chip = luminancia(COLOR_PARPADO); // el gris del casco, medido del sprite
+  // El gris del casco, medido del sprite. Estaba tomado de COLOR_PARPADO, que
+  // valía lo mismo de casualidad; cuando el párpado volvió al crema, esto habría
+  // pasado a comparar la chapa contra un durazno y el test habría dado 80% sin
+  // que nadie hubiera tocado la botonera. Ahora sale de su propia constante.
+  const chip = luminancia(GRIS_CHAPA_CABEZA);
   const lejos = Math.abs(suya - chip) / chip;
 
   verdadero(lejos < 0.35, `la chapa está a ${(lejos * 100).toFixed(0)}% de la de Chip en luminancia`);
@@ -646,6 +651,56 @@ prueba('arranque: el <style> inline va antes del <link> de la hoja', () => {
   verdadero(
     iStyle < iLink,
     'el inline después del link no sirve: el link ya bloqueó el primer pintado'
+  );
+});
+
+// ---- El panel de debug no puede tapar la escena ----
+//
+// A 390 px de ancho ocupaba de x=172 a x=382 y de y=8 a y=587: la mitad derecha
+// de la pantalla, encima de Chip, con pointer-events auto. Abrir el juego con
+// ?debug=1 en un teléfono dejaba media escena sin poder tocar — y fue lo que
+// hizo que la caricia "no funcionara" al probarla.
+//
+// Y no tenía id ni clase, así que tampoco había forma de apuntarle desde acá
+// para denunciarlo.
+//
+// debug.js no se puede importar en Node —arma su subárbol contra el DOM— así que
+// se lee como texto, igual que ui.js en el test de los gestos. Lo que se fija es
+// lo que se pierde al reescribirlo: que tenga id y que arranque CERRADO.
+
+const DEBUG_JS = readFileSync(RAIZ + 'js/debug.js', 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/\/\/.*$/gm, '');
+
+prueba('debug: el panel tiene id, para poder apuntarle', () => {
+  verdadero(
+    /panel\.id = '[\w-]+'/.test(DEBUG_JS),
+    'sin id no hay forma de encontrarlo desde un test ni desde una regla'
+  );
+});
+
+prueba('debug: el panel arranca plegado', () => {
+  // Es el arreglo entero: un panel de desarrollo no puede decidir por su cuenta
+  // taparle media escena a quien abrió el juego. Si alguien lo deja abierto por
+  // default, vuelve el bug.
+  verdadero(/let abierto = false;/.test(DEBUG_JS), 'el estado inicial tiene que ser cerrado');
+  verdadero(
+    /cuerpo\.style\.display = abierto \? 'flex' : 'none';/.test(DEBUG_JS),
+    'y el cuerpo tiene que estar escondido mientras esté plegado'
+  );
+});
+
+prueba('debug: en pantalla angosta el panel se va abajo', () => {
+  // Desplegado al costado, en un teléfono, vuelve a estar encima de Chip. Abajo
+  // está la botonera, que también molesta, pero se cierra tocando la manija —
+  // que es lo que hace que la posición deje de ser un problema irreversible.
+  verdadero(
+    typeof PANEL_DEBUG.anchoAngosto === 'number' && PANEL_DEBUG.anchoAngosto > 400,
+    `anchoAngosto tiene que ser un ancho de viewport, y es ${PANEL_DEBUG.anchoAngosto}`
+  );
+  verdadero(
+    /window\.innerWidth < PANEL_DEBUG\.anchoAngosto/.test(DEBUG_JS),
+    'y debug.js tiene que consultarlo'
   );
 });
 
