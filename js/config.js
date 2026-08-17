@@ -2187,6 +2187,87 @@ export const COLORES_BOTON = {
   'mate-texto': '#7b828d'
 };
 
+// ---- LAS CHAPAS APOYADAS EN EL PISO ----
+//
+// El diagnóstico no era falta de textura. TODO lo demás de la escena sigue la
+// fuga del piso —las juntas de las baldosas, la caja de conexión, la toma, el
+// cable— y las tres teclas eran rectángulos perfectamente frontales adentro de
+// una barra. Un objeto frontal en una escena en perspectiva se lee pegado
+// encima, por más remaches que tenga.
+//
+// Tres cambios, y el primero es el que más pesa:
+//
+//   1. SE VA LA BARRA. El degradé oscuro que las contenía era lo que más gritaba
+//      "interfaz": un contenedor con fondo propio es una barra de aplicación, no
+//      tres piezas en un galpón. Ahora las chapas están sueltas sobre el piso.
+//      Lo que la barra sostenía —que el texto se leyera— no dependía de ella: el
+//      contraste del texto se mide contra la CHAPA, no contra el piso.
+//   2. SOMBRA DE CONTACTO, una elipse abajo de cada una, como la que ya tienen
+//      la caja de conexión y las piezas de la repisa. Es lo que las mete en el
+//      espacio en vez de dejarlas flotando.
+//   3. FUGA. Los bordes de arriba y abajo dejan de ser paralelos y convergen
+//      hacia el mismo punto que las baldosas.
+//
+// EL PUNTO DE FUGA ES EL MEDIDO, no uno inventado para esto: (835, 520) sobre la
+// panorámica de 1672 —ver EL-PORQUE.md— cae en el 55,26% del alto de la escena y
+// en el 138% del ancho en 480x889, o sea afuera del cuadro por la derecha. Es el
+// mismo par que usan el cable y la toma, y por eso las tres cosas fugan al mismo
+// lugar en vez de cada una al suyo.
+//
+// La x en % del ancho sólo es exacta en la proporción de referencia, porque el
+// fondo escala por el ALTO. Es la misma aproximación que ya tienen la toma y la
+// repisa, y está anotada donde corresponde.
+//
+// LOS DOS NÚMEROS DE LA PERSPECTIVA VAN JUNTOS y no se eligen por separado. Lo
+// que se ve es cuánto CONVERGEN los bordes, y eso sale de los dos: con la chapa
+// inclinada un ángulo t sobre su base, el borde de arriba se va h·sen(t) hacia
+// el fondo y se achica en p/(p + h·sen t).
+//
+// Y ACÁ LA CUENTA SE EQUIVOCÓ DE MAGNITUD, así que queda anotada entera.
+//
+// Buscando los 2 a 3 grados de convergencia que pide la spec sobre una chapa de
+// unos 50 px de alto, la primera elección fue perspectiva 200 e inclinación 8°:
+// 3,4% de achique del borde de arriba, o sea los 2,8° pedidos. El número era
+// correcto y el resultado estaba mal, porque la convergencia NO es lo que más se
+// ve.
+//
+// Lo que más se ve es el CORTE LATERAL. Con el origen de perspectiva afuera del
+// cuadro, inclinar la chapa le corre el borde de arriba de costado, y ese
+// corrimiento va como (h·sen t / p) · dx, donde dx es lo lejos que está la chapa
+// del punto de fuga. Para la tecla de la izquierda dx son casi 590 px:
+//
+//   perspectiva 200, inclinación 8°  ->  achique 3,4% (2,8°)  ->  corte 21 px
+//   perspectiva 620, inclinación 6°  ->  achique 0,9% (0,7°)  ->  corte  5 px
+//
+// Con 21 px sobre una chapa de 144 la botonera no se lee en perspectiva: se lee
+// deformada, y el texto se tuerce. La spec pedía "que no sea dramático" y 21 px
+// es dramático. Verificado mirando las dos a tamaño real.
+//
+// O sea: el número a controlar era el corte, no el achique. La convergencia que
+// queda es de 0,7° y alcanza, porque no trabaja sola — abajo está la sombra de
+// contacto, y las dos juntas son las que apoyan la pieza.
+export const BOTONERA = {
+  inclinacion: 6,
+  perspectiva: 620,
+  fuga: { x: 138, y: 55.26 },
+  // La elipse del piso. `ancho` en % de la chapa: más angosta que la pieza,
+  // porque una sombra de contacto no se derrama hasta el borde — nace donde el
+  // material toca. `alto` en px, y bajo: es una elipse en escorzo vista casi de
+  // canto, igual que los aros de las orugas.
+  sombra: { ancho: 76, alto: 7, alfa: 0.5, difuminado: 5 }
+};
+
+export const VARS_BOTONERA = {
+  inclinacion: '--boton-inclinacion',
+  perspectiva: '--boton-perspectiva',
+  fugaX: '--boton-fuga-x',
+  fugaY: '--boton-fuga-y',
+  sombraAncho: '--boton-sombra-ancho',
+  sombraAlto: '--boton-sombra-alto',
+  sombraAlfa: '--boton-sombra-alfa',
+  sombraDifuminado: '--boton-sombra-difuminado'
+};
+
 // Versión que se muestra en Sobre Chip. Se sube a mano, con el mismo criterio
 // que CACHE_VERSION: es una decisión, no un efecto colateral.
 export const VERSION_JUEGO = '0.9';

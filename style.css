@@ -3339,15 +3339,23 @@ body.es-noche #piso {
   border: 0;
 }
 
-/* ---- Botonera industrial, en el piso de la pantalla ----
+/* ---- Tres chapas apoyadas en el piso del galpón ----
 
    Teclas rectangulares con borde visible y un canto duro abajo que las levanta
    del fondo. Al apretarlas bajan 1 px y el canto se achica a la mitad: la tecla
    se hunde contra el chasis en vez de "resaltarse".
 
-   Anclada abajo y al alcance del pulgar. El degradé de atrás la despega del
-   piso del galpón sin ponerle un marco: el mundo sigue ahí abajo, apenas más
-   oscuro. */
+   SE FUE LA BARRA, y era lo que más gritaba "interfaz". Había un degradé oscuro
+   que las contenía, y un contenedor con fondo propio es una barra de
+   aplicación: no importa cuántos remaches tengan las teclas adentro, el marco
+   las declara ajenas al galpón.
+
+   Lo que la barra parecía sostener —que el texto se leyera— no dependía de
+   ella: el contraste del texto se mide contra la CHAPA, que es opaca y sigue
+   igual. Lo verifica el test de la botonera, no el ojo.
+
+   Lo que queda en su lugar: la fuga compartida con las baldosas y una sombra de
+   contacto por chapa. Ver BOTONERA en config.js. */
 
 #acciones {
   display: flex;
@@ -3357,7 +3365,18 @@ body.es-noche #piso {
      que haya acá abajo. viewport-fit=cover en index.html deja que la escena
      llegue al borde físico; esto evita que las teclas queden abajo de todo. */
   padding-bottom: calc(var(--esp-1) + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(to top, rgba(5, 7, 10, 0.94), rgba(5, 7, 10, 0.55) 65%, transparent);
+
+  /* LA FUGA VIVE ACÁ Y NO EN CADA CHAPA, y esa es la parte que hace que
+     funcione: con el origen de perspectiva puesto en el punto de fuga del
+     galpón, cada tecla recibe la convergencia que le toca por dónde está parada
+     —la de la izquierda fuga hacia la derecha, la de la derecha casi no fuga— y
+     no hay que calcular nada por botón. Es el mismo mecanismo que tiene una
+     cámara: un solo punto de vista, tres objetos.
+
+     El origen es el 138% del ancho: afuera del cuadro por la derecha, que es
+     donde está el punto de fuga medido del galpón. */
+  perspective: var(--boton-perspectiva);
+  perspective-origin: var(--boton-fuga-x) var(--boton-fuga-y);
 }
 
 #acciones button {
@@ -3372,7 +3391,18 @@ body.es-noche #piso {
   justify-content: center;
   gap: 3px;
   padding: 8px 0 6px;
-  overflow: hidden;
+
+  /* SE INCLINA SOBRE SU BASE. El pivote va abajo a propósito: la chapa está
+     apoyada en el piso, así que lo que se mueve es el borde de arriba yéndose al
+     fondo, no la pieza entera girando en el aire. Con la base clavada, el punto
+     de contacto —y la sombra que va con él— no se mueven.
+
+     El ángulo se lee de una variable en vez de estar acá, porque :active y el
+     bloque de movimiento reducido tienen que repetir el transform entero: en CSS
+     un transform pisa al otro, no se suman. Sin la variable, apretar la tecla la
+     enderezaría de golpe. */
+  transform-origin: bottom;
+  transform: rotateX(var(--boton-inclinacion));
 
   /* CHAPA CON RELIEVE, no una caja gris.
      El degradé tiene un quiebre marcado en el 52%: arriba la cara que recibe
@@ -3442,6 +3472,10 @@ body.es-noche #piso {
    Va sobre el filo de abajo, que es donde la pintura de una consola se ve
    primero y donde se descascara. Con `overflow: hidden` en el botón queda
    recortada por el radio del borde sin ninguna cuenta. */
+/* El `overflow: hidden` del botón se fue con la sombra de contacto —un
+   pseudo-elemento que vive ABAJO de la chapa no puede estar recortado por
+   ella— así que la franja se redondea sola. 2px y no 3: el borde de 1 px se
+   come el radio interior. */
 #acciones button::after {
   content: '';
   position: absolute;
@@ -3449,6 +3483,7 @@ body.es-noche #piso {
   right: 0;
   bottom: 0;
   height: 2px;
+  border-radius: 0 0 2px 2px;
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--boton-naranja) 82%, transparent) 0%,
@@ -3456,6 +3491,53 @@ body.es-noche #piso {
     color-mix(in srgb, black 45%, var(--boton-naranja)) 100%
   );
   pointer-events: none;
+}
+
+/* LA SOMBRA DE CONTACTO. Una elipse en el piso, abajo de cada chapa, que es lo
+   que las mete en el espacio en vez de dejarlas flotando. Es el mismo recurso
+   que ya usan la caja de conexión y las piezas de la repisa, y es más barato y
+   más convincente que cualquier textura.
+
+   Por qué una elipse y no un box-shadow: un box-shadow sigue la forma de la
+   caja, o sea que da un rectángulo borroso. Lo que apoya en el piso no proyecta
+   un rectángulo, proyecta una mancha — y vista casi de canto, en escorzo, esa
+   mancha es una elipse baja. Los aros de las orugas están dibujados con el
+   mismo criterio.
+
+   `z-index: -1` la manda atrás de la chapa. Vive fuera de la caja porque el
+   contacto está en el borde de abajo y la sombra se derrama hacia afuera; por
+   eso el botón perdió su `overflow: hidden`.
+
+   Y NO se inclina con la chapa. El transform del botón la arrastraría al fondo
+   junto con el borde de arriba, y una sombra que se va al fondo es una sombra
+   despegada del piso. Se cancela con la rotación inversa. */
+#acciones button::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: var(--boton-sombra-ancho);
+  height: var(--boton-sombra-alto);
+  translate: -50% 60%;
+  transform: rotateX(calc(var(--boton-inclinacion) * -1));
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, var(--boton-sombra-alfa)) 0%,
+    rgba(0, 0, 0, calc(var(--boton-sombra-alfa) * 0.55)) 55%,
+    transparent 100%
+  );
+  filter: blur(calc(var(--boton-sombra-difuminado) / 2));
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* La chapa apagada también apoya: lo que se apagó es la luz que le pegaba, no
+   el hecho de estar en el piso. Pero proyecta menos, porque la sombra de
+   contacto la arma la misma luz. */
+#acciones button:disabled::before,
+#acciones button[aria-disabled='true']::before {
+  opacity: 0.55;
 }
 
 /* EL ÍCONO VA GRABADO, no dibujado encima. El truco es de dos capas: el trazo
@@ -3509,8 +3591,11 @@ body.es-noche #piso {
 /* La OTRA mitad del gesto: apretar va con el tiempo corto y pisa al de arriba,
    que es el de volver. Bajar 60 ms y volver 140 es la proporción que hace que un
    botón se sienta de un material y no de plástico duro. */
+/* El transform REPITE la inclinación, no la reemplaza: en CSS un transform pisa
+   al otro. Sin esto, apretar la tecla la enderezaría de golpe — que es un
+   movimiento que nadie pidió y que además delata que la fuga es un truco. */
 #acciones button:active:not(:disabled):not([aria-disabled='true']) {
-  transform: translateY(2px);
+  transform: translateY(2px) rotateX(var(--boton-inclinacion));
   transition:
     transform var(--presion-baja) ease-in,
     box-shadow var(--presion-baja) ease-in,
@@ -3672,8 +3757,10 @@ body.es-noche #piso {
     animation: none;
   }
 
+  /* La inclinación NO se va con el movimiento reducido: no es movimiento, es la
+     forma de la pieza. Lo que se va es el viaje de los 2 px. */
   #acciones button:active:not(:disabled) {
-    transform: none;
+    transform: rotateX(var(--boton-inclinacion));
   }
 
   /* El cambio de momento del día se muestra igual: lo que se va es la

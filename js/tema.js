@@ -117,7 +117,9 @@ import {
   ACHATADO_REPISA,
   COLORES_REPISA,
   COLORES_PANEL,
-  COLORES_BOTON
+  COLORES_BOTON,
+  BOTONERA,
+  VARS_BOTONERA
 } from './config.js';
 
 const ms = (n) => `${n}ms`;
@@ -328,6 +330,18 @@ export function variablesDeTema() {
     // El botón del menú
     ...tonos('panel', COLORES_PANEL),
     ...tonos('boton', COLORES_BOTON),
+
+    // Las tres chapas apoyadas en el piso: la fuga que comparten con las
+    // baldosas y la sombra de contacto. Ver BOTONERA en config.js, que trae la
+    // cuenta de por qué la perspectiva es corta.
+    [VARS_BOTONERA.inclinacion]: BOTONERA.inclinacion + 'deg',
+    [VARS_BOTONERA.perspectiva]: px(BOTONERA.perspectiva),
+    [VARS_BOTONERA.fugaX]: pct(BOTONERA.fuga.x),
+    [VARS_BOTONERA.fugaY]: pct(BOTONERA.fuga.y),
+    [VARS_BOTONERA.sombraAncho]: pct(BOTONERA.sombra.ancho),
+    [VARS_BOTONERA.sombraAlto]: px(BOTONERA.sombra.alto),
+    [VARS_BOTONERA.sombraAlfa]: String(BOTONERA.sombra.alfa),
+    [VARS_BOTONERA.sombraDifuminado]: px(BOTONERA.sombra.difuminado),
 
     // LA LUZ DE LA CABEZA. El juego base es el de reposo; cada estado suma el
     // suyo con el nombre sufijado y una regla de style.css lo levanta por clase,
