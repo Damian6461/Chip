@@ -31,6 +31,8 @@ import { prueba, igual, verdadero } from './runner.js';
 import {
   INHALACION,
   INCLINACION_CABEZA,
+  COLORES_BOTON,
+  COLOR_PARPADO,
   RADIO_EXCLUSION_ANTENA,
   FRANJA_EFECTOS,
   POSICIONES_ANTENA,
@@ -341,4 +343,56 @@ prueba('inclinación: los tramos del keyframe salen de INCLINACION_CABEZA', () =
     esperados.join(', '),
     'los tramos del CSS tienen que ser los de config'
   );
+});
+
+// ---- El contraste de la botonera ----
+//
+// Los grises de las teclas subieron para que pertenezcan al galpón —eran mucho
+// más oscuros que la chapa de Chip y que la caja del fondo— y eso mueve el
+// contraste del texto, que es lo primero que se rompe al aclarar un fondo.
+//
+// La cuenta se hace acá y no a mano en un comentario: es la misma trampa del
+// resto del archivo. Un número medido una vez y anotado se desactualiza en
+// silencio con el primer retoque de paleta.
+//
+// La etiqueta cae en la mitad de ABAJO de la tecla —el ícono va arriba— así que
+// el par que importa para el texto es `texto` contra `bajo` y `fondo`. El ícono
+// va grabado en la mitad de ARRIBA, y para un elemento gráfico AA pide 3.
+function luminancia(hex) {
+  const canal = (c) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return 0.2126 * canal(r) + 0.7152 * canal(g) + 0.0722 * canal(b);
+}
+
+function contraste(a, b) {
+  const [x, y] = [luminancia(a), luminancia(b)];
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+prueba('botonera: el texto sigue en AA sobre la chapa nueva', () => {
+  for (const cara of ['bajo', 'fondo']) {
+    const c = contraste(COLORES_BOTON.texto, COLORES_BOTON[cara]);
+    verdadero(c >= 4.5, `texto sobre ${cara}: ${c.toFixed(2)} a 1, y AA pide 4,5`);
+  }
+
+  for (const cara of ['arriba', 'chapa']) {
+    const c = contraste(COLORES_BOTON.filo, COLORES_BOTON[cara]);
+    verdadero(c >= 3, `ícono grabado sobre ${cara}: ${c.toFixed(2)} a 1, y AA gráfico pide 3`);
+  }
+
+  const apagado = contraste(COLORES_BOTON['mate-texto'], COLORES_BOTON['mate-bajo']);
+  verdadero(apagado >= 3, `la tecla apagada da ${apagado.toFixed(2)} a 1 y tiene que seguir legible`);
+});
+
+// Y que la chapa siga siendo del mismo material que lo que tiene al lado. Si
+// alguien la vuelve a oscurecer, la botonera vuelve a leerse como interfaz.
+prueba('botonera: la chapa está en la familia de la chapa de Chip', () => {
+  const suya = luminancia(COLORES_BOTON.chapa);
+  const chip = luminancia(COLOR_PARPADO); // el gris del casco, medido del sprite
+  const lejos = Math.abs(suya - chip) / chip;
+
+  verdadero(lejos < 0.35, `la chapa está a ${(lejos * 100).toFixed(0)}% de la de Chip en luminancia`);
 });

@@ -1989,6 +1989,52 @@ export const COLORES_PANEL = {
   linea: '#5d6675'
 };
 
+// ---- La botonera, que ahora es del galpón y no de una app ----
+//
+// Eran rectángulos oscuros con un ícono fino y una etiqueta: se leían como
+// interfaz. Y era lo único de la escena que no hablaba el idioma del mundo —el
+// cable, la repisa, la toma y la panorámica ya estaban dibujados con el
+// vocabulario del galpón y las teclas no.
+//
+// LOS GRISES NO SON NUEVOS: son los de al lado.
+//
+//   Chip, la chapa de la cabeza      #676c77   (medido, ver COLOR_PARPADO)
+//   la toma del fondo                #878c92   (medida contra la panorámica)
+//   la botonera, antes               #39414f a #141821
+//
+// La botonera vieja era mucho más oscura que las dos cosas de metal que tiene
+// alrededor, y por eso leía como una superficie de otro material. `chapa` es
+// prácticamente la chapa de Chip; `arriba` es esa misma cara recibiendo la luz
+// de la ventana, y `bajo` y `fondo` son lo que queda del quiebre para abajo.
+//
+// EL CONTRASTE DEL TEXTO SE REMIDIÓ, que es lo que la spec pedía vigilar. La
+// etiqueta cae en la mitad de abajo, así que lo que importa es #cdd3dd contra
+// `bajo`: 6,62 a 1, cómodo sobre el 4,5 de AA. El ícono va grabado en la mitad
+// de ARRIBA y ahí el par es #10141b contra `arriba`: 4,27, sobre el 3 que pide
+// AA para un elemento gráfico. Si alguien aclara la chapa, el que se rompe
+// primero es el ícono.
+//
+// El naranja es el MISMO de la toma, y usado igual: una franja pintada en el
+// canto, gastada, no un contorno encendido alrededor de la tecla.
+export const COLORES_BOTON = {
+  arriba: '#737a86',
+  chapa: '#5e6672',
+  bajo: '#3d434d',
+  fondo: '#2b3039',
+  // Bajó de #171b21 a #0f1217 por el test de contraste: el ícono grabado sobre
+  // `chapa` daba 2,98 y AA pide 3 para un elemento gráfico. Con este da 3,23.
+  filo: '#0f1217',
+  brillo: '#aeb6c2',
+  remache: '#20252c',
+  naranja: '#c8781f',
+  texto: '#cdd3dd',
+  // El apagado, para el mismo tratamiento por material que ya funcionaba:
+  // chapa mate, relieve aplanado y sin LED.
+  mate: '#3a3f47',
+  'mate-bajo': '#262a31',
+  'mate-texto': '#7b828d'
+};
+
 // Versión que se muestra en Sobre Chip. Se sube a mano, con el mismo criterio
 // que CACHE_VERSION: es una decisión, no un efecto colateral.
 export const VERSION_JUEGO = '0.9';

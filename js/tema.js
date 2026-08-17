@@ -114,7 +114,8 @@ import {
   SEPARACION_ESTANTES,
   ACHATADO_REPISA,
   COLORES_REPISA,
-  COLORES_PANEL
+  COLORES_PANEL,
+  COLORES_BOTON
 } from './config.js';
 
 const ms = (n) => `${n}ms`;
@@ -323,6 +324,7 @@ export function variablesDeTema() {
 
     // El botón del menú
     ...tonos('panel', COLORES_PANEL),
+    ...tonos('boton', COLORES_BOTON),
 
     // LA LUZ DE LA CABEZA. El juego base es el de reposo; cada estado suma el
     // suyo con el nombre sufijado y una regla de style.css lo levanta por clase,
