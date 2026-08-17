@@ -140,6 +140,15 @@ De las 779 líneas de código de `ui.js`, **310 se ejecutaban una sola vez al im
 
 **Lo que NO se gana, dicho claro:** `ui.js` sigue sin poder importarse desde Node. Importa `ui-montaje.js`, que toca el DOM al cargarse. Para que fuera importable habría que inyectarle los nodos, como se hizo con `sesion.js`, y eso es tocar las cuarenta y seis funciones. Hoy no vale la pena; el día que valga, la costura ya está.
 
+**El límite conocido que sale de ahí, y conviene tenerlo escrito:** *la suite puede estar entera en verde con la app rota*. Nada de `ui.js` se ejecuta en Node, ni siquiera se parsea — así que un error que el motor encuentra al cargar el módulo pasa los 261 tests sin despeinarse. Ya pasó: un `import` duplicado de `VARS_CABLE` dejó `ui.js` tirando `SyntaxError: Identifier has already been declared`, la app no arrancaba, y la suite decía 259 pasaron, 0 fallaron. Lo agarró el navegador en el primer reload.
+
+De ahí salen dos costumbres, y no son cortesía:
+
+- **Abrir la app después de tocar `ui.js`**, aunque el cambio parezca de una línea y aunque los tests estén verdes. Verde no quiere decir que cargue.
+- **Lo que se puede cruzar como TEXTO, se cruza.** Varias pruebas leen `ui.js`, `style.css`, `sonido.js` o `estado.js` con `readFileSync` en vez de importarlos — es lo que permite guardar decisiones que viven en el módulo que pinta (que la rama del toque decida sólo por `habiaMantenido`, que `pintarFondo` caiga en `CABLE` sin clima, que haya UN clima activo y no una lista). Es más frágil que importar y agarra menos, pero agarra el renombre y el borrado, que es el modo de falla que pasa de verdad.
+
+Lo que ninguna de las dos cubre es la tercera capa: **qué se ve**. Para eso no hay atajo — se mide en pantalla y se mira a tamaño real, que es de dónde salieron el pozo de 300 ms del toque y el cruce del cable con el piso de la niebla.
+
 **Lo que quedó del lado del pintado a propósito:** el cableado de listeners del menú y del alféizar. También corre al importar, pero engancha funciones de `ui.js` —`abrirMenu`, `cerrarMenu`, `irAColeccion`—, así que mudarlo daría una dependencia circular a cambio de nada. Montaje es "dejar el galpón puesto", no "conectar los botones".
 
 ---
