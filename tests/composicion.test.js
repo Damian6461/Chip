@@ -396,3 +396,79 @@ prueba('botonera: la chapa está en la familia de la chapa de Chip', () => {
 
   verdadero(lejos < 0.35, `la chapa está a ${(lejos * 100).toFixed(0)}% de la de Chip en luminancia`);
 });
+
+// ---- `hidden` contra `display`, que es una trampa del navegador ----
+//
+// `elemento.hidden = true` no esconde nada por sí solo: lo esconde la regla
+// `[hidden] { display: none }` de la hoja del USER AGENT, y esa hoja pierde
+// contra cualquier declaración de autor. O sea que un `display: grid` en
+// style.css deja el `hidden` sin efecto, en silencio y sin consola.
+//
+// Ya había dos comentarios avisando —en #estado y en #eventos— y aun así volvió
+// a pasar, porque la trampa no se dispara al escribir el hidden sino DESPUÉS,
+// el día que alguien le agrega un display al elemento por otro motivo. En #piso
+// el display llegó con la caja táctil de 44 px, meses después del hidden, y el
+// resultado fue el bug de "la pieza vuela al estante y queda también en el
+// piso": el nodo original nunca se escondía, así que la misma cosa quedaba en
+// dos lugares.
+//
+// La disciplina se olvida; un test no. Este cruza los dos archivos: qué nodos
+// esconde el JS con `.hidden`, y cuáles de esos tienen un `display` propio en el
+// CSS sin la regla `[hidden]` que lo repita.
+//
+// El id tiene que ser el SUJETO de la regla y no un ancestro: `#rayo svg` le da
+// display al svg, no a #rayo, y contarlo daría un falso positivo.
+
+const UI_FUENTE = readFileSync(RAIZ + 'js/ui.js', 'utf8');
+const MONTAJE_FUENTE = readFileSync(RAIZ + 'js/ui-montaje.js', 'utf8');
+const FUENTE_VISTA = UI_FUENTE + '\n' + MONTAJE_FUENTE;
+
+function nodosQueElJsEsconde() {
+  const aId = new Map();
+  const decl = /(?:const|let|var)\s+(\w+)\s*=\s*document\.getElementById\(\s*['"]([\w-]+)['"]/g;
+  for (const m of FUENTE_VISTA.matchAll(decl)) aId.set(m[1], m[2]);
+
+  const ids = new Set();
+  for (const m of FUENTE_VISTA.matchAll(/(\w+)\.hidden\s*=/g)) {
+    if (aId.has(m[1])) ids.add(aId.get(m[1]));
+  }
+  return [...ids].sort();
+}
+
+function reglasConDisplayPropio(id) {
+  return [...CSS.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, sel, cuerpo]) => {
+    if (/\[hidden\]/.test(sel)) return false;
+    const sujetos = sel.split(',').map((s) => s.trim().split(/[\s>+~]+/).pop());
+    if (!sujetos.some((s) => new RegExp('#' + id + '(?![\\w-])').test(s))) return false;
+    const d = cuerpo.match(/(?:^|;)\s*display\s*:\s*([^;]+)/);
+    return d && d[1].trim() !== 'none';
+  });
+}
+
+prueba('hidden: todo nodo con display propio repite la regla [hidden]', () => {
+  const faltan = nodosQueElJsEsconde().filter(
+    (id) => reglasConDisplayPropio(id).length > 0 && !CSS.includes('#' + id + '[hidden]')
+  );
+
+  igual(
+    faltan.map((id) => '#' + id).join(', '),
+    '',
+    'el JS los esconde con .hidden, el CSS les da display y nadie repite [hidden]: el hidden no hace nada'
+  );
+});
+
+// La red del de arriba: si los dos parsers dejaran de encontrar cosas —porque
+// cambió la forma de declarar los nodos, porque el CSS se reformateó— el filtro
+// daría cero contra cero y pasaría en verde sin haber mirado nada.
+prueba('hidden: los dos parsers encuentran algo', () => {
+  const ids = nodosQueElJsEsconde();
+  verdadero(ids.length >= 10, `sólo se encontraron ${ids.length} nodos que el JS esconde`);
+  verdadero(
+    reglasConDisplayPropio('piso').length > 0,
+    '#piso tiene display: grid por la caja táctil, así que el parser de CSS tiene que verlo'
+  );
+  verdadero(
+    reglasConDisplayPropio('rayo').length === 0,
+    '#rayo no tiene display propio: el de `#rayo svg` es del svg y no puede contarse'
+  );
+});

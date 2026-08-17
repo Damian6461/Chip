@@ -2934,6 +2934,23 @@ body.es-noche .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Y EL [hidden] EXPLÍCITO, que es el bug de "la pieza vuela al estante y queda
+   también en el piso".
+
+   `display: grid` acá arriba le gana al `[hidden] { display: none }` del user
+   agent —misma especificidad de atributo contra id no, pero el UA pierde contra
+   cualquier hoja de autor— así que `nodoPiso.hidden = true` no escondía nada. El
+   vuelo salía igual, con su nodo tercero, y la pieza original se quedaba en el
+   suelo: la misma cosa en dos lugares.
+
+   La trampa ya estaba anotada en #estado y en #eventos. Se coló de nuevo porque
+   el display llegó DESPUÉS, con la caja táctil de 44 px: la regla se agregó para
+   centrar la pieza adentro del padding y nadie volvió a mirar el hidden, que
+   hasta ese día funcionaba. Por eso ahora hay un test que la busca sola. */
+#piso[hidden] {
+  display: none;
+}
+
 #piso:focus-visible {
   outline: 2px solid var(--color-humor);
   outline-offset: 3px;
