@@ -1001,7 +1001,8 @@ export function dibujarCable() {
     desde,
     enPx,
     CABLE,
-    CABLE.entraAlCuerpo
+    CABLE.entraAlCuerpo,
+    (RECORRIDO_CABLE.pasaDetras / 100) * escena.height
   );
 
   // La ficha sigue yendo encima, en la capa de adelante: es la pieza que se ve.

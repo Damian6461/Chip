@@ -3839,16 +3839,31 @@ body.sin-movimiento *::after {
   animation: viajar-pulso var(--cable-pulso-ciclo) linear infinite reverse;
 }
 
+/* EL PULSO SE ACHICA CON EL CABLE. La animación corre en `reverse`, así que el
+   0% de acá es el pecho —donde el cable mide 13 px— y el 100% es la caja, donde
+   mide 1,7. Con radio fijo, en el último tercio el pulso era cinco veces más
+   ancho que el caño: energía ENCIMA del cable y no adentro.
+
+   Las paradas no son una rampa: `z` no crece parejo con el recorrido y una
+   interpolación lineal daría 0,58 justo donde hace falta 0,33. Los seis valores
+   salen de recorrer la línea media y leer el grosor en cada quinto del camino.
+   Ver PULSOS_CABLE.escala. */
 @keyframes viajar-pulso {
   0% {
     offset-distance: 0%;
     opacity: 0;
+    scale: var(--pulso-cable-e0);
   }
   12% { opacity: 1; }
+  20% { scale: var(--pulso-cable-e20); }
+  40% { scale: var(--pulso-cable-e40); }
+  60% { scale: var(--pulso-cable-e60); }
+  80% { scale: var(--pulso-cable-e80); }
   88% { opacity: 1; }
   100% {
     offset-distance: 100%;
     opacity: 0;
+    scale: var(--pulso-cable-e100);
   }
 }
 

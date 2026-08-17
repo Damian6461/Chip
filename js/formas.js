@@ -889,10 +889,70 @@ export function lineaDelCable(conector, r, cable) {
   // de un giro se pliega sobre sí mismo en cuanto el radio baja del medio ancho.
   // Medido, un salto de 13,3 px sobre un borde cuyo paso es de 4. La segunda
   // pasada vuelve a partir el ángulo y el pliegue desaparece.
-  return remuestrear(suavizar(suavizar(linea)), cable.pasoMuestreo);
+  //
+  // Y DESPUÉS EL RADIO MÍNIMO, que es otra cosa y arregla lo que el redondeo no
+  // podía. Chaikin corta cada esquina contra su tramo VECINO más corto, y en el
+  // codo del apoyo el vecino es una muestra de la catenaria a 6 px: por más
+  // pasadas que se den, ahí no hay nada que cortar. Medido en ese codo: radio
+  // 0,62 px. Ver respetarRadioMinimo.
+  const suave = remuestrear(suavizar(suavizar(linea)), cable.pasoMuestreo);
+  return remuestrear(respetarRadioMinimo(suave, cable.radioMinimo), cable.pasoMuestreo);
 }
 
-export function cintaDelCable(conector, r, cable, cuantoAtras = 0) {
+// UN CABLE NO PUEDE DOBLAR MÁS CERRADO QUE SU RADIO MÍNIMO, y eso es físico y no
+// un ajuste: un cable de 13 px de grueso doblado en un radio de medio píxel no
+// es un cable doblado, es un cable roto.
+//
+// Se relaja sólo donde el radio no llega, y con fuerza proporcional a cuánto le
+// falta: los tramos que ya cumplen no se tocan, así el recorrido dibujado no se
+// deforma para arreglar un codo. Es un laplaciano —cada muestra se corre hacia
+// el promedio de sus dos vecinas— con los extremos clavados, porque el primero
+// es la boca del conector y el último la de la caja.
+//
+// El tope de vueltas existe porque un codo muy cerrado puede no llegar nunca al
+// radio pedido sin deformar el recorrido entero, y en ese caso es preferible un
+// codo un poco más cerrado que un cable que se va de su camino. Lo que queda sin
+// resolver lo absorbe el clampeo del ancho en cintaDelCable, que es el que
+// GARANTIZA que la cinta no dé un salto.
+function respetarRadioMinimo(linea, radioMinimo) {
+  if (!radioMinimo || linea.length < 3) return linea;
+
+  const p = linea.map((q) => ({ ...q }));
+
+  for (let vuelta = 0; vuelta < 200; vuelta++) {
+    const r = radiosDeLaLinea(p);
+    if (Math.min(...r.slice(1, -1)) >= radioMinimo) break;
+
+    const antes = p.map((q) => ({ ...q }));
+    for (let i = 1; i < p.length - 1; i++) {
+      if (r[i] >= radioMinimo) continue;
+      const falta = 1 - r[i] / radioMinimo;
+      const fuerza = 0.5 * falta;
+      p[i].x = antes[i].x + fuerza * (antes[i - 1].x + antes[i + 1].x - 2 * antes[i].x);
+      p[i].y = antes[i].y + fuerza * (antes[i - 1].y + antes[i + 1].y - 2 * antes[i].y);
+    }
+  }
+
+  return p;
+}
+
+// El radio del arco que pasa por cada muestra y sus dos vecinas. Los extremos no
+// tienen curvatura definida y devuelven Infinity, que es "recto".
+function radiosDeLaLinea(linea) {
+  return linea.map((p, i) => {
+    if (i === 0 || i === linea.length - 1) return Infinity;
+    const a = linea[i - 1];
+    const b = linea[i + 1];
+    const u1 = Math.atan2(p.y - a.y, p.x - a.x);
+    const u2 = Math.atan2(b.y - p.y, b.x - p.x);
+    let giro = Math.abs(u2 - u1);
+    if (giro > Math.PI) giro = 2 * Math.PI - giro;
+    if (giro < 1e-4) return Infinity;
+    return Math.hypot(p.x - a.x, p.y - a.y) / (2 * Math.sin(giro / 2));
+  });
+}
+
+export function cintaDelCable(conector, r, cable, cuantoAtras = 0, alturaDetras = 0) {
   const n = (v) => Math.round(v * 100) / 100;
   const linea = lineaDelCable(conector, r, cable);
 
@@ -918,22 +978,42 @@ export function cintaDelCable(conector, r, cable, cuantoAtras = 0) {
   // que su propio radio. Donde la curva se cierra, la cinta se afina; y como el
   // afinado es proporcional al radio, no se nota — el ojo lee un cable que se
   // aplasta un poco en la curva, que es lo que hace un cable.
-  const radios = linea.map((p, i) => {
-    if (i === 0 || i === linea.length - 1) return Infinity;
-    const a = linea[i - 1];
-    const b = linea[i + 1];
-    const u1 = Math.atan2(p.y - a.y, p.x - a.x);
-    const u2 = Math.atan2(b.y - p.y, b.x - p.x);
-    let giro = Math.abs(u2 - u1);
-    if (giro > Math.PI) giro = 2 * Math.PI - giro;
-    if (giro < 1e-4) return Infinity;
-    // El radio del arco que pasa por los tres puntos con ese giro.
-    return Math.hypot(p.x - a.x, p.y - a.y) / (2 * Math.sin(giro / 2));
-  });
+  //
+  // EL FACTOR NO ES 0,92, Y ESO ERA LO QUE DEJABA EL CORTE. Con 0,92 el borde
+  // EXTERNO de un giro recorre 1,92 veces lo que recorre la línea media, o sea
+  // hasta 7,7 px con un paso de 4 — medido en producción: 7,08 px en el codo del
+  // apoyo. El borde externo de un arco de radio R con semiancho s avanza
+  // (R+s)/R por cada paso de la línea media, así que para que ese avance no pase
+  // de `saltoMaximo` hace falta s <= (saltoMaximo/paso - 1) * R.
+  //
+  // El factor sale de esa cuenta y no de una constante puesta a mano: si alguien
+  // cambia el paso o el tope, el clampeo se acomoda solo y el test sigue siendo
+  // el mismo número.
+  // Y hay un SEGUNDO término, que es el que dejaba el salto en 5,13 cuando la
+  // cuenta prometía 5,00: entre dos muestras el borde no sólo avanza por la
+  // curva, también se corre hacia afuera lo que haya cambiado el ancho. Los dos
+  // son perpendiculares —uno es tangente y el otro normal— así que se suman en
+  // cuadratura, y el presupuesto del salto se reparte entre los dos.
+  //
+  // El ancho, entonces, tampoco puede cambiar más rápido que `afinadoMaximo` por
+  // píxel de recorrido. Que además es cierto de un cable: no se afina a
+  // escalones.
+  const cambioMaximo = cable.afinadoMaximo * cable.pasoMuestreo;
+  const tangencial = Math.sqrt(cable.saltoMaximo ** 2 - cambioMaximo ** 2);
+  const holgura = tangencial / cable.pasoMuestreo - 1;
+  const radios = radiosDeLaLinea(linea);
 
-  const semi = linea.map((p, i) =>
-    Math.min(grosorDelCable(p.z, cable) / 2, radios[i] * 0.92)
+  const tope = linea.map((p, i) =>
+    Math.min(grosorDelCable(p.z, cable) / 2, radios[i] * holgura)
   );
+
+  // Dos barridas —una para cada lado— dejan el semiancho en el mínimo de
+  // tope[j] + cambioMaximo * |i-j| sobre todas las muestras. O sea: nunca por
+  // encima del tope de nadie, y con la pendiente acotada. Con una sola barrida
+  // la condición valdría para un solo sentido.
+  const semi = tope.slice();
+  for (let i = 1; i < semi.length; i++) semi[i] = Math.min(semi[i], semi[i - 1] + cambioMaximo);
+  for (let i = semi.length - 2; i >= 0; i--) semi[i] = Math.min(semi[i], semi[i + 1] + cambioMaximo);
 
   const unLado = linea.map((p, i) => ({ x: p.x + nor[i].x * semi[i], y: p.y + nor[i].y * semi[i] }));
   const elOtro = linea.map((p, i) => ({ x: p.x - nor[i].x * semi[i], y: p.y - nor[i].y * semi[i] }));
@@ -961,8 +1041,51 @@ export function cintaDelCable(conector, r, cable, cuantoAtras = 0) {
   // piezas.
   const corte = Math.max(1, Math.min(linea.length - 2, Math.round(cuantoAtras / cable.pasoMuestreo)));
 
+  // Y SE PARTE UNA SEGUNDA VEZ, donde el cable se aleja más que Chip.
+  //
+  // Mientras corre por delante de sus orugas está más cerca que él y va en la
+  // capa de adelante. En cuanto sube por encima de su línea de apoyo está en el
+  // piso pero más lejos, y ahí tiene que pasarle por detrás: si no, le cruza el
+  // cuerpo con una franja gris.
+  //
+  // El corte es la primera muestra que queda por encima de esa línea DESPUÉS DE
+  // TOCAR EL PISO, y ese "después" no es un detalle: el cable arranca en el
+  // pecho, que en pantalla está bien arriba de la línea de apoyo y sin embargo
+  // es lo más CERCANO de todo el recorrido. Alto en el cuadro sólo quiere decir
+  // lejos si estás en el piso. Así que primero se busca la panza —la muestra más
+  // baja, que es donde el cable apoya— y recién de ahí en adelante se pregunta.
+  //
+  // Si el recorrido nunca sube —como el viejo, que corría plano— esto no
+  // encuentra nada y el cable queda entero adelante, igual que antes.
+  const panza = linea.reduce((mejor, p, i) => (p.y > linea[mejor].y ? i : mejor), 0);
+  const detras =
+    alturaDetras > 0 ? linea.findIndex((p, i) => i > panza && p.y < alturaDetras) : -1;
+  const fondo = detras > corte ? detras : linea.length - 1;
+
+  // EL LOMO SE CORTA DONDE EL CABLE SE VUELVE FINO, y no llega hasta la caja.
+  //
+  // Es un stroke de ancho fijo, así que con el afinado nuevo —de 13 px a 1,7—
+  // en el último tercio del recorrido el brillo mediría MÁS que el cable que
+  // ilumina: una arista más ancha que el caño. Y además es lo que pasa de
+  // verdad: un reflejo especular se apaga con la distancia mucho antes que la
+  // silueta. Se corta en la última muestra donde el cable todavía es lo bastante
+  // grueso como para tener una cara de arriba.
+  const grosorLomo = Math.max(0.9, grosorDelCable(0, cable) * 0.16);
+  //
+  // Y nunca pasa de `fondo`: el lomo se dibuja en la capa de ADELANTE, así que
+  // si siguiera más allá del punto donde el cable se va detrás de Chip, quedaría
+  // una rayita de luz cruzándole el cuerpo sin su cable abajo.
+  const hastaElLomo = (() => {
+    let fin = corte;
+    for (let i = corte; i <= fondo; i++) {
+      if (grosorDelCable(linea[i].z, cable) < grosorLomo * 2.2) break;
+      fin = i;
+    }
+    return fin;
+  })();
+
   const lomo = linea
-    .slice(corte)
+    .slice(corte, hastaElLomo + 1)
     .map((p, i) => {
       const j = i + corte;
       const arriba = nor[j].y < 0 ? 1 : -1;
@@ -972,12 +1095,22 @@ export function cintaDelCable(conector, r, cable, cuantoAtras = 0) {
     })
     .join(' ');
 
+  // Las dos capas llevan DOS tramos cada una y no uno: la de atrás es la punta
+  // que entra al puerto más todo lo que queda más lejos que Chip, y la de
+  // adelante es la panza que cuelga por delante de él. Se emiten como dos
+  // subpaths del mismo path —cada uno con su M— porque son la misma pieza con el
+  // mismo relleno, y partirlos en dos nodos duplicaría el pintado.
+  const atras =
+    fondo < linea.length - 1
+      ? `${cinta(0, corte + 1)} ${cinta(fondo, linea.length - 1)}`
+      : cinta(0, corte + 1);
+
   return {
     completo,
-    atras: cinta(0, corte + 1),
-    adelante: cinta(corte, linea.length - 1),
+    atras,
+    adelante: cinta(corte, fondo + (fondo < linea.length - 1 ? 1 : 0)),
     lomo,
-    grosorLomo: Math.max(1, grosorDelCable(0, cable) * 0.2),
+    grosorLomo,
     linea
   };
 }

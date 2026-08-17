@@ -1,6 +1,8 @@
 // El sistema de colección: qué deja una visita, qué no vuelve a dejar, el techo
 // por visita, la rareza y la garantía diaria de cadencia.
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { prueba, igual, cerca, verdadero } from './runner.js';
 import { T0 } from './config.pruebas.js';
 import {
@@ -554,6 +556,7 @@ prueba('pool: el estante no pretende mostrar las 36', () => {
 // Las dos salieron de defectos medidos en producción y las dos se comprueban
 // solas, sin navegador: son geometría, no pintura.
 
+const RAIZ_CSS = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const ESCENA = { ancho: 480, alto: 889 };
 const enPx = (p) => ({ ...p, x: (p.x / 100) * ESCENA.ancho, y: (p.y / 100) * ESCENA.alto });
 const RUTA = {
@@ -605,30 +608,104 @@ prueba('cable: ninguna muestra de la línea media salta más que el paso', () =>
 
 prueba('cable: la cinta no se pliega sobre sí misma en ninguna curva', () => {
   // El borde interno de un giro recorre menos que la línea media, y si el radio
-  // es menor que el medio ancho de la cinta, se cruza: eso es un pico. La cota
-  // es el doble del paso — el borde EXTERNO de una curva tiene que poder
-  // recorrer más que la línea media, eso es geometría y no un defecto, pero un
-  // pliegue da saltos de varias veces el ancho.
-  const { atras, adelante } = cintaDelCable(CONECTOR, RUTA, CABLE, CABLE.entraAlCuerpo);
-  const tope = CABLE.pasoMuestreo * 2;
+  // es menor que el medio ancho de la cinta, se cruza: eso es un pico.
+  //
+  // EL TOPE BAJÓ DE 8 A 5, y con el de 8 pasaba un corte que se veía: 7,08 px en
+  // (233,7 · 747,5), el codo donde el cable tocaba el piso y giraba. El número
+  // ya no se escribe acá — sale de CABLE.saltoMaximo, que es el MISMO que usa
+  // cintaDelCable para clampear el ancho contra la curvatura. Si alguien lo
+  // cambia, el clampeo y el test se mueven juntos y no puede quedar uno sin el
+  // otro.
+  const { atras, adelante } = cintaDelCable(
+    CONECTOR,
+    RUTA,
+    CABLE,
+    CABLE.entraAlCuerpo,
+    (RECORRIDO_CABLE.pasaDetras / 100) * ESCENA.alto
+  );
 
+  // Cada capa puede traer DOS polígonos: la de atrás es la punta que entra al
+  // puerto más todo lo que queda más lejos que Chip. Se parten por la M, porque
+  // el salto de un subpath al siguiente no es una muestra.
   for (const [nombre, d] of [['atrás', atras], ['adelante', adelante]]) {
-    const p = [...d.matchAll(/([ML])\s+([-\d.]+)\s+([-\d.]+)/g)].map((m) => ({
-      x: +m[2],
-      y: +m[3]
-    }));
-    const mitad = p.length / 2;
-    let max = 0;
+    for (const trozo of d.split('M').filter((t) => t.trim())) {
+      const p = [...('M' + trozo).matchAll(/([ML])\s+([-\d.]+)\s+([-\d.]+)/g)].map((m) => ({
+        x: +m[2],
+        y: +m[3]
+      }));
+      const mitad = p.length / 2;
+      let max = 0;
 
-    // Se saltea la vuelta del polígono —el paso de un borde al otro— porque ahí
-    // el salto vale el ANCHO del cable por definición, no es una muestra.
-    for (let i = 1; i < p.length; i++) {
-      if (i === mitad) continue;
-      max = Math.max(max, Math.hypot(p[i].x - p[i - 1].x, p[i].y - p[i - 1].y));
+      // Se saltea la vuelta del polígono —el paso de un borde al otro— porque
+      // ahí el salto vale el ANCHO del cable por definición, no es una muestra.
+      for (let i = 1; i < p.length; i++) {
+        if (i === mitad) continue;
+        max = Math.max(max, Math.hypot(p[i].x - p[i - 1].x, p[i].y - p[i - 1].y));
+      }
+
+      verdadero(
+        max <= CABLE.saltoMaximo + 0.01,
+        `${nombre}: salto máximo ${max.toFixed(2)} px, tope ${CABLE.saltoMaximo}`
+      );
     }
-
-    verdadero(max <= tope, `${nombre}: salto máximo ${max.toFixed(2)} px, tope ${tope}`);
   }
+});
+
+// LA PERSPECTIVA, que es lo que hace que el galpón se lea grande.
+//
+// No alcanza con que el cable se afine: tiene que afinarse MUCHO. A 3,25 a 1
+// —que es, de hecho, la reducción físicamente correcta para este encuadre—
+// conserva cuerpo en todo el recorrido y compite con Chip.
+prueba('cable: la reducción de grosor es de 7 a 1 o más', () => {
+  const cerca = grosorDelCable(0, CABLE);
+  const lejos = grosorDelCable(1, CABLE);
+  const relacion = cerca / lejos;
+
+  verdadero(
+    relacion >= 7,
+    `el cable va de ${cerca} px a ${lejos.toFixed(2)}: ${relacion.toFixed(2)} a 1, y se pidió 7 u 8`
+  );
+  verdadero(lejos >= 1.5, `el extremo lejano mide ${lejos.toFixed(2)} px y por debajo de 1,5 desaparece`);
+  verdadero(lejos <= 2, `el extremo lejano mide ${lejos.toFixed(2)} px y se pidió 1,5-2`);
+});
+
+// EL TRAMO DEL PISO SE ALEJA, y esto es lo que la versión anterior no hacía.
+//
+// El recorrido viejo corría entre 83,5% y 84,3% de punta a punta mientras su `z`
+// declarada subía de 0,05 a 0,3: la posición decía "misma profundidad" y el
+// grosor decía "me voy al fondo". Un cable que corre por una horizontal se lee
+// pegado al borde de adelante del piso.
+prueba('cable: el tramo del piso sube en pantalla a medida que se aleja', () => {
+  const enPiso = [RECORRIDO_CABLE.apoyo, ...RECORRIDO_CABLE.quiebres].filter(
+    (p) => p.y > RECORRIDO_CABLE.pasaDetras - 12
+  );
+
+  for (let i = 1; i < enPiso.length; i++) {
+    verdadero(
+      enPiso[i].y < enPiso[i - 1].y && enPiso[i].x > enPiso[i - 1].x,
+      `el punto en x=${enPiso[i].x} tiene que estar más arriba y más a la derecha que el anterior`
+    );
+  }
+
+  // Y el avance a lo ancho tiene que ser el que manda en ese tramo: es el que
+  // cuenta la distancia.
+  const ancho = Math.abs(enPiso.at(-1).x - enPiso[0].x) * 4.8; // px en 480
+  const alto = Math.abs(enPiso.at(-1).y - enPiso[0].y) * 8.89; // px en 889
+  verdadero(ancho > alto, `el tramo del piso avanza ${ancho.toFixed(0)} px a lo ancho y ${alto.toFixed(0)} a lo alto`);
+});
+
+// EL CABLE PASA DETRÁS DE CHIP cuando se aleja más que él, y el número que lo
+// decide es su línea de apoyo. Si --piso-chip cambia y esto no, el cable le
+// cruza el cuerpo con una franja gris o se le esconde de más.
+prueba('cable: la línea donde pasa atrás es la línea donde Chip apoya', () => {
+  const CSS = readFileSync(join(RAIZ_CSS, 'style.css'), 'utf8');
+  const m = CSS.match(/--piso-chip:\s*([\d.]+)%/);
+  verdadero(Boolean(m), 'style.css declara --piso-chip');
+  igual(
+    RECORRIDO_CABLE.pasaDetras,
+    100 - Number(m[1]),
+    'pasaDetras es el complemento de --piso-chip'
+  );
 });
 
 prueba('cable: el afinado tiene piso y nunca desaparece', () => {

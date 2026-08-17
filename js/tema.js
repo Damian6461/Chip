@@ -297,6 +297,12 @@ export function variablesDeTema() {
     [VARS_LLUVIA.cuerpo]: LLUVIA.cuerpo,
     [VARS_LLUVIA.brillo]: LLUVIA.brillo,
     [VARS_CABLE.cicloPulso]: ms(PULSOS_CABLE.ciclo),
+    [VARS_CABLE.pulsoE0]: String(PULSOS_CABLE.escala.e0),
+    [VARS_CABLE.pulsoE20]: String(PULSOS_CABLE.escala.e20),
+    [VARS_CABLE.pulsoE40]: String(PULSOS_CABLE.escala.e40),
+    [VARS_CABLE.pulsoE60]: String(PULSOS_CABLE.escala.e60),
+    [VARS_CABLE.pulsoE80]: String(PULSOS_CABLE.escala.e80),
+    [VARS_CABLE.pulsoE100]: String(PULSOS_CABLE.escala.e100),
 
     // La caja de conexión, al fondo y sumergida
     [VARS_CABLE.tomaX]: pct(TOMA_FONDO.x),
