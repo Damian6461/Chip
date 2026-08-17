@@ -137,6 +137,67 @@ O sea: un listener de `pointerdown` de una sola vez sobre el documento que, si e
 
 ---
 
+## 9. La antena con inercia
+
+La mejor adición pendiente, y la más barata. Hoy el poste y el bulbo son rígidos: se mueven exactamente con la cabeza, al mismo tiempo y con el mismo ángulo.
+
+**Una antena real tiene masa y va con retraso.** Cuando el cuerpo se mueve, la antena sale detrás; cuando el cuerpo frena, la antena sigue un momento más y vuelve oscilando. Eso es el *follow-through* de la animación clásica, y es lo que hace que un personaje deje de leerse como una figura rígida.
+
+**La infraestructura ya está:** `#antena` y `#resplandor` viven dentro de `#cabeza-grupo`. Lo que falta es darles **su propio pivote en la base del poste** y su propia rotación, desfasada de la del grupo.
+
+**Comportamiento:**
+
+- **Retraso:** la antena reproduce la rotación de la cabeza con unos 120-180 ms de atraso, y con una amplitud algo mayor (1,3× a 1,5×). Cuando la cabeza llega, la antena todavía viene.
+- **Rebote al frenar:** al terminar el gesto, la antena sobrepasa y vuelve en dos o tres oscilaciones que se apagan, tipo resorte amortiguado. Cada rebote más chico que el anterior.
+- **Dispara con todo lo que sacuda a Chip:** la inclinación de cabeza, el salto de acción, el sobresalto del tap, el squash de las transiciones de estado.
+- **En reposo, un movimiento propio muy leve:** la antena oscila sola 0,5-1° con un ciclo largo (5-6 s), desincronizado de la respiración. Nada se mueve perfectamente quieto.
+- **En `critico`** la antena cuelga más: aumentá el retraso y bajá la amplitud del rebote, como si le costara.
+
+**Ojo con el resplandor:** tiene que seguir al bulbo en su nueva posición, no quedarse en la del poste. Verificá en el pico de la oscilación, no solo en reposo.
+
+---
+
+## 10. El rayo del pecho quedó a medias
+
+Hoy late y nada más: **late igual con la batería en 90 que en 20.** Es el instrumento de la batería y no informa nada.
+
+**Que el ritmo cuente el estado de carga:**
+
+- **Batería alta (más de 60):** latido lento, regular y fuerte. Todo bien.
+- **Media (30-60):** más rápido, un poco más débil.
+- **Baja (menos de 30):** rápido, débil e **irregular** — con algún fallo, como una luz a la que le falta corriente. Ya usaste ese criterio para el bulbo en `critico` y funciona.
+- **En `cargando`:** el rayo **late en sincronía con los pulsos que llegan por el cable**. Cada pulso que termina su recorrido enciende el rayo. Eso conecta las dos animaciones y hace que la carga se lea como un circuito y no como dos efectos separados.
+- **En `standby`:** casi apagado, un pulso muy tenue cada varios segundos.
+
+Con esto, mirando solo el pecho de Chip ya sabés cómo está. Que es lo que un indicador tiene que hacer.
+
+---
+
+## 11. Las luces de las orejas — con una condición
+
+Los rectángulos naranjas del costado de la cabeza tienen LEDs cian pintados. La idea es hacerlos vivir.
+
+**Pero cuidado:** ya late el bulbo, ya late el rayo, ya laten los tres LED de los botones. Sumar otra cosa que parpadea de fondo corre dos riesgos: que Chip se vea como un arbolito, y que ninguna luz signifique nada porque todas hacen lo mismo.
+
+**Así que estas tienen que tener una función propia, distinta de las demás: son el indicador de "pasó algo".**
+
+- **Apagadas la mayor parte del tiempo.** Ese es el punto.
+- **Se encienden cuando hay algo nuevo que ver:** un evento del día que todavía no se leyó, un objeto encontrado y no guardado, un objeto esperando en el piso.
+- **El patrón: un barrido corto, no un parpadeo.** Los LEDs de esos rectángulos están apilados, así que se pueden encender en secuencia de abajo hacia arriba y apagarse — como un indicador de actividad. Cada 4-6 segundos, breve.
+- **Se apagan cuando el jugador vio lo que había:** abrió el menú, levantó el objeto, leyó el evento.
+
+Si al implementarlo se ve ruidoso junto con el resto de las luces, **reportalo y lo sacamos**. Es la menos importante de las tres.
+
+---
+
+## Prioridad entre estas tres
+
+**Antena primero** — es la que más cambia cómo se percibe a Chip, y la infraestructura ya está.
+**Rayo del pecho segundo** — convierte un adorno en información.
+**Orejas tercero**, y solo si las dos anteriores no dejaron la escena demasiado cargada de luces.
+
+---
+
 ## Reglas de siempre
 
 Constantes en `config.js`. `prefers-reduced-motion` cubre lo nuevo. Tests en verde. Commit y push antes de reportar. Verificá a tamaño real y contra la frase textual, y preguntá cuando algo admita dos lecturas.
