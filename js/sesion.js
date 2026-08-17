@@ -444,6 +444,11 @@ export function crearSesion({
   function fastidiar() {
     reloj.cancelar(temporizadorFastidio);
     leOrdenaron = true;
+    // La SEÑAL del enojo la avisa la sesión, con el mismo criterio que el estado
+    // visual: quién se fastidia y cuándo es del modelo, y cómo se ve es de la
+    // vista. Sin esto ui.js tendría que adivinar por qué apareció `esperando`,
+    // que es la misma cara que pone cuando pasa un gigante.
+    vista.enojarse?.();
     actualizarVisual({ inmediato: true });
     pintar();
 
@@ -471,6 +476,10 @@ export function crearSesion({
 
     reloj.cancelar(temporizadorFastidio);
     leOrdenaron = true;
+    // La misma señal que el fastidio del toque: los dos son el mismo enojo y se
+    // ven igual. Lo que los distingue es cómo siguen — este encadena en `feliz`
+    // y el otro no.
+    vista.enojarse?.();
     actualizarVisual({ inmediato: true });
     pintar();
 

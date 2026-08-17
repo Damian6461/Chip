@@ -36,6 +36,7 @@ import {
   ponerEnElPiso,
   conectarDebugOculto,
   ponerClima,
+  enojarse,
   animarAccion,
   iniciarAccion,
   celebrarHumor,
@@ -105,7 +106,8 @@ const sesion = crearSesion({
       ponerClima(nombre, cruce);
       if (CLIMAS[nombre]?.llueve) lloverAmbiente();
       else dejarDeLloverAmbiente();
-    }
+    },
+    enojarse
   },
   reloj,
   guardar: guardarEstado

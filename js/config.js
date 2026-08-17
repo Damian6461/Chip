@@ -2467,6 +2467,88 @@ export const CICLO_RAYO_MS = 3700;
 export const CICLO_RAYO_CRITICO_MS = 1300;
 export const CICLO_RAYO_NOCHE_MS = 6200;
 
+// ---- EL RAYO CUENTA LA CARGA, no sólo que hay corriente ----
+//
+// Latía IGUAL con la batería en 90 que en 45: es el instrumento de la batería y
+// no informaba nada. Ahora el ritmo sale del stat y no del estado.
+//
+// LAS BANDAS SON DOS Y NO TRES, y esa es la decisión que hay que explicar. La
+// spec pide alta, media y baja, y la baja YA EXISTE: es `critico`, que entra
+// abajo de UMBRAL_CRITICO_BATERIA y tiene su propio keyframe irregular —
+// titilar-rayo— hecho justamente para leerse como una falla. Agregar una tercera
+// banda acá sería un segundo sistema diciendo lo mismo, y los dos se
+// desincronizarían el día que alguien mueva el umbral.
+//
+// O sea que el rayo tiene cuatro ritmos y cada uno tiene un dueño distinto:
+//
+//   alta y media   estas bandas, por el número de batería
+//   baja           el estado `critico`, con su titileo irregular
+//   cargando       el pulso del cable, en fase con él
+//   standby/noche  el mínimo del sistema
+//
+// `desde` es inclusivo y la tabla se recorre de arriba hacia abajo, así que la
+// primera que entra manda. La última tiene que ser 0 o habría batería sin banda.
+//
+// Media late MÁS RÁPIDO y MÁS DÉBIL: un pulso corto y bajo se lee como un
+// sistema trabajando con lo justo, que es lo que hay que comunicar antes de que
+// llegue a crítico. Los valores de la banda alta son los que ya estaban.
+export const RITMOS_RAYO = [
+  { desde: 60, ciclo: 3700, piso: 0.24, pico: 0.52 },
+  { desde: 0, ciclo: 2300, piso: 0.16, pico: 0.38 }
+];
+
+export const VARS_RITMO_RAYO = {
+  piso: '--rayo-piso',
+  pico: '--rayo-pico'
+};
+
+// ---- EL ENOJO, que era el único estado sin voz ----
+//
+// Chip se fastidia —por toques repetidos o porque le levantaste algo del piso—
+// y hasta ahora cambiaba la pose y nada más. Todos los demás estados tienen una
+// señal propia; este no tenía ninguna.
+//
+// LA REGLA QUE MANDA: nada que parezca castigo. No baja stats, no sacude la
+// pantalla, no hay símbolos de enojo. Chip está fastidiado, no ofendido, y a los
+// tres segundos se le pasa. Tiene que dar gracia, no culpa.
+//
+// Tres señales, y las tres salen de cosas que ya existen:
+//
+//   el bulbo    parpadea corto y seco en el naranja del juego, dos o tres veces.
+//               NO es el latido suave de siempre: un latido lento dice "estoy
+//               acá"; un parpadeo brusco dice "pará".
+//   la antena   se sacude. Ahora que tiene inercia esto sale gratis: es el mismo
+//               resorte de ANTENA_INERCIA disparado de golpe, como un resoplido.
+//   los brazos  QUIETOS. La ausencia de movimiento también es información, y es
+//               el mismo criterio que ya usa `critico`.
+//
+// El parpadeo es rápido a propósito: 170 ms de ciclo contra los 2600 del latido
+// de reposo. Un factor de quince es lo que hace que se lea como otra cosa y no
+// como el mismo latido apurado.
+export const ENOJO = {
+  destellos: 3,
+  ciclo: 170,
+  // El naranja del juego, el mismo de la franja de los botones y de la toma. No
+  // un rojo: el rojo ya es de `critico` y quiere decir otra cosa —que se está
+  // quedando sin batería—, y dos señales rojas distintas se confunden.
+  color: '#f0a326',
+  // La sacudida, en grados y sobre el mismo pivote de la base del poste. Más
+  // grande que la inercia de la inclinación porque acá el gesto ES el sacudón,
+  // no un residuo: 2,2° son 1,74 px de despegue del bulbo, todavía adentro del
+  // tercio del ancho del poste que fija el test.
+  sacudida: 2.2,
+  duracionSacudida: 540
+};
+
+export const CLASE_ENOJO = 'enojado';
+
+export const VARS_ENOJO = {
+  ciclo: '--enojo-ciclo',
+  color: '--enojo-color',
+  sacudida: '--enojo-sacudida',
+  duracionSacudida: '--enojo-sacudida-duracion'
+};
+
 // El cian del display, que es el mismo de la batería. El rayo no tiene color
 // propio: es el mismo sistema eléctrico.
 export const VARS_RAYO = {

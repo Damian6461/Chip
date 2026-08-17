@@ -693,9 +693,18 @@ body.es-noche #toma {
    rayo que YA está pintado en cian, el aporte es imperceptible: en la tira de
    comparación de los siete estados, idle era el único donde el rayo parecía
    apagado. No estaba mal ubicado — estaba abajo del umbral de visibilidad. */
+/* LOS DOS EXTREMOS VIENEN POR VARIABLE, igual que el latido del bulbo, porque
+   ahora el rayo cuenta CUÁNTA carga hay y no sólo que la hay. ui.js elige la
+   banda según la batería y escribe el piso, el pico y el ciclo; el keyframe es
+   uno solo. Con la batería alta salen los valores de siempre —0,24 y 0,52— así
+   que un Chip cargado se ve exactamente como antes.
+
+   Ver RITMOS_RAYO en config.js, que explica por qué las bandas son dos y no
+   tres: la baja ya la cuenta `critico` con su titileo irregular, y dos sistemas
+   diciendo lo mismo se desincronizan el día que alguien mueve el umbral. */
 @keyframes latir-rayo-suave {
-  0%, 100% { opacity: 0.24; }
-  50% { opacity: 0.52; }
+  0%, 100% { opacity: var(--rayo-piso, 0.24); }
+  50% { opacity: var(--rayo-pico, 0.52); }
 }
 
 /* Cargando: destella fuerte, en el MISMO ciclo y la MISMA fase que el latido
@@ -1664,6 +1673,66 @@ body.es-noche #rayo {
   88% { transform: rotate(calc(var(--angulo-inclinacion) * var(--lado-inclinacion, 1) * var(--antena-rebote-2))); }
   94% { transform: rotate(calc(var(--angulo-inclinacion) * var(--lado-inclinacion, 1) * var(--antena-rebote-3))); }
   100% { transform: rotate(0deg); }
+}
+
+/* ---- EL ENOJO ----
+
+   Era el único estado sin señal propia: cambiaba la pose y nada más.
+
+   EL BULBO PARPADEA CORTO Y SECO. Reemplaza al latido —no se suma— y esa es la
+   diferencia entera: un latido lento dice "estoy acá", un parpadeo brusco dice
+   "pará". El ciclo es quince veces más rápido que el de reposo, que es lo que
+   hace que se lea como otra cosa y no como el mismo latido apurado.
+
+   El color es el NARANJA del juego y no un rojo. El rojo ya es de `critico` y
+   quiere decir que se está quedando sin batería; dos señales rojas distintas se
+   confunden justo cuando hay que distinguirlas. */
+#chip.enojado #antena {
+  --bulbo-nucleo: #fff3d6;
+  --bulbo-cuerpo: var(--enojo-color);
+  --bulbo-halo: var(--enojo-color);
+  animation-name: parpadeo-enojo;
+  animation-duration: var(--enojo-ciclo);
+  animation-timing-function: steps(2, jump-none);
+  animation-iteration-count: 3;
+}
+
+@keyframes parpadeo-enojo {
+  0%, 100% { filter: brightness(0.35); }
+  50% { filter: brightness(1.9); }
+}
+
+/* LA ANTENA SE SACUDE, como un resoplido. Sale gratis: es el mismo resorte de la
+   inercia disparado de golpe en vez de arrastrado por la cabeza, sobre el mismo
+   pivote de la base del poste.
+
+   Pisa a la inercia de la inclinación si las dos caen juntas, y está bien que
+   así sea: si a Chip lo están picando con el dedo, eso es más urgente que el
+   gesto de mirar para el costado. */
+#chip.enojado #antena-grupo {
+  animation-name: sacudida-enojo;
+  animation-duration: var(--enojo-sacudida-duracion);
+  animation-timing-function: ease-out;
+  animation-iteration-count: 1;
+  animation-fill-mode: both;
+}
+
+@keyframes sacudida-enojo {
+  0% { transform: rotate(0deg); }
+  14% { transform: rotate(var(--enojo-sacudida)); }
+  36% { transform: rotate(calc(var(--enojo-sacudida) * -0.7)); }
+  56% { transform: rotate(calc(var(--enojo-sacudida) * 0.42)); }
+  74% { transform: rotate(calc(var(--enojo-sacudida) * -0.22)); }
+  88% { transform: rotate(calc(var(--enojo-sacudida) * 0.09)); }
+  100% { transform: rotate(0deg); }
+}
+
+/* LOS BRAZOS QUIETOS mientras dura. La ausencia de movimiento también es
+   información, y es el mismo criterio que ya usa `critico`: un Chip fastidiado
+   no se acomoda ni saluda. */
+#chip.enojado #brazo-izq-grupo,
+#chip.enojado #brazo-der-grupo {
+  animation: none;
 }
 
 /* EL VAIVÉN DE REPOSO. Nada se mueve perfectamente quieto, y una antena larga

@@ -95,6 +95,10 @@ import {
   COLORES_NUBE,
   VARS_NUBES,
   VARS_RAYO,
+  RITMOS_RAYO,
+  CLASE_ENOJO,
+  DURACION_FASTIDIO_MS,
+  VARS_RITMO_RAYO,
   ESTADOS_CON_PANTALLA_VIVA,
   SEGMENTOS_PANTALLA,
   CAJA_SEGMENTOS,
@@ -351,7 +355,7 @@ if (rayoPecho) rayoPecho.innerHTML = svgDeRayo();
 
 // La caja del rayo cambia con la pose igual que la de la pantalla y la de la
 // antena: es otra medida del arte, no una posición inventada.
-function pintarRayo(claveSprite) {
+function pintarRayo(claveSprite, bateria) {
   if (!rayoPecho) return;
   const caja = RECUADROS_RAYO[claveSprite];
   rayoPecho.hidden = !caja;
@@ -360,6 +364,16 @@ function pintarRayo(claveSprite) {
   rayoPecho.style.setProperty(VARS_RAYO.y, `${caja.y}%`);
   rayoPecho.style.setProperty(VARS_RAYO.ancho, `${caja.ancho}%`);
   rayoPecho.style.setProperty(VARS_RAYO.alto, `${caja.alto}%`);
+
+  // EL RITMO CUENTA LA CARGA. Antes latía igual con la batería en 90 que en 45,
+  // o sea que el instrumento de la batería no informaba nada. La banda sale del
+  // stat; las de `critico`, `cargando` y standby las sigue poniendo el estado,
+  // con su propio keyframe. Ver RITMOS_RAYO en config.js, que explica por qué
+  // son dos bandas y no tres.
+  const ritmo = RITMOS_RAYO.find((r) => bateria >= r.desde) ?? RITMOS_RAYO.at(-1);
+  rayoPecho.style.setProperty(VARS_RAYO.ciclo, `${ritmo.ciclo}ms`);
+  rayoPecho.style.setProperty(VARS_RITMO_RAYO.piso, String(ritmo.piso));
+  rayoPecho.style.setProperty(VARS_RITMO_RAYO.pico, String(ritmo.pico));
 }
 
 const pantalla = document.getElementById('pantalla');
@@ -1440,6 +1454,32 @@ function terminarCaricia() {
   }, SOSTEN_CARICIA_MS);
 }
 
+// ---- El enojo ----
+//
+// Lo dispara la SESIÓN y no esta función, porque `esperando` es la misma cara
+// que pone cuando pasa un gigante: desde acá no hay forma de saber por qué
+// apareció. Ver fastidiar() y recogerDelPiso() en sesion.js.
+//
+// La clase se saca sola. Dura lo mismo que el fastidio del modelo para que la
+// señal y la cara terminen juntas — una luz parpadeando sobre una cara que ya
+// volvió a la normalidad es peor que no tener señal.
+let temporizadorEnojo = null;
+
+export function enojarse() {
+  clearTimeout(temporizadorEnojo);
+  cajaChip.classList.remove(CLASE_ENOJO);
+  // Reinicia las animaciones: sin esto, dos fastidios seguidos dejan el segundo
+  // sin parpadeo, porque la clase nunca se fue y el navegador no vuelve a
+  // arrancar lo que ya está corriendo.
+  void cajaChip.offsetWidth;
+  cajaChip.classList.add(CLASE_ENOJO);
+
+  temporizadorEnojo = setTimeout(() => {
+    temporizadorEnojo = null;
+    cajaChip.classList.remove(CLASE_ENOJO);
+  }, DURACION_FASTIDIO_MS);
+}
+
 // ---- Tocar ----
 
 function unToque() {
@@ -2386,7 +2426,7 @@ export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = 
   saludar(estadoVisual === ESTADOS_VISUALES.feliz);
   pintarOjos(claveSprite);
   pintarPantalla(estado, claveSprite);
-  pintarRayo(claveSprite);
+  pintarRayo(claveSprite, estado.bateria);
   // El cable se redibuja en cada render y no una sola vez al arrancar: su punto
   // de partida es el conector del pecho, que se mide sobre la caja REAL de
   // #chip, y esa caja cambia con el viewport. Es una cuenta de dos restas y una

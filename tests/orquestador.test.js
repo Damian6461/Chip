@@ -122,7 +122,7 @@ function relojFalso(inicio) {
 // Vista falsa: cuenta llamadas y guarda los argumentos del último render, que es
 // donde viajan el tramo, la noche y el cruce.
 function vistaFalsa() {
-  const cuenta = { render: 0, sembrarFondo: 0, animarAccion: 0, celebrarHumor: 0, estoyBien: 0 };
+  const cuenta = { render: 0, sembrarFondo: 0, animarAccion: 0, celebrarHumor: 0, estoyBien: 0, enojarse: 0 };
   let ultimoRender = null;
   let fondoSembrado = null;
   const climas = [];
@@ -148,7 +148,12 @@ function vistaFalsa() {
     ponerClima(nombre, cruce) {
       climas.push({ nombre, cruce });
     },
-    climas: () => climas
+    climas: () => climas,
+    // Mismo motivo que ponerClima: la sesión la llama con `?.`, así que un doble
+    // sin el método deja pasar en silencio una sesión que dejó de avisar.
+    enojarse() {
+      cuenta.enojarse++;
+    }
   };
 }
 
@@ -1129,6 +1134,40 @@ prueba('gestos: la caricia da más que el toque', () => {
   cerca(conCaricia, CARICIA_HUMOR, 'la caricia sube lo que dice config');
   cerca(conToque, TOQUE_HUMOR, 'y el toque lo suyo');
   verdadero(conToque < conCaricia, `${conToque} es menos que ${conCaricia}`);
+});
+
+// ---- La señal del enojo ----
+//
+// El fastidio era el único estado sin señal propia: cambiaba la pose y nada más.
+// La señal la avisa la SESIÓN y no ui.js, y no es un capricho de arquitectura:
+// `esperando` es la MISMA cara que Chip pone cuando pasa un gigante, así que
+// desde la vista no hay forma de saber por qué apareció.
+//
+// Y va con `?.`, o sea que una sesión que dejara de avisar no rompería nada:
+// seguiría cambiando la pose y nadie se enteraría de que la luz no parpadea.
+prueba('enojo: los dos fastidios avisan a la vista', () => {
+  const a = sesionDePrueba(crearEstadoNuevo());
+  a.sesion.fastidiar();
+  igual(a.vista.cuenta.enojarse, 1, 'el fastidio del toque avisa');
+
+  // Y el otro: levantarle algo del piso. Es el mismo enojo y se ve igual; lo que
+  // los distingue es cómo siguen, no cómo entran.
+  const b = sesionDePrueba({ ...crearEstadoNuevo(), objetoEnPiso: OBJETOS[0].id });
+  igual(b.sesion.recogerDelPiso(OBJETOS[0].id), true, 'la pieza se levanta');
+  igual(b.vista.cuenta.enojarse, 1, 'y levantarle algo del piso también avisa');
+});
+
+prueba('enojo: no avisa cuando pasa un gigante, que es la misma cara', () => {
+  // La red del de arriba. Si alguien moviera el aviso a donde se decide el
+  // estado visual, `esperando` por gigante también prendería la luz — y ahí la
+  // señal dejaría de querer decir "me estás molestando".
+  const { sesion, reloj, vista } = sesionDePrueba(crearEstadoNuevo());
+  const conGigante = EVENTOS.find((e) => e.categoria === CATEGORIA_GRANDES && e.presente);
+
+  sesion.programarReacciones([conGigante]);
+  reloj.avanzar(1);
+  igual(sesion.estadoVisual(), E.esperando, 'la cara es la misma');
+  igual(vista.cuenta.enojarse, 0, 'pero no hay enojo que señalar');
 });
 
 // ---- El disparador de los climas ----

@@ -101,6 +101,8 @@ import {
   DIAMETRO_BULBO,
   ANTENA_INERCIA,
   VARS_ANTENA,
+  ENOJO,
+  VARS_ENOJO,
   COLORES_BULBO,
   CICLOS_BULBO,
   LATIDO_BULBO,
@@ -369,6 +371,12 @@ export function variablesDeTema() {
     // —cada una con su caja— había que dividir, y hacían falta DOS números
     // porque el halo es más grande que el bulbo. Ver ANTENA_INERCIA en config.
     [VARS_ANTENA.pivote]: pct(ANTENA_INERCIA.pivote),
+
+    // El enojo, que usa el mismo pivote de la antena para su sacudida.
+    [VARS_ENOJO.ciclo]: ms(ENOJO.ciclo),
+    [VARS_ENOJO.color]: ENOJO.color,
+    [VARS_ENOJO.sacudida]: ENOJO.sacudida + 'deg',
+    [VARS_ENOJO.duracionSacudida]: ms(ENOJO.duracionSacudida),
     [VARS_ANTENA.extra]: String(ANTENA_INERCIA.extra),
     [VARS_ANTENA.atraso]: String(ANTENA_INERCIA.atraso),
     [VARS_ANTENA.sobrepaso]: String(ANTENA_INERCIA.sobrepaso),

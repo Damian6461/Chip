@@ -33,6 +33,8 @@ import {
   INCLINACION_CABEZA,
   COLORES_BOTON,
   ANTENA_INERCIA,
+  RITMOS_RAYO,
+  UMBRAL_CRITICO_BATERIA,
   COLOR_PARPADO,
   RADIO_EXCLUSION_ANTENA,
   FRANJA_EFECTOS,
@@ -542,5 +544,56 @@ prueba('antena: sale atrás de la cabeza y después la pasa', () => {
   verdadero(
     ANTENA_INERCIA.sobrepaso > ANTENA_INERCIA.extra,
     'la antena pasa de largo antes de acomodarse en su ángulo de sostén'
+  );
+});
+
+// ---- El rayo del pecho cuenta la carga ----
+//
+// Latía igual con la batería en 90 que en 45. Ahora el ritmo sale del stat, y
+// lo que estas pruebas fijan es que la tabla siga siendo una escalera completa
+// y que apunte para el lado correcto.
+
+prueba('rayo: las bandas cubren toda la batería, sin huecos', () => {
+  // Se recorre de arriba hacia abajo y gana la primera que entra, así que tienen
+  // que estar ordenadas y la última tiene que ser 0. Sin eso hay un valor de
+  // batería para el que `find` no devuelve nada y el rayo se queda sin ritmo.
+  for (let i = 1; i < RITMOS_RAYO.length; i++) {
+    verdadero(
+      RITMOS_RAYO[i].desde < RITMOS_RAYO[i - 1].desde,
+      `la banda ${i + 1} arranca en ${RITMOS_RAYO[i].desde} y la anterior en ${RITMOS_RAYO[i - 1].desde}`
+    );
+  }
+  igual(RITMOS_RAYO.at(-1).desde, 0, 'la última banda tiene que llegar hasta 0');
+});
+
+prueba('rayo: con menos carga late más rápido y más débil', () => {
+  // Es la dirección entera del efecto: si alguien invierte los números, el rayo
+  // sigue latiendo y sigue cambiando con la batería, pero pasa a decir lo
+  // contrario de lo que pasa. No se ve mirando — se ve leyendo la tabla.
+  for (let i = 1; i < RITMOS_RAYO.length; i++) {
+    const alta = RITMOS_RAYO[i - 1];
+    const baja = RITMOS_RAYO[i];
+    verdadero(baja.ciclo < alta.ciclo, `ciclo: ${baja.ciclo} tiene que ser menor que ${alta.ciclo}`);
+    verdadero(baja.pico < alta.pico, `pico: ${baja.pico} tiene que ser menor que ${alta.pico}`);
+    verdadero(baja.piso < alta.piso, `piso: ${baja.piso} tiene que ser menor que ${alta.piso}`);
+  }
+});
+
+prueba('rayo: la banda de abajo no le pisa el trabajo a critico', () => {
+  // `critico` tiene su propio keyframe irregular y entra abajo de su umbral. La
+  // banda de abajo de esta tabla lo cubre por número, pero la regla de estado le
+  // gana en el CSS. Lo que no puede pasar es que alguien meta acá una tercera
+  // banda que ARRANQUE abajo del umbral: sería un segundo sistema contando lo
+  // mismo, y los dos se desincronizan la primera vez que se mueve el umbral.
+  const debajo = RITMOS_RAYO.filter((r) => r.desde > 0 && r.desde < UMBRAL_CRITICO_BATERIA);
+  igual(
+    debajo.map((r) => r.desde).join(', '),
+    '',
+    `ninguna banda puede arrancar abajo de UMBRAL_CRITICO_BATERIA (${UMBRAL_CRITICO_BATERIA})`
+  );
+
+  verdadero(
+    /\.estado-critico #rayo/.test(CSS),
+    'y la regla de critico tiene que seguir existiendo, que es quien cuenta esa banda'
   );
 });
