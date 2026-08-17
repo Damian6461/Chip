@@ -62,7 +62,6 @@ import {
   VARS_CARICIA,
   VARS_CARICIA_GESTO,
   VARS_OJOS_GESTO,
-  AJUSTE_OJOS,
   CARICIA_OJOS,
   RESPIRACION_CARICIA,
   VUELTA_CARICIA_MS,
@@ -267,18 +266,11 @@ export function variablesDeTema() {
     // Las dos caras de la caricia, cada una con la corrección que la pone
     // exactamente donde están los ojos de idle. Ver AJUSTE_OJOS en config.js,
     // que trae la medición de las tres capas y por qué hace falta escala.
-    // Dos gestos por dos ojos: doce nombres que se arman recorriendo la tabla en
-    // vez de escribirse a mano. Si mañana entra una tercera cara, alcanza con
-    // agregarla a AJUSTE_OJOS.
-    ...Object.entries(AJUSTE_OJOS).reduce((acc, [gesto, ajuste]) => {
-      const salida = { ...acc, [VARS_OJOS_GESTO.corte(gesto)]: pct(ajuste.corte) };
-      for (const lado of ['izq', 'der']) {
-        salida[VARS_OJOS_GESTO.escala(gesto, lado)] = String(ajuste[lado].escala);
-        salida[VARS_OJOS_GESTO.x(gesto, lado)] = pct(ajuste[lado].x);
-        salida[VARS_OJOS_GESTO.y(gesto, lado)] = pct(ajuste[lado].y);
-      }
-      return salida;
-    }, {}),
+    // El ajuste de los ojos de la caricia NO está acá, y eso es la diferencia
+    // entre este archivo y ui.js: el tema es lo que vale SIEMPRE, y ese ajuste
+    // depende de qué cabeza tiene Chip puesta —las cuencas de idle y las de feliz
+    // no están en el mismo lugar—. Lo escribe ui.js en cada pintada, desde
+    // AJUSTE_OJOS.
     [VARS_OJOS_GESTO.cruce]: ms(CARICIA_OJOS.cruce),
     [VARS_ZONA_CHIP.forma]: poligonoDeSilueta(SILUETA_CHIP),
     [VARS_DEBUG.esquina]: px(ESQUINA_DEBUG),

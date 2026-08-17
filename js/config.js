@@ -459,16 +459,54 @@ export const RUTAS_OJOS_GESTO = {
 // `corte` es dónde parte el hueco, en % del lienzo. `x` e `y` en % también, y
 // salen de T = destino − 128 − s·(centro − 128), con el destino siendo el ojo de
 // idle que le toca a cada uno.
+// Y VA POR ESTADO BASE, no una sola tabla para todos. Estaba calibrado contra la
+// cabeza de idle y se usaba igual sobre feliz, y las cuencas NO están en el mismo
+// lugar. Medido sobre los recortes base, que son exactamente las cuencas:
+//
+//   capa         ojo izquierdo        ojo derecho          desnivel propio
+//   idle-ojos    (85 · 97,5) 55x58    (152,5 · 97,5) 54x58     0,0 px
+//   feliz-ojos   (90,5 · 93) 56x59    (154 · 102,5) 55x60     +9,5 px
+//
+//   diferencia   +5,5 x · −4,5 y      +1,5 x · +5,0 y
+//
+// LAS DIRECCIONES SON OPUESTAS entre un ojo y el otro, y por eso sobre feliz se
+// leía torcido aunque los dos arcos estuvieran a la misma altura ENTRE SÍ: el
+// izquierdo se desbordaba por arriba de su aro y el derecho quedaba alto adentro
+// del suyo. Ningún ajuste global puede con eso — es la misma clase de error que
+// el del punto anterior, una unidad más arriba.
+//
+// LA ENTRADA ES OBLIGATORIA. Si mañana otro estado suma su recorte de ojos, tiene
+// que declarar su ajuste: heredar el de idle en silencio es exactamente cómo
+// llegamos acá. Lo cruza un test contra RUTAS_OJOS, y en vivo un estado sin
+// entrada esconde las capas de gesto en vez de dibujarlas mal.
 export const AJUSTE_OJOS = {
-  contento: {
-    corte: 43.16,
-    izq: { escala: 1.17, x: 3.773, y: -2.315 },
-    der: { escala: 1.059, x: 4.607, y: -1.16 }
+  idle: {
+    contento: {
+      corte: 43.16,
+      izq: { escala: 1.17, x: 3.773, y: -2.315 },
+      der: { escala: 1.059, x: 4.607, y: -1.16 }
+    },
+    // Los dos de cerrado llevan la corrección medida sobre el compuesto: los
+    // valores que salían de la construcción caían 1,5 a 2 px a la derecha y algo
+    // más de 1 arriba. La construcción coloca la caja alfa; lo que hay que
+    // colocar es lo que se ve.
+    cerrado: {
+      corte: 41.99,
+      izq: { escala: 1.17, x: 4.77, y: -5.67 },
+      der: { escala: 1.08, x: 4.98, y: -7.9 }
+    }
   },
-  cerrado: {
-    corte: 41.99,
-    izq: { escala: 1.17, x: 5.602, y: -6.2 },
-    der: { escala: 1.08, x: 5.562, y: -8.328 }
+  feliz: {
+    contento: {
+      corte: 43.16,
+      izq: { escala: 1.191, x: 6.297, y: -3.899 },
+      der: { escala: 1.078, x: 5.102, y: 0.993 }
+    },
+    cerrado: {
+      corte: 41.99,
+      izq: { escala: 1.191, x: 8.157, y: -7.855 },
+      der: { escala: 1.1, x: 6.074, y: -6.309 }
+    }
   }
 };
 
@@ -490,15 +528,44 @@ export const AJUSTE_OJOS = {
 // dibujo y que emparejarlos sería editarle el arte al ilustrador. Eso era lo
 // equivocado: partir por el hueco y colocar cada mitad no toca un solo píxel.
 
-// Los nombres se arman por convención —--ojos-<gesto>-<lado>-<qué>— en vez de
-// declarar doce a mano. Lo que importa es que salgan de AJUSTE_OJOS, y de ahí
-// salen: ver tema.js, que los recorre.
+// LOS CATORCE NOMBRES VAN ESCRITOS, no armados con una función.
+//
+// El primer intento los generaba —`corte: (gesto) => ...`— y era más corto, pero
+// el guardián del puente los perdió de vista: recorre las tablas VARS_* juntando
+// strings que empiezan con `--`, y una función no es un string. Las catorce
+// quedaron leídas por el CSS y sin escritor declarado, que es exactamente el
+// defecto que ese test existe para encontrar.
+//
+// Es el mismo criterio que la escala de los pulsos del cable, que también son
+// seis nombres y no uno: si el guardián no lo puede ver, no está protegido.
 export const VARS_OJOS_GESTO = {
   cruce: '--ojos-cruce',
-  corte: (gesto) => `--ojos-${gesto}-corte`,
-  escala: (gesto, lado) => `--ojos-${gesto}-${lado}-escala`,
-  x: (gesto, lado) => `--ojos-${gesto}-${lado}-x`,
-  y: (gesto, lado) => `--ojos-${gesto}-${lado}-y`
+  contento: {
+    corte: '--ojos-contento-corte',
+    izq: {
+      escala: '--ojos-contento-izq-escala',
+      x: '--ojos-contento-izq-x',
+      y: '--ojos-contento-izq-y'
+    },
+    der: {
+      escala: '--ojos-contento-der-escala',
+      x: '--ojos-contento-der-x',
+      y: '--ojos-contento-der-y'
+    }
+  },
+  cerrado: {
+    corte: '--ojos-cerrado-corte',
+    izq: {
+      escala: '--ojos-cerrado-izq-escala',
+      x: '--ojos-cerrado-izq-x',
+      y: '--ojos-cerrado-izq-y'
+    },
+    der: {
+      escala: '--ojos-cerrado-der-escala',
+      x: '--ojos-cerrado-der-x',
+      y: '--ojos-cerrado-der-y'
+    }
+  }
 };
 
 // LA PROGRESIÓN. Es lo que hace un gato al que le rascan bien: primero entrecierra

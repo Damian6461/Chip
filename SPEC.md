@@ -667,6 +667,232 @@ gris se leía como un agujero en la cara.
 
 ---
 
+# 15. Lo que quedó de los ojos: feliz está chueco, y cerrado se puede afinar
+
+El punto 12 se implementó bien. Verificado en el DOM: cuatro capas
+—`ojos-contento-izq`, `ojos-contento-der`, `ojos-cerrado-izq`, `ojos-cerrado-der`— cada
+una con su `scale` y su `translate`. Y el bamboleo se fue: calculando dónde cae cada ojo
+con el orden real de CSS, el desnivel quedó en **0,3 px** en contento y **0,4 px** en
+cerrado, contra los −5,5 y +3,5 de antes.
+
+Damián reportó dos cosas que siguen: **"el de feliz sigue chueco el ojo y el de idle se
+puede mejorar"**.
+
+## 15.a — LA CAUSA: `AJUSTE_OJOS` está calibrado contra idle y se usa también sobre feliz
+
+**Esto es lo que hay que arreglar.** Reproducido componiendo las capas de gesto, con la
+transformación de CSS aplicada igual —`translate` primero, `scale` después—, sobre la
+cabeza de idle y sobre la de feliz. **Las mismas capas, el mismo ajuste; lo único que
+cambia es la cabeza de abajo.**
+
+- **Sobre idle:** el crema queda adentro del aro, con borde oscuro parejo alrededor.
+- **Sobre feliz:** el crema **se desborda**. En el ojo izquierdo se pasa por arriba y el
+  aro casi desaparece; el derecho queda alto dentro de su aro.
+
+Los dos arcos quedan a la misma altura entre sí —son la misma capa, el punto 12 lo
+arregló— pero **ninguno de los dos está centrado en la cuenca de feliz**. Y como al
+izquierdo le falta bajar y al derecho le falta subir, la cara se lee torcida.
+
+Las cuencas están en lugares distintos en cada cabeza. Medido sobre los recortes base,
+que son exactamente las cuencas:
+
+| | ojo izquierdo | ojo derecho |
+|---|---|---|
+| `idle-ojos` | (85,5 · 97) | (152 · 97) |
+| `feliz-ojos` | (90,5 · 93,5) | (154,5 · 102) |
+| **diferencia** | **+5,0 x · −3,5 y** | **+2,5 x · +5,0 y** |
+
+O sea que un gesto calibrado para caer en la cuenca de idle, puesto sobre feliz, cae
+**5 px corrido y 3,5 px bajo** en el ojo izquierdo, y **2,5 px corrido y 5 px alto** en el
+derecho. En pantalla a 390 px de ancho son 5 a 7 px por ojo, en direcciones opuestas.
+
+**Qué hacer: `AJUSTE_OJOS` tiene que ser por estado base, no global.** Hoy hay una sola
+tabla y se aplica igual esté Chip en idle o en feliz. Hace falta una entrada `feliz`.
+
+Los deltas a sumar a los valores de hoy, ya convertidos a `translate` en % —divididos por
+la escala, porque el `translate` se aplica antes:
+
+| capa | Δx | Δy |
+|---|---|---|
+| contento izq | **+1,67%** | **−1,17%** |
+| contento der | **+0,92%** | **+1,84%** |
+| cerrado izq | **+1,67%** | **−1,17%** |
+| cerrado der | **+0,90%** | **+1,81%** |
+
+Son un punto de partida medido, no un valor final: **hay que mirarlo y ajustar**. El
+criterio de aceptación es que el crema quede adentro del aro con borde parejo alrededor,
+igual que en idle.
+
+Y ojo con el alcance: si mañana algún otro estado suma su propio recorte de ojos, va a
+necesitar su propia entrada. Vale que la tabla lo pida explícitamente en vez de que se
+herede en silencio la de idle.
+
+## 15.a.bis — Y además, `feliz-ojos.webp` está chueco en el propio recorte
+
+Esto no es un problema de la caricia: **es el recorte base de feliz**, y se ve siempre que
+Chip está contento, no sólo cuando lo acariciás.
+
+Medido ojo por ojo, cortando por el hueco:
+
+| recorte | ojo izquierdo | ojo derecho | desnivel |
+|---|---|---|---|
+| `idle-ojos` | (85,5 · 97) 56×59 | (152 · 97) 55×59 | **0,0 px** |
+| `feliz-ojos` | (90,5 · **93,5**) 56×60 | (154,5 · **102**) 56×61 | **8,5 px** |
+
+**8,5 px de desnivel**, el más grande de todos los recortes — más que contento (−5,5) y
+cerrado (+3,5). Sobre el lienzo de 256, en pantalla a 390 px de ancho son unos **12 px**.
+
+Y lo miré: compuse `feliz-cabeza.webp` con `feliz-ojos.webp` exactamente como los apila la
+app, al lado de la misma composición de idle, con una guía horizontal a la misma altura en
+las dos. En idle el par está a nivel. En feliz el ojo derecho cae abajo y **el crema se
+desborda del aro de metal por abajo y a la derecha** — se lee como un ojo salido de la
+cuenca.
+
+**Por qué no lo cubre el punto 12:** el ajuste por ojo se hizo para `contento` y
+`cerrado`, que son capas de gesto. `feliz` es una capa **base** —entra por `RUTAS_OJOS`,
+no por `RUTAS_OJOS_GESTO`— y **no tiene ninguna entrada de ajuste**. Se dibuja crudo.
+
+**Qué hacer:** la misma técnica del punto 12. Partir `feliz-ojos.webp` por su hueco
+—columnas **119 a 126**— en dos capas y darle a cada ojo su corrimiento. Los tamaños ya
+coinciden con idle (56 y 56 contra 56 y 55), así que casi no hace falta escala: es
+traslación.
+
+Punto de partida, en px del lienzo de 256, para llevar cada ojo a la posición del ojo de
+idle que le corresponde:
+
+| | mover x | mover y |
+|---|---|---|
+| feliz izquierdo | −5,0 | +3,5 |
+| feliz derecho | −2,5 | −5,0 |
+
+**Advertencia honesta sobre estos dos números:** feliz tiene su propia cabeza, con sus
+propios aros. Intenté medir las cuencas del sprite de cabeza para confirmar que los aros
+de feliz están donde los de idle, y **no pude** — mi detector agarró el fondo transparente
+en vez de la cuenca y descarté la medición. Así que llevar el crema a las coordenadas de
+idle es una hipótesis, no un hecho. **Si al mirarlo el crema queda desencajado del aro,
+la referencia correcta no es idle sino el aro de feliz**, y entonces lo que hay que hacer
+es nivelar los dos ojos entre sí y ajustar contra el aro mirando.
+
+Lo que sí está fuera de discusión es el **8,5 px de desnivel** y que hoy no hay nada
+corrigiéndolo.
+
+## 15.b — `cerrado` cae 1,5 px alto y 2 px a la derecha
+
+Calculado con los valores que quedaron en `AJUSTE_OJOS`, aplicando el orden real de CSS
+—`translate` primero, `scale` después, sobre el centro del lienzo:
+
+| capa | dónde cae | dónde tiene que caer | error |
+|---|---|---|---|
+| contento izq | (86,07 · 96,49) | (85,5 · 97) | +0,6 / −0,5 |
+| contento der | (153,19 · 96,79) | (152 · 97) | +1,2 / −0,2 |
+| cerrado izq | (88,03 · 95,39) | (85,5 · 97) | **+2,5 / −1,6** |
+| cerrado der | (153,64 · 95,79) | (152 · 97) | +1,6 / −1,2 |
+
+Contento está dentro del píxel. **Cerrado se va sistemáticamente arriba y a la derecha**,
+los dos ojos para el mismo lado — o sea que es un corrimiento del gesto entero, no un
+desnivel.
+
+Corrección, teniendo en cuenta que el `translate` se aplica **antes** del `scale` y por lo
+tanto el delta hay que dividirlo por la escala:
+
+| | x de hoy | x nuevo | y de hoy | y nuevo |
+|---|---|---|---|---|
+| cerrado izq | 5,602% | **4,77%** | −6,2% | **−5,67%** |
+| cerrado der | 5,562% | **4,98%** | −8,328% | **−7,90%** |
+
+Son correcciones de 2 a 3 px en pantalla. Chicas, pero es exactamente el "se puede
+mejorar".
+
+## Cómo verificar las dos
+
+Mirándolo, y **hay que poder llegar a idle**. En mi contenedor Chip cae en `standby`
+—es de noche en la escena simulada— y no logré sacarlo de ahí con un toque, así que las
+capturas de la caricia me salieron todas sobre la cara dormida. Para verificar esto hace
+falta forzar el estado desde el panel de debug, o que el panel tenga un control para fijar
+`idle` y `feliz`.
+
+Con eso: capturar la zona de los ojos en reposo, contento y cerrado, en **idle** y en
+**feliz**, al mismo aumento y con una guía horizontal. Seis capturas. Los dos arcos a la
+misma altura entre sí, y a la altura donde estaban las pupilas.
+
+---
+
+# 16. El cable y la ubicación del toma
+
+Damián pasó una referencia y dijo dos cosas: quiere **un cable más parecido a ese**, y le
+gusta más **dónde está el toma** en esa imagen.
+
+Hoy el cable es un polígono con perspectiva y la conexión es una caja en la pared del
+fondo. La referencia es otra cosa.
+
+## Qué tiene la referencia que el cable de hoy no tiene
+
+**1. Grosor constante.** El cable de la referencia mide lo mismo de punta a punta:
+**~1,1% del ancho de la escena**, medido. No se afina con la distancia. Hoy el cable usa
+perspectiva y se angosta — que es correcto para algo que se aleja, pero este cable **no se
+aleja: se apoya**. Va por el piso, casi todo a la misma profundidad.
+
+**2. Tiene panza.** Sale del enchufe del pecho de Chip, **baja al piso** y recién ahí
+arranca el recorrido. No sale horizontal hacia la pared: cae primero. Eso es lo que lo
+hace leer como un cable con peso y no como una línea trazada.
+
+**3. Es una U ancha, no un arco.** Desde Chip baja hacia la derecha hasta el punto más
+bajo cerca del centro-bajo de la escena, y de ahí sube hacia la pared.
+
+**4. Y tiene un quiebre en S antes de llegar al toma.** Cerca del 80% del ancho el cable
+hace una inflexión corta —se acuesta y vuelve a subir— antes del tramo final. **Ese
+quiebre es lo más importante de todo esto.** Un cable tirado en el piso nunca describe una
+curva limpia: tiene un punto donde cambia de sentido. Sin eso se lee como una manguera
+dibujada; con eso se lee como un cable que alguien dejó ahí.
+
+**5. Es un tubo, no una línea.** Tiene el filo de arriba más claro y el de abajo más
+oscuro, iluminado desde arriba a la izquierda. Un trazo de un solo color se ve plano.
+
+**6. Y apoya.** Va por delante de las baldosas, cruzándolas, no flotando sobre ellas.
+
+## El toma
+
+En la referencia es **un enchufe de pared común** —placa oscura chica, con la ficha
+puesta— sobre la **pared derecha**, arriba y a la derecha de Chip, más o menos a **90% del
+ancho y 58% del alto**. No es una caja de conexión en la pared del fondo.
+
+Damián prefiere esa ubicación. Dos razones que la sostienen y vale escribir: el cable
+tiene de dónde caer, y el recorrido cruza la escena en diagonal en vez de irse al fondo,
+que es lo que le da el largo para tener panza y quiebre.
+
+## Sobre los números
+
+**No tengo el camino trazado.** Intenté extraerlo automáticamente de la referencia y
+falló: el detector agarró las juntas del piso y la sombra de Chip en vez del cable, y lo
+verifiqué dibujando los puntos encima de la imagen —quedaron sobre el cuerpo de Chip y
+flotando en el aire. Lo descarté en vez de pasarlo como medición.
+
+Lo que sí está medido es el **grosor: ~1,1% del ancho de la escena**, constante.
+
+Para el camino, lo correcto es sacarlo de la referencia, que Damián tiene. Como orden de
+magnitud, leído a ojo sobre la imagen ampliada y **explícitamente no medido**: sale de
+Chip cerca del 38% / 70%, toca el punto más bajo cerca del 58% / 76%, quiebra cerca del
+80% / 73%, y entra al toma cerca del 90% / 60%.
+
+## Lo que NO hay que hacer
+
+- **No dibujar la curva a mano en un `path` y darlo por hecho.** El cable tiene que salir
+  de la posición del enchufe de Chip y de la del toma, las dos ya declaradas en
+  `config.js`, para que mover cualquiera de las dos mueva el cable. Si no, vuelve el
+  problema de los íconos: un archivo congelado que deja de coincidir con el arte.
+- **No sumar más perspectiva.** Es lo contrario de lo que pide.
+- **No agregarle brillos ni reflejos** más allá del filo claro arriba y oscuro abajo.
+
+Los pulsos de energía que ya existen se mantienen: corren a lo largo del camino nuevo.
+
+## Cómo verificarlo
+
+Mirándolo, a tamaño real de teléfono, con Chip cargando. Y con el simulador de horas en
+las cuatro franjas: el cable cruza la zona iluminada por la ventana, así que si el tono es
+plano se va a ver despegado del piso de noche o quemado de día.
+
+---
+
 # Lo que NO hay que tocar
 
 Estas cinco cosas se reportaron como bugs y **estaban bien**. Van acá para que nadie las

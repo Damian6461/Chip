@@ -35,6 +35,8 @@ import {
   CLASE_SOBRESALTO,
   VARS_CARICIA_GESTO,
   RUTAS_OJOS_GESTO,
+  AJUSTE_OJOS,
+  VARS_OJOS_GESTO,
   CARICIA_OJOS,
   CLASE_OJOS_CONTENTO,
   CLASE_OJOS_CERRADO,
@@ -810,14 +812,33 @@ function pintarOjos(estadoVisual) {
   //
   // Donde no hay recorte de ojos —critico, standby— no hay nada que cruzar y
   // estas se esconden con la capa de abajo.
-  const conGesto = Boolean(ruta);
+  // EL AJUSTE ES POR ESTADO BASE. Las cuencas de idle y las de feliz no están en
+  // el mismo lugar —+5,5/−4,5 el ojo izquierdo y +1,5/+5,0 el derecho, en
+  // direcciones OPUESTAS— así que un ajuste global deja bien una cara y tuerce la
+  // otra. Ver AJUSTE_OJOS en config.js.
+  //
+  // Y SI EL ESTADO NO TIENE ENTRADA, las capas no se muestran. Heredar la de idle
+  // en silencio es exactamente cómo el problema llegó hasta acá: es mejor que la
+  // caricia no cambie la cara a que la cambie mal.
+  const ajuste = AJUSTE_OJOS[estadoVisual];
+  const conGesto = Boolean(ruta) && Boolean(ajuste);
+
   // Las dos mitades de cada gesto salen del MISMO archivo: lo que las separa es
   // el clip-path, no el src.
   for (const [nombre, mitades] of Object.entries(capasOjosGesto)) {
-    for (const capa of mitades) {
+    const suyo = ajuste?.[nombre];
+    mitades.forEach((capa, i) => {
       capa.hidden = !conGesto;
-      if (conGesto) capa.src = RUTAS_OJOS_GESTO[nombre];
-    }
+      if (!conGesto) return;
+      capa.src = RUTAS_OJOS_GESTO[nombre];
+
+      const lado = i === 0 ? 'izq' : 'der';
+      const vars = VARS_OJOS_GESTO[nombre];
+      capa.style.setProperty(vars.corte, `${suyo.corte}%`);
+      capa.style.setProperty(vars[lado].escala, String(suyo[lado].escala));
+      capa.style.setProperty(vars[lado].x, `${suyo[lado].x}%`);
+      capa.style.setProperty(vars[lado].y, `${suyo[lado].y}%`);
+    });
   }
   if (!conGesto) soltarOjosDeLaCaricia();
 

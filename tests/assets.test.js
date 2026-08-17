@@ -412,12 +412,26 @@ prueba('brazos: critico no tiene recortes, y es a propósito', () => {
 // Lo que sí se puede atar es que las tablas no se separen y que la corrección
 // vaya en la dirección medida.
 
-prueba('ojos: cada cara de la caricia tiene su ajuste, y al revés', () => {
+prueba('ojos: todo estado con recorte de ojos declara su ajuste', () => {
+  // ESTA ES LA ENTRADA OBLIGATORIA, y es el guardián del problema que se
+  // arregló: AJUSTE_OJOS estaba calibrado contra la cabeza de idle y se usaba
+  // igual sobre feliz, cuyas cuencas están en otro lado. Si mañana un tercer
+  // estado suma su recorte y no declara su ajuste, hereda el de idle en silencio
+  // y vuelve el mismo defecto.
   igual(
-    Object.keys(RUTAS_OJOS_GESTO).sort().join(','),
+    Object.keys(RUTAS_OJOS).sort().join(','),
     Object.keys(AJUSTE_OJOS).sort().join(','),
-    'las caras de RUTAS_OJOS_GESTO y las de AJUSTE_OJOS son las mismas'
+    'los estados de RUTAS_OJOS y los de AJUSTE_OJOS tienen que ser los mismos'
   );
+
+  // Y cada estado declara las dos caras del gesto, no una.
+  for (const [estado, ajuste] of Object.entries(AJUSTE_OJOS)) {
+    igual(
+      Object.keys(ajuste).sort().join(','),
+      Object.keys(RUTAS_OJOS_GESTO).sort().join(','),
+      `${estado} tiene que declarar las mismas caras que RUTAS_OJOS_GESTO`
+    );
+  }
 });
 
 prueba('ojos: cada OJO tiene su propio ajuste, y los dos agrandan', () => {
@@ -429,25 +443,30 @@ prueba('ojos: cada OJO tiene su propio ajuste, y los dos agrandan', () => {
   // Los recortes vienen de poses con la cabeza más chica, así que las dos
   // escalas tienen que ser mayores que 1. Si alguien las deja abajo, la
   // expresión cambia Y ADEMÁS los ojos se achican.
-  for (const [cara, a] of Object.entries(AJUSTE_OJOS)) {
-    verdadero(
-      a.corte > 30 && a.corte < 60,
-      `${cara}: el corte del hueco está en ${a.corte}%, y tiene que caer cerca del medio`
-    );
-
-    for (const lado of ['izq', 'der']) {
-      const o = a[lado];
-      verdadero(o, `${cara}: falta el ojo ${lado}`);
-      verdadero(o.escala > 1, `${cara}/${lado}: escala ${o.escala}, y el recorte es más chico que idle`);
-      verdadero(o.escala < 1.3, `${cara}/${lado}: escala ${o.escala} es demasiada para un encuadre`);
+  for (const [estado, porCara] of Object.entries(AJUSTE_OJOS)) {
+    for (const [cara, a] of Object.entries(porCara)) {
+      const donde = `${estado}/${cara}`;
       verdadero(
-        Number.isFinite(o.x) && Number.isFinite(o.y),
-        `${cara}/${lado}: el corrimiento tiene que ser un par de números`
+        a.corte > 30 && a.corte < 60,
+        `${donde}: el corte del hueco está en ${a.corte}%, y tiene que caer cerca del medio`
       );
-      // Los dos gestos caen BAJOS respecto de idle, así que la corrección
-      // vertical sube en los cuatro casos. Un signo positivo acá sería empujar
-      // el ojo todavía más abajo, que es el defecto que esto viene a arreglar.
-      verdadero(o.y < 0, `${cara}/${lado}: y = ${o.y}, y los dos gestos hay que SUBIRLOS`);
+
+      for (const lado of ['izq', 'der']) {
+        const o = a[lado];
+        verdadero(o, `${donde}: falta el ojo ${lado}`);
+        verdadero(o.escala > 1, `${donde}/${lado}: escala ${o.escala}, y el recorte es más chico`);
+        verdadero(o.escala < 1.3, `${donde}/${lado}: escala ${o.escala} es demasiada para un encuadre`);
+        verdadero(
+          Number.isFinite(o.x) && Number.isFinite(o.y),
+          `${donde}/${lado}: el corrimiento tiene que ser un par de números`
+        );
+        // Los recortes de gesto están DIBUJADOS a la derecha de donde van, en las
+        // dos cabezas, así que la corrección horizontal empuja para la derecha
+        // siempre. El vertical NO tiene un signo fijo: sobre idle hay que subir
+        // los dos, y sobre feliz el ojo derecho baja, porque su cuenca está 5 px
+        // más abajo que la de idle. Fijar el signo del `y` sería fijar la cabeza.
+        verdadero(o.x > 0, `${donde}/${lado}: x = ${o.x}, y los recortes van a la derecha`);
+      }
     }
   }
 });

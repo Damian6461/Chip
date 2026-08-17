@@ -51,7 +51,7 @@ function armarPlegado(panel, cuerpo) {
   let abierto = false;
 
   const manija = crearBoton('debug ▾');
-  manija.style.width = '100%';
+  manija.style.flex = '1';
 
   function aplicar() {
     cuerpo.style.display = abierto ? 'flex' : 'none';
@@ -303,8 +303,72 @@ export function iniciarDebug(api) {
   // que el panel nace vacío si no se llena una vez acá.
   refrescarStats();
 
+  // ---- LA FILA QUE NO SE PLIEGA ----
+  //
+  // Fijar idle y fijar feliz son los dos controles que hacen falta para VERIFICAR
+  // los ojos de la caricia, y quedaron atrás del pliegue cuando el panel pasó a
+  // arrancar cerrado. Sin ellos, en un contenedor donde Chip cae en standby,
+  // todas las capturas de la caricia salen sobre la cara dormida.
+  //
+  // Van afuera, en la misma fila que la manija: son el caso de uso más frecuente
+  // del panel y no tiene sentido pedir dos toques para llegar.
+  //
+  // El select de `visual` de adentro sigue existiendo y sigue mandando: esto son
+  // dos atajos a las mismas dos opciones, no un segundo sistema.
+  let fijado = null;
+
+  function fijar(nombre, boton, todos) {
+    fijado = fijado === nombre ? null : nombre;
+    api.forzarEstadoVisual(fijado);
+    for (const [n, b] of todos) {
+      b.style.background = n === fijado ? '#2f5d46' : '#1e2129';
+    }
+    selectVisual.value = fijado ?? OPCION_DEBUG_AUTO;
+  }
+
+  const botonIdle = crearBoton('idle');
+  const botonFeliz = crearBoton('feliz');
+  const atajos = [
+    ['idle', botonIdle],
+    ['feliz', botonFeliz]
+  ];
+  for (const [nombre, boton] of atajos) {
+    boton.addEventListener('click', () => fijar(nombre, boton, atajos));
+  }
+
+  // LA GUÍA. Una línea horizontal a la altura del centro de los ojos de idle.
+  //
+  // Va DENTRO de #chip y en %, así que no hay ninguna cuenta que mantener: el
+  // centro de los ojos está en y=97,5 sobre el lienzo de 256, o sea el 38,09% de
+  // la caja, y #chip ES la caja. Se estira un poco para los costados para que se
+  // pueda seguir con el ojo más allá de la cara.
+  //
+  // Es lo que permite decir si un arco quedó a la altura correcta en vez de si
+  // "parece" que sí.
+  const guia = document.createElement('div');
+  Object.assign(guia.style, {
+    position: 'absolute',
+    left: '-15%',
+    right: '-15%',
+    top: `${(97.5 / 256) * 100}%`,
+    height: '1px',
+    background: '#ff2d55',
+    opacity: '0.9',
+    pointerEvents: 'none',
+    zIndex: '50',
+    display: 'none'
+  });
+  document.getElementById('chip')?.appendChild(guia);
+
+  const botonGuia = crearBoton('guía');
+  botonGuia.addEventListener('click', () => {
+    const prendida = guia.style.display === 'none';
+    guia.style.display = prendida ? 'block' : 'none';
+    botonGuia.style.background = prendida ? '#2f5d46' : '#1e2129';
+  });
+
   // Todo lo que había suelto en el panel pasa a vivir adentro de un cuerpo que
-  // se pliega. El panel queda siendo la manija más eso.
+  // se pliega. El panel queda siendo la fila fija más eso.
   const cuerpo = document.createElement('div');
   Object.assign(cuerpo.style, {
     display: 'flex',
@@ -329,7 +393,12 @@ export function iniciarDebug(api) {
     stats
   );
 
-  panel.append(armarPlegado(panel, cuerpo), cuerpo);
+  // La fila fija: la manija del pliegue y los tres atajos que no pueden quedar
+  // adentro, porque son justamente los que hacen falta para verificar la cara.
+  const filaFija = crearFila();
+  filaFija.append(armarPlegado(panel, cuerpo), botonIdle, botonFeliz, botonGuia);
+
+  panel.append(filaFija, cuerpo);
   document.body.appendChild(panel);
 
   // main.js llama a esto en cada pintada. Sin eso la lectura se queda vieja al
