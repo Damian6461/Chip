@@ -6,6 +6,7 @@ import {
   ASPECTO_PANTALLA,
   ESTADOS_VISUALES as E,
   RUTAS_SPRITES,
+  RUTAS_CUERPO,
   UMBRAL_CRITICO_BATERIA,
   HORA_STANDBY_INICIO,
   HORA_STANDBY_FIN,
@@ -201,8 +202,18 @@ function cargarSprite(nombre, ruta) {
 }
 
 export async function cargarSprites() {
+  // Los cuerpos sin cabeza ni brazos entran al MISMO diccionario, con la clave
+  // prefijada. Así obtenerSprite los encuentra igual que a los demás y el
+  // fallback vale para ellos también: si uno no carga, se cae al sprite entero
+  // y Chip se ve sin gesto, no sin cabeza.
+  const cuerpos = Object.fromEntries(
+    Object.entries(RUTAS_CUERPO).map(([pose, ruta]) => ['cuerpo:' + pose, ruta])
+  );
+
   const resultados = await Promise.all(
-    Object.entries(RUTAS_SPRITES).map(([nombre, ruta]) => cargarSprite(nombre, ruta))
+    Object.entries({ ...RUTAS_SPRITES, ...cuerpos }).map(([nombre, ruta]) =>
+      cargarSprite(nombre, ruta)
+    )
   );
 
   for (const resultado of resultados) {
@@ -227,6 +238,13 @@ function imagenDe(nombre) {
 // cantar el error. El placeholder sólo aparece si no cargó ninguno de los dos.
 export function obtenerSprite(nombre) {
   return imagenDe(nombre) ?? imagenDe(ESTADO_POR_DEFECTO);
+}
+
+// El sprite que le toca al CANVAS: si la pose tiene cuerpo recortado, ese; si no,
+// el entero. El fallback encadena hasta el sprite completo, así que un cuerpo que
+// no cargue deja a Chip sin gesto pero nunca sin cabeza.
+export function obtenerCuerpo(nombre) {
+  return imagenDe('cuerpo:' + nombre) ?? obtenerSprite(nombre);
 }
 
 

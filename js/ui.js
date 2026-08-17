@@ -51,6 +51,8 @@ import {
   PIEZAS_POR_ESTANTE,
   BRAZOS,
   RUTAS_BRAZOS,
+  RUTAS_CUERPO,
+  ANGULO_BRAZO_SIN_CUERPO,
   ANGULO_BRAZO,
   ACOMODO_BRAZO,
   SALUDO_BRAZO,
@@ -123,7 +125,7 @@ import {
   VARS_CABLE
 } from './config.js';
 import { aplica, puedeJugar } from './acciones.js';
-import { obtenerSprite, cajaDeContenidoPantalla } from './sprites.js';
+import { obtenerSprite, obtenerCuerpo, cajaDeContenidoPantalla } from './sprites.js';
 import { objetosConEstado } from './coleccion.js';
 import { gigantesConEstado } from './gigantes.js';
 import {
@@ -506,6 +508,17 @@ let claveUltima = null;
 // idle. Eso deja afuera el movimiento durante las acciones (`cargando`,
 // `jugando`, `limpiando`), que pedía la spec y no se puede hacer todavía.
 
+// La pose de brazos vigente. Se guarda porque el ángulo depende de ella: una
+// pose sin cuerpo recortado no puede rotar tanto. Ver ANGULO_BRAZO_SIN_CUERPO.
+let poseBrazos = null;
+
+// Con cuerpo recortado, el ángulo grande; sin él, el chico. La condición mira si
+// existe el ARCHIVO y no una lista aparte, así el día que aparezca feliz-cuerpo
+// el gesto sube solo.
+function anguloDeBrazo(base) {
+  return poseBrazos && RUTAS_CUERPO[poseBrazos] ? base : Math.min(base, ANGULO_BRAZO_SIN_CUERPO);
+}
+
 const brazos = {
   izq: { grupo: grupoBrazoIzq, capa: capaBrazoIzq, temporizador: null, fin: null },
   der: { grupo: grupoBrazoDer, capa: capaBrazoDer, temporizador: null, fin: null }
@@ -524,6 +537,7 @@ function poseDeBrazos(clave) {
 // rotaría alrededor de un punto que en esa pose es aire.
 function ponerBrazos(clave) {
   const pose = poseDeBrazos(clave);
+  poseBrazos = pose;
 
   if (!pose) {
     for (const lado of ['izq', 'der']) {
@@ -583,7 +597,10 @@ function acomodarUnBrazo(lado) {
 
   // El lado se sortea en cada gesto: siempre para el mismo se vuelve muletilla.
   const signo = Math.random() < 0.5 ? 1 : -1;
-  brazo.grupo.style.setProperty(VARS_BRAZOS.angulo, `${signo * ANGULO_BRAZO}deg`);
+  brazo.grupo.style.setProperty(
+    VARS_BRAZOS.angulo,
+    `${signo * anguloDeBrazo(ANGULO_BRAZO)}deg`
+  );
 
   brazo.grupo.classList.remove(CLASE_ACOMODANDO_BRAZO);
   void brazo.grupo.offsetWidth;
@@ -630,7 +647,10 @@ function saludar(activo) {
     // izquierdo rota positivo y el derecho negativo, o si no uno saluda y el
     // otro se mete en el torso.
     const signo = lado === 'izq' ? -1 : 1;
-    brazos[lado].grupo.style.setProperty(VARS_BRAZOS.saludo, `${signo * SALUDO_BRAZO.angulo}deg`);
+    brazos[lado].grupo.style.setProperty(
+      VARS_BRAZOS.saludo,
+      `${signo * anguloDeBrazo(SALUDO_BRAZO.angulo)}deg`
+    );
     brazos[lado].grupo.classList.add(CLASE_SALUDANDO);
     return;
   }
@@ -1976,7 +1996,11 @@ function dibujarMascota(claveSprite, ambiental = false) {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const img = obtenerSprite(claveSprite);
+  // EL CANVAS DIBUJA EL CUERPO, no el sprite entero, cuando la pose tiene
+  // recorte: si dibujara el entero, la cabeza y los brazos quedarían pintados
+  // DOS veces —una en el sprite y otra en su capa— y al rotar asomaría el de
+  // abajo. Ver RUTAS_CUERPO. Una pose sin recorte cae al sprite de siempre.
+  const img = obtenerCuerpo(claveSprite);
 
   if (img) {
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);

@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v77';
+const CACHE_VERSION = 'chip-cache-v78';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -77,6 +77,9 @@ const ARCHIVOS_CACHE = [
   './sprites/idle.webp',
   './sprites/idle-ojos.webp',
   './sprites/idle-cabeza.webp',
+  // El cuerpo sin cabeza ni brazos: es el que dibuja el canvas cuando las capas
+  // que rotan están puestas. Ver RUTAS_CUERPO en config.js.
+  './sprites/idle-cuerpo.webp',
   './sprites/feliz-ojos.webp',
   // Está en el repo y en el caché, pero NO en RUTAS_OJOS ni en POSES_IDLE: la
   // pose sigue suspendida. El recorte existe y es correcto —256x256, alineado

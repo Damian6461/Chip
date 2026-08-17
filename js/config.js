@@ -138,6 +138,25 @@ export const RUTAS_CABEZA = {
   idle: 'sprites/idle-cabeza.webp'
 };
 
+// EL CUERPO SIN CABEZA NI BRAZOS, y esto es lo que destraba los dos gestos.
+//
+// El problema era el mismo para los dos: la capa que rota va ENCIMA del sprite
+// entero, que sigue teniendo la parte dibujada, así que en el borde queda a la
+// vista la de abajo, corrida. Medido, a los ángulos que las specs pedían: la
+// cabeza a 3° destapaba el 3,5% de su capa, y los brazos a 12° hasta el 31%.
+//
+// Enmascarar la región del sprite base no servía —cambia un fleco del color de
+// la pieza por un hueco transparente del mismo tamaño, que es peor— así que la
+// salida era arte: un cuerpo al que ya le falten las dos cosas, para que las
+// capas que rotan sean las únicas que las dibujan.
+//
+// Cuando una pose tiene entrada acá, el canvas dibuja ESTE sprite en lugar del
+// completo. Sin entrada dibuja el de siempre, así que una pose sin capas no se
+// entera de que esto existe.
+export const RUTAS_CUERPO = {
+  idle: 'sprites/idle-cuerpo.webp'
+};
+
 // El pivote, en % del lienzo: la base del casco. Sale de (128, 140) sobre 256.
 export const PIVOTE_CABEZA = { x: 50, y: 54.7 };
 
@@ -188,7 +207,19 @@ export const BRAZOS = {
 // pose se resuelven los dos: un cuerpo sin cabeza y sin brazos —`idle-cuerpo`,
 // `feliz-cuerpo`— para que las capas que rotan sean las únicas que los dibujan.
 // Con eso este número sube a 5 y el de la cabeza a 3 sin tocar nada más.
-export const ANGULO_BRAZO = 2;
+export const ANGULO_BRAZO = 5;
+
+// Y EL TECHO PARA UNA POSE QUE TODAVÍA NO TIENE SU CUERPO RECORTADO.
+//
+// `feliz` tiene brazos pero no tiene `feliz-cuerpo`, así que ahí la capa sigue
+// rotando encima del sprite entero y vuelve el fleco. En vez de bajar el ángulo
+// para todos —que castigaría a `idle`, que sí tiene su cuerpo— el ángulo se
+// elige POR POSE: la que tiene cuerpo usa el grande, la que no, este.
+//
+// El día que exista `feliz-cuerpo.webp`, la pose pasa sola al ángulo grande sin
+// que haya que tocar una línea. Es la misma idea que el fallback de los sprites:
+// que la ausencia de un archivo degrade el gesto, no que lo rompa.
+export const ANGULO_BRAZO_SIN_CUERPO = 2;
 
 // Acomodarse en reposo: cada tanto un brazo rota y vuelve. Los dos brazos van
 // por separado y con rangos anchos, por lo mismo que la inclinación de cabeza:
@@ -205,7 +236,7 @@ export const ACOMODO_BRAZO = { min: 25000, max: 45000, duracion: 1200 };
 // pantalla — un brazo con un fantasma al lado.
 //
 // Es el mismo techo y se levanta con el mismo archivo: un cuerpo sin brazos.
-export const SALUDO_BRAZO = { angulo: 3, entra: 260, vuelve: 520 };
+export const SALUDO_BRAZO = { angulo: 6, entra: 420, vuelve: 820 };
 
 // Durante la caricia, el brazo del lado hacia donde va el dedo se levanta
 // apenas, como acercándose.
@@ -262,7 +293,7 @@ export const RUTAS_BRAZOS = {
 // Mientras tanto, 1,2° deja el corrimiento en 2,7 px de lienzo (4,4 en
 // pantalla), que entra dentro del grosor del propio contorno del dibujo.
 export const INCLINACION_CABEZA = {
-  angulo: 1.2,
+  angulo: 3,
   entra: 620,
   sostiene: 1500,
   vuelve: 880

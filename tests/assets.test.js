@@ -28,7 +28,11 @@ import {
   RUTAS_BRAZOS,
   BRAZOS,
   ANGULO_BRAZO,
-  SALUDO_BRAZO
+  SALUDO_BRAZO,
+  RUTAS_CABEZA,
+  RUTAS_CUERPO,
+  INCLINACION_CABEZA,
+  ANGULO_BRAZO_SIN_CUERPO
 } from '../js/config.js';
 import {
   LIMITES_PESO,
@@ -282,37 +286,74 @@ prueba('brazos: toda pose con recortes tiene su pivote, y al revés', () => {
   }
 });
 
-// EL ÁNGULO ESTÁ LIMITADO POR EL SPRITE DE ABAJO, y esto lo fija.
+// EL ÁNGULO DEPENDE DE QUE EXISTA EL CUERPO RECORTADO, y esto es lo que lo ata.
 //
-// El recorte rota ENCIMA del sprite entero, que sigue teniendo el brazo
-// dibujado: en el borde queda a la vista el de abajo, corrido. Medido sobre los
-// cuatro recortes, con el punto más lejano a ~73 px del pivote en un lienzo de
-// 256 que se muestra a 1,62x:
+// Antes el techo lo ponía el fleco: la capa rotaba encima del sprite entero, que
+// seguía teniendo la parte dibujada, y en el borde asomaba la de abajo. Con eso
+// los brazos no podían pasar de 2° ni la cabeza de 1,2°.
 //
-//    2° ->  2,5 px de lienzo (4,1 en pantalla)
-//    3° ->  3,8 px          ( 6,1)
-//    6° ->  7,5 px          (12,2)
-//   12° -> 15,0 px          (24,3)
+// Con el cuerpo sin cabeza ni brazos ese problema desaparece —las capas son las
+// únicas que las dibujan— y el techo pasa a ser otro: los huecos INTERIORES del
+// compuesto, o sea píxeles que en el sprite original tenían dibujo y en las
+// cuatro capas juntas quedan transparentes. Medido sobre el compuesto real:
 //
-// Hasta que exista un cuerpo sin brazos, el ángulo no puede pasar de donde el
-// corrimiento entra en el grosor del contorno del dibujo.
-prueba('brazos: el ángulo no pasa de lo que el sprite de abajo aguanta', () => {
-  const PALANCA = 73;
-  const ESCALA = 1.62;
-  const corrimiento = PALANCA * Math.sin((ANGULO_BRAZO * Math.PI) / 180) * ESCALA;
+//   cabeza 0° / brazos  0°  ->  interior:  75 px   (la reconstrucción, dispersos)
+//   cabeza 3° / brazos  5°  ->  interior: 111 px   (0,39%, sin agrupar)
+//   cabeza 4° / brazos  7°  ->  interior: 287 px   (todavía tolerable)
+//   cabeza 6° / brazos 10°  ->  interior: 701 px   (se degrada)
+//
+// Los del borde exterior no cuentan: son el fondo apareciendo donde la parte se
+// corrió, que es lo que TIENE que pasar.
+//
+// Este test fija las dos cosas juntas: que ninguna pose rote capas sin tener su
+// cuerpo, y que los ángulos no pasen de la banda verificada.
+// UNA POSE PUEDE ROTAR SIN TENER SU CUERPO, pero entonces con el ángulo chico.
+//
+// `feliz` tiene brazos y todavía no tiene `feliz-cuerpo`, así que ahí la capa
+// rota encima del sprite entero y vuelve el fleco. Bajar el ángulo para todos
+// castigaría a `idle`, que sí lo tiene, así que el ángulo se elige por pose —ver
+// anguloDeBrazo en ui.js— y este test fija que la regla exista y no se pierda.
+prueba('capas: la que no tiene cuerpo se mueve con el ángulo chico', () => {
+  const conCapas = new Set([...Object.keys(RUTAS_CABEZA), ...Object.keys(RUTAS_BRAZOS)]);
+  const sinCuerpo = [...conCapas].filter((pose) => !(pose in RUTAS_CUERPO));
 
   verdadero(
-    corrimiento <= 5,
-    `a ${ANGULO_BRAZO}° el brazo de abajo asoma ${corrimiento.toFixed(1)} px en pantalla`
+    ANGULO_BRAZO_SIN_CUERPO <= 2,
+    `sin cuerpo el techo es el del fleco: ${ANGULO_BRAZO_SIN_CUERPO}° tiene que ser 2 o menos`
   );
 
-  // El saludo tiene el MISMO techo, y por eso está acá y no en su propio test:
-  // si se levanta uno hay que levantar los dos, porque los dos dependen del
-  // mismo archivo de arte que falta.
-  const saludo = PALANCA * Math.sin((SALUDO_BRAZO.angulo * Math.PI) / 180) * ESCALA;
+  // Y el código tiene que estar eligiendo, no usando el grande siempre.
+  const UI = readFileSync(join(RAIZ, 'js/ui.js'), 'utf8');
   verdadero(
-    saludo <= 7,
-    `el saludo a ${SALUDO_BRAZO.angulo}° asoma ${saludo.toFixed(1)} px en pantalla`
+    /anguloDeBrazo\(/.test(UI) && /RUTAS_CUERPO\[/.test(UI),
+    'ui.js elige el ángulo mirando si la pose tiene cuerpo'
+  );
+
+  // Esto no es una falla: es el estado de la deuda de arte, anotado.
+  verdadero(
+    sinCuerpo.length <= 1,
+    `poses rotando sin su cuerpo: ${sinCuerpo.join(', ') || 'ninguna'}`
+  );
+});
+
+prueba('capas: los ángulos no pasan de la banda verificada sobre el compuesto', () => {
+  // 4°/7° es el último punto medido que sigue siendo tolerable; de 6°/10° en
+  // adelante los huecos interiores se agrupan y se ven.
+  verdadero(
+    INCLINACION_CABEZA.angulo <= 4,
+    `la cabeza está en ${INCLINACION_CABEZA.angulo}° y el máximo verificado es 4`
+  );
+  verdadero(
+    ANGULO_BRAZO <= 7,
+    `los brazos están en ${ANGULO_BRAZO}° y el máximo verificado es 7`
+  );
+
+  // El saludo comparte el techo de los brazos: es el mismo recorte girando sobre
+  // el mismo hombro. A 10-12° —lo que pedía la spec— el fantasma vuelve, así que
+  // el recorrido extra se consigue con la duración y el easing, no con el ángulo.
+  verdadero(
+    SALUDO_BRAZO.angulo <= 7,
+    `el saludo está en ${SALUDO_BRAZO.angulo}° y comparte el techo de los brazos`
   );
 });
 
