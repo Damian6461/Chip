@@ -22,7 +22,8 @@ import { prueba, igual, verdadero } from './runner.js';
 import {
   RUTAS_SPRITES,
   RUTAS_OJOS,
-  RUTAS_FONDOS,
+  FRANJAS_DIA,
+  CLIMAS,
   AMBIENTES,
   SONIDO,
   RUTAS_BRAZOS,
@@ -97,25 +98,42 @@ prueba('caché: todo asset de ARCHIVOS_CACHE existe en el repo', () => {
 // Un archivo que falte en ARCHIVOS_CACHE rompe el install del service worker
 // entero —`cache.addAll` es atómico— así que esto no es cosmética: la app deja
 // de instalarse.
+// Los fondos salen de FRANJAS_DIA y de CLIMAS, que es donde están de verdad.
+// Antes salían de un `RUTAS_FONDOS` con dos entradas de cuando el galpón tenía
+// dos fondos: este cruce miraba `fondo-dia` y `fondo-noche` y no se enteraba de
+// `fondo-amanecer`, `fondo-mediodia`, `fondo-tormenta` ni `fondo-niebla`. Un
+// guardián que verifica la mitad de lo que dice verificar es peor que ninguno,
+// porque ocupa el lugar del que haría falta.
+const RUTAS_DECLARADAS = [
+  ...Object.values(RUTAS_SPRITES),
+  ...Object.values(RUTAS_OJOS),
+  ...FRANJAS_DIA.map((f) => f.fondo),
+  ...Object.values(CLIMAS).map((c) => c.fondo)
+];
+
 prueba('caché: las rutas declaradas en config.js existen en el disco', () => {
-  const declaradas = [
-    ...Object.values(RUTAS_SPRITES),
-    ...Object.values(RUTAS_OJOS),
-    ...Object.values(RUTAS_FONDOS)
-  ];
   const enRepo = new Set(ASSETS.map((a) => `${a.carpeta}/${a.nombre}`));
-  const rotas = declaradas.filter((r) => !enRepo.has(r));
+  const rotas = RUTAS_DECLARADAS.filter((r) => !enRepo.has(r));
   igual(rotas.join(' | '), '', 'rutas de config.js sin archivo');
 });
 
 prueba('caché: las rutas declaradas en config.js están cacheadas', () => {
-  const declaradas = [
-    ...Object.values(RUTAS_SPRITES),
-    ...Object.values(RUTAS_OJOS),
-    ...Object.values(RUTAS_FONDOS)
-  ];
-  const fuera = declaradas.filter((r) => !enCache.has(r));
+  const fuera = RUTAS_DECLARADAS.filter((r) => !enCache.has(r));
   igual(fuera.join(' | '), '', 'rutas de config.js fuera del caché');
+});
+
+// La red del cruce de arriba: si RUTAS_DECLARADAS quedara corta otra vez —una
+// tabla nueva que traiga fondos y nadie sume acá— los dos filtros darían cero
+// contra cero y pasarían en verde. Todo `sprites/fondo-*.webp` que exista en el
+// repo tiene que estar declarado en alguna tabla de config.js.
+prueba('caché: no hay fondos en el repo que config.js no declare', () => {
+  const enRepo = ASSETS.map((a) => `${a.carpeta}/${a.nombre}`).filter((r) =>
+    /^sprites\/fondo-.*\.webp$/.test(r)
+  );
+  const declaradas = new Set(RUTAS_DECLARADAS);
+  const sueltos = enRepo.filter((r) => !declaradas.has(r));
+  igual(sueltos.join(' | '), '', 'fondos en sprites/ que ninguna tabla de config.js nombra');
+  verdadero(enRepo.length >= 6, `sólo se encontraron ${enRepo.length} fondos en el repo`);
 });
 
 // ---- Los ambientes: otra bolsa, otro límite ----

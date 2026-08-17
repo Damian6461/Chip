@@ -34,7 +34,7 @@ No hace falta `package.json`: Node detecta la sintaxis de módulo sola. Los dos 
 
 Se corren después de cualquier cambio que toque estado, decay o persistencia.
 
-`tests/tema.test.js` cruza el puente de `config.js` a `style.css` en las dos direcciones: que ningún `var()` que la hoja no defina se quede sin escritor, y que nada de lo que el tema escribe quede sin lector. Ver abajo por qué eso hacía falta.
+`tests/tema.test.js` cruza el puente de `config.js` al resto del proyecto en las dos direcciones y en las dos capas: que ningún `var()` que la hoja no defina se quede sin escritor, que nada de lo que el tema escribe quede sin lector, y que toda constante de `config.js` la lea alguien. Ver abajo por qué eso hacía falta.
 
 `tests/composicion.test.js` hace cumplir las dos reglas de composición de los efectos: que ninguna partícula se salga de `FRANJA_EFECTOS` y que ninguna entre en el círculo de `RADIO_EXCLUSION_ANTENA`. Las dos constantes existían hace rato y **no las leía nadie** — aparecían sólo en un comentario de `style.css` contando que las posiciones se habían verificado a mano. Los números que mandan viven en el CSS como literales, así que mover un corazón al 92% no rompía nada y nadie se enteraba. Mismo patrón que el guardián de las poses: una regla sostenida por disciplina, no por construcción.
 
@@ -141,6 +141,23 @@ De las 779 líneas de código de `ui.js`, **310 se ejecutaban una sola vez al im
 **Lo que NO se gana, dicho claro:** `ui.js` sigue sin poder importarse desde Node. Importa `ui-montaje.js`, que toca el DOM al cargarse. Para que fuera importable habría que inyectarle los nodos, como se hizo con `sesion.js`, y eso es tocar las cuarenta y seis funciones. Hoy no vale la pena; el día que valga, la costura ya está.
 
 **Lo que quedó del lado del pintado a propósito:** el cableado de listeners del menú y del alféizar. También corre al importar, pero engancha funciones de `ui.js` —`abrirMenu`, `cerrarMenu`, `irAColeccion`—, así que mudarlo daría una dependencia circular a cambio de nada. Montaje es "dejar el galpón puesto", no "conectar los botones".
+
+---
+
+### Toda constante tiene lector
+
+El cruce del puente resultó ser un caso de algo más general, y conviene decirlo como regla: **un nombre que se escribe y nadie lee es peso muerto, y casi siempre es el rastro de una mudanza a medio hacer.** Vale igual para una custom property que para un `export const`. En JS el error es incluso más silencioso: una constante que nadie importa no llega ni a caerse a un fallback.
+
+`tests/tema.test.js` cruza las dos capas. La de abajo recorre los `export const` de `config.js` y exige que cada uno tenga al menos un lector; una revisión a mano encontró siete que no lo tenían, y las siete contaban la misma historia — la mudanza del tap a los tres gestos había dejado su versión vieja escrita al lado de la nueva.
+
+Dos detalles del guardián, que son los que lo hacen servir:
+
+- **Cuenta como lector** cualquier mención del nombre fuera de su declaración: otro módulo, un test, una herramienta del repo (`icons/generador.html` es el único lector de `ICONOS`), o el propio `config.js` armando otra tabla con él (`EVENTO_NIEBLA` no lo lee nadie afuera; lo consume `CLIMAS`, dos líneas más abajo).
+- **No cuenta** un `import * as CONFIG` recorrido con `Object.entries`, que es lo que hace ese mismo archivo unas líneas más arriba. Un recorrido así toca todos los nombres sin nombrar ninguno: si contara, taparía justo el defecto que se busca.
+
+Y hay un segundo escalón, que **tampoco es un lujo**: una constante que sólo leen los tests no está describiendo el juego, está describiendo a otro test. Ahí vivía `RUTAS_FONDOS` — muerta para el juego y, peor, prestándole autoridad a dos guardianes que por culpa de ella verificaban dos fondos de seis.
+
+**El costo de dejarlas** no es el peso. Es que quien lee `config.js` las lee como si estuvieran vigentes, y quien busca por qué algo no anda las encuentra y cree haber encontrado la causa. Por eso, cuando una se va, en su lugar queda escrito **a qué constante mudó la decisión** — no un borrado limpio, que invita a reponerla.
 
 ---
 
@@ -321,7 +338,9 @@ Esa arista se cerró con el rediseño full-bleed: **el canvas mide 256, igual qu
 
 ## El fondo del galpón
 
-Dos panorámicas de 1672×941 en `/sprites/`: `fondo-dia.png` y `fondo-noche.png`. No son sprites de estado — no entran en `RUTAS_SPRITES` ni pasan por el loader con fallback. Las rutas viven en `RUTAS_FONDOS` (`config.js`) y `ui.js` las escribe en `--fondo-actual`, la custom property que pinta la escena.
+Seis panorámicas de 1672×941 en `/sprites/`. No son sprites de estado — no entran en `RUTAS_SPRITES` ni pasan por el loader con fallback. `ui.js` escribe la ruta en `--fondo-actual`, la custom property que pinta la escena.
+
+**Las rutas viven en la tabla que las manda, y en ninguna otra:** las cuatro de la rotación horaria en `FRANJAS_DIA`, pegadas a su tramo; las dos de clima en `CLIMAS`, pegadas a su evento. Hubo además un `RUTAS_FONDOS` con dos entradas de cuando el galpón tenía dos fondos, y sobrevivió a la llegada de las otras cuatro sin que nadie lo leyera: era la lista que los tests usaban como fuente de verdad, así que el guardián de rutas verificaba dos de seis. Es el mismo modo de falla que el del puente de custom properties, y ahora lo agarra el mismo tipo de test — ver *Toda constante tiene lector*.
 
 **La panorámica no es el fondo de una interfaz: es la pantalla.** Va nítida y sin filtro, a altura completa, y todo lo demás flota encima.
 

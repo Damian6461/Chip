@@ -3619,7 +3619,11 @@ body.es-noche #piso {
    misma especificidad que las reglas de arriba, declarada después. */
 @media (prefers-reduced-motion: reduce) {
   #contenedor-mascota,
-  #cuerpo.acariciado,
+  /* El sobresalto del tap, que heredó el squash de la vieja `.acariciado` y
+     heredó también su lugar en esta lista. Sin el cambio de nombre el bloque
+     curado seguía apagando una clase que ya no existe, y la única red que
+     quedaba era la de `body.sin-movimiento *`. */
+  #cuerpo.sobresalto,
   #cabeza-grupo.inclinada,
   #orugas .reflejo,
   #cable path,
@@ -4098,21 +4102,14 @@ body.sin-movimiento *::after {
    el toque barato y el otro se muda a mantener apretado.
    ============================================================================ */
 
-/* El squash de la caricia. Va en `scale` como el del cambio de estado y con el
-   mismo pivote en la línea de apoyo: una cosa que recibe una mano se hunde
-   contra el piso, no se comprime alrededor de su centro.
+/* Acá vivía `#cuerpo.acariciado` con su keyframe `recibir-caricia`: un squash
+   de 320 ms que era el acuse de recibo de un TAP. Cuando el tap dejó de ser la
+   caricia, nadie volvió a poner esa clase — la regla siguió en la hoja, válida
+   y muerta, pintando algo que no ocurría. La reemplaza la respuesta sostenida
+   de acá abajo, que se construye mientras el dedo está apoyado.
 
-   Es MÁS CHICO que el del cambio ambiental (1.02 contra 1.035) y bastante más
-   corto. Una caricia es un acuse de recibo; una acción es un evento. */
-#cuerpo.acariciado {
-  animation: recibir-caricia var(--duracion-caricia) ease-out;
-}
-
-@keyframes recibir-caricia {
-  0% { scale: 1 1; }
-  40% { scale: 1.02 0.975; }
-  100% { scale: 1 1; }
-}
+   El squash no se perdió: sigue vivo en `#cuerpo.sobresalto`, que es lo que
+   ahora contesta un tap, y usa el mismo --duracion-caricia. */
 
 /* ============================================================================
    LOS TRES GESTOS SOBRE CHIP

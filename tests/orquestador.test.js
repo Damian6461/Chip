@@ -1122,6 +1122,37 @@ prueba('gestos: la caricia da más que el toque', () => {
   verdadero(conToque < conCaricia, `${conToque} es menos que ${conCaricia}`);
 });
 
+// LOS TRES GESTOS NO PUEDEN DEJAR UN POZO EN EL MEDIO. La decisión vive en
+// ui.js —que necesita un DOM y no se importa acá— así que se lee como texto,
+// igual que style.css un poco más arriba en este mismo archivo.
+//
+// Qué pasó: además de `habiaMantenido` había un `duro < TOQUE_SECO_MS` con
+// TOQUE_SECO_MS en 200 ms, o sea un segundo umbral MÁS CHICO que el del
+// mantenido (500 ms). Dos umbrales de tiempo así no separan dos gestos: dejan
+// un pozo de 300 ms donde soltar no era nada. Ni toque, ni panel, ni una unidad
+// para el fastidio — y por eso Chip no se enojaba nunca aunque lo picaran.
+//
+// Verificado en el navegador por las dos puntas: el teclado llama a unToque()
+// sin puerta de duración y cuatro Enter seguidos dejan a Chip en `esperando`
+// 2,4 s; con el dedo, soltar a los 300 ms no hacía nada.
+prueba('gestos: soltar sin moverse siempre es un toque, sin pozo en el medio', () => {
+  const UI = readFileSync(join(RAIZ, 'js/ui.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+
+  const cuerpo = UI.match(/function soltarGesto\([\s\S]*?\n}/);
+  verdadero(cuerpo !== null, 'tiene que existir soltarGesto en ui.js');
+
+  verdadero(
+    /if \(habiaMantenido\) unToque\(\);/.test(cuerpo[0]),
+    'la rama del toque decide sólo por habiaMantenido'
+  );
+  verdadero(
+    !/duro\s*[<>]/.test(cuerpo[0]),
+    'ningún umbral de duración adicional: el del mantenido ya parte el espacio'
+  );
+});
+
 prueba('gestos: con el humor lleno ninguno de los dos aplica', () => {
   const { sesion } = sesionDePrueba({ ...crearEstadoNuevo(), humor: STAT_MAX });
 

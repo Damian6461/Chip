@@ -24,7 +24,6 @@ import {
   ESPERA_MANTENIDO_MS,
   DURACION_CARICIA_MS,
   MOVIMIENTO_CARICIA,
-  TOQUE_SECO_MS,
   PASO_CARICIA_MS,
   TOQUES_PARA_FASTIDIO,
   VENTANA_FASTIDIO_MS,
@@ -1423,7 +1422,6 @@ function arrancarGesto(evento) {
     x0: evento.clientX,
     y0: evento.clientY,
     x: evento.clientX,
-    desde: Date.now(),
     acariciando: false
   };
 
@@ -1461,7 +1459,6 @@ function moverGesto(evento) {
 function soltarGesto(evento) {
   if (!gesto || (evento && evento.pointerId !== gesto.id)) return;
 
-  const duro = Date.now() - gesto.desde;
   const acariciaba = gesto.acariciando;
 
   clearTimeout(temporizadorMantenido);
@@ -1474,9 +1471,27 @@ function soltarGesto(evento) {
     return;
   }
 
-  // Un tap seco: corto y sin movimiento. Si el mantenido ya venció, el panel se
-  // abrió y esto no es un toque.
-  if (habiaMantenido && duro < TOQUE_SECO_MS) unToque();
+  // Un tap: sin movimiento y soltado ANTES de que venciera el mantenido. Si el
+  // mantenido ya venció, el panel se abrió y esto no es un toque.
+  //
+  // LA BANDA MUERTA. Acá había además un `duro < TOQUE_SECO_MS`, con
+  // TOQUE_SECO_MS en 200 ms, y eso abría un pozo de 300 ms: soltar entre los 200
+  // y los 500 no era nada. No tap, no panel, no sobresalto, no cuenta para el
+  // fastidio. Chip no contestaba y la app parecía colgada.
+  //
+  // Es el síntoma de "Chip no se enoja aunque lo toquen muchas veces": el
+  // fastidio pide cuatro toques en tres segundos, y los toques que caían en el
+  // pozo no llegaban ni a contarse. Verificado por las dos puntas — el teclado,
+  // que llama a unToque() sin ninguna puerta de duración, sí lo dispara: cuatro
+  // Enter seguidos dejan a Chip en `esperando` 2,4 s. El dedo no.
+  //
+  // El umbral sobraba: `habiaMantenido` ya distingue los dos gestos, porque es
+  // false exactamente cuando el mantenido venció y abrió el panel. Un segundo
+  // umbral más chico que ese no separa nada, sólo deja un agujero en el medio.
+  // Ahora los tres gestos parten el espacio entero sin hueco: si te moviste es
+  // caricia, si aguantaste hasta los 500 son los números, y todo lo demás es un
+  // toque.
+  if (habiaMantenido) unToque();
 }
 
 function cancelarGesto() {

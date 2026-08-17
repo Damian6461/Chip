@@ -11,7 +11,6 @@ import {
   CATEGORIA_GRANDES,
   EVENTO_LLUVIA,
   CLIMAS,
-  RUTAS_FONDOS,
   FRANJAS_DIA
 } from '../js/config.js';
 import { readFileSync } from 'node:fs';
@@ -326,8 +325,13 @@ prueba('climas: cada uno trae su fondo, y el fondo existe', () => {
       typeof clima.fondo === 'string' && clima.fondo.endsWith('.webp'),
       `${nombre} tiene que traer su fondo`
     );
+    // La rotación horaria es FRANJAS_DIA y son CUATRO fondos. Esto comparaba
+    // contra un `RUTAS_FONDOS` de dos entradas, así que un clima que apuntara a
+    // `fondo-amanecer.webp` pasaba: el guardián decía "no pisa la rotación"
+    // mirando media rotación.
+    const deLaRotacion = FRANJAS_DIA.map((f) => f.fondo);
     verdadero(
-      !RUTAS_FONDOS || !Object.values(RUTAS_FONDOS).includes(clima.fondo),
+      !deLaRotacion.includes(clima.fondo),
       `${clima.fondo} no puede estar además en la rotación horaria`
     );
   }

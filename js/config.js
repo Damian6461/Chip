@@ -361,18 +361,20 @@ export const RUTAS_OJOS = {
   feliz: 'sprites/feliz-ojos.webp'
 };
 
-// Fondos del galpón, detrás de Chip. Mismo criterio que RUTAS_SPRITES: las
-// rutas de assets viven acá y no desperdigadas entre el CSS y el JS. Son
-// document-relative porque las consume una propiedad inline puesta desde ui.js,
-// no una regla de style.css.
+// LOS FONDOS DEL GALPÓN VIVEN EN FRANJAS_DIA, cada uno pegado a su tramo. Acá
+// hubo un `RUTAS_FONDOS` con dos entradas —día y noche— de cuando el galpón
+// tenía dos fondos y no cuatro. Cuando entraron el amanecer y el mediodía, la
+// tabla nueva se llevó las rutas y esta quedó escrita, desactualizada y sin un
+// solo lector en el juego.
 //
-// Cuál de los dos se muestra lo decide la MISMA franja horaria que el standby
-// (ver esDeNoche en sprites.js): la noche del mundo la manda FRANJAS_DIA, no
-// el standby. Chip puede estar despierto de noche y dormido de madrugada.
-export const RUTAS_FONDOS = {
-  dia: 'sprites/fondo-dia.webp',
-  noche: 'sprites/fondo-noche.webp'
-};
+// Y era PEOR que peso muerto, porque dos tests la usaban como fuente de verdad:
+// el que cruza rutas contra el disco y el caché sólo miraba dos de los cuatro
+// fondos, y el que verifica que un clima no pise la rotación horaria comparaba
+// contra media rotación. Los dos derivan de FRANJAS_DIA ahora.
+//
+// Qué fondo se muestra lo decide la MISMA franja horaria que la noche del mundo
+// (ver esDeNoche en sprites.js), no el standby: Chip puede estar despierto de
+// noche y dormido de madrugada.
 
 // Encuadre de la escena: se entra 8% DENTRO de la panorámica desde su borde
 // izquierdo. Con eso la ventana del galpón queda a la izquierda del cuadro y
@@ -511,11 +513,15 @@ export const DURACION_ESTADO_ACCION_MS = 3000;
 // software y no como algo entrando.
 export const ESCALONES_ACCION = 6;
 
-// Clase que apaga los tres botones mientras algo está pasando. Es el MISMO
-// tratamiento visual que el de una acción que no hace falta: si el jugador ya
-// aprendió qué quiere decir esa chapa mate, no hay que enseñarle un segundo
-// idioma.
-export const CLASE_OCUPADO = 'ocupado';
+// EL APAGADO DE LOS BOTONES NO ES UNA CLASE. Fue `CLASE_OCUPADO = 'ocupado'`
+// hasta que el tratamiento pasó a `aria-disabled`, que es el mismo estado dicho
+// una sola vez: la chapa mate sale de `[aria-disabled="true"]` en style.css y el
+// lector de pantalla lee lo mismo que se ve. La constante quedó sin lector y se
+// fue; esto queda anotado para que nadie la reponga buscando dónde se apagan.
+//
+// El tratamiento visual sigue siendo el MISMO que el de una acción que no hace
+// falta: si el jugador ya aprendió qué quiere decir esa chapa mate, no hay que
+// enseñarle un segundo idioma.
 
 // ---- El estado `esperando` ----
 //
@@ -886,8 +892,19 @@ export const VARS_ZONA_CHIP = { forma: '--zona-chip' };
 // Cuánto movimiento convierte un apretón en un arrastre.
 export const MOVIMIENTO_CARICIA = 10;
 
-// Más que esto ya no es un tap seco.
-export const TOQUE_SECO_MS = 200;
+// LOS TRES GESTOS SE DECIDEN CON DOS UMBRALES Y NO CON TRES. Uno de espacio
+// —MOVIMIENTO_CARICIA— y uno de tiempo —ESPERA_MANTENIDO_MS—, y entre los dos
+// parten el espacio entero: te moviste, aguantaste, o ninguna de las dos.
+//
+// Hubo un tercero, `TOQUE_SECO_MS = 200`, con el comentario "más que esto ya no
+// es un tap seco". Como era MÁS CHICO que el del mantenido, no separaba dos
+// gestos: abría un pozo de 300 ms entre los dos. Soltar a los 300 ms sin moverse
+// no era nada — ni toque, ni panel, ni sobresalto, ni una unidad para el
+// fastidio. Y como el fastidio pide cuatro toques en tres segundos, los toques
+// que caían en el pozo hacían que Chip no se enojara nunca.
+//
+// La regla: un umbral nuevo entre estos dos tiene que SEPARAR dos gestos, no
+// meterse adentro de uno. Ver soltarGesto en ui.js.
 
 // Un toque sube menos que una caricia. No es nada, pero no es lo mismo.
 export const TOQUE_HUMOR = 1;
@@ -935,29 +952,42 @@ export const VARS_CARICIA_GESTO = {
 
 export const CARICIA_HUMOR = 2;
 
-// Cada cuánto puede haber una reacción visual. Sin esto, quince toques en dos
-// segundos apilan quince tandas de corazones y la pantalla se llena.
-//
-// Ojo: esto NO es un cooldown del gesto. La caricia se registra igual —el humor
-// sube—, lo que se limita es la ANIMACIÓN. Que es la distinción de siempre en
-// este proyecto: se restringe lo que se ve, no lo que se puede hacer.
-export const COOLDOWN_CARICIA_MS = 400;
-
-// CUÁNDO SE CANSA. Más de seis caricias en cuatro segundos y Chip pone la cara
-// de fastidio un rato. Es la única forma de molestarlo que tiene el juego, y es
-// graciosa y no punitiva: NO baja ningún stat, no bloquea nada más que la
-// caricia, y se le pasa solo.
-export const CARICIAS_PARA_CANSARSE = 6;
-export const VENTANA_CANSANCIO_MS = 4000;
-export const DURACION_CANSANCIO_MS = 3000;
-
 // Mantener apretado para ver los números. 500 ms es el umbral clásico de
 // long-press: más corto se dispara sin querer al acariciar, más largo se siente
 // trabado.
 export const ESPERA_MANTENIDO_MS = 500;
 
-export const CLASE_CARICIA = 'acariciado';
-export const CLASE_CANSADO = 'cansado';
+// ---- LO QUE DEJÓ LA MUDANZA DEL TAP ----
+//
+// Cuando acariciar era un TAP, acá vivían seis constantes más. La mudanza a los
+// tres gestos las dejó escritas y sin un solo lector: no rompen nada, no tiran
+// error y no se ven — el modo de falla exacto que el puente de custom properties
+// ya vigilaba del lado del CSS. El guardián de tema.test.js ahora también cruza
+// los exports de este archivo, y fue él quien las encontró.
+//
+// No se perdió ninguna decisión: las seis tienen heredera arriba, y quedan
+// anotadas para que nadie las reponga creyendo que falta algo.
+//
+//   COOLDOWN_CARICIA_MS = 400     -> PASO_CARICIA_MS. El cooldown limitaba la
+//     animación de un tap repetido. La caricia sostenida no lo necesita: los
+//     corazones salen de un intervalo, así que el ritmo está en la forma del
+//     gesto y no en un freno puesto encima.
+//
+//   CARICIAS_PARA_CANSARSE = 6    -> TOQUES_PARA_FASTIDIO = 4
+//   VENTANA_CANSANCIO_MS = 4000   -> VENTANA_FASTIDIO_MS = 3000
+//   DURACION_CANSANCIO_MS = 3000  -> DURACION_FASTIDIO_MS = 2000
+//     El fastidio se corrió a la vereda del TOQUE, que es el punto entero del
+//     modelo sin culpa: acariciarlo siempre está bien, picarlo con el dedo no.
+//     Y los números bajaron porque con 6 en 4 s no se disparaba nunca.
+//
+//   CLASE_CARICIA = 'acariciado'  -> CLASE_ACARICIANDO. El squash de 320 ms era
+//     el acuse de recibo de un tap; la caricia lo reemplazó por una respuesta
+//     que se construye mientras dura. Se fue también la regla muerta que lo
+//     pintaba en style.css.
+//
+//   CLASE_CANSADO = 'cansado'     -> el estado visual `esperando`. La cara de
+//     fastidio la decide la SESIÓN y la dibuja un sprite, no una clase de CSS:
+//     elegir un estado visual nunca fue de la hoja.
 
 // EL ANILLO CIAN DEL MANTENIDO SE FUE, y con él la clase que lo prendía y la
 // variable que le daba la duración.
