@@ -32,6 +32,7 @@ import {
   INHALACION,
   INCLINACION_CABEZA,
   COLORES_BOTON,
+  ANTENA_INERCIA,
   COLOR_PARPADO,
   RADIO_EXCLUSION_ANTENA,
   FRANJA_EFECTOS,
@@ -470,5 +471,76 @@ prueba('hidden: los dos parsers encuentran algo', () => {
   verdadero(
     reglasConDisplayPropio('rayo').length === 0,
     '#rayo no tiene display propio: el de `#rayo svg` es del svg y no puede contarse'
+  );
+});
+
+// ---- La inercia de la antena ----
+//
+// El poste está PINTADO en el sprite y el bulbo va por código, así que todo
+// ángulo que la antena gire de más respecto de la cabeza despega el bulbo de la
+// punta del poste. Eso no es un efecto secundario que se pueda ignorar: es el
+// límite duro de cuánta inercia se puede pedir, y la spec avisa que hay que
+// mirarlo en el PICO de la oscilación y no en reposo.
+//
+// La cuenta, con los números medidos sobre idle-cabeza.webp:
+//
+//   el bulbo está a 28 px del pivote sobre el lienzo de 256
+//   28 x sen(1°) = 0,49 px de lienzo por grado
+//   el lienzo se dibuja a 416, o sea x1,625  ->  0,79 px de pantalla por grado
+//   el poste mide 10 px de lienzo = 16,25 px de pantalla
+//
+// El techo es que el bulbo no se corra más de un TERCIO del ancho del poste.
+// Más que eso y deja de leerse como una antena que oscila: se lee como el bulbo
+// despegado, que es exactamente lo que ya pasó una vez con la cabeza y quedó
+// anotado en index.html.
+prueba('antena: la inercia no despega el bulbo del poste', () => {
+  const PX_POR_GRADO = (28 * Math.sin(Math.PI / 180) * 416) / 256;
+  const ANCHO_POSTE = (10 * 416) / 256;
+
+  const maximo = Math.max(
+    Math.abs(ANTENA_INERCIA.extra),
+    Math.abs(ANTENA_INERCIA.atraso),
+    Math.abs(ANTENA_INERCIA.sobrepaso),
+    ...ANTENA_INERCIA.rebote.map(Math.abs)
+  );
+  const grados = maximo * INCLINACION_CABEZA.angulo;
+  const corrimiento = grados * PX_POR_GRADO;
+
+  verdadero(
+    corrimiento < ANCHO_POSTE / 3,
+    `el residuo máximo son ${grados.toFixed(2)}°, o sea ${corrimiento.toFixed(2)} px de despegue, y el poste mide ${ANCHO_POSTE.toFixed(1)} px`
+  );
+});
+
+// El rebote ES un resorte amortiguado, y eso quiere decir dos cosas concretas:
+// pasa de largo para los dos lados y cada pasada es más chica. Sin las dos, la
+// vuelta deja de leerse como masa y pasa a leerse como un temblor.
+prueba('antena: el rebote alterna de signo y se apaga', () => {
+  const r = ANTENA_INERCIA.rebote;
+  verdadero(r.length >= 2, `hacen falta al menos dos pasadas y hay ${r.length}`);
+
+  for (let i = 1; i < r.length; i++) {
+    verdadero(
+      r[i] * r[i - 1] < 0,
+      `la pasada ${i + 1} tiene que cambiar de signo: ${r[i - 1]} y después ${r[i]}`
+    );
+    verdadero(
+      Math.abs(r[i]) < Math.abs(r[i - 1]),
+      `la pasada ${i + 1} tiene que ser más chica: ${Math.abs(r[i - 1])} y después ${Math.abs(r[i])}`
+    );
+  }
+});
+
+// Y el arranque va con el signo CONTRARIO al del sostén: la antena sale atrás
+// de la cabeza. Si arrancara del mismo lado, el retraso no se leería como masa
+// sino como que la antena llega tarde.
+prueba('antena: sale atrás de la cabeza y después la pasa', () => {
+  verdadero(
+    ANTENA_INERCIA.atraso * ANTENA_INERCIA.extra < 0,
+    `atraso ${ANTENA_INERCIA.atraso} y extra ${ANTENA_INERCIA.extra} tienen que ser de signo contrario`
+  );
+  verdadero(
+    ANTENA_INERCIA.sobrepaso > ANTENA_INERCIA.extra,
+    'la antena pasa de largo antes de acomodarse en su ángulo de sostén'
   );
 });

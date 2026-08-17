@@ -1328,7 +1328,19 @@ export const POSICIONES_ANTENA = {
 
 export const VARS_ANTENA = {
   x: '--antena-x',
-  y: '--antena-y'
+  y: '--antena-y',
+  // Y las de la inercia. Van en esta tabla y no en una propia porque son del
+  // mismo sujeto: dónde está la antena y cómo se mueve. Ver ANTENA_INERCIA más
+  // abajo, que trae la medición del poste.
+  pivote: '--antena-pivote',
+  extra: '--antena-extra',
+  rebote1: '--antena-rebote-1',
+  rebote2: '--antena-rebote-2',
+  rebote3: '--antena-rebote-3',
+  atraso: '--antena-atraso',
+  sobrepaso: '--antena-sobrepaso',
+  vaivenAngulo: '--antena-vaiven-angulo',
+  vaivenCiclo: '--antena-vaiven-ciclo'
 };
 
 // ---- La luz de la cabeza ----
@@ -1344,6 +1356,57 @@ export const VARS_ANTENA = {
 // parche. Al ser porcentaje escala con Chip; el valor viejo eran 12 px fijos,
 // que en una pantalla grande quedaban chicos.
 export const DIAMETRO_BULBO = 9; // % del contenedor
+
+// ---- LA ANTENA CON INERCIA ----
+//
+// Hoy el bulbo se mueve EXACTAMENTE con la cabeza: mismo ángulo, mismo
+// instante. Una antena real tiene masa y va con retraso — sale detrás, y cuando
+// el cuerpo frena ella sigue un momento más y vuelve oscilando. Eso es el
+// follow-through de la animación clásica y es lo que hace que un personaje deje
+// de leerse como una figura rígida.
+//
+// EL PIVOTE, MEDIDO, Y ES DE DÓNDE SALE EL RIESGO DE TODO ESTO.
+//
+// Medido sobre idle-cabeza.webp, contando el ancho de la corrida opaca fila por
+// fila alrededor de x=128:
+//
+//   y 12-28   el bulbo, hasta 20 px de ancho (x119-138)
+//   y 30-38   EL POSTE, 10 px de ancho (x124-133)
+//   y 40-48   la base abriéndose contra el casco
+//   y 50+     la cabeza, 80 px y subiendo
+//
+// O sea que el poste va de y≈29 a y≈48 y su base está en y=48, que son 28 px
+// por debajo del centro del bulbo (y=20, o sea el 7,8% de POSICIONES_ANTENA).
+// 28 sobre 256 son 10,9 puntos del lienzo, y ese es `pivote`.
+//
+// EL POSTE ESTÁ PINTADO EN EL SPRITE y el bulbo va por código. Rotar #antena
+// mueve el bulbo y NO mueve el poste, así que todo ángulo que la antena gire de
+// más respecto de la cabeza despega el bulbo de la punta del poste. La cuenta:
+// el bulbo está a 28 px del pivote, o sea 0,49 px de lienzo por grado, que a la
+// escala de pantalla —416 sobre 256— son 0,79 px por grado.
+//
+// Con eso, `extra` es el número que hay que cuidar. Es cuánto se queda inclinada
+// la antena DE MÁS mientras la cabeza sostiene, en fracción del ángulo de ella:
+// 0,4 sobre 3° son 1,2° y 0,95 px de despegue en pantalla, que es menos de un
+// décimo del ancho del poste. El rebote llega al doble por un instante.
+//
+// Los valores del rebote son fracciones del mismo ángulo, y alternan de signo
+// porque un resorte amortiguado pasa de largo para los dos lados. Cada uno más
+// chico que el anterior.
+export const ANTENA_INERCIA = {
+  pivote: 10.9,
+  extra: 0.4,
+  rebote: [0.6, -0.3, 0.12],
+  // El arranque: la antena sale ATRÁS de la cabeza —ángulo de signo contrario—
+  // y recién después la pasa. Sin esta parte el retraso no se lee como masa, se
+  // lee como que la antena llega tarde.
+  atraso: -0.5,
+  sobrepaso: 0.65,
+  // Y EL VAIVÉN DE REPOSO. Nada se mueve perfectamente quieto. Ciclo largo y
+  // desincronizado de la respiración a propósito: si compartieran período, las
+  // dos cosas se leerían como una sola.
+  vaiven: { angulo: 0.7, ciclo: 5500 }
+};
 
 // El color ES el estado. Cada uno con su núcleo —el centro caliente, casi
 // blanco— y su cuerpo, que es lo que tiñe el halo.

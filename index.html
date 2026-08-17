@@ -195,8 +195,26 @@
            Son dos capas y hacen cosas distintas: #resplandor es la luz que la
            fuente derrama sobre el casco y va DEBAJO; #antena es el bulbo, que
            TAPA al pintado en el sprite y por eso es opaco. Ver COLORES_BULBO. -->
-      <div id="resplandor" aria-hidden="true"></div>
-      <div id="antena" aria-hidden="true"></div>
+      <!-- LOS DOS GRUPOS DE LA INERCIA, y son dos por una razón concreta: cada
+           uno corre UNA animación. La de afuera lleva el follow-through de la
+           inclinación —el residuo respecto de la cabeza— y la de adentro el
+           vaivén de reposo, que corre siempre.
+
+           Podrían ser uno solo, pero entonces las dos animaciones tendrían que
+           declararse en la misma lista de `animation-name`, y esa lista se
+           rompe la primera vez que alguien agrega la tercera sin acordarse de
+           repetir las otras dos. Es la misma familia de trampa que el shorthand.
+
+           Los dos giran sobre la BASE DEL POSTE, que está medida — ver
+           ANTENA_INERCIA en config.js. Y el pivote se escribe igual en los dos
+           porque los dos ocupan el lienzo entero: por eso el número no hay que
+           convertirlo a la caja del bulbo ni llevar otro para el halo. -->
+      <div id="antena-grupo" aria-hidden="true">
+        <div id="antena-vaiven">
+          <div id="resplandor"></div>
+          <div id="antena"></div>
+        </div>
+      </div>
       </div>
 
       <!-- LOS BRAZOS. Un grupo por brazo y no uno compartido: los dos tienen

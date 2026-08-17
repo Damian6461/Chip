@@ -99,6 +99,8 @@ import {
   GRUPOS_DE_COLOR,
   VARS_BULBO,
   DIAMETRO_BULBO,
+  ANTENA_INERCIA,
+  VARS_ANTENA,
   COLORES_BULBO,
   CICLOS_BULBO,
   LATIDO_BULBO,
@@ -360,6 +362,21 @@ export function variablesDeTema() {
     // suyo con el nombre sufijado y una regla de style.css lo levanta por clase,
     // igual que la respiración. Nada de esto cambia en vivo salvo la clase.
     [VARS_BULBO.diametro]: pct(DIAMETRO_BULBO),
+
+    // LA ANTENA CON INERCIA. El pivote va tal cual está medido: los dos grupos
+    // que rotan ocupan el lienzo entero, así que el % de la medición y el % del
+    // transform-origin son la misma unidad. Cuando esto vivía en las capas
+    // —cada una con su caja— había que dividir, y hacían falta DOS números
+    // porque el halo es más grande que el bulbo. Ver ANTENA_INERCIA en config.
+    [VARS_ANTENA.pivote]: pct(ANTENA_INERCIA.pivote),
+    [VARS_ANTENA.extra]: String(ANTENA_INERCIA.extra),
+    [VARS_ANTENA.atraso]: String(ANTENA_INERCIA.atraso),
+    [VARS_ANTENA.sobrepaso]: String(ANTENA_INERCIA.sobrepaso),
+    [VARS_ANTENA.rebote1]: String(ANTENA_INERCIA.rebote[0]),
+    [VARS_ANTENA.rebote2]: String(ANTENA_INERCIA.rebote[1]),
+    [VARS_ANTENA.rebote3]: String(ANTENA_INERCIA.rebote[2]),
+    [VARS_ANTENA.vaivenAngulo]: ANTENA_INERCIA.vaiven.angulo + 'deg',
+    [VARS_ANTENA.vaivenCiclo]: ms(ANTENA_INERCIA.vaiven.ciclo),
     [VARS_BULBO.resplandorDiametro]: pct(RESPLANDOR_CABEZA.diametro),
     [VARS_BULBO.resplandorY]: pct(RESPLANDOR_CABEZA.corrimientoY),
     [VARS_BULBO.resplandorOpacidad]: String(RESPLANDOR_CABEZA.opacidad),

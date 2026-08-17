@@ -1522,6 +1522,11 @@ body.es-noche #rayo {
   aspect-ratio: 1;
   translate: -50% -50%;
   border-radius: 50%;
+
+  /* El bulbo no rota: rotan los dos grupos que lo envuelven. Un disco girando
+     sobre su propio centro no se mueve — lo que tiene que irse de lado es la
+     punta de la antena, y para eso el pivote va en la BASE DEL POSTE, que es de
+     los grupos y no de esta capa. Ver #antena-grupo. */
   background: radial-gradient(
     circle at 50% 42%,
     var(--bulbo-nucleo) 0%,
@@ -1596,6 +1601,98 @@ body.es-noche #rayo {
     transparent 72%
   );
   animation: latir var(--bulbo-ciclo) ease-in-out infinite;
+
+}
+
+/* ---- LA INERCIA DE LA ANTENA ----
+
+   Una antena real tiene masa: sale detrás del cuerpo, y cuando el cuerpo frena
+   ella sigue un momento más y vuelve oscilando. Es el follow-through de la
+   animación clásica.
+
+   VA EN UN GRUPO Y NO EN LAS DOS CAPAS, y ese fue el segundo intento. El
+   primero le ponía `animation-name` a #antena y a #resplandor directamente, y
+   eso PISA el latido del bulbo y el del halo — la trampa del shorthand otra vez,
+   con longhands y todo, porque `animation-name` también es una lista que se
+   reemplaza entera. Un grupo que rota y dos capas que laten adentro no se
+   pisan: es el mismo reparto que #cabeza-grupo con la cabeza.
+
+   Y sale más barato: el pivote pasa a estar en % del MISMO lienzo en el que
+   está medido, así que no hay que convertirlo a la caja de cada capa ni llevar
+   un número distinto para el halo.
+
+   LO QUE SE ANIMA ES EL RESIDUO, no el movimiento entero. El grupo vive DENTRO
+   de #cabeza-grupo, así que ya rota con la cabeza — igual que el poste, que está
+   pintado en el sprite. Lo que esto agrega es la DIFERENCIA:
+
+     negativo   la antena viene atrás, todavía no llegó
+     cero       van juntas
+     positivo   la antena se pasó, o se quedó inclinada de más
+
+   Por eso el keyframe arranca con el signo cambiado: si arrancara en cero, el
+   retraso no se leería como masa sino como que la antena llega tarde.
+
+   Y por eso los números son CHICOS. Cada grado de residuo despega el bulbo
+   0,79 px de la punta del poste en pantalla, porque el poste no rota con él.
+   Ver la cuenta entera en ANTENA_INERCIA. */
+#antena-grupo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: var(--antena-x, 50%) calc(var(--antena-y, 7.8%) + var(--antena-pivote));
+}
+
+.inclinada #antena-grupo {
+  animation-name: inercia-antena;
+  animation-duration: var(--duracion-inclinacion);
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
+@keyframes inercia-antena {
+  /* Sale ATRÁS: la cabeza arranca y la antena todavía no. */
+  0% { transform: rotate(0deg); }
+  9% { transform: rotate(calc(var(--angulo-inclinacion) * var(--lado-inclinacion, 1) * var(--antena-atraso))); }
+  /* La pasa de largo... */
+  26% { transform: rotate(calc(var(--angulo-inclinacion) * var(--lado-inclinacion, 1) * var(--antena-sobrepaso))); }
+  /* ...y se acomoda inclinada un poco más que ella, que es la amplitud mayor. */
+  38%,
+  70.7% { transform: rotate(calc(var(--angulo-inclinacion) * var(--lado-inclinacion, 1) * var(--antena-extra))); }
+  /* La cabeza vuelve y la antena sigue yendo. De acá al final es el resorte
+     amortiguado: tres pasadas, cada una más chica y del signo contrario. */
+  80% { transform: rotate(calc(var(--angulo-inclinacion) * var(--lado-inclinacion, 1) * var(--antena-rebote-1))); }
+  88% { transform: rotate(calc(var(--angulo-inclinacion) * var(--lado-inclinacion, 1) * var(--antena-rebote-2))); }
+  94% { transform: rotate(calc(var(--angulo-inclinacion) * var(--lado-inclinacion, 1) * var(--antena-rebote-3))); }
+  100% { transform: rotate(0deg); }
+}
+
+/* EL VAIVÉN DE REPOSO. Nada se mueve perfectamente quieto, y una antena larga
+   menos que nada. Va en la propiedad `rotate` y no en `transform` para que se
+   COMPONGA con la inercia de arriba en vez de pisarla: son propiedades
+   distintas y el navegador las multiplica.
+
+   Ciclo largo y desincronizado de la respiración a propósito: si compartieran
+   período, las dos cosas se leerían como una sola.
+
+   Corre SIEMPRE, también durante la inclinación — es el aire del galpón, no una
+   reacción. Por eso va en un elemento aparte del que lleva la inercia: dos
+   animaciones sobre el mismo elemento tendrían que declararse juntas, y la
+   lista se rompe la primera vez que alguien agrega la tercera. */
+#antena-vaiven {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: var(--antena-x, 50%) calc(var(--antena-y, 7.8%) + var(--antena-pivote));
+  animation-name: vaiven-antena;
+  animation-duration: var(--antena-vaiven-ciclo);
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+@keyframes vaiven-antena {
+  0%,
+  100% { rotate: calc(var(--antena-vaiven-angulo) * -1); }
+  50% { rotate: var(--antena-vaiven-angulo); }
 }
 
 /* El latido: los dos extremos vienen por variable, así el mismo keyframe sirve
@@ -3773,6 +3870,11 @@ body.es-noche #piso {
      curado seguía apagando una clase que ya no existe, y la única red que
      quedaba era la de `body.sin-movimiento *`. */
   #cuerpo.sobresalto,
+  /* Los dos grupos de la antena. La inercia y el vaivén son movimiento puro y
+     no dicen nada que no diga el bulbo estando prendido, así que se van enteros.
+     El bulbo en sí ya lo trata la lista de efectos de vida, más abajo. */
+  #antena-grupo,
+  #antena-vaiven,
   #cabeza-grupo.inclinada,
   #orugas .reflejo,
   #cable path,
