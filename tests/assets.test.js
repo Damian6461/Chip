@@ -32,6 +32,8 @@ import {
   SALUDO_BRAZO,
   RUTAS_CABEZA,
   PIVOTES_CABEZA,
+  RUTAS_OJOS_GESTO,
+  AJUSTE_OJOS,
   RUTAS_CUERPO,
   INCLINACION_CABEZA,
   ANGULO_BRAZO_SIN_CUERPO
@@ -107,6 +109,7 @@ prueba('caché: todo asset de ARCHIVOS_CACHE existe en el repo', () => {
 const RUTAS_DECLARADAS = [
   ...Object.values(RUTAS_SPRITES),
   ...Object.values(RUTAS_OJOS),
+  ...Object.values(RUTAS_OJOS_GESTO),
   ...FRANJAS_DIA.map((f) => f.fondo),
   ...Object.values(CLIMAS).map((c) => c.fondo)
 ];
@@ -396,4 +399,38 @@ prueba('capas: los ángulos no pasan de la banda verificada sobre el compuesto',
 prueba('brazos: critico no tiene recortes, y es a propósito', () => {
   verdadero(!('critico' in RUTAS_BRAZOS), 'sin recorte no hay nada que mover');
   verdadero(!('standby' in RUTAS_BRAZOS), 'dormido tampoco');
+});
+
+// ---- Las tres caras de la caricia ----
+//
+// Lo que este archivo NO puede verificar, y conviene decirlo: la ALINEACIÓN. Los
+// números de AJUSTE_OJOS salen de medir la huella alfa de los tres recortes, y
+// para eso hace falta decodificar webp — que es una dependencia, y no hay
+// ninguna. La medición está contada entera en config.js y se verificó mirando
+// las tres capas compuestas sobre el cuerpo, a 3x.
+//
+// Lo que sí se puede atar es que las tablas no se separen y que la corrección
+// vaya en la dirección medida.
+
+prueba('ojos: cada cara de la caricia tiene su ajuste, y al revés', () => {
+  igual(
+    Object.keys(RUTAS_OJOS_GESTO).sort().join(','),
+    Object.keys(AJUSTE_OJOS).sort().join(','),
+    'las caras de RUTAS_OJOS_GESTO y las de AJUSTE_OJOS son las mismas'
+  );
+});
+
+prueba('ojos: los dos recortes se AGRANDAN, porque vienen de poses más chicas', () => {
+  // Medido: el par entero mide un 87% del de idle en los dos recortes, así que
+  // la corrección tiene que ser mayor que 1. Si alguien la toca y la deja abajo
+  // de 1, la expresión cambia Y ADEMÁS los ojos se achican — el salto que la
+  // alineación viene a evitar.
+  for (const [cara, a] of Object.entries(AJUSTE_OJOS)) {
+    verdadero(a.escala > 1, `${cara}: escala ${a.escala}, y el recorte es más chico que idle`);
+    verdadero(a.escala < 1.3, `${cara}: escala ${a.escala} es demasiada para un ajuste de encuadre`);
+    verdadero(
+      Number.isFinite(a.x) && Number.isFinite(a.y),
+      `${cara}: el corrimiento tiene que ser un par de números`
+    );
+  }
 });

@@ -361,6 +361,79 @@ export const RUTAS_OJOS = {
   feliz: 'sprites/feliz-ojos.webp'
 };
 
+// ---- LAS TRES CARAS DE LA CARICIA ----
+//
+// CHIP NO TIENE PÁRPADOS: tiene dos lentes con aro crema y pupila. Una forma
+// bajando encima se lee como una persiana, no como un ojo entrecerrándose, y por
+// eso el squash de la caricia se veía mal — no era cuestión de ajustar la altura
+// ni el color, estaba mal el enfoque.
+//
+// Los dos recortes nuevos NO son de IA. Salen de `limpiando` y de `standby`, o
+// sea del mismo ilustrador y del mismo estilo. El intento generado tenía las
+// curvas hacia ABAJO, que es el contorno de la tristeza, y se descartó.
+export const RUTAS_OJOS_GESTO = {
+  contento: 'sprites/idle-ojos-contento.webp',
+  cerrado: 'sprites/idle-ojos-cerrado.webp'
+};
+
+// LA ALINEACIÓN, Y ACÁ HUBO UN DESVÍO QUE VALE DECLARAR.
+//
+// El pedido era compensar con un OFFSET por capa. Medida la huella alfa de las
+// tres sobre el lienzo de 256, el offset solo no alcanza: hay ESCALA. Los dos
+// recortes vienen de poses con la cabeza dibujada más chica.
+//
+//   capa       ojo izquierdo      ojo derecho        separación de centros
+//   idle       55x58 en x=85      54x58 en x=152,5   67,5
+//   contento   47x51 en x=83      51x53 en x=140     57,0
+//   cerrado    47x50 en x=79      50x50 en x=137,5   58,5
+//
+// O sea que el par entero mide un 87% de lo que mide en idle. Con solo mover las
+// capas, la expresión cambiaría Y ADEMÁS los ojos se achicarían un 13%, que es
+// exactamente el salto que el pedido quiere evitar. Así que cada capa lleva
+// escala y traslación, calculadas para que su caja de par caiga sobre la de
+// idle: ancho 122, centro (118,5 · 97,5).
+//
+// LO QUE ESTO NO ARREGLA, dicho en voz alta: adentro de cada recorte los dos
+// ojos no están a la misma altura —contento tiene 5 px de diferencia entre uno
+// y otro, cerrado 4— porque las poses de origen tenían la cabeza inclinada. Eso
+// es del dibujo y no de la alineación; emparejarlo sería editarle el arte al
+// ilustrador. A tamaño real se nota poco; queda para que Damián lo juzgue con el
+// dedo.
+//
+// `x` e `y` en % del lienzo, `escala` como factor. El orden importa: primero
+// escala sobre el centro, después traslada.
+export const AJUSTE_OJOS = {
+  contento: { escala: 1.151, x: 3.26, y: -1.12 },
+  cerrado: { escala: 1.14, x: 4.75, y: -7.24 }
+};
+
+export const VARS_OJOS_GESTO = {
+  contentoEscala: '--ojos-contento-escala',
+  contentoX: '--ojos-contento-x',
+  contentoY: '--ojos-contento-y',
+  cerradoEscala: '--ojos-cerrado-escala',
+  cerradoX: '--ojos-cerrado-x',
+  cerradoY: '--ojos-cerrado-y',
+  cruce: '--ojos-cruce'
+};
+
+// LA PROGRESIÓN. Es lo que hace un gato al que le rascan bien: primero entrecierra
+// los ojos, y si seguís, los cierra del todo.
+//
+// `aCerrado` es cuánto hay que sostener para llegar al cierre completo. Dos
+// segundos: menos y el cierre sale con cualquier roce, más y no llega nunca en
+// una caricia normal.
+//
+// `cruce` es la disolvencia entre una cara y la siguiente. No hay swap de src:
+// las tres capas están puestas y lo que cambia es la opacidad, así que la
+// expresión se construye en vez de saltar. Y la VUELTA pasa por contento —el
+// mismo camino al revés— porque un ojo que se abre de golpe deshace todo lo que
+// la caricia construyó, igual que pasaba con el corte seco del gesto.
+export const CARICIA_OJOS = { aCerrado: 2000, cruce: 260 };
+
+export const CLASE_OJOS_CONTENTO = 'ojos-contento';
+export const CLASE_OJOS_CERRADO = 'ojos-cerrado';
+
 // LOS FONDOS DEL GALPÓN VIVEN EN FRANJAS_DIA, cada uno pegado a su tramo. Acá
 // hubo un `RUTAS_FONDOS` con dos entradas —día y noche— de cuando el galpón
 // tenía dos fondos y no cuatro. Cuando entraron el amanecer y el mediodía, la
@@ -962,10 +1035,18 @@ export const VENTANA_FASTIDIO_MS = 3000;
 // más profunda: es lo que hace un cuerpo al que le rascan.
 export const RESPIRACION_CARICIA = { ciclo: 1.25, amplitud: 1.4 };
 
-// Los ojos a media asta. Es lo más importante de la caricia: un animal al que le
-// rascan cierra los ojos, y eso solo ya se lee como placer. Si de toda la lista
-// se implementara una cosa, sería esta.
-export const PARPADO_CARICIA = 0.45;
+// LOS OJOS A MEDIA ASTA SIGUEN SIENDO LO MÁS IMPORTANTE de la caricia —un animal
+// al que le rascan cierra los ojos, y eso solo ya se lee como placer— pero se
+// hacen con ARTE y no con una transformación.
+//
+// Acá vivía `PARPADO_CARICIA = 0.45`, que aplastaba la capa de ojos al 45% de
+// alto. El problema no era el número: Chip no tiene párpados, tiene lentes, y
+// una forma bajando encima se lee como una persiana. Ningún valor de ese factor
+// lo iba a arreglar.
+//
+// Lo reemplaza la progresión de RUTAS_OJOS_GESTO: normal -> contento ->
+// cerrado, con recortes de verdad. El párpado se queda para el PARPADEO, donde
+// funciona porque son 130 ms y no se llega a leer como forma.
 
 // La cabeza acompaña la mano. Una insinuación, no un seguimiento literal.
 export const INCLINACION_CARICIA = 1.2;
@@ -980,7 +1061,8 @@ export const CLASE_SOBRESALTO = 'sobresalto';
 export const CLASE_VOLVIENDO = 'volviendo';
 
 export const VARS_CARICIA_GESTO = {
-  parpado: '--caricia-parpado',
+  // `parpado: '--caricia-parpado'` se fue con el aplastado de la capa de ojos.
+  // Ver PARPADO_CARICIA arriba: lo reemplazan los recortes de RUTAS_OJOS_GESTO.
   inclinacion: '--caricia-inclinacion',
   vuelta: '--caricia-vuelta',
   cicloRespiracion: '--caricia-respiracion-ciclo',

@@ -811,6 +811,53 @@ body.es-noche #rayo {
   display: none;
 }
 
+/* ---- LAS DOS CARAS DE LA CARICIA ----
+
+   Tres capas apiladas y lo que cambia es la OPACIDAD. Con un swap de `src` la
+   expresión saltaría de una a otra; cruzándolas, se construye — que es la misma
+   idea que tiene el gesto entero.
+
+   Cada una lleva su escala y su corrimiento porque son recortes de otras poses,
+   con la cabeza dibujada un 13% más chica. Sin eso, cambiar de cara además
+   achicaría los ojos, que es justo el salto que se quiere evitar. Los números
+   están medidos: ver AJUSTE_OJOS en config.js. */
+.ojos-gesto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+  opacity: 0;
+  transition: opacity var(--ojos-cruce) ease-out;
+}
+
+.ojos-gesto[hidden] {
+  display: none;
+}
+
+#ojos-contento {
+  translate: var(--ojos-contento-x) var(--ojos-contento-y);
+  scale: var(--ojos-contento-escala);
+}
+
+#ojos-cerrado {
+  translate: var(--ojos-cerrado-x) var(--ojos-cerrado-y);
+  scale: var(--ojos-cerrado-escala);
+}
+
+/* LA PROGRESIÓN. Acariciar prende `contento`; sostener dos segundos prende
+   `cerrado` encima. Al soltar se apagan en orden inverso, así que la vuelta
+   pasa por contento: un ojo que se abre de golpe deshace todo lo anterior, que
+   es lo mismo que ya se decidió para el resto del gesto.
+
+   Las clases van en #chip y no en las capas para que el orden lo decida una
+   sola regla y no dos temporizadores peleándose. */
+#chip.ojos-contento #ojos-contento,
+#chip.ojos-cerrado #ojos-cerrado {
+  opacity: 1;
+}
+
 .parpadeando {
   animation: parpadear var(--duracion-parpadeo) both;
 }
@@ -4256,11 +4303,14 @@ body.sin-movimiento *::after {
 
    Usa la misma capa y el mismo pivote que el parpadeo — no puede haber dos
    orígenes para dos cosas distintas sobre el mismo elemento. */
-#chip.acariciando #ojos {
-  transform-origin: 50% var(--origen-parpadeo);
-  transform: scaleY(var(--caricia-parpado));
-  transition: transform 420ms ease-out;
-}
+/* Acá estaba el aplastado de la capa de ojos —`scaleY(0.45)`— y era lo que se
+   veía mal. Chip no tiene párpados: tiene dos lentes con aro crema, y una forma
+   bajando encima se lee como una persiana bajando sobre un vidrio, no como un
+   ojo entrecerrándose. No era cuestión de ajustar el factor; estaba mal el
+   enfoque.
+
+   Lo reemplazan los dos recortes de arriba. El párpado sigue existiendo para el
+   PARPADEO, que son 130 ms y no se llega a leer como forma. */
 
 /* LA RESPIRACIÓN, más lenta y más profunda. Es relajación: sutil, pero se
    siente. Los tres valores salen de RESPIRACION_CARICIA en config.js. */

@@ -34,6 +34,10 @@ import {
   CLASE_VOLVIENDO,
   CLASE_SOBRESALTO,
   VARS_CARICIA_GESTO,
+  RUTAS_OJOS_GESTO,
+  CARICIA_OJOS,
+  CLASE_OJOS_CONTENTO,
+  CLASE_OJOS_CERRADO,
   TOQUES_DEBUG,
   VENTANA_DEBUG_MS,
   VUELO_OBJETO,
@@ -157,6 +161,8 @@ import {
   capaBrazoDer,
   grupoCabeza,
   capaOjos,
+  capaOjosContento,
+  capaOjosCerrado,
   capaParpado,
   contenedorCorazones,
   contenedorDestellos,
@@ -775,6 +781,32 @@ function pintarOjos(estadoVisual) {
   capaOjos.src = ruta;
   capaOjos.hidden = false;
 
+  // LAS DOS CARAS DE LA CARICIA VAN DONDE HAYA OJOS, y el primer intento las
+  // ató a `idle` — que parecía lo correcto y rompía justo el caso que importa.
+  //
+  // Acariciar SUBE EL HUMOR, y con el humor arriba Chip pasa a `feliz`. O sea
+  // que a los pocos cuadros de empezar la caricia el estado visual cambiaba,
+  // esta función se volvía a llamar, las capas se escondían y la progresión se
+  // cancelaba antes de llegar al cierre. La mejor parte del gesto no se veía
+  // NUNCA, y no por un timing: por la caricia funcionando.
+  //
+  // Que valgan también para `feliz` es barato porque los dos recortes tienen la
+  // región ocular casi en el mismo lugar —medido: centro (122 · 98) en feliz
+  // contra (118,5 · 97,5) en idle, tres píxeles y medio sobre un lienzo de 256—
+  // así que la corrección de encuadre sirve para los dos.
+  //
+  // Donde no hay recorte de ojos —critico, standby— no hay nada que cruzar y
+  // estas se esconden con la capa de abajo.
+  const conGesto = Boolean(ruta);
+  for (const [nombre, capa] of [
+    ['contento', capaOjosContento],
+    ['cerrado', capaOjosCerrado]
+  ]) {
+    capa.hidden = !conGesto;
+    if (conGesto) capa.src = RUTAS_OJOS_GESTO[nombre];
+  }
+  if (!conGesto) soltarOjosDeLaCaricia();
+
   // El párpado usa el MISMO archivo como máscara: la forma es exactamente la de
   // los ojos, así que tapa los del cuerpo sin desbordar ni un píxel.
   raiz.style.setProperty(VARS_PERSONAJE.mascaraOjos, `url("${ruta}")`);
@@ -1317,10 +1349,49 @@ export function conectarCaricia({ onCaricia, onToque, onFastidio, fastidiado }) 
 // asta, la respiración más lenta y profunda, la cabeza inclinada hacia donde va
 // la mano, y un corazón cada tanto. La clase la lee style.css.
 
+// ---- LA PROGRESIÓN DE LOS OJOS ----
+//
+// Normal -> contento -> cerrado mientras la caricia dura, y al soltar el mismo
+// camino al revés. Es lo que hace un gato al que le rascan bien: primero
+// entrecierra, y si seguís, cierra del todo.
+//
+// La vuelta PASA POR CONTENTO y no salta a normal, por lo mismo que la vuelta
+// del gesto entero es lenta: abrir los ojos de golpe deshace lo anterior.
+
+let temporizadorOjosCerrados = null;
+let temporizadorOjosVuelta = null;
+
+function ojosDeLaCaricia() {
+  clearTimeout(temporizadorOjosVuelta);
+  clearTimeout(temporizadorOjosCerrados);
+  cajaChip.classList.add(CLASE_OJOS_CONTENTO);
+
+  temporizadorOjosCerrados = setTimeout(() => {
+    temporizadorOjosCerrados = null;
+    cajaChip.classList.add(CLASE_OJOS_CERRADO);
+  }, CARICIA_OJOS.aCerrado);
+}
+
+function soltarOjosDeLaCaricia() {
+  clearTimeout(temporizadorOjosCerrados);
+  temporizadorOjosCerrados = null;
+  clearTimeout(temporizadorOjosVuelta);
+
+  // Primero se apaga `cerrado`, que descubre `contento` abajo; recién cuando
+  // ese cruce terminó se apaga el otro. Apagar los dos juntos sería volver a
+  // normal de un salto, con la capa del medio sin llegar a verse.
+  cajaChip.classList.remove(CLASE_OJOS_CERRADO);
+  temporizadorOjosVuelta = setTimeout(() => {
+    temporizadorOjosVuelta = null;
+    cajaChip.classList.remove(CLASE_OJOS_CONTENTO);
+  }, CARICIA_OJOS.cruce);
+}
+
 function empezarCaricia() {
   clearTimeout(temporizadorVuelta);
   cajaChip.classList.remove(CLASE_VOLVIENDO);
   cajaChip.classList.add(CLASE_ACARICIANDO);
+  ojosDeLaCaricia();
 
   // El primer corazón sale enseguida; los demás cada PASO_CARICIA_MS. Sin el
   // primero inmediato, el medio segundo inicial se siente como que no pasó nada.
@@ -1349,6 +1420,12 @@ function inclinarHaciaLaMano(dx) {
 function terminarCaricia() {
   clearInterval(temporizadorCaricia);
   temporizadorCaricia = null;
+
+  // Los ojos vuelven ENSEGUIDA y no después del sostén: el resto del gesto —la
+  // respiración, la cabeza, los brazos— sostiene y vuelve despacio porque son
+  // el cuerpo relajado, y eso se aguanta un momento más. Los ojos son atención:
+  // levantaste el dedo, te vuelve a mirar.
+  soltarOjosDeLaCaricia();
 
   clearTimeout(temporizadorVuelta);
   temporizadorVuelta = setTimeout(() => {

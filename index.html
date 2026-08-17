@@ -169,6 +169,20 @@
            tienen recorte. -->
       <img id="ojos" alt="" aria-hidden="true" hidden>
 
+      <!-- LAS DOS CARAS DE LA CARICIA. Van como capas puestas y no como un
+           cambio de src: con tres capas apiladas la expresión se cruza por
+           opacidad y se CONSTRUYE, y con un swap de src saltaría de una a otra.
+
+           Sólo existen para idle: `feliz` ya tiene su propio recorte con los
+           ojos contentos, y en los demás estados la capa de abajo está
+           escondida y estas dos con ella.
+
+           Cada una lleva su escala y su corrimiento —ver AJUSTE_OJOS en
+           config.js—: son recortes de `limpiando` y de `standby`, y esas poses
+           tienen la cabeza dibujada más chica. -->
+      <img id="ojos-contento" class="ojos-gesto" alt="" aria-hidden="true" hidden>
+      <img id="ojos-cerrado" class="ojos-gesto" alt="" aria-hidden="true" hidden>
+
       <!-- LA LUZ DE LA CABEZA VA ADENTRO DEL GRUPO, y no es una preferencia de
            orden: es que el poste está PINTADO en el sprite, así que cuando la
            cabeza se inclina el poste se inclina con ella. Estas dos capas

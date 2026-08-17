@@ -61,7 +61,9 @@ import {
   VARS_CABEZA,
   VARS_CARICIA,
   VARS_CARICIA_GESTO,
-  PARPADO_CARICIA,
+  VARS_OJOS_GESTO,
+  AJUSTE_OJOS,
+  CARICIA_OJOS,
   RESPIRACION_CARICIA,
   VUELTA_CARICIA_MS,
   DURACION_CARICIA_MS,
@@ -254,6 +256,17 @@ export function variablesDeTema() {
 
     // Acariciar
     [VARS_CARICIA.duracion]: ms(DURACION_CARICIA_MS),
+
+    // Las dos caras de la caricia, cada una con la corrección que la pone
+    // exactamente donde están los ojos de idle. Ver AJUSTE_OJOS en config.js,
+    // que trae la medición de las tres capas y por qué hace falta escala.
+    [VARS_OJOS_GESTO.contentoEscala]: String(AJUSTE_OJOS.contento.escala),
+    [VARS_OJOS_GESTO.contentoX]: pct(AJUSTE_OJOS.contento.x),
+    [VARS_OJOS_GESTO.contentoY]: pct(AJUSTE_OJOS.contento.y),
+    [VARS_OJOS_GESTO.cerradoEscala]: String(AJUSTE_OJOS.cerrado.escala),
+    [VARS_OJOS_GESTO.cerradoX]: pct(AJUSTE_OJOS.cerrado.x),
+    [VARS_OJOS_GESTO.cerradoY]: pct(AJUSTE_OJOS.cerrado.y),
+    [VARS_OJOS_GESTO.cruce]: ms(CARICIA_OJOS.cruce),
     [VARS_ZONA_CHIP.forma]: poligonoDeSilueta(SILUETA_CHIP),
     [VARS_DEBUG.esquina]: px(ESQUINA_DEBUG),
 
@@ -411,7 +424,6 @@ export function variablesDeTema() {
     [VARS_BRAZOS.saludoEntra]: ms(SALUDO_BRAZO.entra),
     [VARS_BRAZOS.saludoVuelve]: ms(SALUDO_BRAZO.vuelve),
     [VARS_BRAZOS.caricia]: BRAZO_CARICIA + "deg",
-    [VARS_CARICIA_GESTO.parpado]: String(PARPADO_CARICIA),
     [VARS_CARICIA_GESTO.vuelta]: ms(VUELTA_CARICIA_MS),
     [VARS_CARICIA_GESTO.cicloRespiracion]: ms(Math.round(CICLO_RESPIRACION_MS * RESPIRACION_CARICIA.ciclo)),
     [VARS_CARICIA_GESTO.respiracionY]: String(+(1 + (RESPIRACION.y - 1) * RESPIRACION_CARICIA.amplitud).toFixed(4)),
