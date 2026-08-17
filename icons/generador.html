@@ -1,117 +1,166 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chip — generador de íconos</title>
+<meta charset="utf-8">
+<title>Generador de íconos</title>
 <style>
-  body {
-    background: #0d0f14;
-    color: #e6e6e6;
-    font-family: system-ui, sans-serif;
-    margin: 0;
-    padding: 24px;
-    line-height: 1.5;
-  }
+  body { background: #14161c; color: #e6e6e6; font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0; padding: 24px; }
   h1 { font-size: 18px; margin: 0 0 4px; }
-  p { color: #9aa0ab; font-size: 13px; max-width: 60ch; margin: 0 0 20px; }
+  p { color: #9aa0ab; font-size: 13px; max-width: 72ch; margin: 0 0 14px; }
+  code { color: #c9ced7; }
   .par { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
   figure { margin: 0; display: flex; flex-direction: column; gap: 8px; align-items: center; }
   figcaption { font-size: 12px; color: #9aa0ab; }
   canvas { border: 1px solid #2a2d38; border-radius: 8px; image-rendering: pixelated; }
   button {
-    background: #1e2129;
-    border: 1px solid #2a2d38;
-    border-radius: 6px;
-    color: #e6e6e6;
-    font: inherit;
-    font-size: 13px;
-    padding: 6px 12px;
-    cursor: pointer;
+    background: #1e2129; border: 1px solid #2a2d38; border-radius: 6px;
+    color: #e6e6e6; font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer;
   }
   button:hover { background: #262a35; }
+  .zona { position: relative; }
+  .zona::after {
+    content: ''; position: absolute; inset: 10%; border: 1px dashed #ff2bd1;
+    border-radius: 50%; pointer-events: none;
+  }
 </style>
 </head>
 <body>
 <h1>Generador de íconos</h1>
 <p>
-  Dibuja los dos PNG que pide <code>manifest.json</code> y los baja al disco.
+  Dibuja los tres PNG que pide <code>manifest.json</code> y los baja al disco.
   Movelos a <code>/icons/</code> pisando los que ya están. Cero herramientas
-  externas: es sólo canvas. Ahora dibuja a Chip de verdad, desde
-  <code>sprites/idle.webp</code> sobre un recorte del galpón — la zona de la ventana con la luz del atardecer detrás.
+  externas: es sólo canvas.
+</p>
+<p>
+  <strong>Los íconos SALEN DE ACÁ.</strong> Antes eran un archivo suelto,
+  generado una vez y congelado: cuando el arte cambió, no cambiaron, y esta
+  página dibujaba algo distinto de lo que había en disco. Ahora los números del
+  encuadre viven en <code>ICONOS</code>, en <code>js/config.js</code>, y los lee
+  tanto esta página como el script que los escribe — así no se pueden separar.
+</p>
+<p>
+  El círculo punteado del maskable es la <strong>zona segura</strong>: Android
+  recorta el borde con formas distintas según el launcher y sólo garantiza el
+  80% central. Lo que quede afuera se puede perder.
 </p>
 
 <div class="par" id="par"></div>
 
 <script type="module">
-import { RUTAS_SPRITES } from '../js/config.js';
+import { ICONOS } from '../js/config.js';
 
-const TAMANOS = [192, 512];
-
-// El charcoal del juego: mismo valor que background_color y theme_color de
-// manifest.json y que el body de style.css. Un ícono transparente lo pinta cada
-// launcher a su manera, casi siempre en blanco.
-const FONDO = '#0d0f14';
-
-// Este archivo vive en /icons/, así que la ruta del sprite —que es
-// document-relative en config.js— necesita subir un nivel.
-const RUTA_IDLE = '../' + RUTAS_SPRITES.idle;
-
-const TAMANO_SPRITE = 256;
+// Este archivo vive en /icons/, así que las rutas de config.js —que son
+// relativas al documento— necesitan subir un nivel.
+const arriba = (r) => '../' + r;
 
 function cargar(ruta) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('no se pudo cargar ' + ruta));
+    img.onerror = () => reject(new Error('no cargó ' + ruta));
     img.src = ruta;
   });
 }
 
-function dibujar(canvas, n, chip) {
-  const ctx = canvas.getContext('2d');
+// LA CAJA OPACA del sprite. Es lo que hay que encuadrar, no el lienzo: el arte
+// trae margen transparente alrededor, y centrar el lienzo deja a Chip corrido y
+// más chico de lo que entra.
+function cajaOpaca(img) {
+  const c = document.createElement('canvas');
+  c.width = img.width;
+  c.height = img.height;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(img, 0, 0);
+  const d = x.getImageData(0, 0, img.width, img.height).data;
 
-  ctx.fillStyle = FONDO;
-  ctx.fillRect(0, 0, n, n);
-
-  // Mismo encuadre que el canvas del juego: el sprite ocupa todo el cuadrado y
-  // el aire se lo da el margen transparente que ya trae el arte.
-  //
-  // El suavizado se decide por el sentido del escalado: 512 es exactamente 2x de
-  // 256 y nearest lo deja perfecto; 192 es una reducción a 0,75 y con nearest se
-  // caerían filas enteras de píxeles justo en la cara. Ahí conviene suavizar.
-  ctx.imageSmoothingEnabled = n < TAMANO_SPRITE;
-  ctx.drawImage(chip, 0, 0, n, n);
+  let x0 = img.width, x1 = -1, y0 = img.height, y1 = -1;
+  for (let y = 0; y < img.height; y++) {
+    for (let x2 = 0; x2 < img.width; x2++) {
+      if (d[(y * img.width + x2) * 4 + 3] < 12) continue;
+      if (x2 < x0) x0 = x2;
+      if (x2 > x1) x1 = x2;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
 
-const chip = await cargar(RUTA_IDLE);
+function dibujar(canvas, n, fondo, chip, tinta, { maskable = false } = {}) {
+  const ctx = canvas.getContext('2d');
+
+  // 1. El recorte del galpón. Cuadrado, medido sobre el fondo: el cielo de la
+  //    ventana ocupa x 7,4% a 20,3%, así que el cuadrado se corre apenas a la
+  //    derecha del borde y la ventana queda en el tercio izquierdo.
+  const lado = Math.round(fondo.height * ICONOS.recorte.lado);
+  const ox = Math.round(fondo.width * ICONOS.recorte.x);
+  const oy = Math.round(fondo.height * ICONOS.recorte.y);
+
+  ctx.filter = `brightness(${ICONOS.brilloFondo})`;
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(fondo, ox, oy, lado, lado, 0, 0, n, n);
+  ctx.filter = 'none';
+
+  // 2. Chip encima. En el maskable entra en la zona segura; en los otros ocupa
+  //    todo lo que puede.
+  const cabe = Math.round(n * (maskable ? ICONOS.zonaSegura : 1));
+  const escala = Math.min(cabe / tinta.w, cabe / tinta.h);
+  const ancho = Math.max(1, Math.round(tinta.w * escala));
+  const alto = Math.max(1, Math.round(tinta.h * escala));
+
+  // El suavizado se decide por el sentido del escalado: agrandando, nearest
+  // mantiene el pixel art nítido; achicando, nearest se come filas enteras
+  // justo en la cara y conviene suavizar.
+  ctx.imageSmoothingEnabled = ancho < tinta.w;
+  ctx.drawImage(
+    chip, tinta.x, tinta.y, tinta.w, tinta.h,
+    Math.round((n - ancho) / 2), Math.round((n - alto) / 2), ancho, alto
+  );
+}
+
+const [fondo, chip] = await Promise.all([cargar(arriba(ICONOS.fondo)), cargar(arriba(ICONOS.chip))]);
+const tinta = cajaOpaca(chip);
 
 const contenedor = document.getElementById('par');
 
-for (const n of TAMANOS) {
+const piezas = [
+  { nombre: 'icon-192.png', n: 192, maskable: false },
+  { nombre: 'icon-512.png', n: 512, maskable: false },
+  { nombre: 'icon-512-maskable.png', n: 512, maskable: true }
+];
+
+for (const pieza of piezas) {
   const figura = document.createElement('figure');
 
+  const caja = document.createElement('div');
+  if (pieza.maskable) caja.className = 'zona';
+
   const canvas = document.createElement('canvas');
-  canvas.width = n;
-  canvas.height = n;
+  canvas.width = pieza.n;
+  canvas.height = pieza.n;
   canvas.style.width = '192px';
   canvas.style.height = '192px';
-  dibujar(canvas, n, chip);
+  dibujar(canvas, pieza.n, fondo, chip, tinta, { maskable: pieza.maskable });
+  caja.appendChild(canvas);
 
   const pie = document.createElement('figcaption');
-  pie.textContent = `icon-${n}.png — ${n}×${n}`;
+  pie.textContent = `${pieza.nombre} — ${pieza.n}×${pieza.n}`;
 
   const boton = document.createElement('button');
   boton.type = 'button';
-  boton.textContent = `bajar icon-${n}.png`;
+  boton.textContent = 'bajar ' + pieza.nombre;
   boton.addEventListener('click', () => {
     const enlace = document.createElement('a');
-    enlace.download = `icon-${n}.png`;
+    enlace.download = pieza.nombre;
+    // toDataURL('image/png') sale SIEMPRE en RGBA de 8 bits por canal, sin
+    // paleta. Los íconos que había estaban indexados a 256 colores —contra los
+    // 19.391 del sprite— y por eso la splash de Android mostraba bandeo: no los
+    // había cuantizado esta página, los cuantizó algo después.
     enlace.href = canvas.toDataURL('image/png');
     enlace.click();
   });
 
-  figura.append(canvas, pie, boton);
+  figura.append(caja, pie, boton);
   contenedor.appendChild(figura);
 }
 </script>

@@ -1703,6 +1703,43 @@ export const VARS_REPISA = {
 // la app —más oscuro que cualquier zona real de la escena— así que el salto a
 // la escena era un flash. Con la sombra del propio galpón, la splash y el
 // primer cuadro son el mismo lugar con la luz apagada.
+// ---- Los íconos de la PWA ----
+//
+// VIVEN ACÁ Y NO EN EL GENERADOR porque los dibujan DOS cosas: la página
+// icons/generador.html, para mirarlos, y un script de build, para escribirlos.
+// Con los números en el HTML, el archivo que se genera y el que se mira podían
+// separarse sin que nadie se enterara — que es exactamente lo que pasó: los
+// íconos en disco llevan el galpón detrás y el generador dibujaba a Chip sobre
+// un plano.
+//
+// Y ESE ERA EL PROBLEMA DE FONDO, más que el bandeo. Los íconos eran un archivo
+// suelto, generado una vez y congelado: cuando el arte cambió, no cambiaron. Al
+// salir del generador quedan atados al sprite real y se regeneran solos cuando
+// alguien toca a Chip.
+//
+// El recorte del fondo está MEDIDO sobre fondo-dia.webp (1672x941): el cielo de
+// la ventana ocupa x 7,4% a 20,3% y y 8,9% a 73,5%. El cuadrado se corre apenas
+// a la derecha del borde para que la ventana quede en el tercio izquierdo y
+// entre pared a la derecha, que es lo que le da profundidad al ícono.
+export const ICONOS = {
+  fondo: 'sprites/fondo-dia.webp',
+  chip: 'sprites/idle.webp',
+  // Lado del recorte, en fracción del alto del fondo, y desde dónde.
+  recorte: { lado: 0.86, x: 0.024, y: 0.07 },
+  // El fondo va un poco más apagado que el original: a brillo pleno el cielo
+  // compite con Chip, que es lo más claro que tiene que haber.
+  brilloFondo: 0.82,
+  // CUÁNTO DEL ÍCONO PUEDE OCUPAR CHIP EN EL MASKABLE. Android recorta el borde
+  // con formas distintas según el launcher —círculo, squircle, gota— y sólo
+  // garantiza el 80% central. La tinta de Chip tiene que entrar ahí o en un
+  // teléfono con íconos redondos le corta la cabeza.
+  //
+  // Se aplica sobre la TINTA y no sobre el lienzo: el sprite trae margen
+  // transparente, así que escalar el lienzo al 80% dejaría a Chip mucho más
+  // chico de lo necesario. El script mide la caja opaca y encuadra sobre ella.
+  zonaSegura: 0.8
+};
+
 export const COLOR_APERTURA = '#181b1f';
 
 // EL VELO DURA 820 ms Y NO 360, y el escalonado se abrió a la par.
