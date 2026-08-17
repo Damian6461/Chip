@@ -50,6 +50,8 @@ http://127.0.0.1:5500/index.html?debug=1
 
 Sin el parámetro, `js/debug.js` ni se descarga (import dinámico).
 
+**En la app instalada el parámetro no llega** —la PWA arranca en la `start_url` cacheada y el service worker responde con `caches.match` sin `ignoreSearch`—, así que hay una puerta de servicio: **cinco toques rápidos en la esquina de arriba a la izquierda**, dentro de dos segundos. Era mantener apretado el botón del menú tres segundos y se cambió porque no funcionaba con el dedo aunque tuviera las cuatro cosas que un gesto sostenido necesita; ver `TOQUES_DEBUG` en `config.js`.
+
 | Control | Qué hace |
 |---|---|
 | multiplicador | escala las horas de los dos controles de abajo |
@@ -174,6 +176,16 @@ razonables. Se detectan sabiendo que existen.
 | `getBoundingClientRect` sobre un elemento con `transform` | la caja **alineada a los ejes** del elemento rotado, siempre más grande | la caja del elemento |
 | un gesto sostenido con eventos SINTÉTICOS | que el gesto **anda** | que anda en automatización, que es justo donde el navegador no lo cancela |
 | `setTimeout(fn, 30)` en la pestaña oculta | un timer de **un segundo**: el navegador clampea los timers de las pestañas en segundo plano | treinta milisegundos |
+| una medición del contorno hecha sobre **una** pose | los extremos de esa pose | los de las nueve |
+| la captura de la extensión | el viewport **reescalado** a su ancho máximo, y las regiones de `zoom` van en esas coordenadas, no en px de CSS | píxeles de CSS uno a uno |
+
+La sexta es la que dejó pasar un bug entero. `ZONA_PISO` decía "abajo de la mitad
+ninguna pose pasa de x 18,2% ni de x 74,7%", y esos dos números son los de
+`critico` sola: `jugando` llega ocho puntos más a la derecha con su rueda, o sea
+adentro de la franja donde caía el objeto. La medición se había verificado contra
+sí misma. La salida es la de siempre en este proyecto —**medir la unión, no una
+muestra**— y además dejarla escrita en una tabla que el test vuelva a recorrer,
+en vez de en un comentario.
 
 La quinta es la que más caro sale, porque no falla: devuelve un dato coherente
 del momento equivocado. Un `await` de 30 ms entre dos lecturas mide un segundo
@@ -276,6 +288,21 @@ Siete archivos ideales, **seis obligatorios**: `limpiando.png` es opcional. Los 
 Además hay dos **recortes de la región ocular** —`idle-ojos.png` y `feliz-ojos.png`— para el parpadeo: mismo lienzo de 256, transparentes, alineados al original. Un estado sin recorte no parpadea y no rompe nada.
 
 El loader degrada en dos escalones: falta el sprite pedido → usa el de `idle`; falta ese también → placeholder con el nombre del estado escrito. Eso permitió desarrollar sin arte y verificar la cadena a ojo. **Contrapartida, y ahora está activa:** con los siete PNG en su lugar, un sprite que falte se ve como `idle` en vez de cantar el error.
+
+### Las capacidades visuales se derivan de qué archivos existen
+
+Es un patrón del proyecto y no una casualidad del loader. **Una pose puede o no puede hacer un gesto según qué recortes tenga en el disco, y eso se pregunta mirando la tabla de rutas, no una lista aparte que haya que mantener sincronizada a mano.**
+
+| Si existe | La pose gana |
+|---|---|
+| `<pose>-ojos.webp` | parpadea, y cierra los ojos con la caricia |
+| `<pose>-cabeza.webp` + su pivote | ladea la cabeza |
+| `<pose>-brazo-izq/der.webp` + su pivote | mueve los brazos, se acomoda y saluda |
+| `<pose>-cuerpo.webp` | y **además** puede hacerlo con el ángulo grande |
+
+Ese último es el caso que lo muestra mejor. La capa que rota va encima del sprite entero, que sigue teniendo la parte dibujada, así que en el borde asoma la de abajo corrida: por eso sin `-cuerpo` el techo son 2°. `anguloDeBrazo()` en `ui.js` pregunta si la pose está en `RUTAS_CUERPO` y elige el ángulo. Cuando llegó `feliz-cuerpo.webp`, esa pose subió sola de 2° a 5° sin tocar una línea de código.
+
+La regla general: **que la ausencia de un archivo degrade el gesto, nunca que lo rompa.** El sistema se vuelve predecible —se sabe qué va a pasar con arte a medio terminar— y la deuda de arte queda declarada en un solo lugar, que es la carpeta.
 
 `ui.js` apaga el suavizado (`ctx.imageSmoothingEnabled = false`) apenas crea el contexto: el bilineal del navegador emborrona el pixel art al escalarlo. Es estado del contexto, no un parámetro de `drawImage`, así que se setea una sola vez y sobrevive a `clearRect`. **Cambiar el tamaño del canvas lo resetea a `true`** — si algún día el canvas deja de ser fijo, hay que volver a bajarlo.
 

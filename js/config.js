@@ -135,7 +135,8 @@ export const POSES_IDLE = ['idle'];
 // entero, que es el caso real: a 3 grados no asoma la cabeza pintada de abajo,
 // y aguanta hasta 6. El solape del recorte sobre el torso es lo que lo permite.
 export const RUTAS_CABEZA = {
-  idle: 'sprites/idle-cabeza.webp'
+  idle: 'sprites/idle-cabeza.webp',
+  feliz: 'sprites/feliz-cabeza.webp'
 };
 
 // EL CUERPO SIN CABEZA NI BRAZOS, y esto es lo que destraba los dos gestos.
@@ -154,11 +155,25 @@ export const RUTAS_CABEZA = {
 // completo. Sin entrada dibuja el de siempre, así que una pose sin capas no se
 // entera de que esto existe.
 export const RUTAS_CUERPO = {
-  idle: 'sprites/idle-cuerpo.webp'
+  idle: 'sprites/idle-cuerpo.webp',
+  feliz: 'sprites/feliz-cuerpo.webp'
 };
 
-// El pivote, en % del lienzo: la base del casco. Sale de (128, 140) sobre 256.
-export const PIVOTE_CABEZA = { x: 50, y: 54.7 };
+// EL PIVOTE SE MUEVE CON LA POSE, igual que el de los brazos: en `feliz` la
+// cabeza está corrida a la derecha y el cuello no cae donde el de `idle`.
+//
+// El punto es la base del casco: en las dos poses el recorte se angosta hasta
+// y=137 y se vuelve a ensanchar en y=140, que es donde arranca el hombro. Esa
+// cintura es el cuello, y y=140 sobre 256 —el 54,7%— es la misma en las dos.
+// Lo que cambia es x: el centro de las filas 140 a 145 da 125,8 en idle y 132,8
+// en feliz, siete píxeles de corrimiento.
+//
+// idle conserva su 50% exacto, que es el que ya estaba verificado; feliz lleva
+// el mismo desplazamiento medido sobre esa referencia: 135 sobre 256.
+export const PIVOTES_CABEZA = {
+  idle: { x: 50, y: 54.7 },
+  feliz: { x: 52.7, y: 54.7 }
+};
 
 // ---- LOS BRAZOS ----
 //
@@ -772,13 +787,59 @@ export const VARS_CAMBIO = {
 // importa para el modelo sin culpa: podés acariciarlo todo lo que quieras,
 // siempre está bien. Lo que lo molesta es que lo estés picando con el dedo.
 
+// ---- LA ZONA TÁCTIL DE CHIP ----
+//
+// La caja de #chip es CUADRADA y mide --alto-chip de lado: en un teléfono de
+// 480x945 son 416x416, el 87% del ancho de la escena. La silueta de Chip mide
+// unos 278 px de ancho: la caja es casi el doble de lo que hay dibujado, y todo
+// ese aire de más se comía los toques de alrededor. Damián lo midió en
+// producción con un objeto tirado en x 391-416: fuera de la silueta de Chip
+// —que termina en x≈379— y adentro de su caja, así que el tap nunca llegaba a
+// la pieza.
+//
+// La zona sale de la HUELLA ALFA de las nueve poses, unidas: el hitbox tiene que
+// cubrir cualquier pose y no la que esté puesta ahora. Umbral 128 —el contorno
+// opaco, no la niebla del borde— y corrida mínima de 6 px, porque `jugando`
+// tiene cinco píxeles sueltos de alfa 19 a 58 en x=11 que no son dibujo: son
+// basura del recorte, y sin la corrida corrían el borde izquierdo 14 puntos.
+//
+// Cada fila es [y de arranque, x izquierdo, x derecho] en % del lienzo de 256,
+// que es exactamente la caja de #chip. Bandas de 16 px: la escalera no se nota
+// en un hitbox y con 34 vértices el polígono sigue siendo legible.
+//
+// A los extremos medidos se les suman 2 puntos de holgura por lado, que es más
+// que lo que Chip se corre con la respiración (1,1 puntos en el borde) y con el
+// rebote.
+//
+// Y ABAJO SE RECORTA CONTRA LA FRANJA DEL PISO. De la banda y=62,5 para abajo
+// —donde puede haber una pieza tirada— el borde derecho se corta en 83,5 aunque
+// `jugando` llegue a 89,1: la rueda de esa pose es lo único que entra en la
+// franja, y entre perder un pedazo de rueda tocable en una pose transitoria o
+// perder el objeto que el jugador quiere levantar, se pierde la rueda. De ahí
+// salen los límites de ZONA_PISO, que se derivan de este número.
+export const SILUETA_CHIP = [
+  [0, 35.9, 66.5],
+  [6.3, 35.9, 66.5],
+  [12.5, 28.5, 68.8],
+  [18.8, 20.7, 77.8],
+  [25, 16, 84],
+  [31.3, 12.5, 85.2],
+  [37.5, 7, 87.9],
+  [43.8, 7, 87.9],
+  [50, 8.5, 87.2],
+  [56.3, 14, 87.2],
+  [62.5, 12.8, 83.5],
+  [68.8, 12.8, 83.5],
+  [75, 12.5, 83.5],
+  [81.3, 11.7, 82.9],
+  [87.5, 13.2, 82.9],
+  [93.8, 16, 79.7]
+];
+
+export const VARS_ZONA_CHIP = { forma: '--zona-chip' };
+
 // Cuánto movimiento convierte un apretón en un arrastre.
 export const MOVIMIENTO_CARICIA = 10;
-
-// Y cuánto lo cancela. Es un umbral de DISTANCIA y no el evento `pointerleave`:
-// un dedo apoyado tres segundos se mueve solo, y con pointerleave el gesto se
-// abortaba con el micromovimiento. Ver la trampa del touch-action en el README.
-export const MOVIMIENTO_CANCELA = 20;
 
 // Más que esto ya no es un tap seco.
 export const TOQUE_SECO_MS = 200;
@@ -852,10 +913,22 @@ export const ESPERA_MANTENIDO_MS = 500;
 
 export const CLASE_CARICIA = 'acariciado';
 export const CLASE_CANSADO = 'cansado';
-export const CLASE_MANTENIENDO = 'manteniendo';
 
+// EL ANILLO CIAN DEL MANTENIDO SE FUE, y con él la clase que lo prendía y la
+// variable que le daba la duración.
+//
+// Era la señal de que el mantenido estaba corriendo: un aro que se cerraba sobre
+// Chip durante los 500 ms. El problema es que se prendía en el `pointerdown`, o
+// sea en TODOS los gestos, y aparecía al 18% del recorrido — 90 ms, menos de lo
+// que tarda un dedo en recorrer los 10 px que convierten el gesto en caricia.
+// Así que acariciarlo o tocarlo dibujaba un destello cian, que es el ripple de
+// un botón y es luz fría: lo contrario de lo que comunica una caricia.
+//
+// Va SIN REEMPLAZO, y eso es la decisión y no un olvido. Lo que Chip contesta
+// cuando lo tocás ya está en su cuerpo —los ojos, la respiración, la cabeza, los
+// corazones, el sobresalto— y el mantenido termina abriendo el panel, que es
+// señal suficiente de que el gesto llegó.
 export const VARS_CARICIA = {
-  espera: '--espera-mantenido',
   duracion: '--duracion-caricia'
 };
 
@@ -2347,10 +2420,30 @@ export const ORIGEN_PARPADEO = '38%';
 // este color, tapando los ojos del cuerpo. Queda debajo de la capa de ojos, así
 // que en reposo no se ve nada distinto; sólo aparece cuando el ojo se cierra.
 //
-// El color no está elegido a ojo: es el que el artista usó para dibujar los ojos
-// cerrados de `standby`, muestreado de ese sprite (#ffc493, 103 px, dominante de
-// su zona ocular después del contorno negro).
-export const COLOR_PARPADO = '#ffc493';
+// EL COLOR ES EL DE LA CHAPA DE LA CABEZA, y antes no lo era.
+//
+// Era #ffc493: el crema con el que el artista dibujó los ojos cerrados de
+// `standby`. Para el parpadeo entero funcionaba —la capa de ojos se achata a
+// cero y lo que queda es la cuenca completa, que en el sprite es crema— pero la
+// caricia deja los ojos a media asta durante SEGUNDOS, y ahí lo que el párpado
+// tapa es otra cosa. Medido sobre los dos recortes: la banda de arriba que
+// queda al descubierto al achatar al 45% es contorno NEGRO —286 px en idle, 263
+// en feliz— y no cuenca. O sea que el crema no estaba tapando una cuenca crema:
+// estaba poniendo una banda clara donde el dibujo tiene el filo oscuro del ojo.
+// Por eso se veía postizo.
+//
+// El valor nuevo sale de la chapa que hay JUSTO ARRIBA de la región ocular, en
+// los sprites, descartando el contorno y todo lo que no sea gris: mediana de
+// 1067 px en idle (#696e7a) y de 947 px en feliz (#646973). El punto medio de
+// los dos, que queda a dos unidades de cada uno.
+//
+// Un párpado es la propia cabeza bajando sobre el ojo. Si es de otro color, se
+// lee como una mancha encima.
+//
+// No depende de la franja horaria: el sprite de Chip no lleva filtro por hora
+// —lo único que cambia de noche es la escala del halo del bulbo— así que el
+// párpado y la chapa que lo rodea reciben siempre la misma luz.
+export const COLOR_PARPADO = '#676c77';
 
 // 130 ms en total. El reparto interno —cierre 50, mantener 20, apertura 60— vive
 // en los porcentajes del keyframe, porque es la forma del movimiento y no un
@@ -2615,10 +2708,34 @@ export const PROBABILIDAD_OBJETO_PISO = 0.15;
 // exactamente en la misma apertura que el cartel, así que la franja de adelante,
 // que era la candidata obvia, es justo la que está ocupada.
 //
-// De ahí las dos franjas laterales. El límite de x sale del contorno OPACO de
-// los nueve sprites, no de su caja: la caja de #chip va de x 6,7% a 93,3% de la
-// escena, pero abajo de la mitad ninguna pose pasa de x 18,2% ni de x 74,7%.
-// El margen contra ese contorno es de 3 puntos de cada lado.
+// De ahí las dos franjas laterales.
+//
+// LOS LÍMITES DE X SE REMIDIERON, y los de antes estaban mal. Decían "abajo de
+// la mitad ninguna pose pasa de x 18,2% ni de x 74,7%", y esos dos números son
+// los de `critico` sola: la medición vieja se quedó con una pose y los anotó
+// como si fueran la unión de las nueve. En la franja del piso `jugando` llega a
+// x 82,5% con su rueda derecha, o sea DENTRO de la franja de la derecha, que
+// arrancaba en 80. Novena vez que un instrumento engaña en el proyecto, y esta
+// vez el instrumento era una medición que se verificó a sí misma.
+//
+// Ahora el contorno sale de SILUETA_CHIP, que es la misma huella que recorta la
+// zona táctil de Chip.
+//
+// Y HAY QUE HACER LA CUENTA EN DOS PANTALLAS, no en una, porque la caja de Chip
+// mide 44% del ALTO y la escena tiene el ancho topado en 480: cuanto más
+// angosta y alta la pantalla, más ancho ocupa Chip en proporción. En 480x945 su
+// caja es el 86,6% del ancho; en 390x844 es el 95,2%. La franja libre no es la
+// misma en las dos, y la que manda es la peor:
+//
+//                       480x945        390x844
+//   silueta izquierda   x 16,8         x 13,5
+//   silueta derecha     x 79,0         x 81,9
+//   media pieza         3,8 puntos     4,6 puntos
+//
+// Los límites de abajo dejan la pieza DIBUJADA sin tocar la silueta en las dos.
+// La caja táctil, que es más grande que el dibujo, se solapa medio punto en la
+// pantalla angosta, y eso lo resuelve el orden de apilado — ver #piso en
+// style.css. tests/orquestador.test.js rehace las dos cuentas.
 //
 // `y` es la BASE del objeto —dónde apoya— y no su borde de arriba, igual que
 // BASES_OBJETO en la repisa: lo que uno quiere tocar es la línea de apoyo.
@@ -2631,10 +2748,22 @@ export const ZONA_PISO = {
   // peso parejo el objeto caería en la franja angosta la mitad de las veces y
   // la izquierda se leería como su lugar fijo.
   franjas: [
-    { x0: 8, x1: 15 },
-    { x0: 80, x1: 94 }
+    { x0: 5, x1: 8.8 },
+    { x0: 87, x1: 94 }
   ]
 };
+
+// EL TAMAÑO DE LA PIEZA TIRADA, y su caja táctil, que no son lo mismo.
+//
+// Medía 25 px de lado en una escena de 480: poco más de la mitad del mínimo
+// táctil de 44, y además difícil de descubrir — una cosa de 25 px en una escena
+// de 480 es fácil de no ver. El dibujo sube a 36 y el área táctil va a 44 con
+// padding invisible alrededor, que es el mismo reparto que ya hace el botón del
+// menú: grande para el dedo, discreta para el ojo.
+//
+// En píxeles y no en % de la escena a propósito: 44 px es un mínimo del DEDO, y
+// el dedo no se achica cuando la ventana es más angosta.
+export const OBJETO_PISO = { lado: 36, toque: 44 };
 
 // EL BRILLO QUE LO HACE DESCUBRIBLE. El pedido pide "un brillo muy sutil o un
 // movimiento mínimo", y explícitamente NO un ícono parpadeante.
@@ -2676,7 +2805,9 @@ export const VARS_PISO = {
   brilloAlfaMin: '--brillo-piso-alfa-min',
   brilloAlfaMax: '--brillo-piso-alfa-max',
   vueloDuracion: '--vuelo-duracion',
-  vueloCamino: '--vuelo-camino'
+  vueloCamino: '--vuelo-camino',
+  lado: '--objeto-piso-lado',
+  toque: '--objeto-piso-toque'
 };
 
 export const CLASE_VOLANDO = 'volando';
@@ -2784,14 +2915,40 @@ export const PARAM_DEBUG = 'debug';
 // parámetro no llega a ningún lado. Para probar en el teléfono había que abrir
 // Chrome aparte, que es justamente lo que la app instalada viene a evitar.
 //
-// El gesto es MANTENER APRETADO EL BOTÓN DEL MENÚ tres segundos. Se eligió sobre
-// la alternativa —cinco toques en una esquina— por dos razones: reutiliza un
-// control que ya existe en vez de inventar una zona sensible invisible, y es
-// imposible de encontrar sin querer, porque nadie sostiene un botón de menú tres
-// segundos. Un toque normal sigue abriendo el menú.
-export const ESPERA_DEBUG_MS = 3000;
+// EL GESTO CAMBIÓ: eran tres segundos apretando el botón del menú, ahora son
+// CINCO TOQUES EN LA ESQUINA DE ARRIBA A LA IZQUIERDA.
+//
+// El long-press estaba bien pensado —reutilizaba un control existente y nadie
+// sostiene un botón de menú tres segundos sin querer— pero no funcionaba con el
+// dedo en la PWA instalada, y se le hicieron las cuatro cosas que un gesto
+// sostenido necesita en un teléfono: touch-action, user-select y touch-callout
+// en el CSS, contextmenu prevenido, captura del puntero y cancelación por
+// distancia en vez de por pointerleave. Están todas puestas y sigue sin abrir.
+//
+// A esa altura el problema deja de ser cuál falta y pasa a ser que el gesto
+// COMPITE con el navegador: un dedo quieto tres segundos sobre un control es
+// exactamente la firma que Android y iOS se reservan, y cada capa —el navegador,
+// la webview, el gestor de ventanas de la PWA— puede cancelarlo por su cuenta
+// sin avisar. No hay forma de verificarlo desde acá: los eventos sintéticos
+// pasan justamente porque no disparan nada nativo.
+//
+// Cinco toques rápidos no compiten con nada. Un tap es el gesto más barato y
+// mejor soportado que hay, y cinco seguidos en menos de dos segundos no pasan
+// por accidente. La esquina de arriba a la izquierda está vacía —Chip arranca en
+// el 38% del alto, el botón del menú está en la otra esquina— así que la zona no
+// le roba el toque a nada.
+//
+// Lo que se pierde es que el gesto ya no vive sobre un control visible; a cambio
+// una puerta de servicio invisible es más honesta que una escondida adentro de
+// un botón que sí hace otra cosa.
+export const TOQUES_DEBUG = 5;
+export const VENTANA_DEBUG_MS = 2000;
 
-export const CLASE_ABRIENDO_DEBUG = 'abriendo-debug';
+// La esquina, en píxeles: el mismo 44 del mínimo táctil. En px y no en % por la
+// misma razón que la caja del objeto — el dedo no se achica con la ventana.
+export const ESQUINA_DEBUG = 44;
+
+export const VARS_DEBUG = { esquina: '--esquina-debug' };
 export const OPCION_DEBUG_AUTO = 'auto';
 
 // Opciones del selector de hora del panel: 0 a 23. Forzar la hora mueve el

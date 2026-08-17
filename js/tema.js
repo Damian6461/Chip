@@ -62,9 +62,12 @@ import {
   PARPADO_CARICIA,
   RESPIRACION_CARICIA,
   VUELTA_CARICIA_MS,
-  ESPERA_DEBUG_MS,
-  ESPERA_MANTENIDO_MS,
   DURACION_CARICIA_MS,
+  SILUETA_CHIP,
+  VARS_ZONA_CHIP,
+  OBJETO_PISO,
+  ESQUINA_DEBUG,
+  VARS_DEBUG,
   VARS_ORUGAS,
   VARS_PISO,
   VARS_LLUVIA,
@@ -73,7 +76,7 @@ import {
   VUELO_OBJETO,
   REFLEJO_ARO,
   GIRO_ORUGAS,
-  PIVOTE_CABEZA,
+  PIVOTES_CABEZA,
   VARS_BRAZOS,
   BRAZOS,
   ANGULO_BRAZO,
@@ -117,6 +120,26 @@ import {
 const ms = (n) => `${n}ms`;
 const pct = (n) => `${n}%`;
 const px = (n) => `${n}px`;
+
+// La tabla de bandas se convierte en un polygon() de clip-path: se baja por el
+// borde izquierdo y se sube por el derecho. Cada banda aporta dos vértices por
+// lado —su techo y su piso— para que el escalón quede recto y no en diagonal.
+//
+// El polígono cierra solo: la última banda llega hasta el 100%, que es el borde
+// de abajo de #chip.
+function poligonoDeSilueta(bandas) {
+  const puntos = [];
+  bandas.forEach(([y, izq], i) => {
+    const abajo = i + 1 < bandas.length ? bandas[i + 1][0] : 100;
+    puntos.push(`${izq}% ${y}%`, `${izq}% ${abajo}%`);
+  });
+  for (let i = bandas.length - 1; i >= 0; i--) {
+    const [y, , der] = bandas[i];
+    const abajo = i + 1 < bandas.length ? bandas[i + 1][0] : 100;
+    puntos.push(`${der}% ${abajo}%`, `${der}% ${y}%`);
+  }
+  return `polygon(${puntos.join(', ')})`;
+}
 
 // La respiración de un estado: su ciclo y su amplitud, escalada sobre la base.
 // El multiplicador se aplica a la DISTANCIA respecto de 1, no al valor, porque
@@ -224,13 +247,13 @@ export function variablesDeTema() {
     [VARS_PERSONAJE.duracionBurbuja]: ms(DURACION_BURBUJA_MS),
 
     // Acariciar
-    [VARS_CARICIA.espera]: ms(ESPERA_MANTENIDO_MS),
     [VARS_CARICIA.duracion]: ms(DURACION_CARICIA_MS),
-    '--espera-debug': ms(ESPERA_DEBUG_MS),
+    [VARS_ZONA_CHIP.forma]: poligonoDeSilueta(SILUETA_CHIP),
+    [VARS_DEBUG.esquina]: px(ESQUINA_DEBUG),
 
     // La inclinación de cabeza
-    [VARS_CABEZA.pivoteX]: pct(PIVOTE_CABEZA.x),
-    [VARS_CABEZA.pivoteY]: pct(PIVOTE_CABEZA.y),
+    [VARS_CABEZA.pivoteX]: pct(PIVOTES_CABEZA.idle.x),
+    [VARS_CABEZA.pivoteY]: pct(PIVOTES_CABEZA.idle.y),
     [VARS_CABEZA.angulo]: `${INCLINACION_CABEZA.angulo}deg`,
     // Las orugas
     [VARS_ORUGAS.reflejoColor]: REFLEJO_ARO.color,
@@ -349,6 +372,8 @@ export function variablesDeTema() {
     [VARS_PISO.brilloAlfaMin]: String(BRILLO_PISO.alfaMin),
     [VARS_PISO.brilloAlfaMax]: String(BRILLO_PISO.alfaMax),
     [VARS_PISO.vueloDuracion]: ms(VUELO_OBJETO.duracion),
+    [VARS_PISO.lado]: px(OBJETO_PISO.lado),
+    [VARS_PISO.toque]: px(OBJETO_PISO.toque),
 
     // ---- La caricia ----
     [VARS_BRAZOS.pivoteIzqX]: pct(BRAZOS.idle.izq.x),

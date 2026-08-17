@@ -23,9 +23,7 @@ import {
   DURACION_PANEL_ESTADO_MS,
   ESPERA_MANTENIDO_MS,
   DURACION_CARICIA_MS,
-  CLASE_MANTENIENDO,
   MOVIMIENTO_CARICIA,
-  MOVIMIENTO_CANCELA,
   TOQUE_SECO_MS,
   PASO_CARICIA_MS,
   TOQUES_PARA_FASTIDIO,
@@ -37,8 +35,8 @@ import {
   CLASE_VOLVIENDO,
   CLASE_SOBRESALTO,
   VARS_CARICIA_GESTO,
-  ESPERA_DEBUG_MS,
-  CLASE_ABRIENDO_DEBUG,
+  TOQUES_DEBUG,
+  VENTANA_DEBUG_MS,
   VUELO_OBJETO,
   VARS_PISO,
   CLASE_VOLANDO,
@@ -114,6 +112,7 @@ import {
   GIRO_ORUGAS,
   CLASE_ACOMODO,
   RUTAS_CABEZA,
+  PIVOTES_CABEZA,
   VARS_CABEZA,
   CLASE_INCLINADA,
   ESPERA_INCLINACION,
@@ -174,6 +173,8 @@ import {
   cuerpo,
   ctx,
   menuBoton,
+  puertaServicio,
+  zonaChip,
   menu,
   solapas,
   secciones,
@@ -238,83 +239,44 @@ if (menu) {
 
 // ---- La puerta de servicio ----
 //
-// Mantener apretado el botón del menú abre el panel de debug. Existe porque en
-// la app INSTALADA no hay forma de pasar ?debug=1: la PWA arranca en la
-// start_url cacheada y el service worker responde con caches.match sin
-// ignoreSearch, así que el parámetro no llega.
+// Cinco toques rápidos en la esquina de arriba a la izquierda abren el panel de
+// debug. Existe porque en la app INSTALADA no hay forma de pasar ?debug=1: la
+// PWA arranca en la start_url cacheada y el service worker responde con
+// caches.match sin ignoreSearch, así que el parámetro no llega.
 //
-// Tres segundos es a propósito: nadie sostiene un botón de menú tres segundos
-// sin querer. Y el botón sigue haciendo lo suyo con un toque normal — si el
-// timer no llegó a vencer, el click abre el menú como siempre.
+// ERA UN LONG-PRESS SOBRE EL BOTÓN DEL MENÚ, y se cambió porque no funcionaba
+// con el dedo. El gesto tenía las cuatro cosas que uno sostenido necesita en un
+// teléfono —touch-action, user-select y touch-callout en el CSS, contextmenu
+// prevenido, captura del puntero y cancelación por distancia y no por
+// pointerleave— y aun así el panel no abría en la PWA instalada.
+//
+// A esa altura el problema deja de ser cuál de las cuatro falta. Un dedo quieto
+// tres segundos sobre un control es la firma que el sistema se reserva, y hay
+// varias capas que pueden cancelarla por su cuenta. Y no hay forma de verificarlo
+// desde acá: los eventos sintéticos pasan justamente porque no disparan nada
+// nativo — está anotado en la tabla del README.
+//
+// Un tap no compite con nada. Cinco seguidos en menos de dos segundos no pasan
+// por accidente, y la esquina está vacía: Chip arranca en el 38% del alto y el
+// botón del menú está en la otra punta.
 
-let temporizadorDebug = null;
-let abrioElDebug = false;
+let toquesDebug = [];
 
 export function conectarDebugOculto(alActivar) {
-  if (!menuBoton) return;
+  if (!puertaServicio) return;
 
-  // POR QUÉ ESTE GESTO NO FUNCIONABA CON EL DEDO, funcionando con eventos
-  // sintéticos. Es la trampa del touch-action, y vale para los tres gestos
-  // sostenidos del juego:
-  //
-  // - Mantener el dedo sobre un elemento dispara el long-press NATIVO —menú
-  //   contextual, selección, guardar imagen— y eso emite `pointercancel`, que
-  //   acá limpiaba el temporizador. El navegador abortaba el gesto antes de los
-  //   tres segundos. Un evento sintético no dispara nada de eso: por eso pasaba
-  //   la verificación y fallaba en el teléfono.
-  // - Y cancelaba también con `pointerleave`, así que el micromovimiento normal
-  //   de un dedo apoyado tres segundos lo mataba igual.
-  //
-  // La salida son cuatro cosas juntas: `touch-action`, `user-select` y
-  // `-webkit-touch-callout` en el CSS, `contextmenu` prevenido acá, captura del
-  // puntero, y cancelar por DISTANCIA en vez de por salir del elemento.
-  let origen = null;
+  // `pointerdown` y no `click`: el click de un tap rápido en una zona sin
+  // contenido puede perderse si el dedo se corre unos píxeles, y acá lo único
+  // que importa es que el dedo bajó.
+  puertaServicio.addEventListener('pointerdown', () => {
+    const ahora = Date.now();
+    toquesDebug = toquesDebug.filter((t) => ahora - t < VENTANA_DEBUG_MS);
+    toquesDebug.push(ahora);
 
-  menuBoton.addEventListener('pointerdown', (evento) => {
-    abrioElDebug = false;
-    origen = { x: evento.clientX, y: evento.clientY };
-    capturar(menuBoton, evento);
-    menuBoton.classList.add(CLASE_ABRIENDO_DEBUG);
-
-    clearTimeout(temporizadorDebug);
-    temporizadorDebug = setTimeout(() => {
-      temporizadorDebug = null;
-      menuBoton.classList.remove(CLASE_ABRIENDO_DEBUG);
-      abrioElDebug = true;
-      alActivar();
-    }, ESPERA_DEBUG_MS);
+    if (toquesDebug.length < TOQUES_DEBUG) return;
+    toquesDebug = [];
+    alActivar();
   });
-
-  const soltar = () => {
-    origen = null;
-    clearTimeout(temporizadorDebug);
-    temporizadorDebug = null;
-    menuBoton.classList.remove(CLASE_ABRIENDO_DEBUG);
-  };
-
-  menuBoton.addEventListener('pointermove', (evento) => {
-    if (!origen) return;
-    const lejos = Math.hypot(evento.clientX - origen.x, evento.clientY - origen.y);
-    if (lejos > MOVIMIENTO_CANCELA) soltar();
-  });
-
-  menuBoton.addEventListener('pointerup', soltar);
-  menuBoton.addEventListener('pointercancel', soltar);
-  menuBoton.addEventListener('contextmenu', (evento) => evento.preventDefault());
-
-  // Al soltar después de los tres segundos el click llega igual, y sin esto el
-  // menú se abriría encima del panel que se acaba de abrir. Se escucha en
-  // CAPTURA para llegar antes que el handler que abre el menú.
-  menuBoton.addEventListener(
-    'click',
-    (evento) => {
-      if (!abrioElDebug) return;
-      abrioElDebug = false;
-      evento.stopPropagation();
-      evento.preventDefault();
-    },
-    true
-  );
 }
 
 // El movimiento reducido puede venir de dos lados: del ajuste del juego o de
@@ -948,6 +910,16 @@ function pintarCabeza(claveSprite) {
   capaCabeza.hidden = !ruta;
   if (ruta && !capaCabeza.src.endsWith(ruta)) capaCabeza.src = ruta;
 
+  // El pivote se mueve con la pose, igual que el del hombro: en `feliz` la
+  // cabeza está corrida siete píxeles a la derecha y el cuello no cae donde el
+  // de `idle`. Sin esto la cabeza de feliz rotaría alrededor de un punto que en
+  // esa pose queda fuera del cuello.
+  const pivote = PIVOTES_CABEZA[claveSprite];
+  if (pivote && grupoCabeza) {
+    grupoCabeza.style.setProperty(VARS_CABEZA.pivoteX, `${pivote.x}%`);
+    grupoCabeza.style.setProperty(VARS_CABEZA.pivoteY, `${pivote.y}%`);
+  }
+
   // Si la pose no tiene recorte, no hay gesto: se corta el ciclo y se limpia
   // cualquier inclinación en curso, para que un cambio de estado a mitad de
   // gesto no deje la cabeza torcida sobre un sprite que no es el suyo.
@@ -1428,7 +1400,10 @@ function unToque() {
 function arrancarGesto(evento) {
   if (evento.button !== undefined && evento.button !== 0) return;
 
-  capturar(cajaChip, evento);
+  // La captura va en #zona-chip y no en #chip: el puntero lo enganchó la zona
+  // —#chip tiene pointer-events: none— y setPointerCapture es del elemento que
+  // lo recibió. Los eventos siguen burbujeando a #chip igual.
+  capturar(zonaChip, evento);
 
   gesto = {
     id: evento.pointerId,
@@ -1439,12 +1414,9 @@ function arrancarGesto(evento) {
     acariciando: false
   };
 
-  cajaChip.classList.add(CLASE_MANTENIENDO);
-
   clearTimeout(temporizadorMantenido);
   temporizadorMantenido = setTimeout(() => {
     temporizadorMantenido = null;
-    cajaChip.classList.remove(CLASE_MANTENIENDO);
     // El mantenido sólo cuenta si NO se movió: si hubo arrastre, esto es una
     // caricia y el panel no tiene que aparecer en el medio.
     if (gesto && !gesto.acariciando) mostrarEstado();
@@ -1463,7 +1435,6 @@ function moverGesto(evento) {
     // Moverse cancela el mantenido: son gestos excluyentes.
     clearTimeout(temporizadorMantenido);
     temporizadorMantenido = null;
-    cajaChip.classList.remove(CLASE_MANTENIENDO);
     empezarCaricia();
   }
 
@@ -1483,7 +1454,6 @@ function soltarGesto(evento) {
   clearTimeout(temporizadorMantenido);
   const habiaMantenido = temporizadorMantenido !== null;
   temporizadorMantenido = null;
-  cajaChip.classList.remove(CLASE_MANTENIENDO);
   gesto = null;
 
   if (acariciaba) {
@@ -1499,7 +1469,6 @@ function soltarGesto(evento) {
 function cancelarGesto() {
   clearTimeout(temporizadorMantenido);
   temporizadorMantenido = null;
-  cajaChip.classList.remove(CLASE_MANTENIENDO);
   if (gesto?.acariciando) terminarCaricia();
   gesto = null;
 }

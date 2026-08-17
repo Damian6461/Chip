@@ -378,14 +378,25 @@ function abrirPanelDebug() {
   if (panelDebugPedido) return;
   panelDebugPedido = true;
 
-  import('./debug.js').then(({ iniciarDebug }) => {
-    refrescarDebug = iniciarDebug(apiDebug);
-    pintar();
-  });
+  import('./debug.js')
+    .then(({ iniciarDebug }) => {
+      refrescarDebug = iniciarDebug(apiDebug);
+      pintar();
+    })
+    .catch((e) => {
+      // debug.js NO está en ARCHIVOS_CACHE, y es a propósito: es superficie de
+      // desarrollo y no forma parte del juego instalado. Pero eso quiere decir
+      // que este import sale a la red, y sin red no llega. Sin el catch el
+      // gesto quedaba indistinguible de un gesto que no se registró: cinco
+      // toques, nada, y ninguna forma de saber si el problema era el gesto o la
+      // descarga. Se permite reintentar.
+      panelDebugPedido = false;
+      console.warn('No se pudo abrir el panel de debug:', e);
+    });
 }
 
 if (new URLSearchParams(location.search).has(PARAM_DEBUG)) abrirPanelDebug();
 
-// Y la puerta de servicio, para la app instalada: mantener apretado el botón
-// del menú. Ver conectarDebugOculto en ui.js.
+// Y la puerta de servicio, para la app instalada: cinco toques rápidos en la
+// esquina de arriba a la izquierda. Ver conectarDebugOculto en ui.js.
 conectarDebugOculto(abrirPanelDebug);

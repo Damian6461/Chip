@@ -458,8 +458,31 @@ body.es-noche #toma {
   width: var(--alto-chip);
   height: var(--alto-chip);
   margin-left: calc(var(--alto-chip) / -2);
-  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  /* EL TOQUE NO LO RECIBE ESTA CAJA, lo recibe #zona-chip. La caja es cuadrada y
+     mide 416 px en un teléfono: casi el doble de lo que Chip ocupa dibujado, y
+     ese aire de más se comía los toques de alrededor. Ver #zona-chip. */
+  pointer-events: none;
+}
+
+/* LA ZONA TÁCTIL, recortada a la silueta.
+
+   Es un nodo aparte y no un clip-path sobre #chip por una razón concreta:
+   clip-path recorta el PINTADO, no sólo el hit-test. Puesto sobre #chip le
+   cortaría a Chip el salto, la respiración y el halo del bulbo, que salen de la
+   caja a propósito. Acá adentro no hay nada dibujado, así que recortar no
+   cuesta nada.
+
+   El polígono lo arma tema.js desde SILUETA_CHIP, que es la huella alfa de las
+   nueve poses unidas. Los eventos burbujean a #chip, así que todos los handlers
+   siguen colgados de ahí y el teclado no se entera: #chip conserva su role, su
+   tabindex y su foco, y pointer-events sólo habla del puntero. */
+#zona-chip {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  clip-path: var(--zona-chip);
 }
 
 #chip:focus-visible {
@@ -2862,18 +2885,44 @@ body.es-noche .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
 
 #piso {
   position: absolute;
-  translate: -50% -100%;
-  /* MISMA CAPA QUE LA TOMA: mobiliario del galpón. z-index negativo lo deja
-     arriba de la panorámica y de la luz de la hora, y ABAJO de Chip.
 
-     Por construcción nunca se cruzan —la zona segura está medida contra el
-     contorno opaco de las nueve poses— pero un z-index que depende de que una
-     medición no cambie nunca no es un z-index. Si algún día la zona se corre,
-     el peor caso es que la pieza quede detrás de Chip, no encima.
+  /* LA CAJA ES LA TÁCTIL Y LA PIEZA VA ADENTRO, centrada. La pieza medía 25 px
+     de lado: poco más de la mitad del mínimo táctil de 44. Ahora el dibujo mide
+     --objeto-piso-lado y la caja --objeto-piso-toque, y la diferencia es padding
+     invisible. Es el mismo reparto que el botón del menú.
 
-     Sigue recibiendo el toque: las dos capas que tiene arriba —la luz de la hora
-     y el polvo— son ::after con pointer-events: none. */
-  z-index: -1;
+     El translate mantiene el significado de las coordenadas: `left` es el centro
+     de la pieza y `top` su línea de apoyo. Sin el ajuste vertical el -100%
+     dejaría apoyada la caja y no la pieza, que quedaría flotando la mitad del
+     padding por arriba del piso. */
+  width: var(--objeto-piso-toque);
+  height: var(--objeto-piso-toque);
+  display: grid;
+  place-items: center;
+  translate: -50% calc(-100% + (var(--objeto-piso-toque) - var(--objeto-piso-lado)) / 2);
+
+  /* DELANTE DE CHIP, y antes estaba detrás.
+
+     Estaba en z-index -1, en la misma capa que la toma: mobiliario del galpón,
+     arriba de la panorámica y debajo de Chip. El argumento era que si algún día
+     la zona segura se corría, el peor caso fuera que la pieza quedara detrás y
+     no encima.
+
+     Con la caja táctil de 44 px ese peor caso dejó de ser aceptable: lo que pasa
+     cuando se rozan no es que la pieza se vea mal, es que el tap se lo queda
+     Chip y la pieza no se puede levantar, que es justamente el bug que esto
+     viene a arreglar. Y rozarse se rozan: la separación depende de la proporción
+     de la pantalla —ver ZONA_PISO— y en 390x844 la caja táctil de la pieza entra
+     medio punto en la de Chip. El dibujo no, la caja sí.
+
+     LO QUE CUESTA, medido, para que quede anotado. Adelante de Chip también es
+     adelante de las dos capas de ambiente, porque las dos están más atrás que
+     él: #escena::after —la luz de la hora, entre los z-index negativos— y #polvo
+     —que va antes en el documento—. En la franja de la tarde la pieza pierde un
+     lavado naranja del 19% que el piso de alrededor sí tiene, y deja de tener
+     motas pasándole por delante. Es el mismo trato que ya recibe Chip, que
+     tampoco está bajo esa luz porque está parado encima. */
+  z-index: 1;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
@@ -2895,6 +2944,12 @@ body.es-noche .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
    y una caja iluminada alrededor de una tuerca se ve como una tuerca adentro de
    un cuadrado que brilla. drop-shadow sigue la forma. */
 .objeto.en-piso {
+  /* El dibujo, adentro de la caja táctil. Sube de 25 a 36 px: además del mínimo
+     del dedo, es que una cosa de 25 px en una escena de 480 es fácil de no ver,
+     y esta pieza está para que la encuentres. */
+  width: var(--objeto-piso-lado);
+  height: var(--objeto-piso-lado);
+
   /* El halo QUIETO va acá y no sólo en el keyframe. Con el movimiento apagado
      la animación dura 0,001 ms y el filter vuelve al de .objeto.obtenido, que
      es la sombra sola: la pieza quedaría indistinguible de una mancha del piso
@@ -3491,7 +3546,6 @@ body.es-noche #piso {
 @media (prefers-reduced-motion: reduce) {
   #contenedor-mascota,
   #cuerpo.acariciado,
-  #chip.manteniendo::after,
   #cabeza-grupo.inclinada,
   #orugas .reflejo,
   #cable path,
@@ -3991,11 +4045,14 @@ body.sin-movimiento *::after {
    - touch-callout: none       que iOS no abra el diálogo de guardar imagen
    - (y en JS) contextmenu     el long-press nativo emite pointercancel
 
-   Va para los TRES gestos sostenidos que tiene el juego: acariciar a Chip,
-   mantener sobre Chip para los números, y mantener el botón del menú para el
-   panel de debug. Es la misma trampa las tres veces. */
-#chip,
-#menu-boton,
+   Van sobre #zona-chip y no sobre #chip: el que recibe el puntero es la zona, y
+   touch-action lo mira el navegador en el elemento que engancha el toque.
+
+   Quedaron DOS gestos sostenidos, no tres. El del panel de debug se fue: se le
+   pusieron las cuatro cosas y con el dedo seguía sin abrir, así que dejó de ser
+   un long-press y pasó a ser cinco toques en la esquina. Un tap no necesita nada
+   de esto — que es justamente por qué se eligió. */
+#zona-chip,
 #piso {
   touch-action: none;
   user-select: none;
@@ -4066,62 +4123,31 @@ body.sin-movimiento *::after {
   transition: filter 220ms ease-out;
 }
 
-/* LA SEÑAL DEL MANTENIDO. Sin ella los 500 ms se sienten como que la app no
-   responde: el jugador aprieta, no pasa nada, suelta, y nunca descubre el gesto.
+/* ACÁ ESTABA EL ANILLO CIAN DEL MANTENIDO, y se fue sin reemplazo.
+   Ver VARS_CARICIA en config.js: se prendía en el pointerdown, o sea en los tres
+   gestos, y aparecía a los 90 ms — menos de lo que tarda un dedo en recorrer los
+   10 px que convierten el gesto en caricia. Así que acariciar dibujaba un
+   destello frío de interfaz encima de la respuesta del cuerpo.
 
-   Es un anillo que se CIERRA sobre Chip: aparece grande y difuso y se contrae
-   hasta su tamaño final justo cuando el panel se abre. Con eso el gesto se
-   aprende mirándolo una vez.
+   Y acá estaba también el resalte del botón del menú mientras se lo mantenía
+   apretado, que se fue con el gesto: la puerta de servicio ahora son cinco
+   toques en la esquina de arriba a la izquierda. */
 
-   La primera versión dibujaba el avance con un conic-gradient y una custom
-   property angular animada con @property. Se veía bien en teoría y no corría:
-   la animación se cancelaba y se recreaba sola en cada repintado —medido, la
-   animación aparecía con currentTime 0 y a los 150 ms ya era otro objeto— así
-   que el anillo nunca pasaba del primer cuadro. Animar opacidad y escala no
-   depende de nada de eso. */
-#chip::after {
-  content: '';
+/* LA PUERTA DE SERVICIO. Una zona sensible invisible en la esquina, sin nada
+   dibujado: cinco toques rápidos y se abre el panel de debug.
+
+   No lleva role ni tabindex a propósito. No es un control del juego —es una
+   puerta de servicio— y anunciarla al lector de pantalla la convertiría en un
+   botón sin nombre en el primer lugar del recorrido. Para teclado y escritorio
+   sigue estando ?debug=1, que es donde ese gesto tiene sentido. */
+#puerta-servicio {
   position: absolute;
-  left: 50%;
-  top: 40%;
-  width: 46%;
-  aspect-ratio: 1;
-  translate: -50% -50%;
-  border-radius: 50%;
-  border: 2px solid var(--color-bateria);
-  pointer-events: none;
-  opacity: 0;
-  scale: 1;
-}
-
-#chip.manteniendo::after {
-  animation: cerrar-anillo var(--espera-mantenido) ease-out forwards;
-}
-
-@keyframes cerrar-anillo {
-  0% {
-    opacity: 0;
-    scale: 1.7;
-  }
-  /* Aparece recién pasado el primer instante: un toque corto —o sea una
-     caricia— no tiene que dibujar ningún anillo. */
-  18% {
-    opacity: 0.7;
-  }
-  100% {
-    opacity: 0.85;
-    scale: 1;
-  }
-}
-
-/* La puerta de servicio: mientras se mantiene apretado el botón del menú, el
-   canto se hunde y se enciende apenas. No dice qué está por pasar —es una
-   puerta de servicio, no una función del juego— pero confirma que el aparato
-   registró el dedo, que es lo mínimo para que no se sienta trabado. */
-#menu-boton.abriendo-debug {
-  transition: filter var(--espera-debug) linear, transform 120ms ease-out;
-  filter: brightness(1.35) saturate(1.2);
-  transform: translateY(1px);
+  top: env(safe-area-inset-top, 0px);
+  left: env(safe-area-inset-left, 0px);
+  width: var(--esquina-debug);
+  height: var(--esquina-debug);
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ============================================================================

@@ -30,6 +30,7 @@ import {
   ANGULO_BRAZO,
   SALUDO_BRAZO,
   RUTAS_CABEZA,
+  PIVOTES_CABEZA,
   RUTAS_CUERPO,
   INCLINACION_CABEZA,
   ANGULO_BRAZO_SIN_CUERPO
@@ -277,6 +278,16 @@ prueba('brazos: toda pose con recortes tiene su pivote, y al revés', () => {
     'las poses de RUTAS_BRAZOS y las de BRAZOS son las mismas'
   );
 
+  // Lo mismo para la cabeza: el pivote es por pose desde que `feliz` estrenó su
+  // recorte, porque ahí la cabeza está corrida siete píxeles y el cuello no cae
+  // donde el de idle. Una pose con recorte y sin pivote rotaría alrededor de un
+  // punto que en ese dibujo es aire.
+  igual(
+    Object.keys(RUTAS_CABEZA).sort().join(','),
+    Object.keys(PIVOTES_CABEZA).sort().join(','),
+    'las poses de RUTAS_CABEZA y las de PIVOTES_CABEZA son las mismas'
+  );
+
   for (const [pose, lados] of Object.entries(BRAZOS)) {
     for (const lado of ['izq', 'der']) {
       const p = lados[lado];
@@ -309,10 +320,15 @@ prueba('brazos: toda pose con recortes tiene su pivote, y al revés', () => {
 // cuerpo, y que los ángulos no pasen de la banda verificada.
 // UNA POSE PUEDE ROTAR SIN TENER SU CUERPO, pero entonces con el ángulo chico.
 //
-// `feliz` tiene brazos y todavía no tiene `feliz-cuerpo`, así que ahí la capa
-// rota encima del sprite entero y vuelve el fleco. Bajar el ángulo para todos
-// castigaría a `idle`, que sí lo tiene, así que el ángulo se elige por pose —ver
-// anguloDeBrazo en ui.js— y este test fija que la regla exista y no se pierda.
+// La regla nació porque `feliz` tenía brazos y no tenía `feliz-cuerpo`: la capa
+// rotaba encima del sprite entero y volvía el fleco. Bajar el ángulo para todos
+// habría castigado a `idle`, que sí lo tenía, así que el ángulo se elige por
+// pose —ver anguloDeBrazo en ui.js— mirando si EXISTE el archivo.
+//
+// Hoy la deuda está saldada: feliz tiene su cuerpo y su cabeza, y subió sola de
+// 2° a 5° sin tocar una línea, que era exactamente lo que la regla prometía. El
+// test se queda igual: es lo que va a sostener la próxima pose que estrene capas
+// antes que su cuerpo.
 prueba('capas: la que no tiene cuerpo se mueve con el ángulo chico', () => {
   const conCapas = new Set([...Object.keys(RUTAS_CABEZA), ...Object.keys(RUTAS_BRAZOS)]);
   const sinCuerpo = [...conCapas].filter((pose) => !(pose in RUTAS_CUERPO));

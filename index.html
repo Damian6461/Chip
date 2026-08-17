@@ -83,6 +83,14 @@
   <div id="chip" role="button" tabindex="0" aria-label="Chip. Arrastrá el dedo, o mantené Enter, para acariciarlo; tocalo con un toque corto; mantené apretado, o Espacio, para ver sus números">
     <div id="sombra" aria-hidden="true"></div>
 
+    <!-- LA ZONA TÁCTIL, recortada a la silueta de Chip. La caja de #chip es
+         cuadrada y mide casi el doble de lo que Chip ocupa dibujado, y ese aire
+         de más se comía los toques de alrededor —entre ellos el de la pieza
+         tirada en el piso—. Acá adentro no se dibuja nada: es sólo dónde vale el
+         dedo. Los eventos burbujean a #chip, así que los handlers y el teclado
+         no se enteran. Ver #zona-chip en style.css y SILUETA_CHIP en config.js. -->
+    <div id="zona-chip" aria-hidden="true"></div>
+
     <div id="contenedor-mascota">
       <!-- EL CUERPO: todo lo que es Chip y tiene que moverse con él.
            El rebote va en #contenedor-mascota y el salto acá, un nivel más
@@ -238,6 +246,15 @@
        colección se abría tocando el alféizar y nada más — un secreto que
        nadie iba a descubrir. El alféizar sigue andando, como atajo. -->
   <button id="menu-boton" type="button" aria-label="Abrir el panel"></button>
+
+  <!-- LA PUERTA DE SERVICIO. Cinco toques rápidos en la esquina de arriba a la
+       izquierda abren el panel de debug, que en la app instalada no se puede
+       abrir de ninguna otra forma: la PWA arranca en la start_url cacheada y
+       ?debug=1 no llega.
+       Era mantener apretado el botón del menú y no funcionaba con el dedo. Ver
+       TOQUES_DEBUG en config.js.
+       Sin role ni tabindex: es una puerta de servicio, no un control. -->
+  <div id="puerta-servicio" aria-hidden="true"></div>
 
   <!-- El panel. TRES secciones y sólo tres: la economía del juego es su
        fuerza, y esto no es donde se acumulan features. -->

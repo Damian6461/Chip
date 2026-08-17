@@ -33,6 +33,11 @@ import { svgDeToma, svgDeRepisa, svgDePanel } from './formas.js';
 export const raiz = document.documentElement;
 
 export const cajaChip = document.getElementById('chip');
+// La zona táctil: el nodo que engancha el puntero, recortado a la silueta. Los
+// handlers siguen colgados de cajaChip —los eventos burbujean— y esto sólo hace
+// falta para la captura del puntero, que tiene que ir en el elemento que lo
+// recibió. Ver #zona-chip en style.css.
+export const zonaChip = document.getElementById('zona-chip');
 export const contenedorMascota = document.getElementById('contenedor-mascota');
 export const nodoOrugas = document.getElementById('orugas');
 export const capaCabeza = document.getElementById('cabeza');
@@ -67,6 +72,7 @@ export const bulbo = document.getElementById('antena');
 export const resplandor = document.getElementById('resplandor');
 
 export const menuBoton = document.getElementById('menu-boton');
+export const puertaServicio = document.getElementById('puerta-servicio');
 export const menu = document.getElementById('menu');
 
 // El salto va en #cuerpo y no en el canvas: es el envoltorio que contiene TODAS

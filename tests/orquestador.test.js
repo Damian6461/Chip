@@ -11,6 +11,8 @@
 // módulos a los que se les sacó la decisión de adentro, que es lo mismo que
 // probar el orquestador y además se puede correr en Node.
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { prueba, igual, cerca, verdadero } from './runner.js';
 import { T0, T_VEINTE, T_VEINTIUNA, EPSILON } from './config.pruebas.js';
 import {
@@ -30,6 +32,8 @@ import {
   DURACION_CRUCE_FONDO_MS,
   PROBABILIDAD_OBJETO_PISO,
   ZONA_PISO,
+  OBJETO_PISO,
+  SILUETA_CHIP,
   DURACION_FASTIDIO_MS,
   DURACION_FELIZ_MS,
   CARICIA_HUMOR,
@@ -42,6 +46,8 @@ import { cargar, limpiar, jugar } from '../js/acciones.js';
 import { EVENTOS } from '../js/datos-eventos.js';
 import { abrirVisita } from '../js/visita.js';
 import { crearSesion } from '../js/sesion.js';
+
+const RAIZ = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 
 // ---- Los dobles ----
 
@@ -911,26 +917,113 @@ prueba('piso: la posición cae siempre adentro de una franja de ZONA_PISO', () =
 // volver a mirar la escena, esto lo frena antes de que el objeto quede abajo de
 // algo.
 prueba('piso: la zona segura no toca a Chip, ni la botonera, ni el cartel', () => {
-  // Medido contra la escena real: abajo de la mitad, ninguna de las nueve poses
-  // pasa de x 18,2% ni de x 74,7%. El cartel arranca en y 86,7% y la botonera
-  // en y 93%.
-  const CHIP_IZQ = 18.2;
-  const CHIP_DER = 74.7;
-  const MARGEN = 3;
-  const CARTEL = 86.7;
-  const BOTONERA = 93;
+  // ESTE TEST TENÍA LOS NÚMEROS MAL, y por eso pasaba con una zona que sí se
+  // cruzaba con Chip. Decía "abajo de la mitad ninguna de las nueve poses pasa
+  // de x 18,2% ni de x 74,7%", y esos dos valores son los de `critico` sola: la
+  // medición vieja se quedó con una pose y los anotó como si fueran la unión.
+  // `jugando` llega ocho puntos más a la derecha con su rueda.
+  //
+  // Ahora el contorno no se escribe acá: sale de SILUETA_CHIP, que es la misma
+  // tabla que recorta la zona táctil de Chip, y así las dos cosas no pueden
+  // separarse.
+  //
+  // Y la cuenta se hace en DOS pantallas. La caja de Chip mide 44% del ALTO y la
+  // escena tiene el ancho topado en 480, así que cuánto ocupa Chip a lo ancho
+  // depende de la proporción: en 480x945 es el 86,6% del ancho y en 390x844 el
+  // 95,2%. Una zona que despeja en una puede pisarlo en la otra.
+  const PANTALLAS = [
+    { nombre: '480x945', w: 480, h: 945 },
+    { nombre: '390x844', w: 390, h: 844 }
+  ];
 
-  for (const f of ZONA_PISO.franjas) {
-    verdadero(
-      f.x1 <= CHIP_IZQ - MARGEN || f.x0 >= CHIP_DER + MARGEN,
-      'la franja ' + f.x0 + '-' + f.x1 + ' queda a tres puntos del contorno de Chip'
-    );
-    verdadero(f.x0 >= 2 && f.x1 <= 98, 'la franja ' + f.x0 + '-' + f.x1 + ' no se sale de la escena');
+  // Las bandas de SILUETA_CHIP que caen dentro de la franja donde vive la pieza.
+  // La pieza apoya entre y0 e y1 y mide `lado` de alto, así que ocupa desde
+  // y0 - lado hasta y1.
+  const bandasDelPiso = (h) => {
+    const alto = 44; // % del alto de la escena que mide la caja de Chip
+    const base = 82; // % del alto donde apoya
+    const techoPieza = ZONA_PISO.y0 - (OBJETO_PISO.lado / h) * 100;
+    return SILUETA_CHIP.filter((_, i) => {
+      const y0 = base - alto + (SILUETA_CHIP[i][0] / 100) * alto;
+      const y1 = base - alto + ((SILUETA_CHIP[i + 1]?.[0] ?? 100) / 100) * alto;
+      return y1 > techoPieza && y0 < ZONA_PISO.y1;
+    });
+  };
+
+  for (const p of PANTALLAS) {
+    const anchoChip = ((44 * p.h) / p.w) * 100 / 100; // % del ancho de la escena
+    const izqChip = 50 - anchoChip / 2;
+    const aEscena = (cx) => izqChip + (cx / 100) * anchoChip;
+
+    const bandas = bandasDelPiso(p.h);
+    verdadero(bandas.length > 0, `${p.nombre}: alguna banda de la silueta cae en la franja del piso`);
+
+    const chipIzq = aEscena(Math.min(...bandas.map((b) => b[1])));
+    const chipDer = aEscena(Math.max(...bandas.map((b) => b[2])));
+    const media = (OBJETO_PISO.lado / p.w) * 100 / 2;
+
+    for (const f of ZONA_PISO.franjas) {
+      verdadero(
+        f.x1 + media <= chipIzq || f.x0 - media >= chipDer,
+        `${p.nombre}: la pieza dibujada en la franja ${f.x0}-${f.x1} no toca la silueta ` +
+          `(${chipIzq.toFixed(1)} a ${chipDer.toFixed(1)}, media pieza ${media.toFixed(1)})`
+      );
+      verdadero(
+        f.x0 - media >= 0 && f.x1 + media <= 100,
+        `${p.nombre}: la pieza de la franja ${f.x0}-${f.x1} entra entera en la escena`
+      );
+    }
   }
 
-  verdadero(ZONA_PISO.y1 <= CARTEL, 'el techo de la zona queda arriba del cartel de evento');
-  verdadero(ZONA_PISO.y1 < BOTONERA, 'y bien lejos de la botonera');
+  // El cartel de evento arranca en y 86,7% y la botonera en y 93%.
+  verdadero(ZONA_PISO.y1 <= 86.7, 'el techo de la zona queda arriba del cartel de evento');
+  verdadero(ZONA_PISO.y1 < 93, 'y bien lejos de la botonera');
   verdadero(ZONA_PISO.y0 < ZONA_PISO.y1, 'y la zona tiene alto');
+});
+
+// LA CAJA TÁCTIL, que es lo que el dedo toca y no lo que el ojo ve.
+//
+// El mínimo recomendado es 44x44. La pieza medía 25 y por eso levantarla era
+// difícil incluso cuando el tap llegaba.
+prueba('piso: la pieza respeta el mínimo táctil y el dibujo entra adentro', () => {
+  verdadero(OBJETO_PISO.toque >= 44, `la caja táctil mide ${OBJETO_PISO.toque}, el mínimo es 44`);
+  verdadero(
+    OBJETO_PISO.lado <= OBJETO_PISO.toque,
+    'el dibujo entra en la caja: si fuera más grande, el padding sería negativo'
+  );
+  verdadero(
+    OBJETO_PISO.lado >= 34,
+    `el dibujo mide ${OBJETO_PISO.lado} y se pidió 34-38 para que se descubra`
+  );
+
+  // Y el CSS tiene que estar usando las dos, no una sola: con la caja sin el
+  // dibujo la pieza se ve gigante, y con el dibujo sin la caja no cambia nada
+  // del área táctil.
+  const CSS = readFileSync(join(RAIZ, 'style.css'), 'utf8');
+  verdadero(
+    CSS.includes('var(--objeto-piso-toque)') && CSS.includes('var(--objeto-piso-lado)'),
+    'style.css lee las dos medidas'
+  );
+});
+
+// LA ZONA TÁCTIL DE CHIP existe y está recortada. Sin esto se puede volver al
+// cuadrado de 416 px sin que nada se queje: la escena se ve idéntica y lo único
+// que cambia es que el tap de la pieza vuelve a írsele a Chip.
+prueba('chip: el toque lo recibe la zona recortada y no la caja entera', () => {
+  const CSS = readFileSync(join(RAIZ, 'style.css'), 'utf8');
+  const HTML = readFileSync(join(RAIZ, 'index.html'), 'utf8');
+
+  verdadero(HTML.includes('id="zona-chip"'), 'el nodo de la zona está en el documento');
+  verdadero(/#chip\s*\{[^}]*pointer-events:\s*none/s.test(CSS), '#chip no engancha el puntero');
+  verdadero(
+    /#zona-chip\s*\{[^}]*clip-path:\s*var\(--zona-chip\)/s.test(CSS),
+    'la zona se recorta con el polígono del tema'
+  );
+
+  // Y el polígono tiene que ser MÁS CHICO que la caja: si alguien lo aplanara a
+  // un rectángulo completo, el recorte dejaría de recortar.
+  const ancho = Math.max(...SILUETA_CHIP.map((b) => b[2] - b[1]));
+  verdadero(ancho < 95, `la banda más ancha del polígono ocupa ${ancho}% de la caja, no el 100%`);
 });
 
 prueba('sesión: levantar del piso lo guarda y pone la cara de fastidio', () => {
