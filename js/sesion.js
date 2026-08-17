@@ -41,7 +41,7 @@ import {
   DURACION_FASTIDIO_MS,
   POSES_IDLE
 } from './config.js';
-import { aplica, acariciar } from './acciones.js';
+import { aplica, acariciar, tocar } from './acciones.js';
 import { resolverEstadoVisual, esDeNoche, franjaDelDia, luzDelMomento, poseDeIdle } from './sprites.js';
 
 export function crearSesion({
@@ -408,6 +408,49 @@ export function crearSesion({
   // Devuelve si aplicó, para que la vista sepa si corresponde volar la pieza al
   // estante. Un id que no está tirado no hace nada: sin esto, dos toques rápidos
   // sobre la misma pieza la sumarían dos veces.
+  // ---- Tocarlo con el dedo ----
+  //
+  // NO es una caricia y por eso no pone contento: sube el humor un punto —menos
+  // que la caricia— y la vista se encarga del sobresalto. Que los dos gestos
+  // signifiquen cosas distintas depende de que den cosas distintas; si dieran lo
+  // mismo, arrastrar el dedo sería una forma más incómoda de tocar.
+  function tocarAChip() {
+    if (ocupado()) return false;
+
+    const siguiente = tocar(estado);
+    if (siguiente === estado) return false;
+
+    estado = siguiente;
+    guardar(estado);
+    pintar();
+    return true;
+  }
+
+  // Y SI LO SIGUE PICANDO, se fastidia. Es la única forma de molestarlo que tiene
+  // el juego y es graciosa, no punitiva: no baja ningún stat, no bloquea las
+  // teclas de acción y se le pasa solo.
+  //
+  // A diferencia del fastidio de que le levanten algo del piso, este NO encadena
+  // en `feliz`: ahí primero se queja y después se pone contento de tenerlo; acá
+  // no hay nada que agradecer.
+  function fastidiar() {
+    reloj.cancelar(temporizadorFastidio);
+    leOrdenaron = true;
+    actualizarVisual({ inmediato: true });
+    pintar();
+
+    temporizadorFastidio = reloj.programar(() => {
+      temporizadorFastidio = null;
+      leOrdenaron = false;
+      actualizarVisual({ inmediato: true });
+      pintar();
+    }, DURACION_FASTIDIO_MS);
+  }
+
+  function estaFastidiado() {
+    return leOrdenaron;
+  }
+
   function recogerDelPiso(id) {
     if (!id || estado.objetoEnPiso !== id) return false;
 
@@ -488,6 +531,9 @@ export function crearSesion({
     // el juego
     ejecutar,
     acariciar: acariciarAChip,
+    tocar: tocarAChip,
+    fastidiar,
+    estaFastidiado,
     recogerDelPiso,
     ocupado,
     actualizarVisual,

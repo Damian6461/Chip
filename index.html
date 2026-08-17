@@ -80,7 +80,7 @@
   <!-- La caja de Chip: define dónde pisa y cuánto mide, y NO se anima nunca.
        Adentro, la sombra queda quieta y el contenedor rebota; por eso al saltar
        Chip se despega y la sombra se queda en el piso. -->
-  <div id="chip" role="button" tabindex="0" aria-label="Acariciar a Chip. Mantené apretado, o Espacio, para ver sus números">
+  <div id="chip" role="button" tabindex="0" aria-label="Chip. Arrastrá el dedo, o mantené Enter, para acariciarlo; tocalo con un toque corto; mantené apretado, o Espacio, para ver sus números">
     <div id="sombra" aria-hidden="true"></div>
 
     <div id="contenedor-mascota">
@@ -160,6 +160,21 @@
            ui.js le cambia el src según el estado y la esconde en los que no
            tienen recorte. -->
       <img id="ojos" alt="" aria-hidden="true" hidden>
+
+      <!-- LA LUZ DE LA CABEZA VA ADENTRO DEL GRUPO, y no es una preferencia de
+           orden: es que el poste está PINTADO en el sprite, así que cuando la
+           cabeza se inclina el poste se inclina con ella. Estas dos capas
+           estaban en #efectos, fuera del grupo, y se quedaban quietas.
+
+           La cuenta del desfase: el pivote está a unos 182 px del bulbo, y a 3°
+           eso son 182 x sen(3°) = 9,6 px de corrimiento. Sobre un bulbo de 14 px
+           es casi un diámetro entero — el bulbo se despegaba del poste.
+
+           Son dos capas y hacen cosas distintas: #resplandor es la luz que la
+           fuente derrama sobre el casco y va DEBAJO; #antena es el bulbo, que
+           TAPA al pintado en el sprite y por eso es opaco. Ver COLORES_BULBO. -->
+      <div id="resplandor" aria-hidden="true"></div>
+      <div id="antena" aria-hidden="true"></div>
       </div>
 
       <!-- El rayo del pecho. NO reemplaza al dibujado en el sprite: se apoya
@@ -168,12 +183,8 @@
       <div id="rayo" aria-hidden="true"></div>
 
       <div id="efectos" aria-hidden="true">
-        <!-- LA LUZ DE LA CABEZA. Son dos capas y hacen cosas distintas:
-             #resplandor es la luz que la fuente derrama sobre el casco, y va
-             DEBAJO; #antena es el bulbo, que TAPA al que está pintado en el
-             sprite y por eso es opaco. Ver COLORES_BULBO en config.js. -->
-        <div id="resplandor"></div>
-        <div id="antena"></div>
+        <!-- La luz de la cabeza se mudó adentro de #cabeza-grupo: tiene que
+             rotar con la cabeza, porque el poste está pintado en el sprite. -->
 
         <!-- Los corazones de feliz y las chispas amarillas, que antes estaban
              dibujados en el sprite. Ahora son partículas: además de flotar,

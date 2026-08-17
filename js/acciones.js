@@ -7,7 +7,8 @@ import {
   STAT_MAX,
   JUGAR_BATERIA_MINIMA,
   VALORES_ACCION,
-  CARICIA_HUMOR
+  CARICIA_HUMOR,
+  TOQUE_HUMOR
 } from './config.js';
 
 // Clamp de las acciones: llega hasta el piso real del stat, a diferencia del
@@ -82,5 +83,21 @@ export function acariciar(estado) {
   return {
     ...estado,
     humor: clampAccion(estado.humor + CARICIA_HUMOR)
+  };
+}
+
+// UN TOQUE NO ES UNA CARICIA, pero tampoco es nada. Sube menos, y esa diferencia
+// es la que hace que los dos gestos signifiquen cosas distintas: si dieran lo
+// mismo, arrastrar el dedo sería una forma más incómoda de hacer lo mismo que
+// tocar.
+//
+// Mismo contrato que acariciar: con el humor lleno devuelve la MISMA referencia,
+// y quien llama se entera por identidad y no por un booleano aparte.
+export function tocar(estado) {
+  if (estado.humor >= STAT_MAX) return estado;
+
+  return {
+    ...estado,
+    humor: clampAccion(estado.humor + TOQUE_HUMOR)
   };
 }

@@ -20,15 +20,22 @@ import {
   VARS_FONDO,
   CLASE_NOCHE,
   DURACION_PANEL_ESTADO_MS,
-  COOLDOWN_CARICIA_MS,
-  CARICIAS_PARA_CANSARSE,
-  VENTANA_CANSANCIO_MS,
-  DURACION_CANSANCIO_MS,
   ESPERA_MANTENIDO_MS,
   DURACION_CARICIA_MS,
-  CLASE_CARICIA,
-  CLASE_CANSADO,
   CLASE_MANTENIENDO,
+  MOVIMIENTO_CARICIA,
+  MOVIMIENTO_CANCELA,
+  TOQUE_SECO_MS,
+  PASO_CARICIA_MS,
+  TOQUES_PARA_FASTIDIO,
+  VENTANA_FASTIDIO_MS,
+  INCLINACION_CARICIA,
+  SOSTEN_CARICIA_MS,
+  VUELTA_CARICIA_MS,
+  CLASE_ACARICIANDO,
+  CLASE_VOLVIENDO,
+  CLASE_SOBRESALTO,
+  VARS_CARICIA_GESTO,
   ESPERA_DEBUG_MS,
   CLASE_ABRIENDO_DEBUG,
   VUELO_OBJETO,
@@ -229,8 +236,27 @@ let abrioElDebug = false;
 export function conectarDebugOculto(alActivar) {
   if (!menuBoton) return;
 
-  menuBoton.addEventListener('pointerdown', () => {
+  // POR QUÉ ESTE GESTO NO FUNCIONABA CON EL DEDO, funcionando con eventos
+  // sintéticos. Es la trampa del touch-action, y vale para los tres gestos
+  // sostenidos del juego:
+  //
+  // - Mantener el dedo sobre un elemento dispara el long-press NATIVO —menú
+  //   contextual, selección, guardar imagen— y eso emite `pointercancel`, que
+  //   acá limpiaba el temporizador. El navegador abortaba el gesto antes de los
+  //   tres segundos. Un evento sintético no dispara nada de eso: por eso pasaba
+  //   la verificación y fallaba en el teléfono.
+  // - Y cancelaba también con `pointerleave`, así que el micromovimiento normal
+  //   de un dedo apoyado tres segundos lo mataba igual.
+  //
+  // La salida son cuatro cosas juntas: `touch-action`, `user-select` y
+  // `-webkit-touch-callout` en el CSS, `contextmenu` prevenido acá, captura del
+  // puntero, y cancelar por DISTANCIA en vez de por salir del elemento.
+  let origen = null;
+
+  menuBoton.addEventListener('pointerdown', (evento) => {
     abrioElDebug = false;
+    origen = { x: evento.clientX, y: evento.clientY };
+    capturar(menuBoton, evento);
     menuBoton.classList.add(CLASE_ABRIENDO_DEBUG);
 
     clearTimeout(temporizadorDebug);
@@ -243,14 +269,21 @@ export function conectarDebugOculto(alActivar) {
   });
 
   const soltar = () => {
+    origen = null;
     clearTimeout(temporizadorDebug);
     temporizadorDebug = null;
     menuBoton.classList.remove(CLASE_ABRIENDO_DEBUG);
   };
 
+  menuBoton.addEventListener('pointermove', (evento) => {
+    if (!origen) return;
+    const lejos = Math.hypot(evento.clientX - origen.x, evento.clientY - origen.y);
+    if (lejos > MOVIMIENTO_CANCELA) soltar();
+  });
+
   menuBoton.addEventListener('pointerup', soltar);
-  menuBoton.addEventListener('pointerleave', soltar);
   menuBoton.addEventListener('pointercancel', soltar);
+  menuBoton.addEventListener('contextmenu', (evento) => evento.preventDefault());
 
   // Al soltar después de los tres segundos el click llega igual, y sin esto el
   // menú se abriría encima del panel que se acaba de abrir. Se escucha en
@@ -1023,107 +1056,177 @@ function alternarEstado() {
   else ocultarEstado();
 }
 
-// ---- Acariciar, y el estado que pasó a mantener apretado ----
+// ---- TRES GESTOS SOBRE CHIP ----
 //
-// EL TAP CAMBIÓ DE SIGNIFICADO. Antes abría el panel de números; ahora acaricia.
-// El criterio es cuál de los dos gestos se hace más seguido: a Chip se lo toca
-// porque está ahí, no para consultar stats. El gesto frecuente se queda con el
-// toque más barato y el otro se muda a mantener apretado.
+// Acariciar era un TAP, y por eso no convencía: un tap no es una caricia, es un
+// dedazo. La diferencia es física —un toque es instantáneo y puntual, una
+// caricia es sostenida y en movimiento— y ningún ajuste de la animación la
+// salva, porque el gesto está diciendo otra cosa.
 //
-// El reparto de responsabilidades: ui.js decide CUÁNDO se puede acariciar —el
-// cooldown de la animación y el cansancio son de presentación— y la sesión
-// decide SI aplica, que es del modelo. Por eso `onCaricia` devuelve un booleano.
+//   arrastrar el dedo   -> acariciar: se relaja mientras dura
+//   tap seco            -> tocarlo:   se sobresalta, y si insistís se fastidia
+//   mantener sin mover  -> sus números
+//
+// Y eso corre el fastidio del lado del TOQUE y no de la caricia, que es lo que
+// importa para el modelo sin culpa: podés acariciarlo todo lo que quieras,
+// siempre está bien; lo que lo molesta es que lo estés picando con el dedo.
+//
+// El reparto de responsabilidades no cambia: ui.js decide QUÉ gesto fue —eso es
+// interpretación de punteros, o sea presentación— y la sesión decide qué
+// significa. Por eso las tres llamadas devuelven un booleano.
+
+// LA CAPTURA VA EN TRY/CATCH, y no es defensa por las dudas.
+//
+// `setPointerCapture` TIRA —NotFoundError— si el pointerId no corresponde a un
+// puntero activo, y el `?.` no cubre eso: protege contra un método que no
+// existe, no contra uno que falla. Sin el catch, la excepción corta
+// `arrancarGesto` ANTES de asignar el gesto, así que el arrastre no arranca
+// nunca y lo único que queda es una clase colgada.
+//
+// Se descubrió con eventos sintéticos, donde el puntero no existe de verdad,
+// pero el caso vale en producción: un puntero que se levanta entre el evento y
+// el handler da lo mismo. Y la captura es una mejora del gesto, no un requisito:
+// si falla, el gesto tiene que seguir funcionando.
+function capturar(nodo, evento) {
+  try {
+    nodo.setPointerCapture(evento.pointerId);
+  } catch (e) {
+    // Sin captura el gesto anda igual; lo que no puede es no arrancar.
+  }
+}
 
 let acariciarChip = () => false;
-let temporizadorCaricia = null;
-let temporizadorCansancio = null;
+let tocarChip = () => false;
+let fastidiarChip = () => {};
+let estaFastidiado = () => false;
+
 let temporizadorMantenido = null;
-let ultimaCaricia = 0;
-let caricias = [];
-let cansado = false;
+let temporizadorCaricia = null;
+let temporizadorVuelta = null;
+let temporizadorSobresalto = null;
+let toques = [];
 
-export function conectarCaricia(onCaricia) {
+// El gesto en curso. Vive en un solo objeto para que cancelarlo sea una cosa y
+// no seis.
+let gesto = null;
+
+export function conectarCaricia({ onCaricia, onToque, onFastidio, fastidiado }) {
   acariciarChip = onCaricia;
+  tocarChip = onToque;
+  fastidiarChip = onFastidio;
+  estaFastidiado = fastidiado;
 }
 
-function estaCansado() {
-  return cansado;
+// ---- Acariciar ----
+//
+// La respuesta se CONSTRUYE mientras dura, no aparece de golpe: los ojos a media
+// asta, la respiración más lenta y profunda, la cabeza inclinada hacia donde va
+// la mano, y un corazón cada tanto. La clase la lee style.css.
+
+function empezarCaricia() {
+  clearTimeout(temporizadorVuelta);
+  cajaChip.classList.remove(CLASE_VOLVIENDO);
+  cajaChip.classList.add(CLASE_ACARICIANDO);
+
+  // El primer corazón sale enseguida; los demás cada PASO_CARICIA_MS. Sin el
+  // primero inmediato, el medio segundo inicial se siente como que no pasó nada.
+  latidoDeCaricia();
+  clearInterval(temporizadorCaricia);
+  temporizadorCaricia = setInterval(latidoDeCaricia, PASO_CARICIA_MS);
 }
 
-// Se cansa cuando lo tocan muchas veces seguidas. Es la ÚNICA forma de
-// molestarlo que tiene el juego, y es graciosa y no punitiva: no baja ningún
-// stat, no bloquea las teclas, y se le pasa solo. Lo único que hace es dejar de
-// contestar la caricia un rato y poner la cara de fastidio.
-function cansarse() {
-  cansado = true;
-  caricias = [];
-  cajaChip.classList.add(CLASE_CANSADO);
-
-  clearTimeout(temporizadorCansancio);
-  temporizadorCansancio = setTimeout(() => {
-    cansado = false;
-    cajaChip.classList.remove(CLASE_CANSADO);
-  }, DURACION_CANSANCIO_MS);
+function latidoDeCaricia() {
+  // El modelo primero: con el humor lleno no sube nada y no hay corazones. Es el
+  // mismo contrato de siempre — se celebra que el humor SUBIÓ.
+  if (acariciarChip()) celebrarHumor();
 }
 
-function unaCaricia() {
-  if (estaCansado()) return;
+// LA CABEZA SIGUE LA MANO, apenas. No es un seguimiento literal: es una
+// insinuación, y cambia de lado si cambiás de dirección.
+function inclinarHaciaLaMano(dx) {
+  if (Math.abs(dx) < 1) return;
+  const lado = dx > 0 ? 1 : -1;
+  cajaChip.style.setProperty(VARS_CARICIA_GESTO.inclinacion, `${lado * INCLINACION_CARICIA}deg`);
+}
+
+// Al levantar el dedo NO se corta en seco. Sostiene el estado un momento y
+// vuelve despacio, y esa vuelta lenta es parte de lo que hace que se sienta
+// bien: cortar de golpe deshace todo lo anterior.
+function terminarCaricia() {
+  clearInterval(temporizadorCaricia);
+  temporizadorCaricia = null;
+
+  clearTimeout(temporizadorVuelta);
+  temporizadorVuelta = setTimeout(() => {
+    cajaChip.classList.remove(CLASE_ACARICIANDO);
+    cajaChip.classList.add(CLASE_VOLVIENDO);
+    cajaChip.style.removeProperty(VARS_CARICIA_GESTO.inclinacion);
+
+    temporizadorVuelta = setTimeout(() => {
+      cajaChip.classList.remove(CLASE_VOLVIENDO);
+    }, VUELTA_CARICIA_MS);
+  }, SOSTEN_CARICIA_MS);
+}
+
+// ---- Tocar ----
+
+function unToque() {
+  // Mientras está fastidiado no contesta más toques. La cara la decide la
+  // sesión; acá sólo se pregunta.
+  if (estaFastidiado()) return;
 
   const ahora = Date.now();
+  toques = toques.filter((t) => ahora - t < VENTANA_FASTIDIO_MS);
+  toques.push(ahora);
 
-  // La cuenta para cansarse mira TODOS los toques, incluidos los que no llegan
-  // a tener animación por el cooldown: lo que cansa es que lo manoseen, no que
-  // se vean corazones.
-  caricias = caricias.filter((t) => ahora - t < VENTANA_CANSANCIO_MS);
-  caricias.push(ahora);
-
-  if (caricias.length > CARICIAS_PARA_CANSARSE) {
-    cansarse();
+  if (toques.length >= TOQUES_PARA_FASTIDIO) {
+    toques = [];
+    fastidiarChip();
     return;
   }
 
-  // El modelo primero: si el humor está lleno, la caricia no aplica y no hay
-  // nada que festejar. Mismo criterio que celebrarHumor — se celebra que el
-  // humor SUBIÓ, no que hubo un toque.
-  const aplico = acariciarChip();
+  tocarChip();
 
-  // Y el cooldown, que es sólo de la ANIMACIÓN. La caricia ya se registró
-  // arriba: lo que se limita es que quince toques en dos segundos apilen quince
-  // tandas de corazones.
-  if (ahora - ultimaCaricia < COOLDOWN_CARICIA_MS) return;
-  ultimaCaricia = ahora;
-
-  // El squash, siempre: es el acuse de recibo del dedo y tiene que estar aunque
-  // el humor esté lleno. Si no, tocarlo con el humor en 100 no hace nada y
-  // parece que la app se colgó.
-  cuerpo.classList.remove(CLASE_CARICIA);
+  // EL SOBRESALTO: un squash corto y un parpadeo entero, como cuando le tocás el
+  // hombro a alguien que estaba distraído. Va SIEMPRE, aunque el humor esté
+  // lleno: es el acuse de recibo del dedo, y sin él tocarlo con el humor en 100
+  // no hace nada y parece que la app se colgó.
+  cuerpo.classList.remove(CLASE_SOBRESALTO);
   void cuerpo.offsetWidth;
-  cuerpo.classList.add(CLASE_CARICIA);
+  cuerpo.classList.add(CLASE_SOBRESALTO);
+  unParpadeo();
 
-  clearTimeout(temporizadorCaricia);
-  temporizadorCaricia = setTimeout(() => {
-    cuerpo.classList.remove(CLASE_CARICIA);
+  clearTimeout(temporizadorSobresalto);
+  temporizadorSobresalto = setTimeout(() => {
+    cuerpo.classList.remove(CLASE_SOBRESALTO);
   }, DURACION_CARICIA_MS + 60);
-
-  // Los corazones y el destello de la luz, sólo si la caricia hizo algo.
-  if (aplico) {
-    celebrarHumor();
-    destellarBulbo();
-  }
 }
 
-// ---- El gesto ----
+// ---- La interpretación del puntero ----
 //
-// Un solo par de handlers para las dos cosas: al apretar arranca el reloj del
-// mantenido, y al soltar se decide qué fue. Si el reloj llegó a los 500 ms, ya
-// abrió el panel y el soltar no hace nada; si no llegó, fue una caricia.
+// Un solo juego de handlers decide cuál de los tres gestos fue. Y lleva las
+// cuatro cosas que un gesto sostenido necesita en un teléfono, sin las cuales el
+// navegador lo cancela solo — ver la trampa del touch-action en el README:
 //
-// Se usan eventos de PUNTERO y no click: click llega recién al soltar, y el
-// anillo de progreso del mantenido tiene que empezar a dibujarse al apretar.
+//   setPointerCapture   el gesto sigue siendo del elemento aunque el dedo salga
+//   sin pointerleave    un dedo apoyado se mueve solo; cancelar por salir mata
+//                       el gesto con el micromovimiento normal
+//   contextmenu cortado el long-press nativo emite pointercancel y aborta todo
+//   touch-action: none  en el CSS, para que no lo lea como scroll
 
 function arrancarGesto(evento) {
-  // Sólo el botón principal. Un clic derecho sobre Chip no es una caricia.
   if (evento.button !== undefined && evento.button !== 0) return;
+
+  capturar(cajaChip, evento);
+
+  gesto = {
+    id: evento.pointerId,
+    x0: evento.clientX,
+    y0: evento.clientY,
+    x: evento.clientX,
+    desde: Date.now(),
+    acariciando: false
+  };
 
   cajaChip.classList.add(CLASE_MANTENIENDO);
 
@@ -1131,54 +1234,100 @@ function arrancarGesto(evento) {
   temporizadorMantenido = setTimeout(() => {
     temporizadorMantenido = null;
     cajaChip.classList.remove(CLASE_MANTENIENDO);
-    mostrarEstado();
+    // El mantenido sólo cuenta si NO se movió: si hubo arrastre, esto es una
+    // caricia y el panel no tiene que aparecer en el medio.
+    if (gesto && !gesto.acariciando) mostrarEstado();
   }, ESPERA_MANTENIDO_MS);
 }
 
-function soltarGesto() {
-  cajaChip.classList.remove(CLASE_MANTENIENDO);
+function moverGesto(evento) {
+  if (!gesto || evento.pointerId !== gesto.id) return;
 
-  // Si el timer sigue vivo, el mantenido no llegó: fue una caricia.
-  if (temporizadorMantenido) {
+  const dx = evento.clientX - gesto.x0;
+  const dy = evento.clientY - gesto.y0;
+  const recorrido = Math.hypot(dx, dy);
+
+  if (!gesto.acariciando && recorrido > MOVIMIENTO_CARICIA) {
+    gesto.acariciando = true;
+    // Moverse cancela el mantenido: son gestos excluyentes.
     clearTimeout(temporizadorMantenido);
     temporizadorMantenido = null;
-    unaCaricia();
+    cajaChip.classList.remove(CLASE_MANTENIENDO);
+    empezarCaricia();
   }
+
+  if (gesto.acariciando) inclinarHaciaLaMano(evento.clientX - gesto.x);
+  gesto.x = evento.clientX;
+}
+
+function soltarGesto(evento) {
+  if (!gesto || (evento && evento.pointerId !== gesto.id)) return;
+
+  const duro = Date.now() - gesto.desde;
+  const acariciaba = gesto.acariciando;
+
+  clearTimeout(temporizadorMantenido);
+  const habiaMantenido = temporizadorMantenido !== null;
+  temporizadorMantenido = null;
+  cajaChip.classList.remove(CLASE_MANTENIENDO);
+  gesto = null;
+
+  if (acariciaba) {
+    terminarCaricia();
+    return;
+  }
+
+  // Un tap seco: corto y sin movimiento. Si el mantenido ya venció, el panel se
+  // abrió y esto no es un toque.
+  if (habiaMantenido && duro < TOQUE_SECO_MS) unToque();
 }
 
 function cancelarGesto() {
   clearTimeout(temporizadorMantenido);
   temporizadorMantenido = null;
   cajaChip.classList.remove(CLASE_MANTENIENDO);
+  if (gesto?.acariciando) terminarCaricia();
+  gesto = null;
 }
 
 cajaChip.addEventListener('pointerdown', arrancarGesto);
+cajaChip.addEventListener('pointermove', moverGesto);
 cajaChip.addEventListener('pointerup', soltarGesto);
-// Si el dedo se va de Chip antes de soltar, no fue ninguna de las dos cosas.
-cajaChip.addEventListener('pointerleave', cancelarGesto);
+// pointercancel se queda —es el navegador diciendo que el puntero se fue de
+// verdad— pero pointerleave NO: con captura el dedo no "sale" del elemento, y
+// sin captura el micromovimiento de un dedo apoyado lo disparaba.
 cajaChip.addEventListener('pointercancel', cancelarGesto);
+// El long-press nativo abre el menú contextual y emite pointercancel, que mata
+// el gesto antes de tiempo. Con eventos sintéticos no pasa: por eso el gesto
+// funcionaba en automatización y no con el dedo.
+cajaChip.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// EL TECLADO TIENE LOS DOS GESTOS, no uno. Chip es un div con role=button y sin
-// esto la caricia sería inaccesible — y el panel de números, que ya era la única
-// forma de leer los stats, se perdería del todo.
+// EL TECLADO TIENE LOS TRES GESTOS. Chip es un div con role=button y sin esto
+// quedarían inaccesibles.
 //
-// Enter acaricia y Espacio abre los números. La asimetría es a propósito: Enter
-// es "activar" y Espacio es "inspeccionar", que es como se reparten en la
-// mayoría de los controles.
+// Enter toca, Espacio abre los números, y Enter sostenido acaricia: mantener la
+// tecla es lo más parecido a sostener el dedo que tiene un teclado.
 cajaChip.addEventListener('keydown', (evento) => {
-  if (evento.repeat) return;
-
   if (evento.key === 'Enter') {
     evento.preventDefault();
-    unaCaricia();
+    if (evento.repeat) {
+      if (!temporizadorCaricia) empezarCaricia();
+      return;
+    }
     return;
   }
 
-  if (evento.key === ' ') {
+  if (evento.key === ' ' && !evento.repeat) {
     evento.preventDefault();
     if (panelEstado.hidden) mostrarEstado();
     else ocultarEstado();
   }
+});
+
+cajaChip.addEventListener('keyup', (evento) => {
+  if (evento.key !== 'Enter') return;
+  if (temporizadorCaricia) terminarCaricia();
+  else unToque();
 });
 
 // Tocar afuera cierra. Se escucha en captura para que el toque en un botón de

@@ -3971,16 +3971,98 @@ body.sin-movimiento *::after {
   100% { scale: 1 1; }
 }
 
-/* SE CANSA. Más de seis toques en cuatro segundos y pone la cara de fastidio un
-   rato. Es la única forma de molestarlo que tiene el juego y es graciosa, no
-   punitiva: no baja ningún stat, no bloquea las teclas de acción, y se le pasa
-   solo. Lo único que hace es dejar de contestar la caricia.
+/* ============================================================================
+   LOS TRES GESTOS SOBRE CHIP
 
-   Se marca con un filtro apenas apagado y NO con un sprite forzado: forzar el
-   sprite de `esperando` desde el DOM sería que ui.js decida un estado visual, y
-   eso es de la cadena. El gesto se lee igual. */
-#chip.cansado #cuerpo {
-  filter: saturate(0.82) brightness(0.94);
+   Acariciar era un tap, y un tap no es una caricia: es un dedazo. La respuesta
+   de la caricia se CONSTRUYE mientras dura —los ojos, la respiración, la
+   cabeza— y no aparece de golpe, que es lo que la hace sentir una caricia.
+   ============================================================================ */
+
+/* LAS CUATRO REGLAS QUE UN GESTO SOSTENIDO NECESITA EN UN TELÉFONO.
+
+   Sin ellas el navegador cancela el gesto solo y no hay forma de verlo con
+   eventos sintéticos, porque los sintéticos son justamente los que NO disparan
+   el comportamiento nativo. Por eso el gesto del panel de debug funcionaba en
+   automatización y no con el dedo.
+
+   - touch-action: none        que no lo lea como scroll ni como zoom
+   - user-select: none         que no seleccione texto al mantener
+   - touch-callout: none       que iOS no abra el diálogo de guardar imagen
+   - (y en JS) contextmenu     el long-press nativo emite pointercancel
+
+   Va para los TRES gestos sostenidos que tiene el juego: acariciar a Chip,
+   mantener sobre Chip para los números, y mantener el botón del menú para el
+   panel de debug. Es la misma trampa las tres veces. */
+#chip,
+#menu-boton,
+#piso {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* LOS OJOS A MEDIA ASTA. Es lo más importante de la caricia: un animal al que
+   le rascan cierra los ojos, y eso solo ya se lee como placer sin necesidad de
+   ningún otro efecto.
+
+   Usa la misma capa y el mismo pivote que el parpadeo — no puede haber dos
+   orígenes para dos cosas distintas sobre el mismo elemento. */
+#chip.acariciando #ojos {
+  transform-origin: 50% var(--origen-parpadeo);
+  transform: scaleY(var(--caricia-parpado));
+  transition: transform 420ms ease-out;
+}
+
+/* LA RESPIRACIÓN, más lenta y más profunda. Es relajación: sutil, pero se
+   siente. Los tres valores salen de RESPIRACION_CARICIA en config.js. */
+#chip.acariciando #contenedor-mascota {
+  --ciclo-respiracion: var(--caricia-respiracion-ciclo);
+  --respiracion-y: var(--caricia-respiracion-y);
+  --respiracion-x: var(--caricia-respiracion-x);
+}
+
+/* LA CABEZA SIGUE LA MANO. Una insinuación de uno o dos grados, no un
+   seguimiento literal: el ángulo lo escribe ui.js según hacia dónde va el dedo
+   y cambia si cambiás de dirección. */
+#chip.acariciando #cabeza-grupo {
+  rotate: var(--caricia-inclinacion, 0deg);
+  transition: rotate 260ms ease-out;
+}
+
+/* LA VUELTA NO ES UN CORTE. Al levantar el dedo sostiene el estado un momento y
+   vuelve despacio; cortar de golpe deshace todo lo anterior, y esa vuelta lenta
+   es parte de lo que hace que se sienta bien. */
+#chip.volviendo #ojos,
+#chip.volviendo #cabeza-grupo {
+  transition-duration: var(--caricia-vuelta);
+}
+
+/* EL SOBRESALTO DEL TOQUE. Un squash corto y seco, como cuando le tocás el
+   hombro a alguien que estaba distraído. Es lo contrario de la caricia: acá la
+   respuesta es instantánea porque el gesto lo es. */
+#chip.sobresalto {
+  animation: sobresaltarse var(--duracion-caricia) ease-out;
+}
+
+@keyframes sobresaltarse {
+  0% { scale: 1 1; }
+  22% { scale: 1.06 0.93; }
+  55% { scale: 0.98 1.03; }
+  100% { scale: 1 1; }
+}
+
+/* SE FASTIDIA si lo seguís picando con el dedo. La cara la decide la cadena de
+   estados —pasa a `esperando`, los brazos cruzados— y acá sólo se le baja un
+   punto la luz, para que el cambio de sprite no sea lo único que lo diga.
+
+   Es la única forma de molestarlo que tiene el juego y es graciosa, no punitiva:
+   no baja ningún stat, no bloquea las teclas de acción, y se le pasa solo. Y
+   ahora vive del lado del TOQUE y no de la caricia — acariciarlo siempre está
+   bien. */
+#chip:has(.estado-esperando) #cuerpo {
+  filter: saturate(0.88) brightness(0.96);
   transition: filter 220ms ease-out;
 }
 

@@ -158,7 +158,14 @@ conectarAcciones({
 // no tiene tecla, no tiene estado visual y no ocupa a Chip. ui.js decide CUÁNDO
 // —el cooldown de la animación y el cansancio son suyos— y la sesión decide SI
 // aplica, que es lo del modelo.
-conectarCaricia(() => sesion.acariciar());
+// Los tres gestos. ui.js decide CUÁL fue —interpretar punteros es presentación—
+// y la sesión decide qué significa cada uno.
+conectarCaricia({
+  onCaricia: () => sesion.acariciar(),
+  onToque: () => sesion.tocar(),
+  onFastidio: () => sesion.fastidiar(),
+  fastidiado: () => sesion.estaFastidiado()
+});
 
 // Levantar lo que quedó tirado. ui.js avisa qué se tocó, la sesión decide si
 // aplica y repinta el estante con la pieza ya en su casillero; recién entonces

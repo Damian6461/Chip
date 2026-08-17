@@ -87,6 +87,7 @@ Se rompen y el proyecto se degrada rápido.
 - **Nunca el shorthand `animation` en una regla que pueda pisar delays de `:nth-child`.** Se declaran las propiedades por separado, o los `animation-delay` van **después** de la regla del shorthand y con el mismo prefijo de estado. Ver abajo: mordió tres veces.
 - **Todo asset nuevo entra en `ARCHIVOS_CACHE` con su bump de `CACHE_VERSION`**, y `tests/assets.test.js` lo verifica: el cruce ya no es disciplina.
 - **Nunca medir con `getBoundingClientRect` un elemento con `transform`.** Devuelve la caja del bounding box rotado, no la del elemento. Para la caja de layout van `offsetWidth` / `offsetHeight`. Ver abajo: el instrumento miente.
+- **Cualquier gesto sostenido o de arrastre necesita `touch-action: none`, `user-select: none`, `-webkit-touch-callout: none` y `contextmenu` prevenido**, o el navegador lo cancela solo: el long-press nativo —menú contextual, selección, guardar imagen— emite `pointercancel` y aborta el gesto. Además hay que capturar el puntero y cancelar por DISTANCIA, no con `pointerleave`: un dedo apoyado tres segundos se mueve solo. Ver abajo: el instrumento miente, y acá el instrumento es el evento sintético.
 - **`main.js` es cableado y no decide nada.** Arma las piezas, les pasa el reloj real y el DOM real, y las conecta. Lo que decide vive en `visita.js` y `sesion.js`, que se prueban sin navegador.
 
 ### El orquestador son tres archivos
@@ -169,6 +170,7 @@ razonables. Se detectan sabiendo que existen.
 | `fetch` con el service worker vivo | lo que hay **en la caché**, que puede ser de tres deploys atrás | el archivo que acabás de escribir |
 | una captura durante una transición | un fotograma **a mitad de camino** | el estado final |
 | `getBoundingClientRect` sobre un elemento con `transform` | la caja **alineada a los ejes** del elemento rotado, siempre más grande | la caja del elemento |
+| un gesto sostenido con eventos SINTÉTICOS | que el gesto **anda** | que anda en automatización, que es justo donde el navegador no lo cancela |
 | `setTimeout(fn, 30)` en la pestaña oculta | un timer de **un segundo**: el navegador clampea los timers de las pestañas en segundo plano | treinta milisegundos |
 
 La quinta es la que más caro sale, porque no falla: devuelve un dato coherente

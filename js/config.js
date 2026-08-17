@@ -146,8 +146,27 @@ export const PIVOTE_CABEZA = { x: 50, y: 54.7 };
 //
 // Vuelve más lento de lo que va: la curiosidad es rápida y el desinterés es
 // lento. Es la misma asimetría del salto y de la respiración.
+// EL ÁNGULO BAJÓ DE 3° A 1,2°, y no por gusto: a 3° asoma el sprite de abajo.
+//
+// La capa de cabeza se rota ENCIMA del sprite entero, así que en el borde
+// exterior queda a la vista la cabeza que el sprite base sigue teniendo
+// dibujada, corrida unos píxeles. Medido: a 3° quedan 505 px destapados, el
+// 3,51% de la capa, y el corrimiento en el punto más alto es de 6,8 px de lienzo
+// —11,1 en pantalla, porque el lienzo se muestra a 1,62x—. Eso es el doble
+// contorno que se ve en el teléfono.
+//
+// Enmascarar la cabeza del sprite base mientras dura la inclinación NO lo
+// arregla: cambia un fleco del color de la cabeza por un hueco TRANSPARENTE del
+// mismo tamaño, que deja ver el galpón a través de Chip. Peor.
+//
+// El arreglo limpio necesita ARTE: un `idle-sin-cabeza.webp`, el cuerpo sin la
+// región de la cabeza, para que la capa rotada sea la única que la dibuja. Con
+// eso el ángulo puede volver a 3 y a más.
+//
+// Mientras tanto, 1,2° deja el corrimiento en 2,7 px de lienzo (4,4 en
+// pantalla), que entra dentro del grosor del propio contorno del dibujo.
 export const INCLINACION_CABEZA = {
-  angulo: 3,
+  angulo: 1.2,
   entra: 620,
   sostiene: 1500,
   vuelve: 880
@@ -610,6 +629,77 @@ export const VARS_CAMBIO = {
 // Sube el humor MUY POCO. No es una cuarta acción encubierta: es que a Chip le
 // gusta que lo toquen. Dos puntos no reemplazan a jugar —que da 30— y no
 // alcanzan para sostener el stat solo.
+// ---- TRES GESTOS, TRES SIGNIFICADOS ----
+//
+// Acariciar era un TAP, y por eso no convencía: un tap no es una caricia, es un
+// dedazo. La diferencia es física y ningún ajuste de la animación la salva,
+// porque el gesto está diciendo otra cosa. Un toque es instantáneo y puntual;
+// una caricia es sostenida y en movimiento, y la respuesta se construye mientras
+// dura.
+//
+//   arrastrar el dedo   -> acariciar: se relaja
+//   tap seco            -> tocarlo:   se sobresalta, y si insistís se fastidia
+//   mantener sin mover  -> sus números
+//
+// Y eso corre el fastidio del lado del TOQUE y no de la caricia, que es lo que
+// importa para el modelo sin culpa: podés acariciarlo todo lo que quieras,
+// siempre está bien. Lo que lo molesta es que lo estés picando con el dedo.
+
+// Cuánto movimiento convierte un apretón en un arrastre.
+export const MOVIMIENTO_CARICIA = 10;
+
+// Y cuánto lo cancela. Es un umbral de DISTANCIA y no el evento `pointerleave`:
+// un dedo apoyado tres segundos se mueve solo, y con pointerleave el gesto se
+// abortaba con el micromovimiento. Ver la trampa del touch-action en el README.
+export const MOVIMIENTO_CANCELA = 20;
+
+// Más que esto ya no es un tap seco.
+export const TOQUE_SECO_MS = 200;
+
+// Un toque sube menos que una caricia. No es nada, pero no es lo mismo.
+export const TOQUE_HUMOR = 1;
+
+// Cada cuánto sale un corazón mientras la caricia sigue. De a uno y no en tanda:
+// uno cada tanto dice "esto está pasando ahora", cinco de golpe dicen "recibí un
+// evento".
+export const PASO_CARICIA_MS = 500;
+
+// CUÁNTOS TOQUES LO FASTIDIAN. Eran 6 en 4 s y en la práctica no se disparaba
+// nunca. Con 4 en 3 s se fastidia siempre, que es lo que hace que el gesto tenga
+// una consecuencia legible.
+export const TOQUES_PARA_FASTIDIO = 4;
+export const VENTANA_FASTIDIO_MS = 3000;
+
+// LA RELAJACIÓN, en multiplicadores sobre la respiración de reposo. Más lenta y
+// más profunda: es lo que hace un cuerpo al que le rascan.
+export const RESPIRACION_CARICIA = { ciclo: 1.25, amplitud: 1.4 };
+
+// Los ojos a media asta. Es lo más importante de la caricia: un animal al que le
+// rascan cierra los ojos, y eso solo ya se lee como placer. Si de toda la lista
+// se implementara una cosa, sería esta.
+export const PARPADO_CARICIA = 0.45;
+
+// La cabeza acompaña la mano. Una insinuación, no un seguimiento literal.
+export const INCLINACION_CARICIA = 1.2;
+
+// Sostener y volver. La vuelta lenta es parte de lo que hace que se sienta bien:
+// un corte seco al levantar el dedo deshace todo lo anterior.
+export const SOSTEN_CARICIA_MS = 600;
+export const VUELTA_CARICIA_MS = 1500;
+
+export const CLASE_ACARICIANDO = 'acariciando';
+export const CLASE_SOBRESALTO = 'sobresalto';
+export const CLASE_VOLVIENDO = 'volviendo';
+
+export const VARS_CARICIA_GESTO = {
+  parpado: '--caricia-parpado',
+  inclinacion: '--caricia-inclinacion',
+  vuelta: '--caricia-vuelta',
+  cicloRespiracion: '--caricia-respiracion-ciclo',
+  respiracionY: '--caricia-respiracion-y',
+  respiracionX: '--caricia-respiracion-x'
+};
+
 export const CARICIA_HUMOR = 2;
 
 // Cada cuánto puede haber una reacción visual. Sin esto, quince toques en dos
@@ -1615,13 +1705,25 @@ export const VARS_REPISA = {
 // primer cuadro son el mismo lugar con la luz apagada.
 export const COLOR_APERTURA = '#181b1f';
 
-// El velo se apaga en 360 ms y Chip entra 160 ms después, ya empezada la
-// escena. El orden es la mitad del efecto: primero está el galpón, después
-// aparece Chip EN el galpón. Si entran juntos se lee como que la imagen tardó
-// en cargar; escalonados se lee como que alguien prendió la luz.
-export const DURACION_APERTURA_MS = 360;
-export const RETARDO_CHIP_APERTURA_MS = 160;
-export const DURACION_ENTRADA_CHIP_MS = 320;
+// EL VELO DURA 820 ms Y NO 360, y el escalonado se abrió a la par.
+//
+// A 360 ms el fundido se leía como un corte con un parpadeo, no como un
+// fundido. Y el motivo no es el número en abstracto sino de dónde sale la
+// transición: el arranque va de la splash —casi negra, con un ícono chico— a un
+// galpón con un atardecer brillante ocupando toda la pantalla. Cuanto mayor es
+// el contraste entre los dos momentos, más tiempo necesita el ojo para leerlo
+// como una disolvencia y no como un salto.
+//
+// El escalonado es la otra mitad del efecto: primero está el galpón (0-820 ms),
+// después aparece Chip EN el galpón (300-900 ms). Si entran juntos se lee como
+// que la imagen tardó en cargar; escalonados se lee como que alguien prendió la
+// luz y Chip ya estaba ahí.
+//
+// Y COLOR_APERTURA tiene que ser EXACTAMENTE el background_color del manifest:
+// cualquier cuadro intermedio de otro color es la costura que se ve.
+export const DURACION_APERTURA_MS = 820;
+export const RETARDO_CHIP_APERTURA_MS = 300;
+export const DURACION_ENTRADA_CHIP_MS = 600;
 
 export const VARS_APERTURA = {
   color: '--color-apertura',

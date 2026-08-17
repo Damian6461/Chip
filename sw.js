@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v74';
+const CACHE_VERSION = 'chip-cache-v75';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -88,6 +88,14 @@ const ARCHIVOS_CACHE = [
   // una sola capa pero como dos componentes separadas, con centros en 66,3/86,4 y
   // 30,8/86,5 del lienzo — que son los dos pivotes que va a necesitar el giro.
   './sprites/idle-orugas.webp',
+  // Y estos dos son de la misma clase: aparecieron en el repo mientras se
+  // trabajaba en los gestos y NO están wireados a nada. Son los recortes del brazo
+  // izquierdo y el derecho, 256x256 RGBA, alineados al mismo lienzo. Se cachean
+  // para que el test del caché no falle y para que esté listo el día que se use
+  // —el candidato obvio es que el brazo reaccione a la caricia—, pero nadie lo
+  // carga todavía. Ojo: son los únicos .png de la carpeta; los demás son .webp.
+  './sprites/idle-brazo-izq.png',
+  './sprites/idle-brazo-der.png',
   './sprites/feliz.webp',
   './sprites/critico.webp',
   './sprites/standby.webp',

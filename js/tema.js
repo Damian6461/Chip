@@ -58,6 +58,10 @@ import {
   VARS_PERSONAJE,
   VARS_CABEZA,
   VARS_CARICIA,
+  VARS_CARICIA_GESTO,
+  PARPADO_CARICIA,
+  RESPIRACION_CARICIA,
+  VUELTA_CARICIA_MS,
   ESPERA_DEBUG_MS,
   ESPERA_MANTENIDO_MS,
   DURACION_CARICIA_MS,
@@ -338,6 +342,13 @@ export function variablesDeTema() {
     [VARS_PISO.brilloRadioMax]: `${BRILLO_PISO.radioMax}px`,
     [VARS_PISO.brilloAlfaMin]: String(BRILLO_PISO.alfaMin),
     [VARS_PISO.brilloAlfaMax]: String(BRILLO_PISO.alfaMax),
-    [VARS_PISO.vueloDuracion]: ms(VUELO_OBJETO.duracion)
+    [VARS_PISO.vueloDuracion]: ms(VUELO_OBJETO.duracion),
+
+    // ---- La caricia ----
+    [VARS_CARICIA_GESTO.parpado]: String(PARPADO_CARICIA),
+    [VARS_CARICIA_GESTO.vuelta]: ms(VUELTA_CARICIA_MS),
+    [VARS_CARICIA_GESTO.cicloRespiracion]: ms(Math.round(CICLO_RESPIRACION_MS * RESPIRACION_CARICIA.ciclo)),
+    [VARS_CARICIA_GESTO.respiracionY]: String(+(1 + (RESPIRACION.y - 1) * RESPIRACION_CARICIA.amplitud).toFixed(4)),
+    [VARS_CARICIA_GESTO.respiracionX]: String(+(1 - (1 - RESPIRACION.x) * RESPIRACION_CARICIA.amplitud).toFixed(4))
   };
 }
