@@ -3514,6 +3514,16 @@ export const TOMA_PARED = {
   saturacion: 0.62
 };
 
+// OJO CON LAS TRES DE ARRIBA — `ancho`, `brillo` y `saturacion`: hoy no las lee
+// nadie. Las leía la regla de #toma en style.css, que se fue con el nodo. `x` e
+// `y` sí siguen vivas: ui.js las usa para saber a dónde va el cable, y ahora
+// apuntan fuera de cuadro.
+//
+// No se borran porque describen la caja y la caja está entera en `svgDeToma()`,
+// esperando. El guardián del puente no las marca porque mira los exports y no
+// sus propiedades — así que esto queda escrito acá, que es donde alguien las va
+// a leer antes de preguntarse para qué están.
+
 export const VARS_CABLE = {
   camino: '--cable-camino',
   // El grosor ya no viaja por custom property: lo escribe ui.js POR TRAMO, con
@@ -3528,11 +3538,14 @@ export const VARS_CABLE = {
   energia: '--cable-energia',
   sombraPuerto: '--cable-sombra-puerto',
   ficha: '--cable-ficha',
-  tomaX: '--toma-pared-x',
-  tomaY: '--toma-pared-y',
-  tomaAncho: '--toma-pared-ancho',
-  tomaBrillo: '--toma-pared-brillo',
-  tomaSaturacion: '--toma-pared-saturacion',
+  // Acá estaban las cinco de la caja del toma —tomaX, tomaY, tomaAncho,
+  // tomaBrillo y tomaSaturacion—. Se fueron con el nodo #toma: ver el comentario
+  // en index.html. Las leía una sola regla de style.css y esa regla ya no
+  // existe, así que quedarse con ellas era escribir cinco variables que nadie
+  // lee — el guardián del puente lo marcó, y con razón.
+  //
+  // TOMA_PARED.x e y siguen existiendo, pero ya no viajan al CSS: los usa ui.js
+  // para saber a dónde va el cable, y el cable se dibuja en SVG.
   cicloBalanceo: '--cable-balanceo-ciclo',
   amplitudBalanceo: '--cable-balanceo-amplitud',
   // El radio del pulso NO viaja por custom property: es un atributo r del SVG y
@@ -3584,10 +3597,10 @@ export const ANCLA_TOMA = { x: 0.425, y: 0.542 };
 // VARS_CABLE, porque la caja dejó de ser un accesorio anclado a Chip y pasó a
 // ser mobiliario del fondo. Sobreviven las dos anclas, que dicen dónde está la
 // BOCA del conector dentro del dibujo — eso es del SVG y no cambia con el lugar.
-export const VARS_TOMA = {
-  anclaX: '--toma-ancla-x',
-  anclaY: '--toma-ancla-y'
-};
+// Y acá estaba VARS_TOMA, con --toma-ancla-x y --toma-ancla-y. Se fue por lo
+// mismo: las leía la regla de #toma, que ya no existe. ANCLA_TOMA sobrevive
+// arriba porque describe el DIBUJO —dónde está la boca del conector adentro del
+// SVG— y eso no cambia con que la caja esté puesta o no.
 
 // LOS TONOS, MEDIDOS CONTRA LO QUE YA HAY EN ESE PISO.
 //

@@ -119,12 +119,10 @@ import {
   FACTOR_HALO_NOCHE,
   DURACION_DESTELLO_BULBO_MS,
   DESTELLO_BULBO,
-  VARS_TOMA,
   VARS_CABLE,
   CABLE,
   PULSOS_CABLE,
   TOMA_PARED,
-  ANCLA_TOMA,
   COLORES_TOMA,
   VARS_REPISA,
   REPISA,
@@ -315,8 +313,6 @@ export function variablesDeTema() {
     // lienzo del sprite; el CSS la convierte a la escena con los mismos anclajes
     // que usa #chip, así que no hay ningún porcentaje de la escena de por medio
     // y el encastre aguanta cualquier viewport.
-    [VARS_TOMA.anclaX]: String(ANCLA_TOMA.x),
-    [VARS_TOMA.anclaY]: String(ANCLA_TOMA.y),
     ...tonos('toma', COLORES_TOMA),
 
     // EL CABLE
@@ -334,11 +330,6 @@ export function variablesDeTema() {
     [VARS_CABLE.cicloPulso]: ms(PULSOS_CABLE.ciclo),
 
     // La caja de conexión, al fondo y sumergida
-    [VARS_CABLE.tomaX]: pct(TOMA_PARED.x),
-    [VARS_CABLE.tomaY]: pct(TOMA_PARED.y),
-    [VARS_CABLE.tomaAncho]: pct(TOMA_PARED.ancho),
-    [VARS_CABLE.tomaBrillo]: String(TOMA_PARED.brillo),
-    [VARS_CABLE.tomaSaturacion]: String(TOMA_PARED.saturacion),
 
     // La repisa alta. Su geometría entera vive en REPISA, así que mover el
     // estante es tocar cuatro números en config y nada más.

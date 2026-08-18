@@ -129,7 +129,10 @@ for (const [nombre, valor] of Object.entries(variablesDeTema())) {
 // dibujan una vez, están en todos los estados, y lo único que les cambia es el
 // brillo. El botón del menú es lo mismo del lado de la interfaz.
 
-if (toma) toma.innerHTML = svgDeToma();
+// Acá estaba `if (toma) toma.innerHTML = svgDeToma();`. El nodo se fue del HTML
+// junto con el destino del cable —ver el comentario en index.html— así que esto
+// no tiene a quién llenar. `svgDeToma` sigue en formas.js, escrita y sin llamar,
+// para el día que el encuadre cambie.
 
 // LA REPISA, ahora de DOS tablas. La segunda no está en el HTML: se clona acá
 // desde ESTANTES, para que pasar a tres estantes sea cambiar un número.

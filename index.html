@@ -91,7 +91,20 @@
        cable dibujado en cargando.png termine en algo. Va antes de #chip y con
        z-index negativo para quedar detrás de él y DEBAJO de la capa de luz, que
        es lo que le da la hora del día. La forma la dibuja ui.js. -->
-  <div id="toma" aria-hidden="true"></div>
+  <!-- ACÁ ESTABA EL NODO DE LA TOMA, y se fue con el cable que iba a ella:
+
+         <div id="toma" aria-hidden="true"></div>
+
+       El cable ahora sale por el borde derecho de la escena y no enchufa en
+       ninguna parte visible, así que la caja quedaba sola contra la pared. Y no
+       era mobiliario del dibujo: la dibujaba `svgDeToma()` por código, encima de
+       un paño liso, mientras los DOS tomas que el arte sí dibuja viven en el
+       87,8% del ancho de la imagen y no entran nunca en pantalla en un teléfono.
+       Está medido en verificacion/telefono.html.
+
+       El SVG queda escrito en formas.js y el bloque de estilo en style.css, los
+       dos comentados: la caja está bien dibujada y el día que el encuadre cambie
+       vuelve entera. -->
 
   <!-- EL CABLE. Se dibuja entero por código: el sprite de cargando ya no trae
        ninguno. Va antes de #chip para pasar por detrás de él, y lo llena ui.js

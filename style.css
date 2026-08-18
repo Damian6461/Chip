@@ -378,46 +378,26 @@ body.es-noche .banda.deformable {
    chapa oscura, mismas dos ranuras y mismo bisel naranja.
    ============================================================================ */
 
-#toma {
-  position: absolute;
-  /* Detrás de Chip y debajo de la capa de luz de #escena::after, que es
-     generada al final y por lo tanto pinta por encima entre los z-index
-     negativos. De ahí sale que la toma reciba la hora del día sin una sola
-     línea de JS que la mire. */
-  z-index: -1;
+/* ACÁ ESTABAN LAS REGLAS DE #toma, Y EL NODO YA NO EXISTE.
 
-  /* AL FONDO DEL TALLER, no al lado de Chip. Se posiciona en % de la ESCENA y no
-     con los anclajes de Chip: la caja ya no es un accesorio del personaje, es
-     mobiliario que está lejos. Los anclajes de antes existían para que el cable
-     DIBUJADO en el sprite muriera en su boca, y ese cable ya no existe.
+   Se fueron con el destino del cable: ahora sale por el borde derecho de la
+   escena y no enchufa en ninguna parte visible, así que la caja quedaba sola
+   contra la pared. Y no era mobiliario del dibujo — la dibujaba svgDeToma() por
+   código, sobre un paño liso, mientras los DOS tomas que el arte sí dibuja viven
+   en el 87,8% del ancho de la imagen y no entran nunca en pantalla en un
+   teléfono. Medido en verificacion/telefono.html.
 
-     El ancla es la boca del conector, que es donde llega el cable de código. */
-  left: var(--toma-pared-x);
-  top: var(--toma-pared-y);
-  width: var(--toma-pared-ancho);
-  aspect-ratio: 40 / 38;
-  margin-left: calc(var(--toma-pared-ancho) * var(--toma-ancla-x) * -1);
-  translate: 0 calc(var(--toma-ancla-y) * -100%);
-  pointer-events: none;
+   Se BORRAN en vez de quedar comentadas, y es a propósito: leían siete custom
+   properties que ahora nadie escribe, y dejarlas acá habría dejado siete
+   variables vivas por una regla que no matchea nada. El guardián del puente lo
+   habría marcado, y con razón. Es el mismo criterio que RUTAS_CUERPO_SIN_ORUGAS:
+   se va el código y queda escrito por qué, no un cadáver comentado.
 
-  /* SUMERGIDA. No compite con Chip porque está lejos, y estar lejos en este
-     galpón quiere decir dos cosas: menos luz y menos color. Es un filtro y no
-     una opacidad — el objeto está entero, lo que le falta es luz. Bajarle el
-     alfa lo habría vuelto transparente, que es otra cosa. */
-  filter: brightness(var(--toma-pared-brillo)) saturate(var(--toma-pared-saturacion));
-
-  /* SIN TRANSFORM. La perspectiva está dibujada en el SVG con la fuga medida.
-     Antes acá había rotate + perspective + rotateX y no se veía: inclinar una
-     chapa plana no le inventa una cara de arriba. Si además de dibujarla se la
-     transformara, la caja quedaría torcida dos veces. */
-}
-
-#toma svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
+   Lo que SÍ queda entero es el dibujo: svgDeToma() sigue en formas.js, sin que
+   nadie la llame, y el día que el encuadre cambie la caja vuelve con estas seis
+   declaraciones —posición en % de la escena, aspect-ratio 40/38, el ancla de la
+   boca del conector, y el filter de brillo y saturación que la manda al fondo—.
+   El detalle de cada una está en el historial de este archivo. */
 
 /* La sombra también está adentro del SVG, en coordenadas del dibujo: así se
    apoya donde apoya la caja y no donde termina su caja de layout. El ::after de
