@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1100" height="858" viewBox="0 0 1100 858">
+  <title>Los 35 puntos del cable, sobre la referencia</title>
+  <image href="../referencia-cable.png" xlink:href="../referencia-cable.png" x="0" y="0" width="1100" height="858"/>
+  <rect x="405" y="370" width="595" height="350"
+        fill="none" stroke="rgb(90,200,255)" stroke-width="2" stroke-dasharray="8 6" opacity="0.7"/>
+  <text x="411" y="362" font-size="14" fill="rgb(90,200,255)" font-family="monospace">ventana del trazado: x 405-1000, y 370-720</text>
+  <polyline points="150,472 136,520 134,570 180,609 225,627 300,648 411,651 459,648 507,643 555,636 603,627 651,617 699,603 747,590 787,581 803,571 817,560 827,545 829,530 828,514 823,500 819,490 816,480 813,470 811,459 815,444 826,431 838,423 862,412 886,404 910,397 934,391 958,385 983,381 994,375" fill="none" stroke="rgb(255,45,85)" stroke-width="1.5" opacity="0.45"/>
+  <circle cx="150" cy="472" r="5" fill="rgb(255,45,85)"/><text x="158" y="465" font-size="11" fill="rgb(255,45,85)" font-family="monospace">0</text>
+  <circle cx="136" cy="520" r="5" fill="rgb(255,45,85)"/><text x="144" y="513" font-size="11" fill="rgb(255,45,85)" font-family="monospace">1</text>
+  <circle cx="134" cy="570" r="5" fill="rgb(255,45,85)"/><text x="142" y="563" font-size="11" fill="rgb(255,45,85)" font-family="monospace">2</text>
+  <circle cx="180" cy="609" r="5" fill="rgb(255,45,85)"/><text x="188" y="602" font-size="11" fill="rgb(255,45,85)" font-family="monospace">3</text>
+  <circle cx="225" cy="627" r="5" fill="rgb(255,45,85)"/><text x="233" y="620" font-size="11" fill="rgb(255,45,85)" font-family="monospace">4</text>
+  <circle cx="300" cy="648" r="5" fill="rgb(255,45,85)"/><text x="308" y="641" font-size="11" fill="rgb(255,45,85)" font-family="monospace">5</text>
+  <circle cx="411" cy="651" r="5" fill="rgb(255,45,85)"/><text x="419" y="644" font-size="11" fill="rgb(255,45,85)" font-family="monospace">6</text>
+  <circle cx="459" cy="648" r="5" fill="rgb(255,45,85)"/><text x="467" y="641" font-size="11" fill="rgb(255,45,85)" font-family="monospace">7</text>
+  <circle cx="507" cy="643" r="5" fill="rgb(255,45,85)"/><text x="515" y="636" font-size="11" fill="rgb(255,45,85)" font-family="monospace">8</text>
+  <circle cx="555" cy="636" r="5" fill="rgb(255,45,85)"/><text x="563" y="629" font-size="11" fill="rgb(255,45,85)" font-family="monospace">9</text>
+  <circle cx="603" cy="627" r="5" fill="rgb(255,45,85)"/><text x="611" y="620" font-size="11" fill="rgb(255,45,85)" font-family="monospace">10</text>
+  <circle cx="651" cy="617" r="5" fill="rgb(255,45,85)"/><text x="659" y="610" font-size="11" fill="rgb(255,45,85)" font-family="monospace">11</text>
+  <circle cx="699" cy="603" r="5" fill="rgb(255,45,85)"/><text x="707" y="596" font-size="11" fill="rgb(255,45,85)" font-family="monospace">12</text>
+  <circle cx="747" cy="590" r="5" fill="rgb(255,45,85)"/><text x="755" y="583" font-size="11" fill="rgb(255,45,85)" font-family="monospace">13</text>
+  <circle cx="787" cy="581" r="5" fill="rgb(255,45,85)"/><text x="795" y="574" font-size="11" fill="rgb(255,45,85)" font-family="monospace">14</text>
+  <circle cx="803" cy="571" r="5" fill="rgb(255,45,85)"/><text x="811" y="564" font-size="11" fill="rgb(255,45,85)" font-family="monospace">15</text>
+  <circle cx="817" cy="560" r="5" fill="rgb(255,45,85)"/><text x="825" y="553" font-size="11" fill="rgb(255,45,85)" font-family="monospace">16</text>
+  <circle cx="827" cy="545" r="5" fill="rgb(255,45,85)"/><text x="835" y="538" font-size="11" fill="rgb(255,45,85)" font-family="monospace">17</text>
+  <circle cx="829" cy="530" r="5" fill="rgb(255,45,85)"/><text x="837" y="523" font-size="11" fill="rgb(255,45,85)" font-family="monospace">18</text>
+  <circle cx="828" cy="514" r="5" fill="rgb(255,45,85)"/><text x="836" y="507" font-size="11" fill="rgb(255,45,85)" font-family="monospace">19</text>
+  <circle cx="823" cy="500" r="5" fill="rgb(255,45,85)"/><text x="831" y="493" font-size="11" fill="rgb(255,45,85)" font-family="monospace">20</text>
+  <circle cx="819" cy="490" r="5" fill="rgb(255,45,85)"/><text x="827" y="483" font-size="11" fill="rgb(255,45,85)" font-family="monospace">21</text>
+  <circle cx="816" cy="480" r="5" fill="rgb(255,45,85)"/><text x="824" y="473" font-size="11" fill="rgb(255,45,85)" font-family="monospace">22</text>
+  <circle cx="813" cy="470" r="5" fill="rgb(255,45,85)"/><text x="821" y="463" font-size="11" fill="rgb(255,45,85)" font-family="monospace">23</text>
+  <circle cx="811" cy="459" r="5" fill="rgb(255,45,85)"/><text x="819" y="452" font-size="11" fill="rgb(255,45,85)" font-family="monospace">24</text>
+  <circle cx="815" cy="444" r="5" fill="rgb(255,45,85)"/><text x="823" y="437" font-size="11" fill="rgb(255,45,85)" font-family="monospace">25</text>
+  <circle cx="826" cy="431" r="5" fill="rgb(255,45,85)"/><text x="834" y="424" font-size="11" fill="rgb(255,45,85)" font-family="monospace">26</text>
+  <circle cx="838" cy="423" r="5" fill="rgb(255,45,85)"/><text x="846" y="416" font-size="11" fill="rgb(255,45,85)" font-family="monospace">27</text>
+  <circle cx="862" cy="412" r="5" fill="rgb(255,45,85)"/><text x="870" y="405" font-size="11" fill="rgb(255,45,85)" font-family="monospace">28</text>
+  <circle cx="886" cy="404" r="5" fill="rgb(255,45,85)"/><text x="894" y="397" font-size="11" fill="rgb(255,45,85)" font-family="monospace">29</text>
+  <circle cx="910" cy="397" r="5" fill="rgb(255,45,85)"/><text x="918" y="390" font-size="11" fill="rgb(255,45,85)" font-family="monospace">30</text>
+  <circle cx="934" cy="391" r="5" fill="rgb(255,45,85)"/><text x="942" y="384" font-size="11" fill="rgb(255,45,85)" font-family="monospace">31</text>
+  <circle cx="958" cy="385" r="5" fill="rgb(255,45,85)"/><text x="966" y="378" font-size="11" fill="rgb(255,45,85)" font-family="monospace">32</text>
+  <circle cx="983" cy="381" r="5" fill="rgb(255,45,85)"/><text x="991" y="374" font-size="11" fill="rgb(255,45,85)" font-family="monospace">33</text>
+  <circle cx="994" cy="375" r="5" fill="rgb(255,45,85)"/><text x="1002" y="368" font-size="11" fill="rgb(255,45,85)" font-family="monospace">34</text>
+</svg>

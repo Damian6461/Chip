@@ -789,14 +789,22 @@ prueba('ojos: encender una capa apaga la de abajo, y no la suma', () => {
   );
 });
 
-prueba('ojos: las reglas que apagan van DESPUÉS de las que encienden', () => {
-  // Misma especificidad, así que el orden es lo único que decide. Si alguien las
-  // sube, el cruce vuelve a sumar y vuelven los cuatro aros.
-  verdadero(
-    ORDEN_OJOS.apagaContento > ORDEN_OJOS.enciendeGesto,
-    `la regla que apaga \`contento\` está en ${ORDEN_OJOS.apagaContento} y la que lo enciende en ` +
-      `${ORDEN_OJOS.enciendeGesto}: con la misma especificidad, la de arriba pierde`
-  );
+prueba('ojos: las reglas que apagan ganan por especificidad, no por orden', () => {
+  // La primera versión dependía del ORDEN: mismos dos ids y una clase que las
+  // reglas que encienden, así que ganaban sólo por venir después. Eso se rompe
+  // solo: alguien reordena el archivo o agrupa dos selectores parecidos, y el
+  // cruce vuelve a sumar sin que se toque un valor y sin que nada avise.
+  //
+  // Con `.ojos-gesto` en el objetivo son dos ids y DOS clases: ganan estén donde
+  // estén. Se verifica la especificidad y no la posición, porque la posición era
+  // justamente la parte frágil.
+  for (const lado of ['izq', 'der']) {
+    verdadero(
+      CSS.includes(`#chip.ojos-cerrado #ojos-contento-${lado}.ojos-gesto`),
+      `la regla que apaga contento-${lado} tiene que llevar .ojos-gesto: sin eso empata ` +
+        'con la que lo enciende y gana la que esté más abajo'
+    );
+  }
 });
 
 prueba('ojos: las cuatro capas del ojo comparten el filtrado', () => {

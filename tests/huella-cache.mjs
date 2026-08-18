@@ -34,6 +34,51 @@ export function leerHuella(textoSw) {
   return m ? m[1] : null;
 }
 
+// Las extensiones de texto de ARCHIVOS_CACHE. El resto —.webp, .png— son
+// binarios y se hashean tal cual: ahí un byte distinto ES un archivo distinto.
+const TEXTO = /\.(html|css|js|json|mjs)$/i;
+
+// LOS FINALES DE LÍNEA SE NORMALIZAN ANTES DE HASHEAR, y esto no es prolijidad:
+// sin esto el guardián no protegía nada.
+//
+// La primera versión hasheaba los bytes del árbol de trabajo tal cual, y esos
+// bytes DEPENDEN DE CÓMO LLEGÓ CADA ARCHIVO AHÍ. Con `core.autocrlf=true` —el
+// default de Git en Windows— lo que git baja viene con CRLF, pero lo que escribe
+// un editor o un script queda con LF. O sea que un mismo commit da huellas
+// distintas según qué archivos tocó cada uno.
+//
+// Medido sobre 8e2230f, el mismo commit en dos carpetas:
+//
+//   árbol de trabajo   manifest.json    0 CRLF / 30 LF     huella 59ea57dc…
+//   clon limpio        manifest.json   30 CRLF /  0 LF     huella 0a325dba…
+//   otra máquina                                           huella a6960cd8…
+//
+// Tres valores para el mismo contenido. Un test que pasa en la máquina del que
+// lo escribió y falla en cualquier otra es PEOR que no tener test: ocupa el
+// lugar del que haría falta y encima entrena a la gente a ignorar el rojo.
+//
+// Y normalizar no es una concesión: es lo CORRECTO para lo que este guardián
+// mide. Lo que se despliega son los bytes que guarda git, que están
+// normalizados a LF; el CRLF del árbol de trabajo es un artefacto local que el
+// visitante de la página no ve nunca. Hashear LF es hashear lo que se sirve.
+//
+// Los binarios NO se tocan: ahí un 0x0D es un píxel, no un salto de línea.
+function bytesEstables(ruta, raiz) {
+  const crudo = readFileSync(new URL(ruta.replace(/^\.\//, ''), raiz));
+  if (!TEXTO.test(ruta)) return crudo;
+
+  // Se saca el \r sólo cuando va pegado a un \n. Un \r suelto —que en un archivo
+  // de texto no debería existir— se conserva, así que esto no puede borrar
+  // contenido: sólo unifica los dos finales de línea posibles en uno.
+  const salida = Buffer.alloc(crudo.length);
+  let n = 0;
+  for (let i = 0; i < crudo.length; i++) {
+    if (crudo[i] === 0x0d && crudo[i + 1] === 0x0a) continue;
+    salida[n++] = crudo[i];
+  }
+  return salida.subarray(0, n);
+}
+
 // SHA-256 sobre el contenido de cada archivo, con la RUTA adentro del hash.
 //
 // La ruta va incluida a propósito: sin ella, renombrar un sprite sin tocar su
@@ -47,7 +92,7 @@ export function huellaDe(archivos, raiz, createHash) {
   for (const ruta of archivos) {
     total.update(ruta);
     total.update('\0');
-    total.update(readFileSync(new URL(ruta.replace(/^\.\//, ''), raiz)));
+    total.update(bytesEstables(ruta, raiz));
   }
 
   return total.digest('hex').slice(0, 16);

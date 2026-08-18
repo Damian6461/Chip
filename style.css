@@ -932,16 +932,27 @@ body.es-noche #rayo {
    siendo una. Con las dos en 1 la suma es dos, que es de donde salían las dos
    mesetas de crema distintas que se midieron en el perfil horizontal.
 
-   VAN DESPUÉS Y NO ANTES: estos selectores tienen la MISMA especificidad que los
-   de arriba —dos ids y una clase— así que lo único que los hace ganar es el
-   orden. Moverlos arriba deshace el arreglo sin que nada lo diga, y por eso hay
-   un test que verifica la posición y no el valor. */
+   GANAN POR ESPECIFICIDAD Y NO POR ORDEN, y el `.ojos-gesto` de más abajo es
+   justamente eso y no un descuido.
+
+   La primera versión dependía del orden: estos selectores tenían la MISMA
+   especificidad que los de arriba —dos ids y una clase— así que lo único que los
+   hacía ganar era venir después. Eso se rompe solo con el tiempo: alguien
+   reordena el archivo, o agrupa dos selectores parecidos, y el cruce vuelve a
+   sumar sin que se toque un solo valor y sin que nada se queje.
+
+   Con `.ojos-gesto` en el objetivo son dos ids y DOS clases, así que ganan estén
+   donde estén. La clase no se inventó para esto: es la que ya tienen las cuatro
+   capas de gesto.
+
+   El de #ojos no la necesita —hoy no hay ninguna otra regla que le toque la
+   opacidad— pero si alguna vez aparece una, va a haber que hacerle lo mismo. */
 #chip.ojos-contento #ojos {
   opacity: 0;
 }
 
-#chip.ojos-cerrado #ojos-contento-izq,
-#chip.ojos-cerrado #ojos-contento-der {
+#chip.ojos-cerrado #ojos-contento-izq.ojos-gesto,
+#chip.ojos-cerrado #ojos-contento-der.ojos-gesto {
   opacity: 0;
 }
 

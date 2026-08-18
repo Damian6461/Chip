@@ -16,7 +16,9 @@
 //
 // Las dos eran disciplina. La disciplina se olvida; un test no.
 
-import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync, existsSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { prueba, igual, verdadero } from './runner.js';
@@ -592,4 +594,67 @@ prueba('sonido: un resume rechazado vuelve a armar el gesto', () => {
       /resume\(\)\.catch\(armarElGesto\)/.test(SONIDO_JS),
     'encender() tiene que mirar si el resume falló'
   );
+});
+
+// ---- Y UN GUARDIÁN PARA EL GUARDIÁN ----
+//
+// El de arriba falló exactamente como no tenía que fallar: pasaba en el árbol
+// donde se escribió y fallaba en un clon limpio del mismo commit. Tres huellas
+// distintas para el mismo contenido —59ea57dc, 0a325dba, a6960cd8— según qué
+// archivos había bajado git con CRLF y cuáles había dejado un editor con LF.
+//
+// Un test que depende del entorno es peor que ninguno: ocupa el lugar del que
+// haría falta y entrena a la gente a ignorar el rojo. Así que la propiedad que
+// hacía falta atar no es "la huella es correcta" sino "la huella es la MISMA en
+// cualquier checkout", y eso se prueba acá, con dos contenidos que difieren
+// SÓLO en el final de línea.
+prueba('deploy: la huella no cambia con los finales de línea', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'chip-huella-'));
+  try {
+    const swFalso = "const ARCHIVOS_CACHE = [\n  './a.js',\n  './b.png'\n];\n";
+    const lista = archivosSellados(swFalso);
+    igual(lista.join(','), './a.js,./b.png', 'el parser encuentra los dos');
+
+    const raiz = pathToFileURL(join(dir, '/'));
+    // El mismo texto, con los dos finales de línea posibles.
+    writeFileSync(join(dir, 'b.png'), Buffer.from([0x89, 0x50, 0x0d, 0x0a, 0x1a]));
+
+    writeFileSync(join(dir, 'a.js'), 'const x = 1;\nconst y = 2;\n');
+    const conLf = huellaDe(lista, raiz, createHash);
+
+    writeFileSync(join(dir, 'a.js'), 'const x = 1;\r\nconst y = 2;\r\n');
+    const conCrlf = huellaDe(lista, raiz, createHash);
+
+    igual(conCrlf, conLf, 'CRLF y LF tienen que dar la misma huella o el guardián no viaja');
+
+    // Y el contenido de verdad SÍ tiene que mover la huella, o lo anterior se
+    // habría "arreglado" haciendo que no mire nada.
+    writeFileSync(join(dir, 'a.js'), 'const x = 2;\nconst y = 2;\n');
+    verdadero(huellaDe(lista, raiz, createHash) !== conLf, 'un cambio real tiene que verse');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+prueba('deploy: en los binarios no se normaliza nada', () => {
+  // La normalización es sólo para texto. En un .png o un .webp un 0x0D seguido
+  // de un 0x0A es un par de bytes de la imagen, y sacarlo dejaría al guardián
+  // ciego justo donde más literal tiene que ser.
+  const dir = mkdtempSync(join(tmpdir(), 'chip-bin-'));
+  try {
+    const swFalso = "const ARCHIVOS_CACHE = [\n  './x.png'\n];\n";
+    const lista = archivosSellados(swFalso);
+    const raiz = pathToFileURL(join(dir, '/'));
+
+    writeFileSync(join(dir, 'x.png'), Buffer.from([1, 2, 0x0d, 0x0a, 3]));
+    const conPar = huellaDe(lista, raiz, createHash);
+
+    writeFileSync(join(dir, 'x.png'), Buffer.from([1, 2, 0x0a, 3]));
+    verdadero(
+      huellaDe(lista, raiz, createHash) !== conPar,
+      'sacarle un 0x0D a una imagen tiene que cambiar la huella'
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
