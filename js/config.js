@@ -1836,19 +1836,26 @@ export const CLASE_POLVO = 'levantando-polvo';
 // como capa propia encima, para que el polvo cupiera debajo de las orugas.
 // Estuvo puesto y se sacó, y el motivo está medido.
 //
-// LOS DOS RECORTES NO COMPARTEN SU BORDE. Comparando el alfa de los tres sprites
-// —los tres de 256x256— hay 780 píxeles que el cuerpo completo tiene y que las
-// dos capas juntas NO cubren. 287 de esos (el 37%) están en y >= 235, o sea el
-// contorno de abajo de las orugas; las peores filas son y=245 con 62 px, y=246
-// con 54 y y=244 con 43. Y hay un segundo grupo entre y=199 y y=206, unas 20
-// filas de las cuñas donde las orugas se juntan con las manos.
+// LOS DOS RECORTES NO COMPARTEN SU BORDE. Comparando el alfa de los tres
+// sprites —los tres de 256x256, sin escalar— hay 787 píxeles que el cuerpo
+// completo tiene y que las dos capas juntas NO cubren. La peor fila es y=245
+// con 62, después y=246 con 54 y y=244 con 41; y hay un segundo grupo entre
+// y=199 y y=206, las cuñas donde las orugas se juntan con las manos.
+//
+// LOS NÚMEROS VIAJAN CON SU DEFINICIÓN, que es una regla que costó una vuelta:
+// "62" es el CENSO de la fila —agujeros en esa y, pegados o no— contado con
+// alfa > 24 sobre 255. El tramo más largo de agujeros CONSECUTIVOS es otra
+// cuenta y da 33, en y=244, de x=57 a x=89. Las dos describen la misma costura;
+// publicar una sin decir cuál es hizo que otra medición diera 34 y no se
+// pudiera cruzar. La página las imprime a las dos, más la misma medición
+// repetida con seis umbrales de alfa.
 //
 // Dibujado: una costura vacía de 1 a 2 px que recorre todo el contorno exterior
 // de las dos orugas. Uno de los dos recortes se comió un píxel más que el otro.
 // Antes no se veía porque estaba todo pintado en un solo sprite; partirlo lo
 // destapó. Eso es "las ruedas comidas" que se reportó.
 //
-// Y AL REVÉS TAMBIÉN: 46 píxeles que las capas tienen y el completo no. O sea
+// Y AL REVÉS TAMBIÉN: 44 píxeles que las capas tienen y el completo no. O sea
 // que tampoco sirve dibujar el cuerpo completo abajo y las orugas encima: ese
 // sobrante pintaría un fleco de 1 px por fuera de la silueta.
 //
@@ -1859,7 +1866,7 @@ export const CLASE_POLVO = 'levantando-polvo';
 // apoyo, o sea POR DEBAJO del borde de la oruga, así que se ve igual sin la
 // capa.
 //
-// Un recorte que cuesta 780 píxeles de agujero y no habilita nada no se
+// Un recorte que cuesta 787 píxeles de agujero y no habilita nada no se
 // sostiene. `idle-cuerpo-sin-orugas.png` queda en el repo y en ARCHIVOS_CACHE,
 // sin cablear, y con este comentario al lado: el día que los dos recortes
 // compartan borde —o que las orugas necesiten moverse de verdad— vuelve, y

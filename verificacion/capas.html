@@ -8,18 +8,25 @@
          font:14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
   h1 { font-size:19px; margin:0 0 6px; }
   h2 { font-size:15px; color:#ffb060; margin:30px 0 6px; font-weight:normal; }
+  h3 { font-size:13px; color:#c9ced7; margin:18px 0 4px; font-weight:normal; }
   p { color:#9aa0ab; font-size:13px; max-width:86ch; }
   .veredicto { font-size:15px; padding:8px 12px; margin:10px 0; border-left:3px solid; }
   .mal { border-color:#ff6b78; color:#ff6b78; }
   .bien { border-color:#63d68a; color:#63d68a; }
+  .estable { font-size:12px; color:#9aa0ab; margin:6px 0 0; }
   table { border-collapse:collapse; font-size:12px; margin:10px 0; }
   td, th { padding:2px 16px 2px 0; text-align:left; }
   th { color:#9aa0ab; font-weight:normal; }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
   canvas { image-rendering:pixelated; border:1px solid #2a2d38; margin:8px 12px 0 0; }
   .par { display:flex; flex-wrap:wrap; align-items:flex-start; }
   figure { margin:0 14px 0 0; }
   figcaption { font-size:12px; color:#9aa0ab; }
   code { color:#c9ced7; }
+  .definicion { border:1px solid #2a2d38; padding:2px 16px 12px; margin:16px 0; max-width:86ch; }
+  .definicion h3 { color:#ffb060; }
+  .resumen th { color:#c9ced7; }
+  .tenue { color:#6d747f; }
 </style>
 </head>
 <body>
@@ -33,50 +40,134 @@
 </p>
 <p>
   Eso ya pasó una vez. <code>idle-cuerpo-sin-orugas.png</code> +
-  <code>idle-orugas.webp</code> dejaban <strong>780 píxeles de agujero</strong>
-  contra <code>idle-cuerpo.webp</code>, casi todos en el contorno de abajo de las
+  <code>idle-orugas.webp</code> dejaban cientos de píxeles de agujero contra
+  <code>idle-cuerpo.webp</code>, casi todos en el contorno de abajo de las
   orugas. Se reportó como «las ruedas comidas» y costó tres vueltas encontrarlo,
   porque el cableado estaba bien y las cajas coincidían.
 </p>
 
-<div class="aviso">
+<div class="definicion">
+  <h3>QUÉ SE MIDE, EXACTAMENTE — y por qué está escrito</h3>
   <p>
-    <strong>Todos los recortes pierden algunos píxeles</strong>, y eso está bien:
-    es el antialias del borde. Lo que importa no es el total sino
-    <strong>la peor fila</strong>. Sesenta y dos píxeles en una misma fila son una
-    línea de 62 px — una costura. Ocho son ocho puntos sueltos que nadie ve.
-    Los tres recortes del proyecto, medidos: 62 el que falló, 8 y 15 los dos que
-    están en uso y funcionan.
+    La primera versión de esta página publicaba un número —«la peor fila pierde
+    62»— sin decir cómo se contaba. Otra persona midió el mismo defecto y le dio
+    34. Ninguno de los dos estaba mal: eran dos cuentas distintas de la misma
+    costura, y la diferencia no se podía resolver mirando los números porque los
+    números no traían su definición.
   </p>
   <p>
-    <strong>Por qué esto es una página y no un test de <code>node</code>.</strong>
-    Hay que decodificar imágenes, y el proyecto no tiene dependencias: WebP
-    necesita un decodificador entero que no se puede escribir a mano en un rato.
-    El navegador ya lo trae. Así que esto se corre a mano <em>cuando se parte un
-    sprite en capas</em>, que es cuando el error se puede cometer — no en cada
-    commit, donde no aporta.
+    Es el segundo número de este proyecto al que le pasa. El primero fue un
+    umbral de histograma que tampoco reproducía sin decir sobre qué ventana se
+    calculaba. La regla que queda: <strong>un número publicado viaja con su
+    definición o no viaja</strong>.
+  </p>
+
+  <p>
+    <strong>Superficie</strong> = píxel con <code>alfa &gt; UMBRAL_ALFA</code>,
+    y <code>UMBRAL_ALFA = 24</code> sobre 255. Se compara alfa y no color: dos
+    recortes pueden tener el mismo píxel con tonos apenas distintos por el
+    antialias y eso está bien; lo que no puede haber es un píxel opaco en el
+    entero que en las capas sea transparente.
+  </p>
+  <p>
+    <strong>Agujero</strong> = píxel que es superficie en el sprite entero y no
+    lo es en las capas juntas.
+  </p>
+  <p>
+    <strong>Peor fila</strong> = la mayor cantidad de agujeros que hay en una
+    misma fila <em>y</em>, estén pegados o no. Es un censo de la fila.
+  </p>
+  <p>
+    <strong>Corrida más larga</strong> = el tramo horizontal más largo de
+    agujeros <em>consecutivos</em>: vecindad 4, y sólo dentro de una fila —
+    nunca en diagonal ni cruzando de una fila a la otra. Un solo píxel presente
+    en el medio corta la corrida en dos.
+  </p>
+  <p>
+    Las dos cuentan lo mismo cuando el agujero es una raya entera y se separan
+    cuando la raya viene punteada. Acá se separan bastante: la peor fila del
+    caso roto tiene 62 agujeros pero su corrida más larga es de 33, o sea que
+    esa fila viene cortada.
+  </p>
+  <p>
+    <strong>Decide la corrida</strong>, porque es la que describe lo que se ve
+    —una raya— y es a la que llega cualquiera que mire el mapa sin haber leído
+    este archivo. La peor fila se publica al lado como corroboración: si una da
+    alarma y la otra no, hay que mirar el mapa y no creerle a ninguna.
+  </p>
+
+  <h3>LOS DOS EJES POR LOS QUE DOS MEDICIONES HONESTAS SE SEPARAN</h3>
+  <p>
+    <strong>1. El umbral de alfa.</strong> Es el que manda. La misma costura da
+    corrida 35 con <code>alfa &gt; 0</code>, 34 con <code>&gt; 8</code> y 33 con
+    <code>&gt; 24</code>. Ahí está la diferencia entre 34 y 33: es el mismo
+    defecto, en la misma fila —<code>y=244</code>—, contado con otro umbral. Si
+    dos mediciones no coinciden, ésta es la primera pregunta.
+  </p>
+  <p>
+    <strong>2. Cómo se juntan las capas</strong>, y éste resultó no importar,
+    que también es un dato. <code>union</code> pregunta si alguna capa pasa el
+    umbral; <code>compuesto</code> apila los alfas como los apila el navegador
+    —<code>a = 1 − Π(1 − aᵢ)</code>— y recién ahí compara, así que dos capas al
+    50% dan 75% y pasan un umbral que ninguna pasa sola. Se midieron las dos:
+    en el umbral que decide dan <em>idéntico</em> en las tres composiciones, y
+    la mayor diferencia en toda la tabla es de 11 píxeles sobre un total de 250.
+    Decide <code>compuesto</code> porque es lo que se dibuja de verdad.
+  </p>
+  <p class="tenue">
+    Un tercer eje que no cambia nada acá pero conviene decirlo: los tres sprites
+    miden 256×256 y se comparan sin escalar, 1 a 1. Si alguno midiera distinto,
+    el remuestreo inventaría bordes y todo esto no querría decir nada.
   </p>
 </div>
 
+<p>
+  <strong>Todos los recortes pierden algunos píxeles</strong>, y eso está bien:
+  es el antialias del borde. Lo que importa no es el total sino la
+  <strong>concentración</strong>. Treinta y tres píxeles seguidos son una raya
+  de 33 px de largo — una costura. Seis son seis puntos sueltos que nadie ve.
+</p>
+<p>
+  <strong>El corte está en 28 y no en el medio de los tres números de arriba.</strong>
+  Se centra en la banda que dejan las doce combinaciones de umbral y modo —el
+  roto nunca baja de 33, el peor de los que andan nunca pasa de 22— porque un
+  veredicto que se da vuelta según con qué umbral lo mire el que reproduce es
+  exactamente el problema que esta página vino a arreglar. Debajo de cada
+  veredicto está impreso cuánto aire le queda en el peor de esos doce casos.
+</p>
+<p>
+  <strong>Por qué esto es una página y no un test de <code>node</code>.</strong>
+  Hay que decodificar imágenes, y el proyecto no tiene dependencias: WebP
+  necesita un decodificador entero que no se puede escribir a mano en un rato.
+  El navegador ya lo trae. Así que esto se corre a mano <em>cuando se parte un
+  sprite en capas</em>, que es cuando el error se puede cometer — no en cada
+  commit, donde no aporta.
+</p>
+<p>
+  <strong>Hay que servirlo por HTTP.</strong> Con <code>file://</code> las
+  imágenes tiñen el canvas y <code>getImageData</code> tira
+  <code>SecurityError</code>: la página no mide nada, y el mensaje del error no
+  dice esto.
+</p>
+
+<div id="resumen"></div>
 <div id="todo"></div>
 
 <script type="module">
 // LAS COMPOSICIONES A VERIFICAR.
 //
 // Cada entrada dice: un sprite entero, y las capas que TIENEN que reconstruirlo.
-// Se comparan por ALFA y no por color: lo que importa es que no falte
-// superficie. Dos recortes pueden tener el mismo píxel con tonos ligeramente
-// distintos por el antialias y eso está bien; lo que no puede haber es un píxel
-// opaco en el entero que en las capas sea transparente.
 const COMPOSICIONES = [
   {
     nombre: 'idle: cuerpo sin orugas + orugas  →  cuerpo',
+    corto: 'sin-orugas + orugas',
     entero: 'sprites/idle-cuerpo.webp',
     capas: ['sprites/idle-cuerpo-sin-orugas.png', 'sprites/idle-orugas.webp'],
     nota: 'La que falló. Está acá para que se pueda comprobar el arreglo el día que se rehaga alguno de los dos recortes.'
   },
   {
     nombre: 'idle: cuerpo + cabeza + los dos brazos  →  sprite entero',
+    corto: 'idle: cuerpo+cabeza+brazos',
     entero: 'sprites/idle.webp',
     capas: [
       'sprites/idle-cuerpo.webp',
@@ -88,6 +179,7 @@ const COMPOSICIONES = [
   },
   {
     nombre: 'feliz: cuerpo + cabeza + los dos brazos  →  sprite entero',
+    corto: 'feliz: cuerpo+cabeza+brazos',
     entero: 'sprites/feliz.webp',
     capas: [
       'sprites/feliz-cuerpo.webp',
@@ -100,9 +192,61 @@ const COMPOSICIONES = [
 ];
 
 const LADO = 256;
-const OPACO = 24; // alfa por encima del cual se considera que hay superficie
 
-async function alfaDe(ruta) {
+// EL UMBRAL DE ALFA CON EL QUE SE DECIDE. Los otros cinco de la tabla de
+// sensibilidad están para poder cruzar mediciones ajenas, no para decidir.
+//
+// EL CORTE Y EL UMBRAL SON UN SOLO NÚMERO EN DOS PARTES: mover el umbral mueve
+// las corridas, y un corte heredado de otro umbral no quiere decir nada. Si
+// alguna vez se cambia UMBRAL_ALFA, hay que rehacer la calibración de abajo.
+const UMBRAL_ALFA = 24;
+const UMBRALES = [0, 8, 24, 64, 128, 200];
+
+// Cómo se juntan las capas antes de comparar. Ver alfaJunto y la definición de
+// arriba: medido, los dos modos dan lo mismo en el umbral que decide.
+const MODO = 'compuesto';
+const MODOS = ['compuesto', 'union'];
+
+// EL CORTE DEL VEREDICTO, sobre la CORRIDA MÁS LARGA.
+//
+// No sale de ninguna norma: sale de la distancia entre el caso roto y el peor
+// de los que funcionan, medida sobre los tres recortes que existen en el
+// proyecto. Con el umbral que decide:
+//
+//   sin-orugas + orugas    787 agujeros, peor fila 62, CORRIDA 33   <- el roto
+//   idle: cuerpo+cabeza    213 agujeros, peor fila  8, corrida  6   <- anda
+//   feliz: cuerpo+cabeza   318 agujeros, peor fila 15, corrida 13   <- anda
+//
+// O sea que TODOS los recortes pierden píxeles: es el antialias del borde,
+// repartido, y no se ve. Lo que se ve es la concentración.
+//
+// PERO EL CORTE NO SE CENTRA EN ESA TERNA, y ésta es la lección del número que
+// no reproducía. Se centra en la banda que dejan las DOCE combinaciones de
+// umbral y modo, porque de nada sirve un veredicto que se dé vuelta según con
+// qué umbral lo mire el que reproduce:
+//
+//   el roto NUNCA baja de 33   (33 a 36 en las doce)
+//   feliz  NUNCA pasa de 22    (6 a 22; el 22 es con alfa > 0, el umbral más
+//                               permisivo, donde feliz junta 2024 agujeros)
+//
+// Entre 22 y 33 el punto medio es 27,5, así que el corte va en 28: cinco
+// píxeles de aire contra el roto y seis contra feliz, en el peor caso de las
+// doce y no sólo en el umbral cómodo. Centrarlo en la terna daba 24, que en
+// el peor caso deja a feliz a DOS píxeles de una falsa alarma — y un guardián
+// que grita en falso enseña a ignorarlo, que es de donde venimos con el del
+// deploy.
+//
+// La página imprime ese peor caso debajo de cada veredicto, así que el aire que
+// tiene el corte se lee y no hay que creerlo.
+//
+// Si algún día un recorte cae entre 22 y 33, hay que mirar el mapa y no creerle
+// a este número.
+const CORTE_CORRIDA = 28;
+
+const pixeles = new Map();
+
+async function pixelesDe(ruta) {
+  if (pixeles.has(ruta)) return pixeles.get(ruta);
   const img = new Image();
   img.src = '../' + ruta;
   await img.decode();
@@ -110,13 +254,73 @@ async function alfaDe(ruta) {
   c.width = LADO; c.height = LADO;
   const x = c.getContext('2d', { willReadFrequently: true });
   x.drawImage(img, 0, 0, LADO, LADO);
-  const d = x.getImageData(0, 0, LADO, LADO).data;
-  const a = new Uint8Array(LADO * LADO);
-  for (let i = 0; i < a.length; i++) a[i] = d[i * 4 + 3] > OPACO ? 1 : 0;
-  return { alfa: a, ancho: img.naturalWidth, alto: img.naturalHeight };
+  const datos = x.getImageData(0, 0, LADO, LADO).data;
+  const alfa = new Uint8Array(LADO * LADO);
+  for (let i = 0; i < alfa.length; i++) alfa[i] = datos[i * 4 + 3];
+  const res = { alfa, ancho: img.naturalWidth, alto: img.naturalHeight };
+  pixeles.set(ruta, res);
+  return res;
+}
+
+// CÓMO SE JUNTAN LAS CAPAS. Ver la definición de arriba.
+function alfaJunto(capas, i, modo) {
+  if (modo === 'union') {
+    let mayor = 0;
+    for (const c of capas) if (c.alfa[i] > mayor) mayor = c.alfa[i];
+    return mayor;
+  }
+  let queda = 1;
+  for (const c of capas) queda *= 1 - c.alfa[i] / 255;
+  return (1 - queda) * 255;
+}
+
+// LA MEDICIÓN, con el umbral y el modo como parámetros para que las tablas de
+// sensibilidad usen exactamente el mismo código que el veredicto. Una tabla de
+// sensibilidad calculada con otro código no mide la sensibilidad: mide la
+// diferencia entre los dos códigos.
+function medir(entero, capas, umbral, modo = MODO) {
+  const faltan = [], sobran = [];
+  for (let y = 0; y < LADO; y++) {
+    for (let x = 0; x < LADO; x++) {
+      const i = y * LADO + x;
+      const enElEntero = entero.alfa[i] > umbral;
+      const enLasCapas = alfaJunto(capas, i, modo) > umbral;
+      if (enElEntero && !enLasCapas) faltan.push([x, y]);
+      else if (!enElEntero && enLasCapas) sobran.push([x, y]);
+    }
+  }
+
+  // El censo por fila: cuántos agujeros hay en cada y, pegados o no.
+  const porFila = new Map();
+  for (const [, y] of faltan) porFila.set(y, (porFila.get(y) || 0) + 1);
+  const peores = [...porFila.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const peorFila = peores.length ? peores[0][1] : 0;
+  const filaPeor = peores.length ? peores[0][0] : -1;
+
+  // Y la corrida: el tramo horizontal más largo de agujeros CONSECUTIVOS. Se
+  // recorre la fila entera y se corta en cuanto aparece un píxel presente.
+  const esAgujero = new Uint8Array(LADO * LADO);
+  for (const [x, y] of faltan) esAgujero[y * LADO + x] = 1;
+
+  let corrida = 0, filaCorrida = -1, desdeCorrida = -1;
+  for (let y = 0; y < LADO; y++) {
+    let largo = 0;
+    for (let x = 0; x < LADO; x++) {
+      if (esAgujero[y * LADO + x]) {
+        largo++;
+        if (largo > corrida) { corrida = largo; filaCorrida = y; desdeCorrida = x - largo + 1; }
+      } else {
+        largo = 0;
+      }
+    }
+  }
+
+  return { faltan, sobran, peores, peorFila, filaPeor, corrida, filaCorrida, desdeCorrida };
 }
 
 const todo = document.getElementById('todo');
+const resumen = document.getElementById('resumen');
+const filasResumen = [];
 
 for (const comp of COMPOSICIONES) {
   const seccion = document.createElement('section');
@@ -125,69 +329,84 @@ for (const comp of COMPOSICIONES) {
 
   let entero, capas;
   try {
-    entero = await alfaDe(comp.entero);
-    capas = await Promise.all(comp.capas.map(alfaDe));
+    entero = await pixelesDe(comp.entero);
+    capas = await Promise.all(comp.capas.map(pixelesDe));
   } catch (e) {
-    seccion.innerHTML += `<div class="veredicto mal">no se pudo cargar: ${e.message}</div>`;
+    seccion.innerHTML += `<div class="veredicto mal">no se pudo cargar: ${e.message}</div>` +
+      '<p>Si dice <code>SecurityError</code> o <code>tainted</code>, la página se abrió con ' +
+      '<code>file://</code>. Hay que servirla por HTTP.</p>';
     continue;
   }
 
-  // La unión de las capas.
-  const union = new Uint8Array(LADO * LADO);
-  for (const c of capas) for (let i = 0; i < union.length; i++) if (c.alfa[i]) union[i] = 1;
+  const m = medir(entero, capas, UMBRAL_ALFA);
+  const bien = m.corrida < CORTE_CORRIDA;
 
-  // Los dos sentidos. El que importa es `faltan`: superficie que el entero tiene
-  // y las capas no, o sea AGUJEROS. `sobran` es lo contrario y también vale
-  // saberlo: si las capas sobresalen, dibujarlas encima del entero pinta un
-  // fleco por fuera de la silueta.
-  const faltan = [], sobran = [];
-  for (let y = 0; y < LADO; y++) {
-    for (let x = 0; x < LADO; x++) {
-      const i = y * LADO + x;
-      if (entero.alfa[i] && !union[i]) faltan.push([x, y]);
-      else if (!entero.alfa[i] && union[i]) sobran.push([x, y]);
-    }
-  }
+  // TODA la tabla de sensibilidad, que se usa dos veces: para mostrarla y para
+  // preguntarle si el veredicto aguanta en las doce combinaciones.
+  const sensibilidad = MODOS.flatMap((modo) =>
+    UMBRALES.map((umbral) => ({
+      modo,
+      umbral,
+      decide: umbral === UMBRAL_ALFA && modo === MODO,
+      m: umbral === UMBRAL_ALFA && modo === MODO ? m : medir(entero, capas, umbral, modo)
+    }))
+  );
 
-  // Las peores filas: dónde está concentrado el agujero. Un hueco repartido
-  // parejo es antialias; uno concentrado en unas pocas filas es una costura.
-  const porFila = {};
-  for (const [, y] of faltan) porFila[y] = (porFila[y] || 0) + 1;
-  const peores = Object.entries(porFila).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  // LA ESTABILIDAD. El veredicto se saca con un umbral fijo, así que se publica
+  // también cuánto le falta para darse vuelta si el umbral fuera otro: es la
+  // forma de no esconder el punto más flaco del corte.
+  const corridas = sensibilidad.map((s) => s.m.corrida);
+  const iguales = sensibilidad.every((s) => (s.m.corrida < CORTE_CORRIDA) === bien);
+  const masCerca = bien ? Math.max(...corridas) : Math.min(...corridas);
+  const alFilo = sensibilidad.find((s) => s.m.corrida === masCerca);
 
-  // EL NÚMERO QUE DECIDE ES LA PEOR FILA, no el total, y esto salió de medir
-  // los tres recortes del proyecto en vez de inventar un umbral:
-  //
-  //   cuerpo-sin-orugas + orugas   787 agujeros, PEOR FILA 62   <- el roto
-  //   idle: cuerpo+cabeza+brazos   213 agujeros, peor fila  8   <- anda
-  //   feliz: cuerpo+cabeza+brazos  318 agujeros, peor fila 15   <- anda
-  //
-  // O sea que TODOS los recortes pierden algunos píxeles: es el antialias del
-  // borde, repartido, y no se ve. Lo que se ve es la CONCENTRACIÓN — 62 píxeles
-  // en una sola fila es una línea de 62 px de largo, o sea una costura; 8 son
-  // ocho puntos sueltos.
-  //
-  // El corte en 30 no sale de ninguna norma: sale de que el caso roto da 62 y el
-  // peor de los que funcionan da 15. Está en el medio y con margen para los dos
-  // lados. Si algún día un recorte cae entre 15 y 30, hay que mirarlo y no
-  // creerle a este número.
-  const peorFila = peores.length ? peores[0][1] : 0;
-  const bien = peorFila < 30;
+  filasResumen.push(
+    `<tr><td>${comp.corto}</td>` +
+    `<td class="num">${m.faltan.length}</td>` +
+    `<td class="num">${m.peorFila}</td>` +
+    `<td class="num">${m.corrida}</td>` +
+    `<td style="color:${bien ? '#63d68a' : '#ff6b78'}">${bien ? 'cierra' : 'COSTURA'}</td></tr>`
+  );
+
   seccion.innerHTML +=
     `<div class="veredicto ${bien ? 'bien' : 'mal'}">` +
     (bien
-      ? `Cierra. ${faltan.length} píxeles perdidos en total, pero la peor fila tiene ${peorFila}: ` +
-        'está repartido, o sea antialias del borde y no una costura.'
-      : `COSTURA: la peor fila pierde ${peorFila} píxeles seguidos, sobre ${faltan.length} en total. ` +
-        'Eso es una línea, no antialias.') +
+      ? `Cierra. ${m.faltan.length} píxeles perdidos en total, pero la corrida más larga es de ` +
+        `${m.corrida} px contra un corte de ${CORTE_CORRIDA}: está repartido, o sea antialias del ` +
+        'borde y no una costura.'
+      : `COSTURA: hay una corrida de ${m.corrida} px de agujero seguido en y=${m.filaCorrida}, ` +
+        `sobre ${m.faltan.length} píxeles perdidos en total. Eso es una raya, no antialias.`) +
     `</div>` +
+    `<p class="estable">` +
+    (iguales
+      ? `El veredicto no cambia en ninguna de las ${sensibilidad.length} combinaciones de umbral y ` +
+        `modo. Donde menos aire tiene es con ${alFilo.modo} / alfa &gt; ${alFilo.umbral}: corrida ` +
+        `${masCerca} contra el corte de ${CORTE_CORRIDA}, o sea ${Math.abs(masCerca - CORTE_CORRIDA)} px.`
+      : `OJO: el veredicto SE DA VUELTA según el umbral. Este caso cae dentro de la zona donde el ` +
+        `corte no decide — hay que mirar el mapa.`) +
+    `</p>` +
     `<table>` +
-    `<tr><th>agujeros (faltan)</th><td>${faltan.length}</td></tr>` +
-    `<tr><th>sobrantes (las capas sobresalen)</th><td>${sobran.length}</td></tr>` +
-    (peores.length
-      ? `<tr><th>peores filas</th><td>${peores.map(([y, n]) => `y=${y}: ${n}`).join(' · ')}</td></tr>`
+    `<tr><th>agujeros (faltan), en total</th><td class="num">${m.faltan.length}</td></tr>` +
+    `<tr><th>peor fila (censo, pegados o no)</th><td class="num">${m.peorFila}</td>` +
+    `<td>en y=${m.filaPeor}</td></tr>` +
+    `<tr><th>corrida más larga (consecutivos) &larr; decide</th><td class="num">${m.corrida}</td>` +
+    `<td>en y=${m.filaCorrida}, de x=${m.desdeCorrida} a x=${m.desdeCorrida + m.corrida - 1}</td></tr>` +
+    `<tr><th>sobrantes (las capas sobresalen)</th><td class="num">${m.sobran.length}</td></tr>` +
+    (m.peores.length
+      ? `<tr><th>peores filas</th><td colspan="2">${m.peores.map(([y, n]) => `y=${y}: ${n}`).join(' · ')}</td></tr>`
       : '') +
     `</table>`;
+
+  seccion.innerHTML +=
+    '<h3>sensibilidad: los dos ejes por los que dos mediciones honestas se separan</h3>' +
+    '<table><tr><th>capas juntadas</th><th>umbral</th><th>agujeros</th><th>peor fila</th>' +
+    '<th>corrida</th><th></th></tr>' +
+    sensibilidad.map((s) =>
+      `<tr><td>${s.modo}</td><td class="num">alfa &gt; ${s.umbral}</td>` +
+      `<td class="num">${s.m.faltan.length}</td>` +
+      `<td class="num">${s.m.peorFila}</td><td class="num">${s.m.corrida}</td>` +
+      `<td>${s.decide ? ' &larr; el que decide' : ''}</td></tr>`
+    ).join('') + '</table>';
 
   // Y el mapa, que es lo que hace entender el número: rojo donde falta, ámbar
   // donde sobra, gris tenue el sprite entero de referencia.
@@ -199,16 +418,19 @@ for (const comp of COMPOSICIONES) {
   const img = mx.createImageData(LADO, LADO);
   for (let i = 0; i < LADO * LADO; i++) {
     const p = i * 4;
-    if (entero.alfa[i]) { img.data[p] = 40; img.data[p + 1] = 44; img.data[p + 2] = 52; img.data[p + 3] = 255; }
-    else { img.data[p + 3] = 255; }
+    if (entero.alfa[i] > UMBRAL_ALFA) {
+      img.data[p] = 40; img.data[p + 1] = 44; img.data[p + 2] = 52; img.data[p + 3] = 255;
+    } else {
+      img.data[p + 3] = 255;
+    }
   }
-  for (const [x, y] of faltan) {
-    const p = (y * LADO + x) * 4;
-    img.data[p] = 255; img.data[p + 1] = 60; img.data[p + 2] = 90; img.data[p + 3] = 255;
-  }
-  for (const [x, y] of sobran) {
+  for (const [x, y] of m.sobran) {
     const p = (y * LADO + x) * 4;
     img.data[p] = 255; img.data[p + 1] = 176; img.data[p + 2] = 60; img.data[p + 3] = 255;
+  }
+  for (const [x, y] of m.faltan) {
+    const p = (y * LADO + x) * 4;
+    img.data[p] = 255; img.data[p + 1] = 60; img.data[p + 2] = 90; img.data[p + 3] = 255;
   }
   mx.putImageData(img, 0, 0);
 
@@ -217,14 +439,21 @@ for (const comp of COMPOSICIONES) {
   const fig = document.createElement('figure');
   fig.appendChild(mapa);
   const pie = document.createElement('figcaption');
-  pie.textContent = 'rojo = agujero · ámbar = sobrante · gris = el sprite entero';
+  pie.textContent = 'rojo = agujero · ámbar = sobrante · gris = el sprite entero · x2';
   fig.appendChild(pie);
   par.appendChild(fig);
   seccion.appendChild(par);
 }
 
+resumen.innerHTML =
+  '<h2>las tres, en una tabla</h2>' +
+  `<p>Con el umbral que decide: <code>${MODO}</code>, <code>alfa &gt; ${UMBRAL_ALFA}</code>.</p>` +
+  `<table class="resumen"><tr><th>composición</th><th>agujeros</th><th>peor fila</th>` +
+  `<th>corrida</th><th>veredicto (corrida &lt; ${CORTE_CORRIDA})</th></tr>` +
+  filasResumen.join('') + '</table>';
+
 document.title = 'capas — ' + (document.querySelectorAll('.veredicto.mal').length
-  ? document.querySelectorAll('.veredicto.mal').length + ' con agujeros'
+  ? document.querySelectorAll('.veredicto.mal').length + ' con costura'
   : 'todas cierran');
 </script>
 </body>
