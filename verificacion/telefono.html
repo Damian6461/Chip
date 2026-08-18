@@ -162,6 +162,31 @@
   <div id="recortes"></div>
 </div>
 
+<h2>qué hay dibujado en el punto al que apunta <code>TOMA_PARED</code></h2>
+<p>
+  La fila que faltaba. <code>TOMA_PARED</code> está en % de la ESCENA; lo que
+  hay debajo es un pedazo de una IMAGEN, y las dos cosas no se convierten sin
+  saber cuánto se recortó. Acá se convierte —con la franja medida arriba— y se
+  recorta el fondo en ese punto exacto, ampliado, para los seis.
+</p>
+<p>
+  Al lado va el candidato de la columna ENTRA, para poder compararlos sin
+  cambiar de página. <strong>Se mira, no se deduce:</strong> un detector de color
+  dice que hay cian, no qué cosa es.
+</p>
+<div id="punto-toma"></div>
+
+<h2>y la conversión no es una sola: depende del viewport</h2>
+<p>
+  El mismo punto del dibujo cae en un % de la escena distinto según la relación
+  de aspecto, porque la franja visible cambia. Así que una constante en % de la
+  escena <strong>no puede seguir a algo dibujado en el fondo</strong> en dos
+  pantallas distintas. Se mide en las dos.
+</p>
+<div id="conversion"></div>
+<iframe id="marco-ancho" src="../index.html" title="Chip en una ventana ancha"
+        style="width: 1100px; height: 945px; margin-top: 10px"></iframe>
+
 <h2>los seis fondos, y qué parte entra</h2>
 <p>
   De cada fondo: el ancho que ocupa escalado al alto de la escena, la franja
@@ -183,10 +208,23 @@ const FONDOS = [
   'sprites/fondo-tormenta.webp'
 ];
 
+// LOS PUNTOS QUE SE MIRAN, en % del ANCHO Y ALTO DE LA IMAGEN.
+//
+// `TOMA_PARED` no está acá porque no es un punto de la imagen: es un % de la
+// ESCENA, y a qué parte del dibujo cae depende del recorte. Se convierte abajo.
+const CANDIDATOS = [
+  { nombre: 'candidato: el panel de máquina', x: 27.55, y: 59.9 },
+  { nombre: 'los tomas del arte (arriba)', x: 87.83, y: 42.11 },
+  { nombre: 'los tomas del arte (abajo)', x: 87.83, y: 57.3 }
+];
+
 const marco = document.getElementById('marco');
+const marcoAncho = document.getElementById('marco-ancho');
 const medida = document.getElementById('medida');
 const salidaFondos = document.getElementById('fondos');
 const recortes = document.getElementById('recortes');
+const puntoToma = document.getElementById('punto-toma');
+const conversion = document.getElementById('conversion');
 
 const n2 = (v) => +v.toFixed(2);
 
@@ -368,6 +406,122 @@ if (toma) {
     '<p>El nodo está donde dice la constante. La pregunta es si abajo hay un toma ' +
     'dibujado, y eso lo contesta la tabla de los fondos.</p>';
 }
+
+// ---- LA CONVERSIÓN, MEDIDA EN DOS VIEWPORTS ----
+//
+// De % de la IMAGEN a % de la ESCENA y al revés. Las dos direcciones dependen de
+// la franja visible, o sea del viewport: por eso se calculan contra la caja de
+// cada iframe y no una vez.
+function conversorDe(cajaEscena, posXpx, anchoImg, altoImg) {
+  const v = ventanaDelFondo(anchoImg, altoImg, cajaEscena, posXpx);
+  return {
+    v,
+    aEscena: (fracImg) => (fracImg * anchoImg - v.desdePx) / (v.hastaPx - v.desdePx),
+    aImagen: (fracEsc) => (v.desdePx + fracEsc * (v.hastaPx - v.desdePx)) / anchoImg
+  };
+}
+
+const ANCHO_IMG = 1672, ALTO_IMG = 941;
+const conv = conversorDe(caja, posX, ANCHO_IMG, ALTO_IMG);
+
+// El segundo iframe, ancho, para ver cuánto se mueve la conversión.
+await new Promise((listo) => {
+  if (marcoAncho.contentDocument?.readyState === 'complete') listo();
+  else marcoAncho.addEventListener('load', listo, { once: true });
+});
+await new Promise((r) => setTimeout(r, 700));
+
+const docAncho = marcoAncho.contentDocument;
+const escenaAncha = docAncho.getElementById('escena');
+const cajaAncha = escenaAncha.getBoundingClientRect();
+const convAncho = conversorDe(
+  cajaAncha,
+  parseFloat(getComputedStyle(escenaAncha).backgroundPositionX),
+  ANCHO_IMG,
+  ALTO_IMG
+);
+
+const TOMA_HOY = 0.90; // el x de TOMA_PARED, en fracción de la escena
+
+const filasConv = CANDIDATOS.map((c) => {
+  const eAng = conv.aEscena(c.x / 100);
+  const eAnc = convAncho.aEscena(c.x / 100);
+  const dentro = (e) => e >= 0 && e <= 1;
+  return `<tr><td>${c.nombre}</td><td class="num">${n2(c.x)}%</td>` +
+    `<td class="num ${dentro(eAng) ? 'dentro' : 'fuera'}">${n2(eAng * 100)}%</td>` +
+    `<td class="num ${dentro(eAnc) ? 'dentro' : 'fuera'}">${n2(eAnc * 100)}%</td></tr>`;
+}).join('');
+
+conversion.innerHTML =
+  '<table>' +
+  `<tr><th>viewport</th><th>caja de #escena</th><th>franja visible del dibujo</th></tr>` +
+  `<tr><td>390 &times; 844</td><td>${n2(caja.width)} &times; ${n2(caja.height)}</td>` +
+  `<td>${n2(conv.v.desdePc)}% a ${n2(conv.v.hastaPc)}%</td></tr>` +
+  `<tr><td>${marcoAncho.contentWindow.innerWidth} &times; ${marcoAncho.contentWindow.innerHeight}</td>` +
+  `<td>${n2(cajaAncha.width)} &times; ${n2(cajaAncha.height)}</td>` +
+  `<td>${n2(convAncho.v.desdePc)}% a ${n2(convAncho.v.hastaPc)}%</td></tr>` +
+  '</table>' +
+  '<table><tr><th>punto del dibujo</th><th>x en la imagen</th><th>x en la escena, a 390</th>' +
+  '<th>x en la escena, ancho</th></tr>' + filasConv + '</table>' +
+  '<p>Y al revés: <code>TOMA_PARED</code> está en el <strong>90%</strong> de la escena, ' +
+  `que a 390&times;844 cae en el <strong>${n2(conv.aImagen(TOMA_HOY) * 100)}%</strong> del dibujo ` +
+  `y en una ventana ancha cae en el <strong>${n2(convAncho.aImagen(TOMA_HOY) * 100)}%</strong>. ` +
+  'Dos partes distintas del galpón, con la misma constante. La <em>y</em> no tiene este ' +
+  'problema: el fondo se escala por alto, así que el % de alto de la imagen y el de la ' +
+  'escena coinciden — se confirma abajo, en los recortes.</p>';
+
+// ---- LOS RECORTES: QUÉ HAY DIBUJADO EN CADA PUNTO ----
+const cache = new Map();
+async function cargar(ruta) {
+  if (!cache.has(ruta)) {
+    const img = new Image();
+    img.src = '../' + ruta;
+    await img.decode();
+    cache.set(ruta, img);
+  }
+  return cache.get(ruta);
+}
+
+const LADO = 54, ZOOM = 5;
+
+function recorte(img, fx, fy) {
+  const c = document.createElement('canvas');
+  c.width = LADO * ZOOM; c.height = LADO * ZOOM;
+  const x = c.getContext('2d');
+  x.imageSmoothingEnabled = false;
+  x.drawImage(
+    img,
+    img.naturalWidth * fx - LADO / 2, img.naturalHeight * fy - LADO / 2, LADO, LADO,
+    0, 0, LADO * ZOOM, LADO * ZOOM
+  );
+  c.style.cssText = 'width:' + LADO * ZOOM / 2 + 'px;height:' + LADO * ZOOM / 2 + 'px';
+  return c;
+}
+
+// La columna de la izquierda es DONDE APUNTA HOY la constante, convertida a la
+// imagen; las otras son los candidatos.
+const columnas = [
+  { nombre: `TOMA_PARED hoy — ${n2(conv.aImagen(TOMA_HOY) * 100)}% / 58%`,
+    x: conv.aImagen(TOMA_HOY) * 100, y: 58 },
+  ...CANDIDATOS
+];
+
+const tabla = document.createElement('table');
+tabla.innerHTML = '<tr><th>fondo</th>' + columnas.map((c) => `<th>${c.nombre}</th>`).join('') + '</tr>';
+for (const ruta of FONDOS) {
+  const img = await cargar(ruta);
+  const fila = document.createElement('tr');
+  const th = document.createElement('th');
+  th.textContent = ruta.replace('sprites/fondo-', '').replace('.webp', '');
+  fila.appendChild(th);
+  for (const c of columnas) {
+    const td = document.createElement('td');
+    td.appendChild(recorte(img, c.x / 100, c.y / 100));
+    fila.appendChild(td);
+  }
+  tabla.appendChild(fila);
+}
+puntoToma.appendChild(tabla);
 
 document.title = 'teléfono — franja visible medida';
 </script>
