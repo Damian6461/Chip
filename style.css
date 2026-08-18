@@ -820,29 +820,36 @@ body.es-noche #rayo {
      recortes. Con el origen en el medio de la caja el ojo se cerraría hacia
      arriba en vez de cerrarse sobre sí mismo. */
   transform-origin: 50% var(--origen-parpadeo);
-  /* DOS PROPIEDADES Y EN LONGHANDS, y esto NO es estilo: acá estaba el defecto
-     de "los ojos se salen de la órbita".
+  /* TRANSICIONA `translate` Y NO `opacity`, Y EN LONGHANDS. Las dos mitades de
+     este renglón son cicatrices, y de dos defectos distintos.
 
-     `opacity` es el cruce con las capas de gesto: la misma duración que ellas,
-     porque cuando `contento` entra, ésta tiene que SALIR al mismo ritmo.
-     `translate` es la mirada que se va con la cabeza distraída.
+     EL SEGUNDO PRIMERO, porque es el que decide qué se transiciona: ACÁ HABÍA UN
+     CRUCE DE OPACIDAD CON LAS CAPAS DE GESTO, y era la técnica equivocada. Las
+     tres capas de ojo están puestas y lo que cambiaba era la opacidad, así que
+     en el medio del cruce se veían dos dibujos al 50% cada uno — y dos dibujos
+     de pixel art al 50% dan una mancha translúcida con colores que ningún
+     dibujante puso. Un cuadro con ojos de fantasma, cada vez que la cara
+     cambiaba.
 
-     Escrito con el shorthand `transition`, la regla de la mirada
-     —`#cabeza-grupo #ojos`, que gana por especificidad con dos ids contra uno—
-     RESETEABA transition-property a `translate` y se llevaba puesto el cruce de
-     opacidad. Medido: getComputedStyle(#ojos).transitionProperty daba
-     `translate`, y #ojos saltaba de 0 a 1 sin transición mientras la capa de
-     gesto —corrida arriba y a la derecha, porque es un recorte de otra pose—
-     todavía se estaba apagando. Doscientos sesenta milisegundos con DOS ojos
-     dibujados en dos lugares distintos.
+     Medía perfecto: la suma de opacidades daba 1,00 en TODOS los cuadros y el
+     salto máximo entre cuadros era 0,19. Lo que estaba mal no era el valor, era
+     la técnica. EL PIXEL ART CORTA, NO DISUELVE — ver el README. El cambio de
+     cara es ahora un swap de un cuadro, sin transición de opacidad en ninguna de
+     las capas, como un frame de animación.
 
-     Es la regla de los shorthands del README, la cuarta mordida: un shorthand
-     no declara lo que dice, declara TODO lo de su familia y le pone el valor
-     inicial a lo que uno no nombró. Con longhands, la regla de la mirada puede
-     cambiarle la duración al translate sin tocar la del opacity. */
-  transition-property: opacity, translate;
-  transition-duration: var(--ojos-cruce), var(--mirada-vuelve);
-  transition-timing-function: ease-out, ease-out;
+     `translate` SÍ transiciona, y no es lo mismo: eso es la mirada distraída
+     moviendo el ojo ENTERO adentro de su cuenca. Mover un dibujo no inventa
+     ningún color; mezclar dos, sí.
+
+     Y VA EN LONGHANDS, que es la otra cicatriz. Con el shorthand `transition`,
+     la regla de la mirada —`#cabeza-grupo #ojos`, que ganaba por especificidad
+     con dos ids contra uno— reseteaba transition-property a lo suyo y borraba en
+     silencio lo que declaraba ésta. Es la regla de los shorthands del README.
+     Con longhands, las reglas más específicas cambian el TIEMPO sin tocar la
+     lista. */
+  transition-property: translate;
+  transition-duration: var(--mirada-vuelve);
+  transition-timing-function: ease-out;
 }
 
 #ojos[hidden] {
@@ -866,8 +873,11 @@ body.es-noche #rayo {
   height: 100%;
   pointer-events: none;
   image-rendering: pixelated;
+  /* SIN TRANSICIÓN DE OPACIDAD, y es lo mismo que en #ojos: una capa reemplaza a
+     la otra en un cuadro. Acá había `transition: opacity var(--ojos-cruce)` y
+     era la mitad de la mancha translúcida — mientras ésta subía, #ojos bajaba, y
+     en el medio estaban las dos a mitad de camino. Ver el bloque de #ojos. */
   opacity: 0;
-  transition: opacity var(--ojos-cruce) ease-out;
 }
 
 .ojos-gesto[hidden] {
@@ -3992,6 +4002,24 @@ body.es-noche #piso {
 
    Se ve uno por vez. Si la visita trajo dos, ui.js reemplaza el texto a los
    4 s: son dos frases sueltas, no una lista de notificaciones. */
+/* EL CABLE NO LE PASA POR ENCIMA — YA ESTÁ DETRÁS, y esto está escrito porque
+   parece lo contrario y ya costó un arreglo que no arreglaba nada.
+
+   Se ve el cable cruzando el texto, sí. Pero no está encima: el lazo de abajo
+   vive en #cable-atras, que tiene z-index -1, y este panel tiene fondo
+   `rgba(6, 8, 12, 0.72)` — 28% transparente. Lo que se ve es el cable A TRAVÉS
+   del panel.
+
+   Medido, y las dos cosas se ven idénticas en una captura: con el fondo puesto
+   opaco un momento, el cable DESAPARECE del texto. Y sigue desapareciendo con
+   este párrafo sin posicionar, o sea que ningún cambio de apilado lo mueve —
+   nunca estuvo arriba.
+
+   Así que si molesta, lo que hay que decidir es OTRA cosa: o el panel deja de
+   ser translúcido, o el cable deja de apoyarse a la altura del panel
+   (APOYO_CABLE está en 86% del alto de la escena y este panel ocupa del 83,3%
+   al 90,7%, medido). Las dos son decisiones de diseño y ninguna es un
+   z-index. */
 .evento {
   margin: 0 var(--esp-2) var(--esp-1);
   padding: var(--esp-1) 10px;
@@ -4181,8 +4209,8 @@ body.es-noche #piso {
    sacar la clase deja el translate en cero y lo lleva la duración de base. */
 #cabeza-grupo.distraida #ojos {
   translate: calc(var(--mirada-ojos) * var(--mirada-lado)) 0;
-  transition-duration: var(--ojos-cruce), var(--mirada-se-va);
-  transition-timing-function: ease-out, ease-in-out;
+  transition-duration: var(--mirada-se-va);
+  transition-timing-function: ease-in-out;
 }
 
 /* VOLVER ES RÁPIDO. No hace falta ninguna regla para el gesto de volver: sacar
@@ -4827,13 +4855,16 @@ body.sin-movimiento *::after {
   transition-duration: var(--caricia-vuelta);
 }
 
-/* #ojos VA SEPARADO Y CON LOS DOS TIEMPOS ESCRITOS. Su transition-property son
-   dos —opacity y translate, ver el bloque de #ojos— y una sola duración se
-   REPITE sobre la lista: puesto acá con las dos, la vuelta lenta de la caricia
-   se le aplicaría también al cruce de los ojos, que no es lo que la regla dice.
-   El cruce mantiene su tiempo; el que vuelve despacio es el translate. */
+/* #ojos VA SEPARADO Y NO POR CAPRICHO. Estuvo junto a #cabeza-grupo en el mismo
+   selector, y hubo que partirlo cuando su transition-property fueron dos
+   —opacity y translate— porque una sola duración se REPITE sobre la lista y la
+   vuelta lenta de la caricia se le habría aplicado también al cruce de los ojos.
+   Hoy su lista es una sola propiedad y volverían a poder ir juntos, pero se
+   quedan separados: acá es donde está escrito que lo que vuelve despacio es el
+   TRANSLATE, o sea la mirada, y no el cambio de cara — que ya no transiciona
+   nada. */
 #chip.volviendo #ojos {
-  transition-duration: var(--ojos-cruce), var(--caricia-vuelta);
+  transition-duration: var(--caricia-vuelta);
 }
 
 /* EL SOBRESALTO DEL TOQUE. Un squash corto y seco, como cuando le tocás el

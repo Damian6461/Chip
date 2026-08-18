@@ -950,20 +950,57 @@ prueba('ojos: las cuatro capas del ojo comparten el filtrado', () => {
   );
 });
 
-// ESTE TEST ESTUVO VERDE MIENTRAS EL DEFECTO ESTABA VIVO, y vale escribirlo:
-// buscaba el texto `transition: opacity var(--ojos-cruce)` y ahí estaba, escrito
-// tal cual — pero una regla de más abajo, con más especificidad, lo reseteaba
-// entero. El test miraba la DECLARACIÓN y el navegador aplica el VALOR
-// CALCULADO, que son dos cosas distintas en cuanto hay dos reglas.
+// ---- EL PIXEL ART CORTA, NO DISUELVE ----
 //
-// Un grep sobre el CSS no puede resolver la cascada. Lo que sí puede es prohibir
-// la construcción que la hace decidible en silencio, y de eso se ocupa el
-// guardián del shorthand, al final de este archivo.
-prueba('ojos: #ojos cruza con transición y no se apaga de golpe', () => {
-  const bloque = CSS.slice(CSS.indexOf('#ojos {'), CSS.indexOf('#ojos[hidden]'));
+// ACÁ HUBO DOS TESTS SEGUIDOS QUE PEDÍAN LO CONTRARIO DE LO QUE PIDE ÉSTE, y la
+// historia completa vale más que el test:
+//
+// 1. El primero buscaba el texto `transition: opacity var(--ojos-cruce)` y ahí
+//    estaba, escrito tal cual — pero otra regla más específica lo reseteaba.
+//    Miraba la DECLARACIÓN; el navegador aplica el VALOR CALCULADO. Verde con el
+//    defecto vivo.
+// 2. El segundo, después del arreglo, exigía que #ojos declarara `opacity` en su
+//    transition-property, para que el cruce existiera de verdad. Ése medía bien:
+//    la suma de opacidades daba 1,00 en todos los cuadros y el salto máximo era
+//    0,19.
+//
+// Y EL CRUCE SEGUÍA ESTANDO MAL, porque el defecto no era el valor: era la
+// técnica. Dos dibujos de pixel art al 50% cada uno dan una mancha translúcida
+// con colores que ningún dibujante puso. Un cuadro del medio, capturado a 3x,
+// alcanzó para verlo; ninguna medición de los extremos lo iba a mostrar nunca.
+//
+// Así que el cambio de cara es un CORTE de un cuadro y este test prohíbe la
+// disolvencia. Las capas de ojo son cuatro dibujos apilados: se reemplazan, no
+// se mezclan.
+//
+// `translate` sí transiciona, y no es lo mismo — mover un dibujo entero adentro
+// de su cuenca no inventa ningún color.
+prueba('ojos: el cambio de cara es un corte y no una disolvencia', () => {
+  const bloques = {
+    '#ojos': CSS.slice(CSS.indexOf('#ojos {'), CSS.indexOf('#ojos[hidden]')),
+    '.ojos-gesto': CSS.slice(CSS.indexOf('.ojos-gesto {'), CSS.indexOf('.ojos-gesto[hidden]'))
+  };
+
+  for (const [nombre, bloque] of Object.entries(bloques)) {
+    verdadero(bloque.length > 0, `no se pudo aislar el bloque de ${nombre}`);
+
+    const propiedades = bloque.match(/transition-property\s*:\s*([^;]+)/);
+    verdadero(
+      !/(?:^|;)\s*transition\s*:/.test(bloque),
+      `${nombre} no puede usar el shorthand \`transition\`: es la regla de los shorthands`
+    );
+    verdadero(
+      !propiedades || !/\bopacity\b/.test(propiedades[1]),
+      `${nombre} transiciona \`opacity\`, o sea que dos dibujos se mezclan en el medio. ` +
+        'El pixel art corta: la capa nueva reemplaza a la vieja en un cuadro.'
+    );
+  }
+
+  // Y la otra mitad: el translate de la mirada TIENE que seguir transicionando,
+  // porque sacar la disolvencia no puede llevarse puesto el movimiento.
   verdadero(
-    /transition-duration:[^;]*var\(--ojos-cruce\)/.test(bloque),
-    '#ojos necesita la misma duración que las capas de gesto para que el cruce sea un cruce'
+    /transition-property\s*:\s*translate\s*;/.test(bloques['#ojos']),
+    'la mirada distraída necesita que #ojos transicione `translate`'
   );
 });
 
@@ -1508,21 +1545,13 @@ prueba('guardián: se lo ve rojo con el defecto real, y no ladra donde no debe',
   );
 });
 
-prueba('los ojos cruzan Y se mueven: #ojos declara las dos transiciones', () => {
-  const bloque = CSS.slice(CSS.indexOf('#ojos {'), CSS.indexOf('#ojos[hidden]'));
-  const props = bloque.match(/transition-property\s*:\s*([^;]+)/);
-
-  verdadero(Boolean(props), '#ojos tiene que declarar transition-property con longhands');
-  verdadero(
-    /opacity/.test(props[1]),
-    'sin `opacity` el cruce con las capas de gesto no existe y los dos ojos se ven a la vez'
-  );
-  verdadero(
-    /translate/.test(props[1]),
-    'sin `translate` la mirada distraída salta en vez de irse despacio'
-  );
-  verdadero(
-    !/(?:^|;)\s*transition\s*:/.test(bloque),
-    '#ojos no puede volver al shorthand: es lo que se llevó puesto el cruce'
-  );
-});
+// Acá estaba `los ojos cruzan Y se mueven`, que exigía `opacity` en la lista de
+// #ojos. Lo reemplaza `ojos: el cambio de cara es un corte y no una
+// disolvencia`, más arriba en este mismo archivo, que pide exactamente lo
+// contrario y por un motivo que ese test no podía ver: el cruce medía bien y se
+// veía mal. No es que estuviera mal escrito — estaba defendiendo la técnica
+// equivocada.
+//
+// Se anota en vez de borrarse por la misma razón que las constantes que se van
+// de config.js: quien busque por qué #ojos no cruza tiene que encontrar la
+// respuesta acá y no el hueco.

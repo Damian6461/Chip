@@ -280,7 +280,6 @@ export function variablesDeTema() {
     // depende de qué cabeza tiene Chip puesta —las cuencas de idle y las de feliz
     // no están en el mismo lugar—. Lo escribe ui.js en cada pintada, desde
     // AJUSTE_OJOS.
-    [VARS_OJOS_GESTO.cruce]: ms(CARICIA_OJOS.cruce),
     [VARS_ZONA_CHIP.forma]: poligonoDeSilueta(SILUETA_CHIP),
     [VARS_DEBUG.esquina]: px(ESQUINA_DEBUG),
     [VARS_DEBUG.margen]: px(MARGEN_DEBUG),

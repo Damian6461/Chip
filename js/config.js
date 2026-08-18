@@ -538,8 +538,11 @@ export const AJUSTE_OJOS = {
 //
 // Es el mismo criterio que la escala de los pulsos del cable, que también son
 // seis nombres y no uno: si el guardián no lo puede ver, no está protegido.
+// Acá estaba `cruce: '--ojos-cruce'`, la duración de la disolvencia entre una
+// cara y la siguiente. Se fue con la disolvencia: el cambio de ojos es un corte
+// de un cuadro y el CSS no necesita ningún tiempo para eso. Lo que quedó es
+// `CARICIA_OJOS.sostiene`, que lo usa un setTimeout de ui.js y no el CSS.
 export const VARS_OJOS_GESTO = {
-  cruce: '--ojos-cruce',
   contento: {
     corte: '--ojos-contento-corte',
     izq: {
@@ -575,12 +578,27 @@ export const VARS_OJOS_GESTO = {
 // segundos: menos y el cierre sale con cualquier roce, más y no llega nunca en
 // una caricia normal.
 //
-// `cruce` es la disolvencia entre una cara y la siguiente. No hay swap de src:
-// las tres capas están puestas y lo que cambia es la opacidad, así que la
-// expresión se construye en vez de saltar. Y la VUELTA pasa por contento —el
-// mismo camino al revés— porque un ojo que se abre de golpe deshace todo lo que
-// la caricia construyó, igual que pasaba con el corte seco del gesto.
-export const CARICIA_OJOS = { aCerrado: 2000, cruce: 260 };
+// `sostiene` es CUÁNTO DURA EL CUADRO DEL MEDIO en la vuelta, y antes se
+// llamaba `cruce` porque era la duración de una disolvencia. La disolvencia se
+// fue: ver el bloque de abajo.
+//
+// La vuelta sigue pasando por contento —el mismo camino al revés— porque un ojo
+// que se abre de golpe deshace todo lo que la caricia construyó. Lo que cambió
+// es cómo: antes las dos caras se mezclaban durante 260 ms; ahora `cerrado` se
+// apaga, `contento` se muestra 260 ms enteros, y recién ahí se vuelve a normal.
+// Es un cuadro sostenido, como en una animación por cuadros.
+//
+// ACÁ HABÍA UNA DISOLVENCIA ENTRE DOS DIBUJOS, Y ESE ERA EL DEFECTO. Las tres
+// capas de ojo están puestas y lo que cambiaba era la opacidad, así que en el
+// medio del cruce se veían las dos al 50% — y dos dibujos de pixel art al 50%
+// dan una mancha translúcida con colores que ningún dibujante puso. Chip tenía
+// ojos de fantasma un cuarto de segundo.
+//
+// Medía perfecto: la suma de opacidades daba 1,00 en todos los cuadros y el
+// salto máximo entre cuadros era 0,19. Lo que estaba mal no era el valor, era la
+// técnica. EL PIXEL ART CORTA, NO DISUELVE. Ahora el cambio de cara es un swap
+// de un cuadro, sin transición de opacidad en ninguna de las capas.
+export const CARICIA_OJOS = { aCerrado: 2000, sostiene: 260 };
 
 export const CLASE_OJOS_CONTENTO = 'ojos-contento';
 export const CLASE_OJOS_CERRADO = 'ojos-cerrado';

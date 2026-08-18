@@ -1345,6 +1345,23 @@ export function dibujarCable() {
   const salida = { x: linea[1].x - linea[0].x, y: linea[1].y - linea[0].y };
   const ficha = fichaDelPuerto(desde, salida, grosor);
 
+  // Y LA OTRA PUNTA TAMBIÉN TERMINA EN ALGO. Medido antes de tocar nada: el
+  // extremo del cable cae en 90,5% / 58,1% de la escena y TOMA_PARED está en
+  // 90 / 58, o sea que llegaba exacto. Lo que faltaba no era llegar: era que se
+  // notara que llegó. Un tubo que se corta a la altura de una caja chica, sin
+  // pieza que lo reciba, se lee como una línea que termina en el aire — que es
+  // exactamente cómo se reportó.
+  //
+  // Se reusa la misma ficha del pecho, girada según el ÚLTIMO tramo real del
+  // cable y apuntando al revés: la del pecho mira hacia afuera del cuerpo, ésta
+  // mira hacia adentro de la pared. Sin el giro de 180° la ficha sale del lado
+  // de afuera del toma y queda flotando contra el muro.
+  const entrada = {
+    x: linea.at(-1).x - linea.at(-2).x,
+    y: linea.at(-1).y - linea.at(-2).y
+  };
+  const fichaToma = fichaDelPuerto(hasta, entrada, grosor);
+
   const caja = `0 0 ${Math.round(escena.width)} ${Math.round(escena.height)}`;
   nodoCable.setAttribute('viewBox', caja);
   nodoCable.style.setProperty(VARS_CABLE.camino, `path("${completo}")`);
@@ -1353,10 +1370,22 @@ export function dibujarCable() {
     nodoCableAtras.setAttribute('viewBox', caja);
     // Con sus filos: la capa de atrás resuelve QUIÉN TAPA A QUIÉN, no el
     // sombreado. El tramo que sube al toma vive acá y sin esto salía plano.
+    // La ficha del toma va ACÁ y no en la capa de adelante, por dónde vive esa
+    // punta: el tramo que sube a la pared se dibuja atrás, y una ficha en la
+    // capa de adelante se vería pasar por encima de Chip cuando el cable cruza
+    // detrás de él. Va ÚLTIMA, igual que la del pecho: lo que tapa la punta es
+    // la pieza que va encima.
+    const ejeToma =
+      `translate(${hasta.x.toFixed(1)} ${hasta.y.toFixed(1)}) rotate(${(fichaToma.giro + 180).toFixed(1)})`;
+
     nodoCableAtras.innerHTML =
       `<path class="cable-cuerpo" d="${atras}"/>` +
       `<path class="cable-filo-abajo" d="${filoAbajoAtras}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>` +
-      `<path class="cable-filo-arriba" d="${filoArribaAtras}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>`;
+      `<path class="cable-filo-arriba" d="${filoArribaAtras}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>` +
+      `<g class="cable-ficha" transform="${ejeToma}">` +
+      `<rect class="cable-ficha-cuerpo" x="${(-fichaToma.largoFicha * 0.18).toFixed(1)}" y="${(-fichaToma.ancho / 2).toFixed(1)}" width="${fichaToma.largoFicha.toFixed(1)}" height="${fichaToma.ancho.toFixed(1)}" rx="${fichaToma.radio.toFixed(1)}"/>` +
+      `<rect class="cable-ficha-filo" x="${(-fichaToma.largoFicha * 0.18).toFixed(1)}" y="${(-fichaToma.ancho / 2).toFixed(1)}" width="${(fichaToma.largoFicha * 0.26).toFixed(1)}" height="${fichaToma.ancho.toFixed(1)}" rx="${(fichaToma.radio * 0.8).toFixed(1)}"/>` +
+      `</g>`;
   }
 
   const pulsos = Array.from(
@@ -1685,14 +1714,18 @@ function soltarOjosDeLaCaricia() {
   temporizadorOjosCerrados = null;
   clearTimeout(temporizadorOjosVuelta);
 
-  // Primero se apaga `cerrado`, que descubre `contento` abajo; recién cuando
-  // ese cruce terminó se apaga el otro. Apagar los dos juntos sería volver a
-  // normal de un salto, con la capa del medio sin llegar a verse.
+  // Primero se apaga `cerrado`, que descubre `contento` abajo; recién cuando ese
+  // cuadro se sostuvo lo suyo se apaga el otro. Apagar los dos juntos sería
+  // volver a normal de un salto, con la capa del medio sin llegar a verse.
+  //
+  // Los dos pasos son CORTES de un cuadro —el CSS ya no cruza opacidades— así
+  // que este temporizador es lo único que hace que `contento` se vea al volver.
+  // Sin él la vuelta sería un solo salto de cerrado a normal.
   cajaChip.classList.remove(CLASE_OJOS_CERRADO);
   temporizadorOjosVuelta = setTimeout(() => {
     temporizadorOjosVuelta = null;
     cajaChip.classList.remove(CLASE_OJOS_CONTENTO);
-  }, CARICIA_OJOS.cruce);
+  }, CARICIA_OJOS.sostiene);
 }
 
 function empezarCaricia() {
