@@ -950,10 +950,19 @@ prueba('ojos: las cuatro capas del ojo comparten el filtrado', () => {
   );
 });
 
+// ESTE TEST ESTUVO VERDE MIENTRAS EL DEFECTO ESTABA VIVO, y vale escribirlo:
+// buscaba el texto `transition: opacity var(--ojos-cruce)` y ahí estaba, escrito
+// tal cual — pero una regla de más abajo, con más especificidad, lo reseteaba
+// entero. El test miraba la DECLARACIÓN y el navegador aplica el VALOR
+// CALCULADO, que son dos cosas distintas en cuanto hay dos reglas.
+//
+// Un grep sobre el CSS no puede resolver la cascada. Lo que sí puede es prohibir
+// la construcción que la hace decidible en silencio, y de eso se ocupa el
+// guardián del shorthand, al final de este archivo.
 prueba('ojos: #ojos cruza con transición y no se apaga de golpe', () => {
   const bloque = CSS.slice(CSS.indexOf('#ojos {'), CSS.indexOf('#ojos[hidden]'));
   verdadero(
-    /transition:\s*opacity\s+var\(--ojos-cruce\)/.test(bloque),
+    /transition-duration:[^;]*var\(--ojos-cruce\)/.test(bloque),
     '#ojos necesita la misma duración que las capas de gesto para que el cruce sea un cruce'
   );
 });
@@ -1005,5 +1014,128 @@ prueba('debug: el gesto acusa recibo, o un fallo es indistinguible de un no-toqu
   verdadero(
     /marcarDebugFallido/.test(UI_FUENTE),
     'ui.js tiene que poder marcar el fallo de la descarga'
+  );
+});
+
+// ---- EL SHORTHAND `transition`, que es la misma trampa que `animation` ----
+//
+// "Los ojos se salen de la órbita." El defecto que reportó Damián, y el
+// mecanismo es este renglón:
+//
+//   #ojos            { transition: opacity  … }   <- un id
+//   #cabeza-grupo #ojos { transition: translate … }   <- DOS ids, gana
+//
+// El segundo no agrega el translate: RESETEA la familia entera y deja
+// transition-property en `translate` solo. El cruce de opacidad de los ojos
+// —que es lo que hace que las capas de gesto entren y salgan sin pisarse— se
+// murió en silencio, sin consola, sin test rojo, y con las dos reglas leyéndose
+// perfectamente bien por separado.
+//
+// El síntoma: #ojos saltaba de 0 a 1 sin transición mientras la capa de gesto
+// —corrida arriba y a la derecha, porque es un recorte de otra pose— todavía se
+// apagaba. 260 ms con dos ojos dibujados en dos lugares.
+//
+// Es la MISMA forma que la regla del shorthand `animation` del README, que ya
+// mordió tres veces pisando `animation-delay`. Distinta propiedad, misma
+// trampa, y esta vez tardó una sesión entera en aparecer porque las dos reglas
+// las escribieron dos puntos distintos de la spec —el 17 el cruce, el 6 la
+// mirada— con un commit de diferencia.
+//
+// QUÉ SE PROHÍBE, exactamente: que dos reglas con el MISMO sujeto usen el
+// shorthand `transition` declarando propiedades DISTINTAS. Que lo usen las dos
+// para la misma propiedad no rompe nada —es lo que hace #cabeza-grupo con
+// `rotate` en sus tres reglas— porque el reset no se lleva puesto a nadie.
+
+// Saca el sujeto de un selector: el último compuesto, y de ahí el id si lo hay.
+// Así `#cabeza-grupo.distraida #ojos` y `#ojos` caen los dos en `#ojos`.
+function sujetoDe(selector) {
+  const ultimo = selector.trim().split(/[\s>+~]+/).filter(Boolean).at(-1) ?? '';
+  const id = ultimo.match(/#[\w-]+/);
+  return id ? id[0] : ultimo;
+}
+
+// Las propiedades que declara un shorthand `transition`. De cada tramo separado
+// por comas, el primer token que no sea un tiempo, una curva ni una palabra de
+// `transition-behavior`.
+const NO_ES_PROPIEDAD = new Set([
+  'ease', 'linear', 'ease-in', 'ease-out', 'ease-in-out',
+  'step-start', 'step-end', 'normal', 'allow-discrete'
+]);
+
+function propiedadesDelShorthand(valor) {
+  return valor
+    .split(/,(?![^(]*\))/)
+    .map((tramo) =>
+      tramo
+        .trim()
+        .split(/\s+/)
+        .find(
+          (t) =>
+            /^[a-z-]+$/.test(t) &&
+            !NO_ES_PROPIEDAD.has(t) &&
+            !/^(cubic-bezier|steps)\(/.test(t) &&
+            !/\d/.test(t)
+        )
+    )
+    .filter(Boolean);
+}
+
+prueba('shorthand: dos reglas con el mismo sujeto no pueden declarar `transition` de cosas distintas', () => {
+  // Se saltean los @keyframes: adentro no hay transiciones y sus llaves anidadas
+  // confunden al parser de bloques.
+  const sinKeyframes = CSS.replace(/@keyframes[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
+
+  const porSujeto = new Map();
+  for (const [, selectores, cuerpo] of sinKeyframes.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const shorthand = cuerpo.match(/(?:^|;)\s*transition\s*:\s*([^;]+)/);
+    if (!shorthand) continue;
+    const lista = propiedadesDelShorthand(shorthand[1]);
+    // `transition: none` es un reset a propósito —lo usa el bloque de
+    // movimiento reducido— y no compite con nadie: no declara una propiedad, las
+    // apaga todas. Lo mismo `all`. Contarlos daría tres falsas alarmas sobre
+    // reglas que están bien.
+    if (lista.length === 0 || lista.every((p) => p === 'none' || p === 'all')) continue;
+    const props = lista.sort().join(' ');
+    for (const selector of selectores.split(',')) {
+      const sujeto = sujetoDe(selector);
+      if (!sujeto) continue;
+      if (!porSujeto.has(sujeto)) porSujeto.set(sujeto, new Map());
+      porSujeto.get(sujeto).set(props, selector.trim());
+    }
+  }
+
+  // El parser tiene que encontrar algo, o el test pasa por vacío.
+  verdadero(porSujeto.size > 0, 'el parser de `transition` no encontró ninguna regla');
+
+  const chocan = [...porSujeto]
+    .filter(([, sets]) => sets.size > 1)
+    .map(([sujeto, sets]) =>
+      `${sujeto}: ` + [...sets].map(([props, sel]) => `"${sel}" declara [${props}]`).join(' contra ')
+    );
+
+  verdadero(
+    chocan.length === 0,
+    'el shorthand `transition` resetea la familia entera, así que la regla que gana por ' +
+      'especificidad borra en silencio lo que declaró la otra. Van longhands ' +
+      '(transition-property / -duration / -timing-function):\n  ' + chocan.join('\n  ')
+  );
+});
+
+prueba('los ojos cruzan Y se mueven: #ojos declara las dos transiciones', () => {
+  const bloque = CSS.slice(CSS.indexOf('#ojos {'), CSS.indexOf('#ojos[hidden]'));
+  const props = bloque.match(/transition-property\s*:\s*([^;]+)/);
+
+  verdadero(Boolean(props), '#ojos tiene que declarar transition-property con longhands');
+  verdadero(
+    /opacity/.test(props[1]),
+    'sin `opacity` el cruce con las capas de gesto no existe y los dos ojos se ven a la vez'
+  );
+  verdadero(
+    /translate/.test(props[1]),
+    'sin `translate` la mirada distraída salta en vez de irse despacio'
+  );
+  verdadero(
+    !/(?:^|;)\s*transition\s*:/.test(bloque),
+    '#ojos no puede volver al shorthand: es lo que se llevó puesto el cruce'
   );
 });

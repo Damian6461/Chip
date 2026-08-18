@@ -820,10 +820,29 @@ body.es-noche #rayo {
      recortes. Con el origen en el medio de la caja el ojo se cerraría hacia
      arriba en vez de cerrarse sobre sí mismo. */
   transform-origin: 50% var(--origen-parpadeo);
-  /* La misma duración que las capas de gesto, y por eso: cuando `contento`
-     entra, ésta tiene que SALIR al mismo ritmo. Sin la transición se apagaría de
-     golpe y el cruce que se construyó abajo dejaría un hueco de un cuadro. */
-  transition: opacity var(--ojos-cruce) ease-out;
+  /* DOS PROPIEDADES Y EN LONGHANDS, y esto NO es estilo: acá estaba el defecto
+     de "los ojos se salen de la órbita".
+
+     `opacity` es el cruce con las capas de gesto: la misma duración que ellas,
+     porque cuando `contento` entra, ésta tiene que SALIR al mismo ritmo.
+     `translate` es la mirada que se va con la cabeza distraída.
+
+     Escrito con el shorthand `transition`, la regla de la mirada
+     —`#cabeza-grupo #ojos`, que gana por especificidad con dos ids contra uno—
+     RESETEABA transition-property a `translate` y se llevaba puesto el cruce de
+     opacidad. Medido: getComputedStyle(#ojos).transitionProperty daba
+     `translate`, y #ojos saltaba de 0 a 1 sin transición mientras la capa de
+     gesto —corrida arriba y a la derecha, porque es un recorte de otra pose—
+     todavía se estaba apagando. Doscientos sesenta milisegundos con DOS ojos
+     dibujados en dos lugares distintos.
+
+     Es la regla del shorthand del README, la que ya mordió tres veces con
+     `animation` pisando delays: un shorthand no declara lo que dice, declara
+     TODO lo de su familia. Con longhands, la regla de la mirada puede cambiarle
+     la duración al translate sin tocar la del opacity. */
+  transition-property: opacity, translate;
+  transition-duration: var(--ojos-cruce), var(--mirada-vuelve);
+  transition-timing-function: ease-out, ease-out;
 }
 
 #ojos[hidden] {
@@ -4116,14 +4135,17 @@ body.es-noche #piso {
    Hay pupilas gratis: no hace falta recorte nuevo.
 
    Va con la MISMA asimetría que la cabeza —lento para irse, rápido para
-   volver— porque son el mismo gesto. */
+   volver— porque son el mismo gesto.
+
+   IRSE ES LENTO Y VOLVER ES RÁPIDO, y por eso acá sólo se cambia el TIEMPO del
+   translate. La lista de propiedades y el tiempo del opacity los pone el bloque
+   de #ojos, más arriba, y no se tocan: pisarlos con el shorthand `transition`
+   es lo que mató el cruce de los ojos una vez. La vuelta no necesita regla —
+   sacar la clase deja el translate en cero y lo lleva la duración de base. */
 #cabeza-grupo.distraida #ojos {
   translate: calc(var(--mirada-ojos) * var(--mirada-lado)) 0;
-  transition: translate var(--mirada-se-va) ease-in-out;
-}
-
-#cabeza-grupo #ojos {
-  transition: translate var(--mirada-vuelve) ease-out;
+  transition-duration: var(--ojos-cruce), var(--mirada-se-va);
+  transition-timing-function: ease-out, ease-in-out;
 }
 
 /* VOLVER ES RÁPIDO. No hace falta ninguna regla para el gesto de volver: sacar
@@ -4752,9 +4774,17 @@ body.sin-movimiento *::after {
 /* LA VUELTA NO ES UN CORTE. Al levantar el dedo sostiene el estado un momento y
    vuelve despacio; cortar de golpe deshace todo lo anterior, y esa vuelta lenta
    es parte de lo que hace que se sienta bien. */
-#chip.volviendo #ojos,
 #chip.volviendo #cabeza-grupo {
   transition-duration: var(--caricia-vuelta);
+}
+
+/* #ojos VA SEPARADO Y CON LOS DOS TIEMPOS ESCRITOS. Su transition-property son
+   dos —opacity y translate, ver el bloque de #ojos— y una sola duración se
+   REPITE sobre la lista: puesto acá con las dos, la vuelta lenta de la caricia
+   se le aplicaría también al cruce de los ojos, que no es lo que la regla dice.
+   El cruce mantiene su tiempo; el que vuelve despacio es el translate. */
+#chip.volviendo #ojos {
+  transition-duration: var(--ojos-cruce), var(--caricia-vuelta);
 }
 
 /* EL SOBRESALTO DEL TOQUE. Un squash corto y seco, como cuando le tocás el
