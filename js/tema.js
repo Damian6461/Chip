@@ -116,7 +116,7 @@ import {
   VARS_CABLE,
   CABLE,
   PULSOS_CABLE,
-  TOMA_FONDO,
+  TOMA_PARED,
   ANCLA_TOMA,
   COLORES_TOMA,
   VARS_REPISA,
@@ -312,6 +312,7 @@ export function variablesDeTema() {
     // EL CABLE
     [VARS_CABLE.color]: CABLE.color,
     [VARS_CABLE.brillo]: CABLE.brillo,
+    [VARS_CABLE.sombra]: CABLE.sombra,
     [VARS_CABLE.cicloBalanceo]: ms(CABLE.balanceo.ciclo),
     [VARS_CABLE.amplitudBalanceo]: px(CABLE.balanceo.amplitud),
     [VARS_CABLE.energia]: CABLE.energia,
@@ -321,19 +322,13 @@ export function variablesDeTema() {
     [VARS_LLUVIA.cuerpo]: LLUVIA.cuerpo,
     [VARS_LLUVIA.brillo]: LLUVIA.brillo,
     [VARS_CABLE.cicloPulso]: ms(PULSOS_CABLE.ciclo),
-    [VARS_CABLE.pulsoE0]: String(PULSOS_CABLE.escala.e0),
-    [VARS_CABLE.pulsoE20]: String(PULSOS_CABLE.escala.e20),
-    [VARS_CABLE.pulsoE40]: String(PULSOS_CABLE.escala.e40),
-    [VARS_CABLE.pulsoE60]: String(PULSOS_CABLE.escala.e60),
-    [VARS_CABLE.pulsoE80]: String(PULSOS_CABLE.escala.e80),
-    [VARS_CABLE.pulsoE100]: String(PULSOS_CABLE.escala.e100),
 
     // La caja de conexión, al fondo y sumergida
-    [VARS_CABLE.tomaX]: pct(TOMA_FONDO.x),
-    [VARS_CABLE.tomaY]: pct(TOMA_FONDO.y),
-    [VARS_CABLE.tomaAncho]: pct(TOMA_FONDO.ancho),
-    [VARS_CABLE.tomaBrillo]: String(TOMA_FONDO.brillo),
-    [VARS_CABLE.tomaSaturacion]: String(TOMA_FONDO.saturacion),
+    [VARS_CABLE.tomaX]: pct(TOMA_PARED.x),
+    [VARS_CABLE.tomaY]: pct(TOMA_PARED.y),
+    [VARS_CABLE.tomaAncho]: pct(TOMA_PARED.ancho),
+    [VARS_CABLE.tomaBrillo]: String(TOMA_PARED.brillo),
+    [VARS_CABLE.tomaSaturacion]: String(TOMA_PARED.saturacion),
 
     // La repisa alta. Su geometría entera vive en REPISA, así que mover el
     // estante es tocar cuatro números en config y nada más.

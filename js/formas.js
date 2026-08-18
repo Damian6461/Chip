@@ -886,35 +886,136 @@ function normales(linea) {
   });
 }
 
-export function grosorDelCable(z, cable) {
-  return Math.max(cable.grosorMinimo, cable.grosor / (1 + cable.caidaGrosor * z));
+// GROSOR CONSTANTE. Antes se afinaba con la profundidad de cada tramo; ahora no,
+// porque este cable no se aleja: se apoya y cruza el piso a la misma distancia.
+// En la referencia mide lo mismo de punta a punta.
+//
+// VA EN % DEL EJE PECHO->TOMA Y NO DEL ANCHO DE LA ESCENA, y la diferencia no es
+// cosmética. La referencia es arte conceptual: no comparte encuadre con la
+// escena, así que medir el cable contra el ancho de una imagen que no es la
+// nuestra es precisión falsa. Contra el eje sí sobrevive, porque el eje es la
+// misma pieza en las dos —del enchufe del pecho al toma— y es lo único que se
+// puede poner una al lado de la otra.
+//
+// Y arrastra la consecuencia correcta: el grosor sale de lo LARGO que es el
+// recorrido, no de lo ancha que es la pantalla. Un teléfono más angosto acorta
+// el eje y adelgaza el cable en la misma proporción, así que la silueta se
+// conserva.
+export function grosorDelCable(largoEje, cable) {
+  return (cable.grosor / 100) * largoEje;
+}
+
+// El eje: la recta del enchufe del pecho al toma. Es el metro de todo el cable
+// —el camino, el grosor y el paso de muestreo van en unidades de este largo— y
+// por eso se calcula en un solo lugar.
+function largoDelEje(conector, toma) {
+  return Math.hypot(toma.x - conector.x, toma.y - conector.y) || 1;
 }
 
 // La línea media completa, del conector a la caja. Se exporta para poder
 // verificar en un test que su PRIMER punto cae sobre el conector: el primer
 // punto del polígono no sirve para eso, porque está corrido media anchura de
 // cable sobre la normal.
-export function lineaDelCable(conector, r, cable) {
-
-  // La caída arranca EN el conector y sale vertical: la perpendicularidad al
-  // pecho la da el primer punto de control de la catenaria, no un tramo recto
-  // agregado adelante. Ver muestrasDeLaCaida.
-  const linea = muestrasDeLaCaida({ x: conector.x, y: conector.y }, r.apoyo, 16);
-  linea.push(...[...r.quiebres, r.llegada].map((q) => ({ x: q.x, y: q.y, z: q.z })));
-
-  // DOS PASADAS DE REDONDEO Y NO UNA. Una sola deja el ángulo de cada quiebre a
-  // la mitad, y con una cinta de 13 px de ancho eso no alcanza: el borde interno
-  // de un giro se pliega sobre sí mismo en cuanto el radio baja del medio ancho.
-  // Medido, un salto de 13,3 px sobre un borde cuyo paso es de 4. La segunda
-  // pasada vuelve a partir el ángulo y el pliegue desaparece.
+export function lineaDelCable(conector, toma, cable, recorrido, apoyo = 0) {
+  // EL CAMINO SE RECONSTRUYE DESDE LOS DOS EXTREMOS, y por eso mover cualquiera
+  // de los dos mueve el cable entero sin tocar la tabla.
   //
-  // Y DESPUÉS EL RADIO MÍNIMO, que es otra cosa y arregla lo que el redondeo no
-  // podía. Chaikin corta cada esquina contra su tramo VECINO más corto, y en el
-  // codo del apoyo el vecino es una muestra de la catenaria a 6 px: por más
-  // pasadas que se den, ahí no hay nada que cortar. Medido en ese codo: radio
-  // 0,62 px. Ver respetarRadioMinimo.
-  const suave = remuestrear(suavizar(suavizar(linea)), cable.pasoMuestreo);
-  return remuestrear(respetarRadioMinimo(suave, cable.radioMinimo), cable.pasoMuestreo);
+  // `recorrido` trae [t, v] normalizados: `t` reparte la posición HORIZONTAL
+  // entre los dos extremos y `v` es cuánto cae el cable por debajo de la recta,
+  // EN VERTICAL, en unidades del largo del eje. Ver RECORRIDO_CABLE, que cuenta
+  // cómo se sacaron de referencia-cable.png.
+  //
+  // EL MARCO ES UN CORTE Y NO UNA ROTACIÓN, y eso es lo que hace que el cable se
+  // apoye. Estuvo escrito con `n` sobre la perpendicular al eje, que es el marco
+  // obvio y conserva la forma exactamente. El problema es que también la ROTA:
+  // en la referencia el eje está a 6,6° de la horizontal y no se nota, pero acá
+  // el toma está en la pared y el eje sube 40,6°, así que la panza colgaba
+  // girada 40° y el cable se arqueaba por el aire en vez de caer al piso.
+  //
+  // Un cable tirado en el suelo NO gira con sus extremos: la gravedad no rota.
+  // Lo que se conserva al mover el toma es que la panza cae para abajo. Por eso
+  // `v` se aplica en vertical y no sobre la normal.
+  //
+  // La `v` positiva es hacia ABAJO, con la y de pantalla creciendo para abajo. Si
+  // alguien invierte el signo, el cable cuelga para arriba.
+  const ejeX = toma.x - conector.x;
+  const ejeY = toma.y - conector.y;
+  const largo = largoDelEje(conector, toma);
+
+  // ---- EL TERCER ANCLAJE: EL PISO ----
+  //
+  // Los dos extremos no alcanzan para ubicar este cable, y eso NO es un capricho
+  // de escala: la referencia y la escena no son la misma foto.
+  //
+  // Medido. En la referencia el eje pecho->toma mide 849,6 px sobre una imagen
+  // de 1100 de ancho: el 77%. En la escena mide 239 sobre 480: el 50%, y la
+  // escena además es vertical. Todo lo que se derive del eje entra a la escena a
+  // la mitad de tamaño relativo, así que la panza —que en la referencia es el
+  // 30% del alto de la imagen y llega al piso— acá caía 60 px y se quedaba
+  // colgada en el aire, apenas por debajo del pecho.
+  //
+  // No hay transformación de semejanza que arregle eso: dos encuadres distintos
+  // con dos proporciones distintas no se corresponden punto a punto. Lo que sí
+  // existe en las dos imágenes son TRES cosas y no dos: el enchufe del pecho, el
+  // toma, y el piso. Un cable más largo que la distancia entre sus puntas no
+  // cuelga: se apoya, y hasta dónde baja lo decide el suelo, no el largo del
+  // cable.
+  //
+  // Así que `v` se escala para que la panza toque `apoyo`. Es un solo factor
+  // para todo el canal vertical, o sea que la forma —la U ancha, el quiebre en
+  // S, el arranque hacia atrás— se conserva entera; lo único que se fija es
+  // cuánto baja. Y es el punto 6 del spec, que es explícito: "y apoya, va por
+  // delante de las baldosas, no flotando sobre ellas".
+  //
+  // Sin `apoyo` el cable queda como lo dice la tabla cruda, que es lo que usan
+  // las pruebas de forma: ahí lo que se mide es el camino, no dónde apoya.
+  const yEnElEje = (t) => conector.y + t * ejeY;
+  let escalaV = 1;
+  if (apoyo > 0) {
+    const panza = recorrido.reduce(
+      (mejor, [t, v], i) =>
+        yEnElEje(t) + v * largo > yEnElEje(recorrido[mejor][0]) + recorrido[mejor][1] * largo
+          ? i
+          : mejor,
+      0
+    );
+    const caida = recorrido[panza][1] * largo;
+    // Si el recorrido no baja —no debería, pero un cambio de tabla podría—, no
+    // hay nada que estirar y el factor queda en 1 en vez de dividir por cero.
+    if (caida > 0) escalaV = Math.max(0.1, (apoyo - yEnElEje(recorrido[panza][0])) / caida);
+  }
+
+  const linea = recorrido.map(([t, v]) => ({
+    x: conector.x + t * ejeX,
+    y: yEnElEje(t) + v * largo * escalaV
+  }));
+
+  // El paso viene en % del largo del recorrido, así que se resuelve acá: en una
+  // escena angosta el cable es más corto y las muestras se juntan solas.
+  cable = { ...cable, pasoMuestreo: (cable.pasoMuestreo / 100) * largo };
+
+  // UNA PASADA DE REDONDEO Y NO DOS, y esto lo destapó un test.
+  //
+  // La ruta vieja se armaba con quiebres duros —puntos sueltos unidos por rectas—
+  // y hacían falta dos pasadas de Chaikin para que el borde interno de cada codo
+  // no se plegara. Esta ruta NO tiene quiebres duros: sale de trazar una curva
+  // que ya era suave en la referencia, así que lo único que hace la segunda
+  // pasada es comerse la forma.
+  //
+  // MEDIDO, y por eso está acá escrito: el retroceso del quiebre en S vale 0,0125
+  // del eje en la tabla cruda. Con dos pasadas queda en 0,0019 — el 85% comido.
+  // Con una queda en 0,0075, o sea que sobrevive el 60%.
+  //
+  // Y el quiebre en S es lo más importante de la forma: es lo que hace que se lea
+  // como un cable que alguien dejó ahí y no como una curva trazada. Suavizarlo
+  // hasta que desaparezca es dibujar exactamente lo que la referencia NO es.
+  //
+  // El radio mínimo se queda: es lo que evita que el borde interno se pliegue
+  // justo ahí, donde el camino se dobla sobre sí mismo. Hace el mismo trabajo que
+  // la segunda pasada hacía de más, pero sólo donde hace falta.
+  const remuestreado = remuestrear(linea, cable.pasoMuestreo);
+  const radio = (grosorDelCable(largo, cable) / 2) * cable.radioMinimoEnSemianchos;
+  return remuestrear(respetarRadioMinimo(remuestreado, radio), cable.pasoMuestreo);
 }
 
 // UN CABLE NO PUEDE DOBLAR MÁS CERRADO QUE SU RADIO MÍNIMO, y eso es físico y no
@@ -970,9 +1071,21 @@ function radiosDeLaLinea(linea) {
   });
 }
 
-export function cintaDelCable(conector, r, cable, cuantoAtras = 0, alturaDetras = 0) {
+export function cintaDelCable(
+  conector,
+  toma,
+  cable,
+  recorrido,
+  cuantoAtras = 0,
+  alturaDetras = 0,
+  apoyo = 0
+) {
   const n = (v) => Math.round(v * 100) / 100;
-  const linea = lineaDelCable(conector, r, cable);
+  const linea = lineaDelCable(conector, toma, cable, recorrido, apoyo);
+  const largoEje = largoDelEje(conector, toma);
+  // El paso en píxeles, que es lo que hace falta para contar muestras. En la
+  // tabla viaja en % del eje, igual que el grosor y que el camino entero.
+  const paso = (cable.pasoMuestreo / 100) * largoEje;
 
   const completo = linea.map((p, i) => `${i === 0 ? 'M' : 'L'} ${n(p.x)} ${n(p.y)}`).join(' ');
 
@@ -1016,25 +1129,22 @@ export function cintaDelCable(conector, r, cable, cuantoAtras = 0, alturaDetras 
   // El ancho, entonces, tampoco puede cambiar más rápido que `afinadoMaximo` por
   // píxel de recorrido. Que además es cierto de un cable: no se afina a
   // escalones.
-  const cambioMaximo = cable.afinadoMaximo * cable.pasoMuestreo;
-  const tangencial = Math.sqrt(cable.saltoMaximo ** 2 - cambioMaximo ** 2);
-  const holgura = tangencial / cable.pasoMuestreo - 1;
-  const radios = radiosDeLaLinea(linea);
+  // SEMIANCHO CONSTANTE, y con eso se fueron dos controles enteros.
+  //
+  // El clampeo del ancho contra la curvatura y el tope de afinado existían para
+  // que una cinta que CAMBIA de ancho no diera saltos en el borde: entre dos
+  // muestras el borde se corre por la curva y además por lo que haya cambiado el
+  // ancho, y los dos términos se sumaban en cuadratura. Una cinta de ancho fijo
+  // no tiene el segundo término y no puede dar ese salto.
+  //
+  // Lo que sigue haciendo falta es el RADIO MÍNIMO, que ya se aplicó sobre la
+  // línea media: el borde interno de un giro se pliega si el radio baja del
+  // semiancho, y el quiebre en S es justo donde el camino se dobla sobre sí
+  // mismo. Eso se resuelve en el camino, no en el ancho.
+  const semiancho = grosorDelCable(largoEje, cable) / 2;
 
-  const tope = linea.map((p, i) =>
-    Math.min(grosorDelCable(p.z, cable) / 2, radios[i] * holgura)
-  );
-
-  // Dos barridas —una para cada lado— dejan el semiancho en el mínimo de
-  // tope[j] + cambioMaximo * |i-j| sobre todas las muestras. O sea: nunca por
-  // encima del tope de nadie, y con la pendiente acotada. Con una sola barrida
-  // la condición valdría para un solo sentido.
-  const semi = tope.slice();
-  for (let i = 1; i < semi.length; i++) semi[i] = Math.min(semi[i], semi[i - 1] + cambioMaximo);
-  for (let i = semi.length - 2; i >= 0; i--) semi[i] = Math.min(semi[i], semi[i + 1] + cambioMaximo);
-
-  const unLado = linea.map((p, i) => ({ x: p.x + nor[i].x * semi[i], y: p.y + nor[i].y * semi[i] }));
-  const elOtro = linea.map((p, i) => ({ x: p.x - nor[i].x * semi[i], y: p.y - nor[i].y * semi[i] }));
+  const unLado = linea.map((p, i) => ({ x: p.x + nor[i].x * semiancho, y: p.y + nor[i].y * semiancho }));
+  const elOtro = linea.map((p, i) => ({ x: p.x - nor[i].x * semiancho, y: p.y - nor[i].y * semiancho }));
 
   // El polígono de un tramo de la línea, de `desde` a `hasta` inclusive.
   const cinta = (desde, hasta) =>
@@ -1057,7 +1167,7 @@ export function cintaDelCable(conector, r, cable, cuantoAtras = 0, alturaDetras 
   //
   // El corte lleva una muestra de solape para que no quede costura entre las dos
   // piezas.
-  const corte = Math.max(1, Math.min(linea.length - 2, Math.round(cuantoAtras / cable.pasoMuestreo)));
+  const corte = Math.max(1, Math.min(linea.length - 2, Math.round(cuantoAtras / paso)));
 
   // Y SE PARTE UNA SEGUNDA VEZ, donde el cable se aleja más que Chip.
   //
@@ -1070,48 +1180,92 @@ export function cintaDelCable(conector, r, cable, cuantoAtras = 0, alturaDetras 
   // TOCAR EL PISO, y ese "después" no es un detalle: el cable arranca en el
   // pecho, que en pantalla está bien arriba de la línea de apoyo y sin embargo
   // es lo más CERCANO de todo el recorrido. Alto en el cuadro sólo quiere decir
-  // lejos si estás en el piso. Así que primero se busca la panza —la muestra más
-  // baja, que es donde el cable apoya— y recién de ahí en adelante se pregunta.
+  // lejos si estás en el piso.
   //
-  // Si el recorrido nunca sube —como el viejo, que corría plano— esto no
-  // encuentra nada y el cable queda entero adelante, igual que antes.
-  const panza = linea.reduce((mejor, p, i) => (p.y > linea[mejor].y ? i : mejor), 0);
-  const detras =
-    alturaDetras > 0 ? linea.findIndex((p, i) => i > panza && p.y < alturaDetras) : -1;
+  // Y "TOCAR EL PISO" ES LITERAL: la muestra tiene que haber BAJADO de la línea
+  // de apoyo, no ser la más baja del recorrido. Acá estaba el defecto y era
+  // grande. Se buscaba la panza —el mínimo, que existe siempre— y de ahí en
+  // adelante la primera muestra por encima de la línea. Con un recorrido que
+  // nunca llega al piso eso da la muestra siguiente a la panza, así que el 97%
+  // del cable se iba a la capa de atrás.
+  //
+  // Medido en producción antes del arreglo: la caja del cuerpo de adelante era
+  // de 26x13 px sobre una escena de 480x944. Y como los dos filos del tubo se
+  // emiten sólo en el tramo de adelante, el sombreado entero vivía en ese
+  // pedacito: el cable se veía como un pelo plano. Un defecto de capas que se
+  // manifestaba como un defecto de color.
+  //
+  // Si el recorrido nunca baja de la línea, no hay nada detrás de Chip y el
+  // cable queda entero adelante — que es exactamente el caso de esta escena,
+  // con el toma en la pared y el recorrido cruzando en diagonal sin pasarle por
+  // atrás.
+  const toco = alturaDetras > 0 ? linea.findIndex((p) => p.y >= alturaDetras) : -1;
+  const detras = toco >= 0 ? linea.findIndex((p, i) => i > toco && p.y < alturaDetras) : -1;
   const fondo = detras > corte ? detras : linea.length - 1;
 
-  // EL LOMO SE CORTA DONDE EL CABLE SE VUELVE FINO, y no llega hasta la caja.
+  // ES UN TUBO: FILO CLARO ARRIBA, OSCURO ABAJO.
   //
-  // Es un stroke de ancho fijo, así que con el afinado nuevo —de 13 px a 1,7—
-  // en el último tercio del recorrido el brillo mediría MÁS que el cable que
-  // ilumina: una arista más ancha que el caño. Y además es lo que pasa de
-  // verdad: un reflejo especular se apaga con la distancia mucho antes que la
-  // silueta. Se corta en la última muestra donde el cable todavía es lo bastante
-  // grueso como para tener una cara de arriba.
-  const grosorLomo = Math.max(0.9, grosorDelCable(0, cable) * 0.16);
+  // Un trazo de un solo color se ve plano por más grueso que sea. Lo que hace
+  // que se lea redondo son dos aristas: donde le pega la luz y donde no. La luz
+  // de esta escena entra por la ventana, arriba a la izquierda, así que el filo
+  // claro va arriba y la panza oscura abajo.
   //
-  // Y nunca pasa de `fondo`: el lomo se dibuja en la capa de ADELANTE, así que
-  // si siguiera más allá del punto donde el cable se va detrás de Chip, quedaría
-  // una rayita de luz cruzándole el cuerpo sin su cable abajo.
-  const hastaElLomo = (() => {
-    let fin = corte;
-    for (let i = corte; i <= fondo; i++) {
-      if (grosorDelCable(linea[i].z, cable) < grosorLomo * 2.2) break;
-      fin = i;
-    }
-    return fin;
-  })();
+  // Antes había UN solo lomo, y encima se cortaba donde el cable se volvía fino
+  // —con la perspectiva vieja, en el último tercio el brillo habría medido más
+  // que el caño que iluminaba—. Con el grosor constante ese corte no tiene
+  // sentido: los dos filos corren todo el tramo visible.
+  //
+  // Van adentro del cuerpo del cable y no encima de su borde: a `filo` del
+  // semiancho desde el centro, o sea sin tocar la silueta. Un filo apoyado en el
+  // borde se lee como un contorno, no como luz.
+  // EL LADO ILUMINADO SE DECIDE CONTRA LA LUZ, y no contra la pantalla. Acá
+  // había un defecto que se veía a simple vista al 300%.
+  //
+  // Estaba escrito `const arriba = nor[j].y < 0 ? 1 : -1`, o sea "el filo claro
+  // es el que queda más arriba en el cuadro". La normal se da vuelta sola según
+  // hacia dónde gire la curva, y ese criterio la reordena — hasta ahí bien. El
+  // problema es DÓNDE cambia de signo: `nor.y == 0` pasa cuando el cable está
+  // VERTICAL, y este cable tiene dos tramos verticales largos, la caída del
+  // pecho y la subida al toma. Ahí el filo claro saltaba de un borde al otro en
+  // una muestra y quedaba un escalón en el medio de cada tramo recto.
+  //
+  // Y es justo el peor lugar posible: un caño vertical iluminado desde la
+  // izquierda es donde MÁS marcado está el filo, así que el salto pasaba con el
+  // contraste al máximo.
+  //
+  // Con la dirección de la luz, el cambio de lado cae donde el cable corre
+  // PARALELO a la luz —los hombros de la U—, que es exactamente donde los dos
+  // bordes reciben lo mismo y el salto no tiene contraste que mostrar. El salto
+  // no se puede eliminar con dos trazos de color fijo; lo que se puede es
+  // mandarlo donde no se ve.
+  const luz = cable.luz;
+  const desplazado = (desde, hasta, lado) =>
+    linea
+      .slice(desde, hasta + 1)
+      .map((p, i) => {
+        const j = i + desde;
+        const aLaLuz = nor[j].x * luz.x + nor[j].y * luz.y > 0 ? 1 : -1;
+        const d = semiancho * (1 - cable.filo) * lado * aLaLuz;
+        return `${i === 0 ? 'M' : 'L'} ${n(p.x + nor[j].x * d)} ${n(p.y + nor[j].y * d)}`;
+      })
+      .join(' ');
 
-  const lomo = linea
-    .slice(corte, hastaElLomo + 1)
-    .map((p, i) => {
-      const j = i + corte;
-      const arriba = nor[j].y < 0 ? 1 : -1;
-      return `${i === 0 ? 'M' : 'L'} ${n(p.x + nor[j].x * semi[j] * 0.46 * arriba)} ${n(
-        p.y + nor[j].y * semi[j] * 0.46 * arriba
-      )}`;
-    })
-    .join(' ');
+  const grosorFilo = Math.max(0.9, semiancho * 2 * cable.filo);
+
+  // LOS FILOS VAN EN LAS DOS CAPAS, con el mismo corte que el cuerpo.
+  //
+  // Estuvieron sólo en la de adelante y era un error que se veía: el tramo que
+  // sube por la pared al toma queda del lado lejano de la línea de apoyo, o sea
+  // en la capa de atrás, y ahí el cable perdía el sombreado. Medido en la escena
+  // de 480x944: 228 px de los 288 de recorrido dibujado —el 79%— salían planos.
+  //
+  // Que esté lejos no es motivo para que deje de ser un tubo. Lo que la capa de
+  // atrás resuelve es la OCLUSIÓN —quién tapa a quién— y no el sombreado; son
+  // dos preguntas distintas y estaban contestadas con la misma respuesta.
+  const partido = (lado) =>
+    fondo < linea.length - 1
+      ? `${desplazado(0, corte, lado)} ${desplazado(fondo, linea.length - 1, lado)}`
+      : desplazado(0, corte, lado);
 
   // Las dos capas llevan DOS tramos cada una y no uno: la de atrás es la punta
   // que entra al puerto más todo lo que queda más lejos que Chip, y la de
@@ -1127,8 +1281,15 @@ export function cintaDelCable(conector, r, cable, cuantoAtras = 0, alturaDetras 
     completo,
     atras,
     adelante: cinta(corte, fondo + (fondo < linea.length - 1 ? 1 : 0)),
-    lomo,
-    grosorLomo,
+    filoArriba: desplazado(corte, fondo, 1),
+    filoAbajo: desplazado(corte, fondo, -1),
+    filoArribaAtras: partido(1),
+    filoAbajoAtras: partido(-1),
+    grosorFilo,
+    // El grosor en píxeles sale de acá y no se vuelve a calcular afuera: la
+    // ficha tiene que medirse contra el cable que se acaba de dibujar, y dos
+    // cuentas separadas del mismo número son dos cuentas que se pueden separar.
+    grosor: semiancho * 2,
     linea
   };
 }
@@ -1150,8 +1311,14 @@ export function cintaDelCable(conector, r, cable, cuantoAtras = 0, alturaDetras 
 // La primera versión dibujaba un óvalo negro sólido en vez de una ficha. A
 // tamaño real eso no se lee como un conector: se lee como un agujero en el
 // pecho de Chip.
-export function fichaDelPuerto(conector, direccion, cable) {
-  const g = grosorDelCable(0, cable);
+// EL GROSOR ENTRA COMO PÍXELES YA RESUELTOS y no como el ancho de la escena, y
+// esto tapaba un error mudo: la firma decía `(conector, direccion, cable)` y
+// adentro llamaba a `grosorDelCable(0, cable)`, o sea grosor CERO. ui.js le
+// pasaba un cuarto argumento que la función ni miraba, así que no hubo error en
+// consola: salía una ficha de 0 px de ancho, invisible, y la unión volvía a ser
+// una punta de cable apoyada en el pecho.
+export function fichaDelPuerto(conector, direccion, grosor) {
+  const g = grosor;
   const largo = Math.hypot(direccion.x, direccion.y) || 1;
   const ux = direccion.x / largo;
   const uy = direccion.y / largo;

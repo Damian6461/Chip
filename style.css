@@ -378,11 +378,11 @@ body.es-noche .banda.deformable {
      DIBUJADO en el sprite muriera en su boca, y ese cable ya no existe.
 
      El ancla es la boca del conector, que es donde llega el cable de código. */
-  left: var(--toma-fondo-x);
-  top: var(--toma-fondo-y);
-  width: var(--toma-fondo-ancho);
+  left: var(--toma-pared-x);
+  top: var(--toma-pared-y);
+  width: var(--toma-pared-ancho);
   aspect-ratio: 40 / 38;
-  margin-left: calc(var(--toma-fondo-ancho) * var(--toma-ancla-x) * -1);
+  margin-left: calc(var(--toma-pared-ancho) * var(--toma-ancla-x) * -1);
   translate: 0 calc(var(--toma-ancla-y) * -100%);
   pointer-events: none;
 
@@ -390,7 +390,7 @@ body.es-noche .banda.deformable {
      galpón quiere decir dos cosas: menos luz y menos color. Es un filtro y no
      una opacidad — el objeto está entero, lo que le falta es luz. Bajarle el
      alfa lo habría vuelto transparente, que es otra cosa. */
-  filter: brightness(var(--toma-fondo-brillo)) saturate(var(--toma-fondo-saturacion));
+  filter: brightness(var(--toma-pared-brillo)) saturate(var(--toma-pared-saturacion));
 
   /* SIN TRANSFORM. La perspectiva está dibujada en el SVG con la fuga medida.
      Antes acá había rotate + perspective + rotateX y no se veía: inclinar una
@@ -4040,7 +4040,12 @@ body.es-noche #piso {
   #antena-vaiven,
   #cabeza-grupo.inclinada,
   #orugas .reflejo,
+  /* LAS DOS CAPAS DEL CABLE, y hasta acá era una sola. `#cable path` no alcanza:
+     el tramo que sube al toma vive en #cable-atras y ahí también corre el
+     balanceo, así que con movimiento reducido media pieza se quedaba quieta y la
+     otra media seguía colgando — que es peor que las dos moviéndose. */
   #cable path,
+  #cable-atras path,
   .pulso-cable,
   #cuerpo.cambiando,
   #cuerpo.saltando.cambiando,
@@ -4262,18 +4267,43 @@ body.sin-movimiento *::after {
   stroke: none;
 }
 
-/* EL LOMO: la arista iluminada de arriba, como los caños de la panorámica. Es la
-   luz de la ventana pegándole por encima, no un contorno.
+/* LAS DOS ARISTAS DEL TUBO. Es lo único que lo hace redondo.
 
-   Va como UN SOLO path continuo y con `stroke-linecap: butt`. Las dos cosas son
-   el arreglo del mismo bug: un stroke continuo no tiene juntas interiores donde
-   apilar casquetes, y sin `round` tampoco los tiene en las puntas. */
-.cable-lomo {
+   Antes había UNA sola —el lomo— y con eso el cable se leía como una línea con
+   una raya de luz encima. Un tubo bajo una luz que entra por arriba tiene el
+   filo de arriba claro Y la panza de abajo oscura, y las dos hacen falta: es el
+   contraste entre las dos caras lo que da el volumen, no el brillo solo.
+
+   El ancho lo escribe ui.js en el nodo, porque sale del grosor del cable
+   (`CABLE.filo` del diámetro) y el grosor sale del ancho de la escena. Una
+   fracción no se puede expresar acá: `stroke-width` no acepta un % del trazo.
+
+   `butt` y un solo path continuo por arista son el arreglo del mismo bug de
+   siempre: un stroke continuo no tiene juntas interiores donde apilar casquetes
+   redondos, y sin `round` tampoco los tiene en las puntas. Los nodos brillantes
+   en los quiebres salían de ahí. */
+.cable-filo-arriba,
+.cable-filo-abajo {
   fill: none;
-  stroke: var(--cable-brillo);
   stroke-linecap: butt;
   stroke-linejoin: round;
-  opacity: 0.42;
+}
+
+.cable-filo-arriba {
+  stroke: var(--cable-brillo);
+  /* Semitransparente para que el filo se MEZCLE con el cuerpo en vez de
+     apoyarse encima. A opacidad plena las dos aristas se leen como tres cables
+     paralelos. */
+  opacity: 0.55;
+}
+
+/* La de abajo pega más fuerte que la de arriba, y es a propósito: contra el
+   piso claro del galpón una panza tenue no se ve, y el cable vuelve a quedar
+   despegado del suelo. Es la misma arista que separa los caños de la
+   panorámica de su propia sombra. */
+.cable-filo-abajo {
+  stroke: var(--cable-sombra);
+  opacity: 0.7;
 }
 
 /* LA FICHA Y SU SOMBRA. Es lo que hace que la union se lea.
@@ -4304,9 +4334,15 @@ body.sin-movimiento *::after {
 
 /* EL BALANCEO. Muy leve y muy lento: algo que apenas se mueve por su propio
    peso, no algo que serpentea. Va sobre las piezas del cable y NO sobre la boca,
-   que está atornillada al pecho de Chip y no se mueve con el cable. */
+   que está atornillada al pecho de Chip y no se mueve con el cable.
+
+   LAS TRES PIEZAS SE MUEVEN JUNTAS o el tubo se desarma: si el cuerpo se
+   balancea y los filos no, las aristas se despegan del cable y se ven como dos
+   líneas sueltas cruzándolo. Van en la misma regla justamente para que no se
+   pueda tocar una sin las otras. */
 #cable .cable-cuerpo,
-#cable .cable-lomo {
+#cable .cable-filo-arriba,
+#cable .cable-filo-abajo {
   animation: colgar var(--cable-balanceo-ciclo) ease-in-out infinite;
   transform-origin: 0% 0%;
 }
@@ -4333,31 +4369,29 @@ body.sin-movimiento *::after {
   animation: viajar-pulso var(--cable-pulso-ciclo) linear infinite reverse;
 }
 
-/* EL PULSO SE ACHICA CON EL CABLE. La animación corre en `reverse`, así que el
-   0% de acá es el pecho —donde el cable mide 13 px— y el 100% es la caja, donde
-   mide 1,7. Con radio fijo, en el último tercio el pulso era cinco veces más
-   ancho que el caño: energía ENCIMA del cable y no adentro.
+/* EL PULSO YA NO SE ACHICA, y se fueron seis custom properties con él.
 
-   Las paradas no son una rampa: `z` no crece parejo con el recorrido y una
-   interpolación lineal daría 0,58 justo donde hace falta 0,33. Los seis valores
-   salen de recorrer la línea media y leer el grosor en cada quinto del camino.
-   Ver PULSOS_CABLE.escala. */
+   Acá había una rampa de escala de seis paradas —de 1 a 0,13— porque el cable
+   viejo tenía perspectiva: iba de 13 px en el pecho a 1,7 en la caja del fondo,
+   y con radio fijo el pulso terminaba cinco veces más ancho que el caño que lo
+   llevaba. Energía ENCIMA del cable y no adentro.
+
+   El cable del punto 16 tiene grosor constante, así que la rampa corregía algo
+   que ya no pasa: lo único que hacía era encoger el pulso hasta desaparecer en
+   la mitad lejana. El radio ahora sale del grosor del cable y se queda quieto.
+
+   Queda el fundido de entrada y salida, que es otra cosa: es lo que evita que el
+   pulso aparezca y desaparezca de golpe en las dos puntas. */
 @keyframes viajar-pulso {
   0% {
     offset-distance: 0%;
     opacity: 0;
-    scale: var(--pulso-cable-e0);
   }
   12% { opacity: 1; }
-  20% { scale: var(--pulso-cable-e20); }
-  40% { scale: var(--pulso-cable-e40); }
-  60% { scale: var(--pulso-cable-e60); }
-  80% { scale: var(--pulso-cable-e80); }
   88% { opacity: 1; }
   100% {
     offset-distance: 100%;
     opacity: 0;
-    scale: var(--pulso-cable-e100);
   }
 }
 
@@ -4794,8 +4828,12 @@ body.sin-movimiento *::after {
 }
 
 /* El balanceo también, y con el MISMO ciclo: si las dos capas se movieran
-   distinto, la unión entre ellas se abriría y cerraría en cada vuelta. */
-#cable-atras .cable-cuerpo {
+   distinto, la unión entre ellas se abriría y cerraría en cada vuelta. Y con las
+   mismas TRES piezas: el cuerpo y sus dos filos, por el mismo motivo por el que
+   van juntas en la capa de adelante. */
+#cable-atras .cable-cuerpo,
+#cable-atras .cable-filo-arriba,
+#cable-atras .cable-filo-abajo {
   animation: colgar var(--cable-balanceo-ciclo) ease-in-out infinite;
   transform-origin: 0% 0%;
 }

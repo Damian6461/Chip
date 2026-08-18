@@ -11,9 +11,20 @@ const gris = (x, y) => {
   return (data[i] + data[i + 1] + data[i + 2]) / 3;
 };
 
+// EL 95 SOLO NO REPRODUCE NADA: LA VENTANA ES EL MÉTODO.
+//
+// Sobre la imagen entera, 95 no separa el cable de nada — la pared del fondo da
+// 20 a 90, el cuerpo de Chip también, y el histograma global no tiene valle: de
+// 80 a 110 es una meseta y cualquier corte ahí da casi lo mismo. Quien corra
+// este script con otro recorte y el mismo umbral no va a obtener este camino.
+//
+// Lo que hace que el número no sea delicado es el recorte. La ventana deja
+// afuera la pared del fondo (arriba), el cuerpo de Chip (izq) y la junta del
+// piso de abajo. Dentro de ella hay 18.066 px bajo 95 y la componente conectada
+// más grande se lleva 18.011: el 99,7%. O sea que adentro de la ventana el
+// umbral ya no está decidiendo nada, y por eso mover el 95 entre 80 y 110 no
+// cambia el camino. Ver cable-metodo.md para la tabla de sensibilidad.
 const OSCURO = 95;
-// La ventana deja afuera la pared del fondo (arriba), el cuerpo de Chip (izq) y
-// la junta del piso de abajo. Dentro de ella lo único oscuro es el cable.
 const X0 = 405, X1 = 1000, Y0 = 370, Y1 = 720;
 
 const dentro = (x, y) => x >= X0 && x <= X1 && y >= Y0 && y <= Y1;

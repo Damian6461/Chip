@@ -17,7 +17,9 @@ import {
   ESTANTES,
   VUELO_OBJETO,
   CABLE,
-  RECORRIDO_CABLE
+  RECORRIDO_CABLE,
+  TOMA_PARED,
+  PASA_DETRAS_CABLE
 } from '../js/config.js';
 import { OBJETOS, objetosDelEvento, objetoPorId } from '../js/datos-objetos.js';
 import { EVENTOS } from '../js/datos-eventos.js';
@@ -551,58 +553,138 @@ prueba('pool: el estante no pretende mostrar las 36', () => {
   igual(capacidad, 8, 'cuatro por tabla, dos tablas');
 });
 
-// ---- El cable: dos propiedades geométricas ----
+// ---- El cable: la forma sale de la referencia y de los dos extremos ----
 //
-// Las dos salieron de defectos medidos en producción y las dos se comprueban
-// solas, sin navegador: son geometría, no pintura.
+// El cable dejó de tener perspectiva. Con eso se fueron tres pruebas que
+// verificaban el afinado —la reducción de 7 a 1, el piso del grosor y el tramo
+// que sube al alejarse— y no se reemplazan por equivalentes: lo que medían ya no
+// es cierto ni deseable. Este cable no se aleja, se apoya.
+//
+// Lo que sí hay que atar es lo nuevo: que el camino salga de los dos extremos,
+// que la forma de la referencia sobreviva, y que la cinta no se pliegue.
 
 const RAIZ_CSS = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const ESCENA = { ancho: 480, alto: 889 };
-const enPx = (p) => ({ ...p, x: (p.x / 100) * ESCENA.ancho, y: (p.y / 100) * ESCENA.alto });
-const RUTA = {
-  apoyo: enPx(RECORRIDO_CABLE.apoyo),
-  quiebres: RECORRIDO_CABLE.quiebres.map(enPx),
-  llegada: enPx(RECORRIDO_CABLE.llegada)
-};
 const CONECTOR = { x: 250.6, y: 662.5 };
+const TOMA = { x: (TOMA_PARED.x / 100) * ESCENA.ancho, y: (TOMA_PARED.y / 100) * ESCENA.alto };
 
 prueba('cable: la línea media ARRANCA en el conector', () => {
   // El defecto era otro: se creía que el cable nacía en el borde del canvas. No
-  // era cierto —era una confusión de sistemas de coordenadas, comparar unidades
-  // del viewBox contra píxeles de página— pero la propiedad vale igual, porque
-  // el día que alguien meta un corrimiento en el origen esto lo agarra.
-  const linea = lineaDelCable(CONECTOR, RUTA, CABLE);
+  // era cierto —era una confusión de sistemas de coordenadas— pero la propiedad
+  // vale igual, porque el día que alguien meta un corrimiento en el origen esto
+  // lo agarra.
+  const linea = lineaDelCable(CONECTOR, TOMA, CABLE, RECORRIDO_CABLE);
   const d = Math.hypot(linea[0].x - CONECTOR.x, linea[0].y - CONECTOR.y);
-
-  verdadero(d < 1, `arranca a ${d.toFixed(2)} px del conector, y la tolerancia es 1`);
+  verdadero(d < 1, `el primer punto está a ${d.toFixed(2)} px del conector`);
 });
 
-prueba('cable: sale PERPENDICULAR al pecho, no tangente', () => {
-  // Un cable que corre pegado al cuerpo se lee apoyado por más que su origen sea
-  // exacto. El primer tramo tiene que bajar, no irse de costado.
-  const linea = lineaDelCable(CONECTOR, RUTA, CABLE);
-  const dx = linea[1].x - linea[0].x;
-  const dy = linea[1].y - linea[0].y;
-  const grados = (Math.atan2(dy, Math.abs(dx)) * 180) / Math.PI;
-
-  verdadero(grados > 75, `el primer tramo baja a ${grados.toFixed(1)}° de la horizontal`);
+prueba('cable: la línea media TERMINA en el toma', () => {
+  // La otra mitad de lo mismo, y es nueva: antes la llegada era un punto suelto
+  // de la tabla que había que mantener a mano en el mismo lugar que la caja. Si
+  // los dos se separaban, el cable terminaba en el aire al lado del toma. Ahora
+  // el extremo ES el toma y no se pueden separar.
+  const linea = lineaDelCable(CONECTOR, TOMA, CABLE, RECORRIDO_CABLE);
+  const u = linea[linea.length - 1];
+  const d = Math.hypot(u.x - TOMA.x, u.y - TOMA.y);
+  verdadero(d < 1, `el último punto está a ${d.toFixed(2)} px del toma`);
 });
 
-prueba('cable: ninguna muestra de la línea media salta más que el paso', () => {
-  // ESTE es el defecto real que se midió: la línea media venía de dos fuentes
-  // con densidades distintas y en los tramos rectos largos no había muestras
-  // intermedias. Entre dos consecutivas había hasta 63 px contra los 3 o 4 del
-  // resto, y con eso el grosor se afinaba de golpe en el extremo del tramo.
-  const linea = lineaDelCable(CONECTOR, RUTA, CABLE);
-  let max = 0;
+prueba('cable: mover cualquiera de los dos extremos mueve el cable entero', () => {
+  // ES EL PEDIDO DEL PUNTO 16, y lo que separa esto de un path dibujado a mano.
+  // Un camino congelado en coordenadas de escena deja de coincidir con el arte
+  // al primer ajuste — el mismo problema que tuvieron los íconos.
+  const base = lineaDelCable(CONECTOR, TOMA, CABLE, RECORRIDO_CABLE);
+  const otroToma = { x: TOMA.x - 60, y: TOMA.y + 40 };
+  const movido = lineaDelCable(CONECTOR, otroToma, CABLE, RECORRIDO_CABLE);
 
-  for (let i = 1; i < linea.length; i++) {
-    max = Math.max(max, Math.hypot(linea[i].x - linea[i - 1].x, linea[i].y - linea[i - 1].y));
-  }
+  const dFin = Math.hypot(movido.at(-1).x - otroToma.x, movido.at(-1).y - otroToma.y);
+  verdadero(dFin < 1, 'el final sigue al toma');
 
+  // Y el medio se movió también: si sólo se moviera la punta, el cable estaría
+  // estirándose en vez de trasladarse.
+  const medio = Math.floor(base.length / 2);
+  const dMedio = Math.hypot(movido[medio].x - base[medio].x, movido[medio].y - base[medio].y);
+  verdadero(dMedio > 10, `el medio del cable se movió ${dMedio.toFixed(1)} px`);
+});
+
+prueba('cable: el grosor va en % del EJE y no del ancho de la escena', () => {
+  // ES LA CORRECCIÓN DE DAMIÁN Y ES LA QUE IMPORTA. La referencia es arte
+  // conceptual: no comparte encuadre con la escena, así que medir el cable
+  // contra el ancho de esa imagen es precisión falsa. El eje pecho->toma sí es
+  // la misma pieza en las dos y sobrevive al cambio de encuadre.
+  //
+  // Se comprueba contra el eje REAL y no contra la constante: si alguien vuelve
+  // a atarlo al ancho de la escena, el cable deja de escalar con el recorrido y
+  // esto lo agarra aunque los dos números se parezcan en un teléfono.
+  const eje = Math.hypot(TOMA.x - CONECTOR.x, TOMA.y - CONECTOR.y);
+  const g = grosorDelCable(eje, CABLE);
+  verdadero(g > 2, `mide ${g.toFixed(1)} px sobre un eje de ${eje.toFixed(0)}`);
+
+  // Un eje el doble de largo da un cable el doble de grueso: la silueta se
+  // conserva cuando cambia el tamaño de la escena.
+  verdadero(grosorDelCable(eje * 2, CABLE) === g * 2, 'escala con el eje');
+
+  // Y el número sale de la referencia: 25,3 px de cable sobre un eje de 849,6.
+  const medido = (25.3 / 849.6) * 100;
   verdadero(
-    max <= CABLE.pasoMuestreo + 0.01,
-    `el salto máximo es ${max.toFixed(2)} px y el paso es ${CABLE.pasoMuestreo}`
+    Math.abs(CABLE.grosor - medido) < 0.05,
+    `${CABLE.grosor}% contra el ${medido.toFixed(2)}% medido en la referencia`
+  );
+});
+
+prueba('cable: la tabla trae el quiebre en S, y el quiebre RETROCEDE', () => {
+  // ES LO QUE HACE QUE EL CABLE PAREZCA UN CABLE: cerca del 80% del recorrido el
+  // camino se dobla sobre sí mismo, o sea que `t` retrocede. Si alguien
+  // "simplifica" la tabla y el retroceso desaparece, queda una curva trazada y se
+  // perdió el punto entero del punto 16.
+  //
+  // SE MIDE SOBRE LA TABLA Y NO SOBRE LA LÍNEA DIBUJADA, y eso costó tres
+  // intentos. Medir el retroceso entre muestras consecutivas de la línea
+  // depende de la densidad del muestreo: el mismo quiebre repartido en cinco
+  // pasos da un quinto del retroceso por paso, y parece que desapareció cuando
+  // lo único que pasó es que hay más puntos. Es el mismo error que ya nos mordió
+  // midiendo radios de curvatura antes de remuestrear.
+  //
+  // La tabla no tiene ese problema: es el dato, y el dato o tiene el retroceso o
+  // no lo tiene.
+  // Y se mide el retroceso TOTAL del tramo, no el mayor entre dos puntos
+  // seguidos: el quiebre retrocede repartido en varios puntos —0,7872 hasta
+  // 0,7747— y quedarse con el escalón más grande da 0,0040 en vez de 0,0125.
+  // Partir un retroceso en más pasos no lo hace más chico.
+  const t = RECORRIDO_CABLE.map(([x]) => x);
+  let retroceso = 0;
+  for (let i = 0; i < t.length; i++) {
+    for (let j = i + 1; j < t.length && t[j] <= t[i]; j++) {
+      retroceso = Math.max(retroceso, t[i] - t[j]);
+    }
+  }
+  verdadero(retroceso > 0.008, `el retroceso del quiebre es ${retroceso.toFixed(4)} del eje`);
+});
+
+prueba('cable: el camino dibujado es bastante más largo que la recta', () => {
+  // La otra mitad, y esta sí sobre lo dibujado: un camino con panza y quiebre
+  // recorre bastante más que la recta entre los dos extremos. Si alguien lo
+  // aplanara, esto cae — y no depende del muestreo, porque el largo de arco es
+  // el mismo con diez puntos que con mil.
+  const linea = lineaDelCable(CONECTOR, TOMA, CABLE, RECORRIDO_CABLE);
+  let arco = 0;
+  for (let i = 1; i < linea.length; i++) {
+    arco += Math.hypot(linea[i].x - linea[i - 1].x, linea[i].y - linea[i - 1].y);
+  }
+  const recta = Math.hypot(TOMA.x - CONECTOR.x, TOMA.y - CONECTOR.y);
+  const razon = arco / recta;
+  verdadero(razon > 1.3, `el cable recorre ${razon.toFixed(2)} veces la recta`);
+});
+
+prueba('cable: la panza baja hacia el piso y no hacia arriba', () => {
+  // El signo de la perpendicular. Si alguien lo invierte, el cable cuelga para
+  // arriba y sigue siendo una curva perfectamente válida — no hay nada que se
+  // rompa, sólo un cable flotando.
+  const linea = lineaDelCable(CONECTOR, TOMA, CABLE, RECORRIDO_CABLE);
+  const masBajo = linea.reduce((m, p) => (p.y > m.y ? p : m), linea[0]);
+  verdadero(
+    masBajo.y > CONECTOR.y,
+    `el punto más bajo está en y=${masBajo.y.toFixed(0)} y el conector en ${CONECTOR.y}`
   );
 });
 
@@ -610,18 +692,22 @@ prueba('cable: la cinta no se pliega sobre sí misma en ninguna curva', () => {
   // El borde interno de un giro recorre menos que la línea media, y si el radio
   // es menor que el medio ancho de la cinta, se cruza: eso es un pico.
   //
-  // EL TOPE BAJÓ DE 8 A 5, y con el de 8 pasaba un corte que se veía: 7,08 px en
-  // (233,7 · 747,5), el codo donde el cable tocaba el piso y giraba. El número
-  // ya no se escribe acá — sale de CABLE.saltoMaximo, que es el MISMO que usa
-  // cintaDelCable para clampear el ancho contra la curvatura. Si alguien lo
-  // cambia, el clampeo y el test se mueven juntos y no puede quedar uno sin el
-  // otro.
+  // EL TOPE SALE DEL PROPIO CABLE y no de una constante escrita acá. Con el
+  // grosor constante, `saltoMaximo` y `afinadoMaximo` desaparecieron: existían
+  // para acotar cuánto se corre el borde cuando el ANCHO cambia, y ya no cambia.
+  //
+  // Lo que puede seguir pasando es el pliegue por curvatura: si el radio de un
+  // giro baja del semiancho, el borde interno se cruza. El tope es entonces el
+  // grosor del cable — un borde que avanza más que el ancho de la pieza en un
+  // solo paso de muestreo es un pliegue, no una curva.
+  const EJE = Math.hypot(TOMA.x - CONECTOR.x, TOMA.y - CONECTOR.y);
   const { atras, adelante } = cintaDelCable(
     CONECTOR,
-    RUTA,
+    TOMA,
     CABLE,
-    CABLE.entraAlCuerpo,
-    (RECORRIDO_CABLE.pasaDetras / 100) * ESCENA.alto
+    RECORRIDO_CABLE,
+    (CABLE.entraAlCuerpo / 100) * EJE,
+    (PASA_DETRAS_CABLE / 100) * ESCENA.alto
   );
 
   // Cada capa puede traer DOS polígonos: la de atrás es la punta que entra al
@@ -644,76 +730,20 @@ prueba('cable: la cinta no se pliega sobre sí misma en ninguna curva', () => {
       }
 
       verdadero(
-        max <= CABLE.saltoMaximo + 0.01,
-        `${nombre}: salto máximo ${max.toFixed(2)} px, tope ${CABLE.saltoMaximo}`
+        max <= grosorDelCable(EJE, CABLE) + 0.01,
+        `${nombre}: salto máximo ${max.toFixed(2)} px, tope ${grosorDelCable(EJE, CABLE).toFixed(2)}`
       );
     }
   }
 });
 
-// LA PERSPECTIVA, que es lo que hace que el galpón se lea grande.
-//
-// No alcanza con que el cable se afine: tiene que afinarse MUCHO. A 3,25 a 1
-// —que es, de hecho, la reducción físicamente correcta para este encuadre—
-// conserva cuerpo en todo el recorrido y compite con Chip.
-prueba('cable: la reducción de grosor es de 7 a 1 o más', () => {
-  const cerca = grosorDelCable(0, CABLE);
-  const lejos = grosorDelCable(1, CABLE);
-  const relacion = cerca / lejos;
-
-  verdadero(
-    relacion >= 7,
-    `el cable va de ${cerca} px a ${lejos.toFixed(2)}: ${relacion.toFixed(2)} a 1, y se pidió 7 u 8`
-  );
-  verdadero(lejos >= 1.5, `el extremo lejano mide ${lejos.toFixed(2)} px y por debajo de 1,5 desaparece`);
-  verdadero(lejos <= 2, `el extremo lejano mide ${lejos.toFixed(2)} px y se pidió 1,5-2`);
-});
-
-// EL TRAMO DEL PISO SE ALEJA, y esto es lo que la versión anterior no hacía.
-//
-// El recorrido viejo corría entre 83,5% y 84,3% de punta a punta mientras su `z`
-// declarada subía de 0,05 a 0,3: la posición decía "misma profundidad" y el
-// grosor decía "me voy al fondo". Un cable que corre por una horizontal se lee
-// pegado al borde de adelante del piso.
-prueba('cable: el tramo del piso sube en pantalla a medida que se aleja', () => {
-  const enPiso = [RECORRIDO_CABLE.apoyo, ...RECORRIDO_CABLE.quiebres].filter(
-    (p) => p.y > RECORRIDO_CABLE.pasaDetras - 12
-  );
-
-  for (let i = 1; i < enPiso.length; i++) {
-    verdadero(
-      enPiso[i].y < enPiso[i - 1].y && enPiso[i].x > enPiso[i - 1].x,
-      `el punto en x=${enPiso[i].x} tiene que estar más arriba y más a la derecha que el anterior`
-    );
-  }
-
-  // Y el avance a lo ancho tiene que ser el que manda en ese tramo: es el que
-  // cuenta la distancia.
-  const ancho = Math.abs(enPiso.at(-1).x - enPiso[0].x) * 4.8; // px en 480
-  const alto = Math.abs(enPiso.at(-1).y - enPiso[0].y) * 8.89; // px en 889
-  verdadero(ancho > alto, `el tramo del piso avanza ${ancho.toFixed(0)} px a lo ancho y ${alto.toFixed(0)} a lo alto`);
-});
-
-// EL CABLE PASA DETRÁS DE CHIP cuando se aleja más que él, y el número que lo
-// decide es su línea de apoyo. Si --piso-chip cambia y esto no, el cable le
-// cruza el cuerpo con una franja gris o se le esconde de más.
 prueba('cable: la línea donde pasa atrás es la línea donde Chip apoya', () => {
   const CSS = readFileSync(join(RAIZ_CSS, 'style.css'), 'utf8');
   const m = CSS.match(/--piso-chip:\s*([\d.]+)%/);
   verdadero(Boolean(m), 'style.css declara --piso-chip');
   igual(
-    RECORRIDO_CABLE.pasaDetras,
+    PASA_DETRAS_CABLE,
     100 - Number(m[1]),
-    'pasaDetras es el complemento de --piso-chip'
+    'PASA_DETRAS_CABLE es el complemento de --piso-chip'
   );
-});
-
-prueba('cable: el afinado tiene piso y nunca desaparece', () => {
-  for (const z of [0, 0.5, 1, 2]) {
-    verdadero(
-      grosorDelCable(z, CABLE) >= CABLE.grosorMinimo,
-      `a z=${z} mide ${grosorDelCable(z, CABLE).toFixed(1)} px`
-    );
-  }
-  verdadero(grosorDelCable(0, CABLE) === CABLE.grosor, 'y cerca mide lo que dice config');
 });

@@ -867,7 +867,7 @@ falló: el detector agarró las juntas del piso y la sombra de Chip en vez del c
 verifiqué dibujando los puntos encima de la imagen —quedaron sobre el cuerpo de Chip y
 flotando en el aire. Lo descarté en vez de pasarlo como medición.
 
-Lo que sí está medido es el **grosor: ~1,1% del ancho de la escena**, constante.
+Sobre el grosor: yo lo di como ~1,1% del ancho de la escena y **eso estaba mal planteado**. La referencia es arte conceptual, no una captura de la escena: no comparte encuadre, así que un % del ancho de escena es precisión falsa. Va como % del eje pecho→toma, que es lo único que sobrevive al cambio de encuadre.
 
 Para el camino, lo correcto es sacarlo de la referencia, que Damián tiene. Como orden de
 magnitud, leído a ojo sobre la imagen ampliada y **explícitamente no medido**: sale de
@@ -890,6 +890,53 @@ Los pulsos de energía que ya existen se mantienen: corren a lo largo del camino
 Mirándolo, a tamaño real de teléfono, con Chip cargando. Y con el simulador de horas en
 las cuatro franjas: el cable cruza la zona iluminada por la ventana, así que si el tono es
 plano se va a ver despegado del piso de noche o quemado de día.
+
+---
+
+# 17. Los bordes en los ojos: cuatro cremas encendidas a la vez
+
+Damián: *"en idle y feliz se siguen viendo las capas en los ojos, hay varios bordes.
+Deberían llegar a lo gris."*
+
+## Causa, medida
+
+Durante la caricia, en el cierre completo y con `visual` fijado en idle, **hay cuatro
+superficies de crema encendidas al mismo tiempo**:
+
+| capa | opacidad | escala |
+|---|---|---|
+| `#parpado` | 1 | sin escalar |
+| `#ojos` | 1 | sin escalar |
+| `ojos-contento-izq` | 1 | 1,17 |
+| `ojos-cerrado-izq` | 1 | 1,17 |
+
+Cada recorte lleva **su propio aro oscuro pintado adentro** de la cuenca. Lo verifiqué:
+el borde de alfa de los sprites es duro —1 o 2 px parciales en `idle-ojos` y
+`idle-ojos-cerrado`— así que la rampa de seis pasos que se ve en el render **no es el
+recorte, es ese aro**. Cuatro capas a cuatro escalas distintas dejan cuatro aros
+concéntricos.
+
+Confirmación por color: perfil horizontal a media altura del ojo, **dos mesetas de crema
+distintas** —254,193,143 y 247,194,145, siete niveles de diferencia. Dos superficies.
+
+## Qué hacer
+
+**El cruce está sumando en vez de reemplazar.** Cuando `cerrado` llega a opacidad 1,
+`contento` y `#ojos` tienen que estar en 0. Hoy quedan las tres en 1.
+
+**Y un segundo defecto aparte:** `#parpado` está enmascarado con `sprites/idle-ojos.webp`
+**siempre**, sin importar el estado. En feliz ese crema no coincide con las cuencas de esa
+cabeza. La máscara tiene que seguir al estado, igual que `AJUSTE_OJOS` ahora sigue a la
+cabeza.
+
+Menor: `#parpado` es la única de las cuatro sin `image-rendering: pixelated`. Las otras
+tres lo tienen. Conviene igualarlo.
+
+## Cómo verificarlo
+
+Con el zoom fuerte sobre un solo ojo: entre el crema plano y el aro de metal tiene que
+haber **un solo borde**, no tres o cuatro. Ese es el criterio de Damián — que el crema
+llegue al gris sin escalón intermedio.
 
 ---
 

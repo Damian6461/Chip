@@ -131,6 +131,9 @@ import {
   PULSOS_CABLE,
   CONECTOR_PECHO,
   RECORRIDO_CABLE,
+  PASA_DETRAS_CABLE,
+  APOYO_CABLE,
+  TOMA_PARED,
   VARS_CABLE
 } from './config.js';
 import { aplica, puedeJugar } from './acciones.js';
@@ -1053,23 +1056,39 @@ export function dibujarCable() {
   const desde = puntoDelConector(escena);
   if (!desde || !escena.width) return;
 
-  const aPx = (p) => ({ ...p, x: (p.x / 100) * escena.width, y: (p.y / 100) * escena.height });
-  const enPx = {
-    apoyo: aPx(RECORRIDO_CABLE.apoyo),
-    quiebres: RECORRIDO_CABLE.quiebres.map(aPx),
-    llegada: aPx(RECORRIDO_CABLE.llegada)
+  // EL SEGUNDO EXTREMO ES EL TOMA, y el camino se reconstruye entre los dos. No
+  // hay puntos de escena guardados: RECORRIDO_CABLE es [t, n] relativo a esta
+  // recta, así que mover el toma o mover a Chip mueve el cable entero.
+  const hasta = {
+    x: (TOMA_PARED.x / 100) * escena.width,
+    y: (TOMA_PARED.y / 100) * escena.height
   };
 
   // LA LÍNEA MEDIA ARRANCA EXACTAMENTE EN EL CONECTOR. Nada de corrimientos
   // previos: lo que hace que la punta desaparezca adentro del cuerpo es que su
   // primer tramo se dibuja en la capa de ATRÁS, debajo del sprite, no que el
   // origen esté desplazado. Ver lineaDelCable y `entraAlCuerpo`.
-  const { completo, atras, adelante, lomo, grosorLomo, linea } = cintaDelCable(
+  const {
+    completo,
+    atras,
+    adelante,
+    filoArriba,
+    filoAbajo,
+    filoArribaAtras,
+    filoAbajoAtras,
+    grosorFilo,
+    grosor,
+    linea
+  } = cintaDelCable(
     desde,
-    enPx,
+    hasta,
     CABLE,
-    CABLE.entraAlCuerpo,
-    (RECORRIDO_CABLE.pasaDetras / 100) * escena.height
+    RECORRIDO_CABLE,
+    // En % del eje, igual que el grosor: lo que entra al cuerpo tiene que seguir
+    // tapando la ficha cuando la escena cambia de tamaño.
+    (CABLE.entraAlCuerpo / 100) * Math.hypot(hasta.x - desde.x, hasta.y - desde.y),
+    (PASA_DETRAS_CABLE / 100) * escena.height,
+    (APOYO_CABLE / 100) * escena.height
   );
 
   // La ficha sigue yendo encima, en la capa de adelante: es la pieza que se ve.
@@ -1079,7 +1098,7 @@ export function dibujarCable() {
   // cable salía recto hacia abajo, y una ficha que apunta para otro lado que su
   // propio cable deshace toda la unión.
   const salida = { x: linea[1].x - linea[0].x, y: linea[1].y - linea[0].y };
-  const ficha = fichaDelPuerto(desde, salida, CABLE);
+  const ficha = fichaDelPuerto(desde, salida, grosor);
 
   const caja = `0 0 ${Math.round(escena.width)} ${Math.round(escena.height)}`;
   nodoCable.setAttribute('viewBox', caja);
@@ -1087,13 +1106,18 @@ export function dibujarCable() {
 
   if (nodoCableAtras) {
     nodoCableAtras.setAttribute('viewBox', caja);
-    nodoCableAtras.innerHTML = `<path class="cable-cuerpo" d="${atras}"/>`;
+    // Con sus filos: la capa de atrás resuelve QUIÉN TAPA A QUIÉN, no el
+    // sombreado. El tramo que sube al toma vive acá y sin esto salía plano.
+    nodoCableAtras.innerHTML =
+      `<path class="cable-cuerpo" d="${atras}"/>` +
+      `<path class="cable-filo-abajo" d="${filoAbajoAtras}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>` +
+      `<path class="cable-filo-arriba" d="${filoArribaAtras}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>`;
   }
 
   const pulsos = Array.from(
     { length: PULSOS_CABLE.cuantos },
     (_, i) =>
-      `<circle class="pulso-cable" r="${PULSOS_CABLE.radio}" style="animation-delay: ${Math.round((i * PULSOS_CABLE.ciclo) / PULSOS_CABLE.cuantos)}ms"/>`
+      `<circle class="pulso-cable" r="${(grosor * PULSOS_CABLE.radioEnGrosores).toFixed(2)}" style="animation-delay: ${Math.round((i * PULSOS_CABLE.ciclo) / PULSOS_CABLE.cuantos)}ms"/>`
   ).join('');
 
   // EL ORDEN DE PINTADO ES LA UNIÓN. La sombra primero, después la cinta —que
@@ -1105,7 +1129,11 @@ export function dibujarCable() {
   nodoCable.innerHTML =
     `<ellipse class="cable-sombra-puerto" transform="${eje}" rx="${(ficha.ancho * 0.78).toFixed(1)}" ry="${(ficha.ancho * 0.62).toFixed(1)}"/>` +
     `<path class="cable-cuerpo" d="${adelante}"/>` +
-    `<path class="cable-lomo" d="${lomo}" style="stroke-width:${grosorLomo.toFixed(2)}px"/>` +
+    // LAS DOS ARISTAS DEL TUBO. La de abajo primero: si el filo claro quedara
+    // debajo del oscuro en un cruce del quiebre en S, el cable se vería
+    // iluminado por abajo.
+    `<path class="cable-filo-abajo" d="${filoAbajo}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>` +
+    `<path class="cable-filo-arriba" d="${filoArriba}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>` +
     pulsos +
     `<g class="cable-ficha" transform="${eje}">` +
     `<rect class="cable-ficha-cuerpo" x="${(-ficha.largoFicha * 0.18).toFixed(1)}" y="${(-ficha.ancho / 2).toFixed(1)}" width="${ficha.largoFicha.toFixed(1)}" height="${ficha.ancho.toFixed(1)}" rx="${ficha.radio.toFixed(1)}"/>` +
@@ -2331,9 +2359,15 @@ function pintarFondo(franja, esNoche, cruce = null) {
   // Va con el fondo y no en el tema porque depende del fondo puesto, que es
   // exactamente lo que decide esta función. Sin clima vuelven los de config, así
   // que salir de un clima no deja el cable aclarado.
+  //
+  // LA SOMBRA CAE DE VUELTA A LA DE CONFIG cuando el clima no la trae, y no al
+  // color del clima: los dos climas se escribieron para levantar el CUERPO
+  // contra un piso que subió, y la arista de abajo no tiene ese problema —
+  // aclararla junto con el cuerpo le sacaría el volumen justo donde más falta.
   const cable = clima?.cable ?? CABLE;
   raiz.style.setProperty(VARS_CABLE.color, cable.color);
   raiz.style.setProperty(VARS_CABLE.brillo, cable.brillo);
+  raiz.style.setProperty(VARS_CABLE.sombra, cable.sombra ?? CABLE.sombra);
 
   // Y el mismo dato como clase, para lo que cambia de ritmo y no de imagen.
   document.body.classList.toggle(CLASE_NOCHE, esNoche);

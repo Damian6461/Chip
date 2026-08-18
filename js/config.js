@@ -2868,90 +2868,92 @@ export const CONECTOR_PECHO = { x: 52.7, y: 83 };
 
 // EL CABLE, dibujado y animado por código.
 //
-// LA FORMA ES EL PUNTO. La primera versión era una catenaria sola: una curva
-// perfecta cruzando el fondo en diagonal. Se leía como una línea de interfaz,
-// no como un cable, y el motivo es que un cable real NO cae en una curva
-// perfecta — hace tramos rectos, se quiebra, se dobla sobre sí mismo, apoya en
-// el piso y sigue. Esa irregularidad es toda la diferencia.
+// LA FORMA SALE DE referencia-cable.png y no de acá: ver RECORRIDO_CABLE más
+// abajo, que trae el camino extraído y verificado. Lo que vive en esta tabla es
+// cómo se DIBUJA ese camino.
 //
-// El recorrido tiene cinco partes, y cada una hace algo distinto:
+// SE FUE LA PERSPECTIVA, y es el cambio de fondo. El cable tenía caída de
+// grosor, radio mínimo, clampeo por curvatura y afinado máximo: toda una
+// máquina para que se viera irse al fondo. Estaba bien construida y estaba
+// resolviendo el problema equivocado.
 //
-//   1. LA CAÍDA     sale del conector y cae con peso. Es la única catenaria.
-//   2. EL APOYO     toca el piso y ahí se acuesta. El quiebre entre caer y
-//                   apoyar es lo que dice que hay un piso.
-//   3. LOS RULOS    una o dos vueltas de sobrante. Es lo que queda cuando hay
-//                   más cable del necesario, y es el detalle que más vende que
-//                   el cable es una cosa y no un trazo.
-//   4. LA CORRIDA   por el suelo hacia el fondo, casi recta pero no del todo.
-//   5. LA LLEGADA   sube apenas al zócalo de la caja de conexión.
+// ESTE CABLE NO SE ALEJA: SE APOYA. Va por el piso, casi todo a la misma
+// profundidad, y cruza la escena en diagonal. Un cable que se afina de 13 px a
+// 1,7 mientras corre por el suelo delante tuyo no se lee como profundidad: se
+// lee como un cable que se rompe. En la referencia el grosor es constante de
+// punta a punta — medido: 25,3 px sobre un eje de 849,6, o sea el 2,98% del
+// largo del recorrido.
 //
-// Todo en % de la ESCENA salvo el arranque, que sale del conector de Chip.
+// Con el grosor constante desaparecen de un saque el clampeo del ancho contra la
+// curvatura y el afinado máximo: los dos existían para que una cinta que cambia
+// de ancho no diera saltos en el borde. Una cinta de ancho fijo no puede darlos.
 export const CABLE = {
-  // Grosor y color: es un cable de energía industrial, no un hilo. El trazo base
-  // va OSCURO a propósito; lo que brilla son los pulsos, y ese contraste entre
-  // el cable apagado y la energía que lo recorre es el efecto.
-  // Grosor CERCA del conector. Se afina con la profundidad de cada tramo, pero
-  // NO en línea recta: el tamaño aparente va como 1/distancia, así que el trazo
-  // usa grosor / (1 + caidaGrosor * z). Con una interpolación lineal —lo que
-  // había— el afinado se reparte parejo y en pantalla se lee como un cable de
-  // grosor constante que se adelgaza de golpe al final.
+  // EN % DEL EJE PECHO->TOMA, no del ancho de la escena.
   //
-  // Con la curva, a media profundidad el cable ya mide un 40% de lo que medía
-  // cerca, que es lo que hace una perspectiva de verdad.
-  // 13 y no 8. A 8 el cable era un hilo en TODO el recorrido, no sólo al final:
-  // un cable de energía industrial tiene cuerpo, y el de la panorámica —los caños
-  // de la pared— es la referencia de escala que tiene al lado.
-  grosor: 13,
-  // LA REDUCCIÓN ES EXAGERADA A PROPÓSITO, y esto es dirección de arte y no
-  // física.
+  // Estuvo en 1,1% del ancho, que es como Damián lo estimó y él mismo corrigió:
+  // la referencia es arte conceptual y no comparte encuadre con la escena, así
+  // que un % del ancho de una imagen ajena es precisión falsa. Contra el eje sí
+  // se puede cruzar, porque el eje es la misma pieza en las dos.
   //
-  // Con caidaGrosor 3 y piso 4 el cable iba de 13 px en el pecho a 4 en la caja:
-  // 3,25 a 1. Y ese número es, de hecho, el FÍSICAMENTE correcto — el horizonte
-  // de la panorámica está en el 55,3% del alto y el pie de la pared en el 65,5%,
-  // así que entre el borde de abajo del cuadro y la pared hay una relación de
-  // profundidad de 4,4 a 1 y nada más. Un galpón visto de frente y a poca altura
-  // no da más perspectiva que esa.
-  //
-  // Pero lo que hace que algo se lea LEJOS no es la distancia real: es cuánto se
-  // achica. A 3,25 a 1 el cable conserva cuerpo en todo el recorrido y compite
-  // con Chip en vez de mandarlo al fondo. A 7,65 a 1 el extremo lejano es un
-  // pelo y el galpón se agranda.
-  //
-  // 13 / (1 + 6,6) = 1,71 px en la caja.
-  caidaGrosor: 6.6,
-  // Y el afinado tiene PISO. A 1,6 el tramo que sube a la caja terminaba en un
-  // pelo contra una pared oscura y desaparecía. Un cable que se va al fondo se ve
-  // más fino; no se ve menos.
-  grosorMinimo: 1.7,
+  // Medido sobre la referencia: 25,3 px de cable sobre un eje de 849,6. Son
+  // 2,98%. En la escena de 480x944 el eje mide 240 px, así que el cable sale de
+  // 7,2 — contra los 5,3 que daba el 1,1% del ancho.
+  grosor: 2.98,
 
-  // EL RADIO MÍNIMO DE CURVATURA, en píxeles. Un cable de 13 px de grueso no
-  // doblota en medio píxel: los catálogos de cable industrial piden entre cuatro
-  // y ocho diámetros, así que 26 —dos diámetros— ya es un codo apretado.
+  // EL RADIO MÍNIMO VA EN SEMIANCHOS Y NO EN PÍXELES, y el número absoluto que
+  // había casi borra el quiebre en S.
   //
-  // Existe porque el redondeo de Chaikin no podía arreglar el codo del apoyo:
-  // corta cada esquina contra su tramo vecino más corto, y ahí el vecino es una
-  // muestra de la catenaria a 6 px. Medido en ese codo antes de esto: radio 0,62
-  // px, y un salto de 7,08 px en el borde de la cinta. Ver respetarRadioMinimo.
-  radioMinimo: 26,
+  // Eran 14 px, que venían del cable viejo de 13 px de grueso: dos diámetros,
+  // que es lo que piden los catálogos de cable industrial. Pero en la escena el
+  // eje pecho->toma mide 233 px y el quiebre entero mide 4,9 — o sea que un piso
+  // de 14 px no le deja doblar, y la relajación lo aplana hasta que desaparece.
+  // Medido: el retroceso del quiebre pasaba de 0,0228 del eje a 0,0019.
+  //
+  // Y el techo de "dos diámetros" no aplica acá, porque la referencia no lo
+  // respeta: ahí el cable mide 25,3 px y el quiebre 18, o sea que el artista lo
+  // dobló más cerrado que su propio diámetro. Es una decisión de dibujo y hay
+  // que dejarla pasar.
+  //
+  // Lo único que este control tiene que seguir garantizando es que la CINTA no
+  // se pliegue, y eso pasa cuando el radio baja del semiancho. 1,4 semianchos
+  // deja margen sin tocar la forma.
+  radioMinimoEnSemianchos: 1.4,
 
-  // EL TOPE DE SALTO ENTRE MUESTRAS del borde de la cinta, en píxeles. No es
-  // sólo el número del test: de acá sale el clampeo del ancho contra la
-  // curvatura, porque el borde externo de un arco avanza (R+s)/R por cada paso
-  // de la línea media. Los dos leen el mismo número, así que no pueden
-  // separarse.
-  saltoMaximo: 5,
+  // EL PASO DEL REMUESTREO. La tabla trae 36 puntos con densidad despareja —el
+  // quiebre concentra doce en un tramo corto— y el redondeo corta cada esquina
+  // contra su vecino más corto, así que sin remuestrear el quiebre sale distinto
+  // del resto. En % del largo del recorrido.
+  pasoMuestreo: 0.5,
 
-  // Cuánto puede cambiar el SEMIANCHO por píxel de recorrido. Es la otra mitad
-  // del presupuesto del salto —ver cintaDelCable— y a la vez algo cierto de
-  // cualquier cable: el diámetro no cambia a escalones.
-  afinadoMaximo: 0.05,
-  // GRIS INDUSTRIAL, no azul. El tono de antes era un teal oscuro que con el
-  // lomo encima leía como una línea de luz apagada. Este sale de los caños de la
-  // panorámica, que es lo que el cable tiene que parecer.
+  // GRIS INDUSTRIAL, no azul. Sale de los caños de la panorámica, que es lo que
+  // el cable tiene que parecer.
   color: '#2b3138',
-  // El filo de arriba: la luz de la ventana pegándole por encima. No es un
-  // contorno ni un segundo cable, es una arista iluminada.
+
+  // ES UN TUBO Y NO UN TRAZO, y esto es lo que lo hace redondo.
+  //
+  // La luz de esta escena entra por la ventana, arriba a la izquierda. Un tubo
+  // bajo esa luz tiene el filo de arriba claro y la panza de abajo oscura, y esas
+  // dos líneas son todo lo que hace falta: un trazo de un solo color se ve plano
+  // por más grueso que sea.
+  //
+  // `brillo` es la arista de arriba y `sombra` la de abajo. No son un contorno:
+  // son dónde le pega la luz y dónde no.
   brillo: '#7b858f',
+  sombra: '#171b21',
+
+  // DE DÓNDE VIENE LA LUZ, como vector unitario en coordenadas de pantalla: x
+  // hacia la derecha, y hacia ABAJO. Así que (-0,6, -0,8) apunta arriba y a la
+  // izquierda, que es donde está la ventana del galpón.
+  //
+  // No es decoración: es el criterio con el que se decide cuál de los dos bordes
+  // lleva el filo claro. Estaba implícito y escrito como "el borde de arriba",
+  // y con eso el filo saltaba de lado en el medio de los tramos verticales. Ver
+  // `desplazado` en formas.js, que cuenta la medición.
+  luz: { x: -0.6, y: -0.8 },
+  // Qué fracción del grosor ocupa cada filo. Finos: un filo grueso deja de ser
+  // una arista y pasa a ser un segundo cable pegado al primero.
+  filo: 0.22,
+
   // El azul eléctrico es SÓLO de los pulsos, y ese contraste —cuerpo apagado,
   // energía viva— es todo el efecto. Si el cable también fuera cian, los pulsos
   // no tendrían contra qué destacarse.
@@ -2962,144 +2964,97 @@ export const CABLE = {
   // OTRA pieza, no como el cable engordado — si comparte color con el cable, la
   // unión vuelve a ser un extremo y no un enchufe.
   ficha: '#4a525a',
-  // EL PASO DEL REMUESTREO. La línea media se recorre a paso fijo en vez de
-  // usar los puntos con que se definió, que venían de dos fuentes con densidades
-  // muy distintas: la caída con 14 muestras y los quiebres con una cada uno.
-  // Medido en producción, entre dos muestras consecutivas había hasta 63 px
-  // contra los 3 o 4 del resto, y con eso el grosor se afinaba de golpe y el
-  // redondeo de cada quiebre salía distinto según el largo de sus vecinos.
-  //
-  // 4 px es más chico que el grosor mínimo del cable, así que ninguna variación
-  // de ancho puede quedar sin muestra que la sostenga.
-  pasoMuestreo: 4,
   // CUÁNTO CABLE QUEDA DETRÁS DEL SPRITE. Es el tramo que entra al puerto y
   // desaparece adentro de Chip. Un cable que termina CONTRA el borde del
   // conector se ve apoyado; uno que desaparece adentro se ve enchufado.
-  entraAlCuerpo: 8,
+  // En % del eje, como el grosor: en px se quedaba corto en pantallas grandes y
+  // la ficha dejaba de tapar la punta.
+  entraAlCuerpo: 4,
   balanceo: { ciclo: 4600, amplitud: 2.2 }
 };
 
-// Los puntos del recorrido, en % de la escena. El primero no está: es el
-// conector del pecho, que se mide sobre la caja real de Chip.
+// ---- EL RECORRIDO SALE DE LA REFERENCIA, Y ES RELATIVO A SUS DOS EXTREMOS ----
 //
-// El piso del galpón en perspectiva: lo que está más al fondo va MÁS ARRIBA en
-// pantalla y más chico. Por eso la corrida sube de y=88 a y=70 mientras se va
-// hacia la derecha — no es que el cable trepe, es que se aleja.
-// El piso ÚTIL termina donde empieza la línea de eventos, alrededor del 84%:
-// más abajo el cable pasa por detrás del texto y de la botonera y deja de
-// leerse como galpón. Todo el recorrido vive arriba de esa línea.
-// EL RECORRIDO, medido contra la profundidad de la panorámica.
+// Fuente: referencia-cable.png, en la raíz del repo. NO se dibujó a mano.
 //
-// EL FONDO DEL TALLER ESTÁ EN y = 65-66%: ahí es donde el piso encuentra la
-// pared, medido con una escala de porcentajes sobre el fondo. Todo lo que esté
-// más abajo de 66 está en el PISO, o sea adelante. La versión anterior terminaba
-// en 71% y por eso la caja quedaba en primer plano, a la misma profundidad que
-// Chip, en vez de al fondo.
+// CÓMO SE SACÓ. LA VENTANA ES EL MÉTODO, no el umbral: se recorta x 405-1000,
+// y 370-720 de la referencia y recién ahí se umbraliza en 95. Sin la ventana el
+// 95 no separa nada —la pared del fondo es tan oscura como el cable— y el
+// histograma no tiene valle: es una meseta de 80 a 110 donde cualquier corte da
+// casi lo mismo. Dentro de la ventana hay 18.066 px bajo 95 y la componente
+// conectada más grande se lleva 18.011, el 99,7%: ahí el umbral no decide nada
+// y por eso el número no es delicado.
 //
-// LOS DOBLECES SON TRAMOS RECTOS QUE SE QUIEBRAN, no curvas. Un cable tirado en
-// el piso no describe una curva suave: hace un tramo, dobla en ángulo, hace
-// otro. La versión anterior era una curva con un rulo y se leía como una cinta.
-// La única curva que queda es la CAÍDA, que sí es una catenaria porque ahí el
-// cable cuelga en el aire.
+// Después, centroide por banda de distancia BFS sobre esa componente, que es lo
+// que resuelve el quiebre en S — ahí el cable es casi vertical y un barrido por
+// columnas no sirve.
 //
-// Y se ACHICA con la distancia: cada tramo lleva su profundidad y el trazo se
-// afina con ella. Un cable del mismo grosor de punta a punta aplana la escena.
-export const RECORRIDO_CABLE = {
-  // Dónde toca el piso, y cuánto cuelga la panza. El apoyo cae adelante y a la
-  // izquierda de Chip: el cable sale del pecho, no de atrás.
-  // y 81,5 y no 85,5: la línea de eventos arranca en 83% y el cable le pasaba
-  // por detrás. La banda útil del piso va de 66% —donde el piso encuentra la
-  // pared— a 82%, que es donde apoyan las orugas de Chip. Todo el recorrido
-  // vive ahí adentro.
-  // y 83,2 y no 81,5. Con el cable fino no se notaba; con cuerpo de 13 px sí: el
-  // recorrido pasaba POR DELANTE de las orugas de Chip, porque la banda 74-82%
-  // es justamente donde está su cuerpo. La banda libre de verdad es la de abajo,
-  // entre el borde de Chip (82%) y el cartel de evento (86,7%), y todo el tramo
-  // horizontal vive ahí hasta salir de su silueta.
-  // x 48 y no 42, y esto es geometría y no gusto. El conector está en 52%, y con
-  // el apoyo en 42 el cable bajaba hacia la IZQUIERDA y el recorrido volvía a la
-  // derecha: una horquilla de casi 180°. Una cinta de 13 px de ancho no puede
-  // doblar en un radio menor que su propio medio ancho sin que el borde interno
-  // se pliegue sobre sí mismo — medido, un salto de 13 px en un borde cuyo paso
-  // es de 4. Con el apoyo casi debajo del conector el giro se abre y no hay
-  // pliegue.
-  // x 56 Y NO 48, Y ESO ES LO QUE ABRE EL CODO.
-  //
-  // El conector del pecho cae en el 52,2% de la escena. Con el apoyo en 48 el
-  // cable bajaba hacia la IZQUIERDA y después el recorrido volvía a la derecha:
-  // una horquilla. La catenaria llegaba al apoyo casi vertical y salía a 32°
-  // hacia arriba, o sea un giro de más de 100° en el punto donde el cable es más
-  // grueso — medido ahí: radio de curvatura 0,62 px y un salto de 7,08 px en el
-  // borde de la cinta, que es el corte que se reportó en (233,7 · 747,5).
-  //
-  // Con el apoyo a la DERECHA del conector la catenaria llega ya subiendo y el
-  // giro baja a unos 35°. El codo se arregla en la ruta, no con más redondeo:
-  // ninguna cantidad de suavizado puede abrir una horquilla.
-  //
-  // y 84,8: el punto MÁS CERCANO de todo el recorrido, y por eso el más bajo en
-  // pantalla. Con la panza de la catenaria y medio ancho de 6,5 px, el borde de
-  // abajo queda arriba del cartel de evento, que arranca en 86,7%.
-  apoyo: { x: 56, y: 86, caida: 0.36 },
-
-  // A PARTIR DE ACÁ EL CABLE VA DETRÁS DE CHIP, y es el mismo número que la
-  // línea donde Chip apoya: --piso-chip vale 18%, así que su base está en el
-  // 82% del alto. Lo que está más arriba que esa línea, en el piso, está más
-  // lejos que él — y lo que está más lejos se dibuja detrás.
-  //
-  // Antes no hacía falta porque el recorrido corría plano por delante de sus
-  // orugas y nunca subía. Ahora sube, que es justamente lo que le da la
-  // profundidad, y sin esto el cable le cruzaría el cuerpo por encima.
-  //
-  // De paso el tramo lejano gana la luz de la hora, que vive entre los z-index
-  // negativos: el cable del fondo recibe el color de la franja igual que la toma
-  // y el piso, y el de adelante no. Eso también es profundidad.
-  pasaDetras: 82,
-
-  // EL TRAMO DEL PISO SIGUE LA FUGA DE LAS BALDOSAS, y antes no.
-  //
-  // El recorrido viejo corría plano —y entre 83,5% y 84,3% de punta a punta—
-  // mientras su `z` declarada subía de 0,05 a 0,3. O sea que la posición decía
-  // "misma profundidad" y el grosor decía "me estoy yendo al fondo": dos cosas
-  // contradictorias sobre el mismo tramo, y gana la que se ve. Un cable que
-  // corre por una horizontal se lee pegado al borde de adelante del piso, y por
-  // eso la caja parecía estar acá nomás.
-  //
-  // La dirección no es un gusto: el punto de fuga del galpón está medido en
-  // EL-PORQUE.md —dos juntas de baldosa intersectadas dan (835, 520) sobre una
-  // panorámica de 1672, o sea el centro horizontal exacto—. Con el fondo a
-  // `auto 100%` y el corrimiento de siempre, ese punto cae en el 55,26% del alto
-  // de la escena y, en 480x889, en el 138% del ancho: afuera del cuadro por la
-  // derecha. Desde el apoyo la dirección hacia ahí baja 0,634 px de alto por
-  // cada px de ancho, y eso es lo que recorren los seis puntos de abajo.
-  //
-  // Cada uno lleva su PROFUNDIDAD de 0 a 1 —0 es acá, 1 es el fondo— que decide
-  // el grosor. La z NO sale de la física: la física de esta escena da 3,25 a 1 y
-  // lo que se busca son 7,65. Ver caidaGrosor. Lo que sí importa es que la z
-  // crezca PAREJO a lo largo del recorrido, porque si se concentra al final el
-  // cable se lee de grosor constante y se corta de golpe.
-  //
-  // La x en % del ancho y el fondo escalado por el ALTO quiere decir que la
-  // dirección sólo es exacta en la proporción de referencia. Es la misma
-  // aproximación que ya tienen la toma y la repisa, y cambiar el sistema de
-  // coordenadas de la escena entera no entra acá.
-  quiebres: [
-    { x: 63, y: 83.4, z: 0.08 },
-    { x: 70, y: 80.8, z: 0.18 },
-    { x: 76, y: 78.5, z: 0.3 },
-    { x: 81, y: 76.6, z: 0.42 },
-    // El pie de la trepada. Hasta acá vino por el piso, alejándose, y ese tramo
-    // es el que cuenta la distancia: 134 px de avance a lo ancho contra los 27
-    // que le quedan hasta la pared.
-    { x: 84, y: 75.5, z: 0.52 },
-    // Y acá deja el piso y sube por la pared hacia la caja, que está
-    // atornillada a media altura y no apoyada en el zócalo.
-    { x: 85.5, y: 66.5, z: 0.75 }
-  ],
-
-  // La boca de la caja de conexión, contra la pared del fondo. Sigue a
-  // TOMA_FONDO.x: si los dos números se separan, el cable llega al aire.
-  llegada: { x: 86.5, y: 57.4, z: 1 }
-};
+// Verificado dibujando los puntos encima de la referencia y mirándolos: Damián
+// confirmó 32 de 35 sobre el cable, corrigió a mano dos (x=180 y x=225) y dejó
+// uno sin resolver. Los corregidos ya están en la tabla de puntos.
+//
+// DOS TRAMOS SE LEYERON DE LA IMAGEN y no del detector, y vale saber cuáles:
+//
+//   - El arranque en el pecho. Ahí el cable pasa pegado a las orugas y al pie, y
+//     con la ventana abierta hasta esa zona el trazado se va por encima de las
+//     orugas y vuelve. Verificado que pasa.
+//   - El último tramo, el que sube por la pared al enchufe. Ahí la pared es tan
+//     oscura como el cable —20 a 90 contra 13 a 31— y no hay umbral que los
+//     separe. No se inventaron puntos: ese tramo lo da la restricción del
+//     extremo, que es el toma.
+//
+// POR QUÉ VA NORMALIZADO. Los puntos NO son coordenadas de escena: son [t, v] en
+// un marco que arranca en el enchufe del pecho y termina en el toma. `t` reparte
+// la posición HORIZONTAL entre los dos extremos y `v` es cuánto cae el cable por
+// debajo de esa recta, en vertical y en unidades del largo de la recta.
+//
+// EL MARCO ES UN CORTE Y NO UNA ROTACIÓN, y ese detalle es lo que hace que el
+// cable se apoye en vez de flotar. La versión anterior medía `n` sobre la
+// PERPENDICULAR al eje: conserva la forma exactamente, pero también la gira.
+// Con el eje de la referencia a 6,6° de la horizontal daba igual; con el de la
+// escena, que sube 40,6° hasta el toma de la pared, la panza colgaba girada 40°
+// y el cable se arqueaba por el aire. Verificado mirándolo a tamaño de teléfono.
+//
+// Un cable tirado en el piso no gira con sus extremos: la gravedad no rota. Lo
+// que se conserva al mover el toma es que la panza cae PARA ABAJO.
+//
+// Así el camino se reconstruye desde CONECTOR_PECHO y TOMA_PARED, que ya viven
+// en config: mover cualquiera de los dos mueve el cable entero y la forma se
+// conserva. Guardar píxeles sería un archivo congelado que deja de coincidir con
+// el arte al primer ajuste — el mismo problema que tuvieron los íconos.
+//
+// LO QUE DICE LA FORMA, y es lo que hay que preservar si alguien la toca:
+//
+//   - PANZA de 0,2496 del largo del eje, alrededor de t = 0,42. Es una U ancha,
+//     no un arco: baja hasta cerca del centro y de ahí sube.
+//   - ARRANQUE CON t NEGATIVO. Los tres primeros puntos van hacia atrás: el
+//     cable sale del enchufe, cae al piso y recién ahí empieza el recorrido. No
+//     sale horizontal hacia la pared.
+//   - EL QUIEBRE EN S, y es lo más importante. Entre t = 0,8045 y t = 0,7832 el
+//     parámetro RETROCEDE —0,0403 del eje sumado sobre todo el tramo—: el cable
+//     se dobla sobre sí mismo. Por eso el camino no se puede escribir como una
+//     función de t ni como una curva simple, y por eso se lee como un cable que
+//     alguien dejó ahí y no como una curva trazada. Si alguien "simplifica" esta
+//     tabla y el retroceso desaparece, se perdió lo único que hacía que el cable
+//     pareciera un cable.
+// GENERADO. Sale de `node verificacion/cable-normalizar.mjs`, que lee los puntos
+// medidos de verificacion/cable-puntos.mjs. No se edita a mano: si hay que
+// mover el camino, se mueven los puntos y se regenera.
+//
+// Y se verifica con `node verificacion/cable-verificar.mjs`, que mide la
+// luminancia alrededor de cada punto sobre la referencia. Hoy: 35 de 35 sobre el
+// cable, con medianas de 28 a 68 contra un piso de 170+.
+export const RECORRIDO_CABLE = [
+  [0, 0], [-0.0166, 0.0546], [-0.019, 0.1132], [0.0355, 0.1653],
+  [0.0889, 0.1926], [0.1777, 0.2275], [0.3092, 0.246], [0.3661, 0.249],
+  [0.423, 0.2496], [0.4799, 0.2478], [0.5367, 0.2437], [0.5936, 0.2385],
+  [0.6505, 0.2285], [0.7073, 0.2197], [0.7547, 0.2145], [0.7737, 0.2049],
+  [0.7903, 0.1938], [0.8021, 0.1775], [0.8045, 0.1601], [0.8033, 0.1412],
+  [0.7974, 0.124], [0.7927, 0.1117], [0.7891, 0.0995], [0.7855, 0.0873],
+  [0.7832, 0.0741], [0.7879, 0.057], [0.8009, 0.0432], [0.8152, 0.0354],
+  [0.8436, 0.0257], [0.872, 0.0195], [0.9005, 0.0145], [0.9289, 0.0107],
+  [0.9573, 0.0069], [0.987, 0.0056], [1, 0]
+];
 
 // EL PULSO SE ACHICA CON EL CABLE, y antes no: viajaba con radio fijo de 4,2 px
 // todo el recorrido. Con el cable yendo de 13 px a 1,7 eso deja, en el último
@@ -3114,37 +3069,60 @@ export const RECORRIDO_CABLE = {
 export const PULSOS_CABLE = {
   cuantos: 5,
   ciclo: 3200,
-  radio: 4.2,
-  escala: { e0: 1, e20: 1, e40: 0.46, e60: 0.23, e80: 0.17, e100: 0.13 }
+
+  // EL RADIO SALE DEL GROSOR DEL CABLE Y NO DE UN NÚMERO SUELTO. Era 4,2 px
+  // fijos, o sea 8,4 de diámetro, y el cable mide 7,2: el pulso era más ancho
+  // que el caño y se leía como una luz pegada encima en vez de energía adentro.
+  //
+  // 0,34 del grosor deja el pulso adentro con un margen visible de cable a los
+  // lados, que es lo que hace que se lea como algo que VIAJA POR el cable.
+  radioEnGrosores: 0.34
 };
 
 // LA CAJA DE CONEXIÓN, de vuelta y al fondo. Es la misma que se dibujó en su
 // momento —chapa gruesa, conector cilíndrico, tornillos, borde naranja— pero
 // SUMERGIDA: chica, en penumbra y con la luz de esa profundidad. No compite con
 // Chip porque está lejos, que era el problema de tenerla adelante.
-export const TOMA_FONDO = {
-  // MONTADA EN LA PARED, a media altura. Estaba en y=65%, que es la línea donde
-  // el piso encuentra la pared: o sea apoyada en el zócalo. Una caja de conexión
-  // industrial va atornillada a la pared, no puesta en el suelo.
-  //
-  // 58% la deja sobre la pared del fondo y por encima de la línea del piso, que
-  // es donde iría en un galpón de verdad.
-  //
-  // x 86,5 y no 80,5: contra el borde derecho. Ahí la pared del fondo está
-  // limpia y el cable cruza todo el cuadro para llegar, que es lo que hace que el
-  // galpón se lea más grande que lo que entra en pantalla. En 80,5 la caja
-  // quedaba en el medio del paño y el recorrido se acortaba.
-  //
-  // No choca con la repisa: la repisa vive entre y 28,5% y 38%, y esto está en
-  // 58. Y RECORRIDO_CABLE.llegada.x lo acompaña — si los dos se separan, el
-  // cable termina en el aire al lado de la caja.
-  x: 86.5,
+// EL EXTREMO DE LA PARED, y es el segundo punto del que sale el cable entero.
+//
+// Dejó de ser una caja de conexión del fondo y pasó a ser un ENCHUFE DE PARED
+// común —placa chica con la ficha puesta— en la pared derecha, que es lo que
+// tiene la referencia. El cambio no es decorativo: la caja del fondo estaba
+// lejos y arriba, así que el cable se iba al fondo en diagonal y se afinaba. Un
+// enchufe en la pared de al lado deja el cable a la misma distancia todo el
+// recorrido, y ESO es lo que le da largo para tener panza y quiebre.
+//
+// x 90: contra el borde derecho, un poco más afuera que la caja vieja. y 58: la
+// altura de un enchufe de pared, arriba de la línea del piso.
+//
+// Este par y CONECTOR_PECHO son los dos extremos de RECORRIDO_CABLE. Mover
+// cualquiera de los dos mueve el cable entero, y la forma se conserva: no hay
+// puntos de escena guardados que se puedan desincronizar.
+// A PARTIR DE ESTA ALTURA EL CABLE VA DETRÁS DE CHIP. Es el mismo número que la
+// línea donde Chip apoya: --piso-chip vale 18%, así que su base está en el 82%
+// del alto. Lo que está más arriba que esa línea, en el piso, está más lejos que
+// él — y lo que está más lejos se dibuja detrás.
+export const PASA_DETRAS_CABLE = 82;
 
-  // 56,8 y no 58: un poco más arriba, más cerca de la línea del horizonte —que
-  // está medida en el 55,26% del alto—. Lo que está lejos está alto en el
-  // cuadro, y una caja apoyada dos puntos y medio abajo del horizonte se lee
-  // más lejos que una apoyada tres.
-  y: 56.8,
+// DÓNDE APOYA LA PANZA DEL CABLE, en % del alto de la escena. Es el tercer
+// anclaje del recorrido, y sin él el cable queda colgado en el aire.
+//
+// El motivo largo está contado en lineaDelCable. El corto: la referencia y la
+// escena no comparten encuadre, así que la panza —que allá es el 30% del alto de
+// la imagen— acá entraba a la mitad de tamaño relativo y no llegaba al suelo.
+// Los dos extremos no alcanzan para ubicar un cable que se apoya; hace falta
+// decirle dónde está el piso.
+//
+// 86 y no 82, que es la línea de apoyo de Chip: el cable le pasa POR DELANTE de
+// las orugas, y lo que está más cerca está más abajo en el cuadro. Con los dos
+// números iguales la panza corre exactamente por la base de Chip y las dos
+// siluetas se pegan — el cable deja de leerse delante y pasa a leerse como parte
+// del contorno.
+export const APOYO_CABLE = 86;
+
+export const TOMA_PARED = {
+  x: 90,
+  y: 58,
 
   // 3,4% del ancho, y antes eran 4,7: un 28% más chica.
   //
@@ -3171,29 +3149,30 @@ export const VARS_CABLE = {
   // la profundidad de cada uno, para que el cable se afine con la distancia. Un
   // valor único en :root no puede hacer eso.
   color: '--cable-color',
+  // LAS DOS ARISTAS DEL TUBO, y son dos nombres y no uno. `brillo` estuvo solo
+  // mientras el cable tenía un lomo; un tubo necesita el par, porque lo que lo
+  // hace redondo es el CONTRASTE entre las dos caras y no la línea de luz.
   brillo: '--cable-brillo',
+  sombra: '--cable-sombra',
   energia: '--cable-energia',
   sombraPuerto: '--cable-sombra-puerto',
   ficha: '--cable-ficha',
-  tomaX: '--toma-fondo-x',
-  tomaY: '--toma-fondo-y',
-  tomaAncho: '--toma-fondo-ancho',
-  tomaBrillo: '--toma-fondo-brillo',
-  tomaSaturacion: '--toma-fondo-saturacion',
+  tomaX: '--toma-pared-x',
+  tomaY: '--toma-pared-y',
+  tomaAncho: '--toma-pared-ancho',
+  tomaBrillo: '--toma-pared-brillo',
+  tomaSaturacion: '--toma-pared-saturacion',
   cicloBalanceo: '--cable-balanceo-ciclo',
   amplitudBalanceo: '--cable-balanceo-amplitud',
   // El radio del pulso NO viaja por custom property: es un atributo r del SVG y
   // lo escribe ui.js desde PULSOS_CABLE. Estuvo acá un rato y el test del puente
   // lo marcó como escrito sin lector, que es exactamente lo que era.
-  cicloPulso: '--cable-pulso-ciclo',
-  // La escala del pulso SÍ viaja, y son seis nombres y no uno: es una curva y
-  // el keyframe necesita un valor por parada. Ver PULSOS_CABLE.escala.
-  pulsoE0: '--pulso-cable-e0',
-  pulsoE20: '--pulso-cable-e20',
-  pulsoE40: '--pulso-cable-e40',
-  pulsoE60: '--pulso-cable-e60',
-  pulsoE80: '--pulso-cable-e80',
-  pulsoE100: '--pulso-cable-e100'
+  // Y LA ESCALA DEL PULSO TAMPOCO VIAJA MÁS, que eran seis nombres. Existían
+  // porque el pulso se achicaba a lo largo del cable para acompañar la
+  // perspectiva; sin perspectiva, la rampa encogía el pulso hasta hacerlo
+  // desaparecer en la mitad lejana sin corregir nada. Ver el keyframe
+  // `viajar-pulso` en style.css.
+  cicloPulso: '--cable-pulso-ciclo'
 };
 
 // Del tamaño de un puño de Chip: la mano de `cargando` mide ~12% del lienzo.
@@ -3203,7 +3182,7 @@ export const VARS_CABLE = {
 // sigue midiendo lo mismo que antes en pantalla — lo que se agregó es el
 // volumen, no el tamaño.
 // El tamaño de la caja ya no se mide en % del alto de Chip: al fondo se mide en
-// % de la escena, y ese número vive en TOMA_FONDO. Estaba atado a Chip cuando
+// % de la escena, y ese número vive en TOMA_PARED. Estaba atado a Chip cuando
 // la caja estaba a su lado.
 const TAMANO_TOMA = { ancho: 13, alto: 12.3 };
 
