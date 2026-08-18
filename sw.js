@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v86';
+const CACHE_VERSION = 'chip-cache-v87';
 
 // LA HUELLA DEL CONTENIDO DE ARCHIVOS_CACHE. No la lee nadie en runtime: existe
 // para que un test pueda contestar la única pregunta que importa acá, que es si
@@ -51,7 +51,7 @@ const CACHE_VERSION = 'chip-cache-v86';
 //
 // Se escribe sola: `node tests/sellar-cache.mjs` sube la versión y la recalcula.
 // No se edita a mano.
-const HUELLA_CACHE = '668afeb2966f3058';
+const HUELLA_CACHE = 'be93d8e9cc110369';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -105,6 +105,10 @@ const ARCHIVOS_CACHE = [
   // El cuerpo sin cabeza ni brazos: es el que dibuja el canvas cuando las capas
   // que rotan están puestas. Ver RUTAS_CUERPO en config.js.
   './sprites/idle-cuerpo.webp',
+  // El cuerpo sin cabeza, sin brazos Y SIN ORUGAS. Es el tercer escalón del
+  // recorte, y lo que habilita es que las orugas sean una capa propia para que
+  // el polvo del punto 8 quepa debajo. Es el único .png de los cuerpos.
+  './sprites/idle-cuerpo-sin-orugas.png',
   './sprites/feliz-cuerpo.webp',
   './sprites/feliz-ojos.webp',
   // Está en el repo y en el caché, pero NO en RUTAS_OJOS ni en POSES_IDLE: la

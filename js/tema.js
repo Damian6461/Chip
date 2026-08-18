@@ -74,6 +74,11 @@ import {
   ACUSE_DEBUG_MS,
   VARS_DEBUG,
   VARS_ORUGAS,
+  VARS_POLVO,
+  POLVO_ORUGAS,
+  COLOR_POLVO,
+  VARS_MIRADA,
+  MIRADA,
   VARS_PISO,
   VARS_LLUVIA,
   LLUVIA,
@@ -359,6 +364,24 @@ export function variablesDeTema() {
     [VARS_BOTONERA.fuente]: px(BOTONERA.fuente),
     [VARS_BOTONERA.icono]: px(BOTONERA.icono),
     [VARS_FUENTE.familia]: `'${FUENTE_BOTONERA.familia}'`,
+    // El polvo de las orugas. Los tamaños y el viaje van en % del lienzo de
+    // 256, igual que los aros de los que nace.
+    [VARS_POLVO.color]: COLOR_POLVO,
+    [VARS_POLVO.opacidad]: String(POLVO_ORUGAS.opacidad),
+    [VARS_POLVO.radioNace]: pct(POLVO_ORUGAS.radio.nace),
+    [VARS_POLVO.radioMuere]: pct(POLVO_ORUGAS.radio.muere),
+    [VARS_POLVO.afuera]: pct(POLVO_ORUGAS.viaje.afuera),
+    [VARS_POLVO.arriba]: pct(POLVO_ORUGAS.viaje.arriba),
+
+    // La mirada. El lado y el ángulo son constantes; lo que cambia en vivo es
+    // qué clase tiene el grupo de la cabeza.
+    [VARS_MIRADA.angulo]: `${MIRADA.angulo}deg`,
+    [VARS_MIRADA.lado]: String(MIRADA.lado),
+    [VARS_MIRADA.seVa]: ms(MIRADA.seVa),
+    [VARS_MIRADA.vuelve]: ms(MIRADA.vuelve),
+    // En % de la capa, que mide el lienzo entero: 3 px de 256.
+    [VARS_MIRADA.ojos]: pct(+((MIRADA.ojosPx / MIRADA.lienzo) * 100).toFixed(3)),
+
     [VARS_BOTONERA.sombraAncho]: pct(BOTONERA.sombra.ancho),
     [VARS_BOTONERA.sombraAlto]: px(BOTONERA.sombra.alto),
     [VARS_BOTONERA.sombraAlfa]: String(BOTONERA.sombra.alfa),

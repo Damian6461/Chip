@@ -41,6 +41,7 @@ import {
   conectarPiso,
   ponerEnElPiso,
   conectarDebugOculto,
+  reaccionarALlegada,
   marcarDebugFallido,
   ponerClima,
   enojarse,
@@ -144,6 +145,14 @@ aplicarAjustes(sesion.estado().ajustes);
 // Va DESPUÉS de aplicarAjustes y ANTES de conectarMenu porque no depende de
 // ninguno de los dos: es un listener sobre el documento que se borra solo.
 arrancarConElPrimerGesto(() => Boolean(sesion.estado().ajustes.sonido));
+
+// LA REACCIÓN DE LLEGADA — punto 6. "Levantó la vista porque entraste."
+//
+// Escala con la ausencia, y el dato ya existía: `horasFuera` sale de abrirVisita,
+// que es la misma cuenta que decide los eventos. Si volviste a los cinco minutos
+// no pasa nada; si volviste después de un día, dos ladeos y el bulbo más fuerte.
+// Nada de culpa ni de reproche — es alegría proporcional.
+reaccionarALlegada(visita.horasFuera);
 
 conectarMenu({
   ajustesActuales: () => sesion.estado().ajustes,
@@ -422,7 +431,24 @@ function abrirPanelDebug() {
       // descarga. Se permite reintentar.
       panelDebugPedido = false;
       marcarDebugFallido();
-      console.warn('No se pudo abrir el panel de debug:', e);
+
+      // EL MENSAJE DICE SI FUE LA RED, y no es cosmética: el que mira esto con
+      // el depurador remoto no siempre tiene el contexto de que debug.js NO está
+      // en ARCHIVOS_CACHE a propósito. En la PWA instalada y sin conexión el
+      // gesto correcto falla igual, y sin esta línea "no se pudo abrir" se lee
+      // como un bug del gesto.
+      //
+      // Un import dinámico que no llega tira TypeError con "Failed to fetch" o
+      // "dynamic import"; navigator.onLine desempata el resto.
+      const sinRed = navigator.onLine === false || /fetch|network|import/i.test(String(e));
+      console.warn(
+        sinRed
+          ? 'El panel de debug no bajó: SIN RED. js/debug.js no está en ARCHIVOS_CACHE ' +
+              'a propósito —es superficie de desarrollo, no parte del juego instalado— ' +
+              'así que este import sale a la red. El gesto funcionó; lo que falta es conexión.'
+          : 'No se pudo abrir el panel de debug, y NO parece ser la red:',
+        e
+      );
     });
 }
 

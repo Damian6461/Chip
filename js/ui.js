@@ -93,7 +93,13 @@ import {
   VARS_ANTENA,
   VARS_BOTONERA,
   BOTONES_EN_LA_FILA,
-  APOYO_ORUGAS,
+  POLVO_ORUGAS,
+  CLASE_POLVO,
+  RUTAS_CUERPO_SIN_ORUGAS,
+  RUTA_ORUGAS,
+  MIRADA,
+  CLASE_DISTRAIDA,
+  CLASE_ATENTA,
   VARS_SOMBRA,
   PANTALLAS_PECHO,
   RECUADROS_RAYO,
@@ -122,6 +128,7 @@ import {
   NUBE_RAPIDA,
   ESCALONES_ACCION,
   AROS_ORUGA,
+  APOYO_ORUGAS,
   GIRO_ORUGAS,
   CLASE_ACOMODO,
   RUTAS_CABEZA,
@@ -203,6 +210,8 @@ import {
   crearBanda,
   nodoCable,
   nodoAcciones,
+  nodoPolvo,
+  capaOrugas,
   nodoCableAtras,
   escena,
   nodoPiso
@@ -972,6 +981,10 @@ function pintarOrugas(claveSprite) {
 export function acomodarOrugas() {
   if (!nodoOrugas || nodoOrugas.hidden) return;
 
+  // El polvo va con el giro y no aparte: si se pudieran disparar por separado,
+  // el día que alguien mueva uno de los dos quedarían desfasados.
+  levantarPolvo();
+
   nodoOrugas.classList.remove(CLASE_ACOMODO);
   void nodoOrugas.offsetWidth;
   nodoOrugas.classList.add(CLASE_ACOMODO);
@@ -982,6 +995,188 @@ export function acomodarOrugas() {
   }, GIRO_ORUGAS.acomodo.duracion + 120);
 }
 
+
+// ---- EL POLVO DE LAS ORUGAS ----
+//
+// Punto 8. Las orugas no se pueden mover —el aro pintado es una elipse lisa y
+// rotarla la acuesta en vez de hacerla rodar— así que el movimiento se cuenta
+// por lo que produce.
+//
+// LOS PUNTOS DE CONTACTO NO SON NUEVOS: salen de AROS_ORUGA, la misma tabla
+// medida a mano que usan los reflejos. Si alguien agrega una pose y le mide los
+// aros, el polvo la acompaña sin tocar nada de acá.
+let temporizadorPolvo = null;
+
+function pintarPolvo(claveSprite) {
+  if (!nodoPolvo) return;
+
+  const aros = AROS_ORUGA[claveSprite];
+  const apoyo = APOYO_ORUGAS[claveSprite];
+  if (!aros || !apoyo) {
+    nodoPolvo.replaceChildren();
+    return;
+  }
+
+  const motas = [];
+  aros.forEach((aro, indiceOruga) => {
+    // El lado: la oruga de la izquierda tira a la izquierda y la de la derecha a
+    // la derecha. Se decide por dónde está el aro respecto del centro del
+    // lienzo, no por el índice — el orden de la tabla es de medición y no de
+    // posición, y confiar en él sería confiar en una casualidad.
+    const lado = aro.x < 50 ? -1 : 1;
+
+    for (let i = 0; i < POLVO_ORUGAS.porOruga; i++) {
+      const mota = document.createElement('span');
+      mota.className = 'mota-polvo';
+
+      // NACE EN LA LÍNEA DE APOYO, no en la base del aro, y la diferencia se vio
+      // mirándolo: con la base del aro —87,4 + 4,1 = 91,5% en idle— la mota nace
+      // CINCO PUNTOS ARRIBA DEL PISO, o sea adentro de la silueta de la oruga. Y
+      // como el polvo va debajo de la capa de orugas, ahí no se ve nunca: nace
+      // tapado y el viaje de 5,5 puntos no alcanza para que asome.
+      //
+      // APOYO_ORUGAS da la línea donde Chip toca el piso —96,5% en idle— que es
+      // literalmente de donde sale el polvo. Ahí la mota nace justo por debajo
+      // del borde de la oruga y se la ve salir de abajo, que es el efecto.
+      mota.style.setProperty('--mota-x', `${aro.x}%`);
+      mota.style.setProperty('--mota-y', `${apoyo.y}%`);
+      mota.style.setProperty('--mota-lado', String(lado));
+
+      // Desfasadas entre las dos orugas para que no salgan en espejo, y entre
+      // las motas de la misma oruga para que no salgan en abanico.
+      const retraso =
+        indiceOruga * POLVO_ORUGAS.desfase.entreOrugas + i * POLVO_ORUGAS.desfase.entreMotas;
+      mota.style.setProperty('--mota-retraso', `${retraso}ms`);
+      mota.style.setProperty(
+        '--mota-ciclo',
+        `${Math.round(entre(POLVO_ORUGAS.ciclo.min, POLVO_ORUGAS.ciclo.max))}ms`
+      );
+
+      motas.push(mota);
+    }
+  });
+
+  nodoPolvo.replaceChildren(...motas);
+}
+
+// El polvo del cuarto de vuelta. Se prende con el mismo gesto que acomoda las
+// orugas y se apaga solo: es un gesto, no un estado. El de `jugando` no pasa por
+// acá — lo sostiene la clase del estado mientras dura el mecerse.
+export function levantarPolvo() {
+  if (!nodoPolvo || !cuerpo) return;
+
+  cuerpo.classList.remove(CLASE_POLVO);
+  void cuerpo.offsetWidth;
+  cuerpo.classList.add(CLASE_POLVO);
+
+  clearTimeout(temporizadorPolvo);
+  temporizadorPolvo = setTimeout(() => {
+    cuerpo.classList.remove(CLASE_POLVO);
+  }, GIRO_ORUGAS.acomodo.duracion + POLVO_ORUGAS.ciclo.max);
+}
+
+// La capa de orugas, que existe para que el polvo quepa DEBAJO. Sólo hay recorte
+// sin orugas para idle; en el resto de las poses el canvas dibuja el cuerpo
+// completo y esta capa se esconde.
+function pintarCapaOrugas(claveSprite) {
+  if (!capaOrugas) return;
+
+  const hay = Boolean(RUTAS_CUERPO_SIN_ORUGAS[claveSprite]);
+  capaOrugas.hidden = !hay;
+  if (hay && !capaOrugas.src.endsWith(RUTA_ORUGAS)) capaOrugas.src = RUTA_ORUGAS;
+}
+
+// ---- LA MIRADA ----
+//
+// Punto 6. "Lo que hace que un personaje se sienta atento no es que te mire: es
+// que dejó de mirar otra cosa para mirarte."
+//
+// Son dos mitades y las dos hacen falta. La que se va vive acá; la que vuelve la
+// dispara main.js al abrir, con las horas que estuviste afuera.
+let temporizadorDistraccion = null;
+
+function programarDistraccion() {
+  clearTimeout(temporizadorDistraccion);
+  temporizadorDistraccion = setTimeout(
+    distraerse,
+    entre(MIRADA.seDistraeEn.min, MIRADA.seDistraeEn.max)
+  );
+}
+
+function distraerse() {
+  // Sólo cuando hay recorte de cabeza, igual que el ladeo ocasional: en cargando
+  // o limpiando Chip está haciendo algo, y además no habría con qué taparlo.
+  if (!grupoCabeza || capaCabeza?.hidden) return;
+  grupoCabeza.classList.add(CLASE_DISTRAIDA);
+}
+
+// Y VUELVE CON CUALQUIER TOQUE. No hace falta ninguna regla nueva: sacar la
+// clase deja el `rotate` en cero y la transición corta lo lleva. La asimetría
+// entre irse lento y volver rápido ES el gesto.
+export function volverLaMirada() {
+  if (!grupoCabeza) return;
+  grupoCabeza.classList.remove(CLASE_DISTRAIDA);
+  programarDistraccion();
+}
+
+// CUALQUIER TOQUE, en cualquier parte de la pantalla. El gesto es "te vio
+// llegar", no "le tocaste la cabeza": si sólo volviera al tocar a Chip, habría
+// que ir a buscarlo para que te mire, que es exactamente al revés de lo que el
+// punto 6 quiere.
+//
+// En captura, para que ningún stopPropagation de más arriba lo tape — el mismo
+// motivo que la puerta de servicio.
+document.addEventListener('pointerdown', volverLaMirada, { capture: true });
+
+// EL RELOJ NO ARRANCA ACÁ, y el intento anterior costó un ReferenceError.
+//
+// Llamar a `programarDistraccion()` al cargar el módulo revienta: usa `entre`,
+// que es un `const` declarado más abajo, y una const no existe hasta que se
+// evalúa su línea — la zona muerta temporal. Un `function` sí se habría izado;
+// una arrow asignada a const, no.
+//
+// Y aunque no reventara, ese no es el momento correcto: la distracción sólo
+// tiene sentido donde hay recorte de cabeza. El reloj arranca desde
+// pintarCabeza, que es exactamente donde eso se sabe — el mismo lugar y el mismo
+// criterio que el ladeo ocasional.
+
+// LA REACCIÓN DE LLEGADA, que escala con la ausencia.
+//
+// El dato ya existía: `horasFuera` sale de la visita. Gana el último escalón
+// cuyo `desdeHoras` se haya superado, así que agregar un escalón intermedio no
+// pide tocar esta función.
+//
+// Nada de culpa ni de reproche: si volviste a los cinco minutos no pasa nada, y
+// eso también es una decisión. Un personaje que festeja cada vez que mirás la
+// pantalla se vuelve ruido en un día.
+export function reaccionarALlegada(horasFuera = 0) {
+  const escalon = MIRADA.llegada.escalones
+    .filter((e) => horasFuera >= e.desdeHoras)
+    .at(-1) ?? MIRADA.llegada.escalones[0];
+
+  if (escalon.ladeos === 0) return;
+
+  setTimeout(() => {
+    // La mirada vuelve al centro antes que nada: si Chip estaba distraído de la
+    // visita anterior, lo primero que hace es darse vuelta.
+    volverLaMirada();
+
+    for (let i = 0; i < escalon.ladeos; i++) {
+      setTimeout(unaInclinacion, i * DURACION_INCLINACION_MS);
+    }
+
+    if (escalon.destella) destellarBulbo();
+
+    if (escalon.respiracion > 1 && contenedorMascota) {
+      contenedorMascota.style.setProperty('--factor-llegada', String(escalon.respiracion));
+      contenedorMascota.classList.add(CLASE_ATENTA);
+      setTimeout(() => {
+        contenedorMascota.classList.remove(CLASE_ATENTA);
+        contenedorMascota.style.removeProperty('--factor-llegada');
+      }, MIRADA.llegada.respiracionMs);
+    }
+  }, MIRADA.llegada.retraso);
+}
 // ---- La inclinación de cabeza ----
 //
 // Cada tanto Chip ladea la cabeza. No lo dispara nada: pasa solo, y ese es el
@@ -1051,6 +1246,13 @@ function pintarCabeza(claveSprite) {
     clearTimeout(temporizadorFinInclinacion);
     temporizadorInclinacion = null;
     grupoCabeza?.classList.remove(CLASE_INCLINADA);
+
+    // Y la distracción con ella: una cabeza ladeada sobre un sprite que no tiene
+    // recorte se queda torcida para siempre. Es la misma red que ya tenía el
+    // ladeo ocasional.
+    clearTimeout(temporizadorDistraccion);
+    temporizadorDistraccion = null;
+    grupoCabeza?.classList.remove(CLASE_DISTRAIDA);
     return;
   }
 
@@ -1060,6 +1262,10 @@ function pintarCabeza(claveSprite) {
       entre(ESPERA_INCLINACION.min, ESPERA_INCLINACION.max)
     );
   }
+
+  // Y el reloj de la distracción, por el mismo criterio: sólo donde hay cabeza
+  // que ladear. Ver el bloque de la mirada.
+  if (!temporizadorDistraccion) programarDistraccion();
 }
 
 // ---- El cable ----
@@ -2316,6 +2522,20 @@ function actualizarBarras(estado) {
   //   NO PUEDO       jugar sin batería. Eso sí es `disabled`: no hay nada que
   //                  decir y no hay nada que hacer hasta cargarlo.
   //
+  // ESTO ES UN CONTRATO Y NO UNA INCONSISTENCIA, y vale escribirlo fuerte porque
+  // es exactamente la clase de par que el próximo va a querer "unificar":
+  //
+  //   disabled=false + aria-disabled=true   -> NO HACE FALTA. El toque llega y
+  //                                            Chip contesta "estoy bien".
+  //   disabled=true  + aria-disabled=true   -> NO PUEDO. El toque no llega.
+  //
+  // El `aria-disabled` NO distingue los dos motivos: dice "esta tecla no está
+  // disponible ahora", que es lo que un lector de pantalla necesita saber. El que
+  // distingue es `disabled`, y lo que decide es si hay algo que contestar.
+  //
+  // Lo que NO existe es `disabled=true + aria-disabled=false`. Esa combinación
+  // era un bug y estuvo puesta hasta que se midió desde afuera; ver más abajo.
+  //
   // Ninguno de los dos es un cooldown. No hay reloj en ninguna parte de esto.
   // Y hay un TERCER motivo, que es el nuevo: mientras una acción está en curso
   // se apagan las tres, incluida la que se está ejecutando —para que no se pueda
@@ -2330,8 +2550,26 @@ function actualizarBarras(estado) {
   apagarSiNoHaceFalta(btnCargar, !ocupado && aplica('cargar', estado));
   apagarSiNoHaceFalta(btnLimpiar, !ocupado && aplica('limpiar', estado));
 
+  // EL `|| btnJugar.disabled` SE FUE, Y ERA UN BUG QUE INVERTÍA EL ARIA.
+  //
+  // `apagarSiNoHaceFalta(boton, hace)` escribe `aria-disabled = !hace`, o sea que
+  // el segundo argumento es "la acción está disponible". Estaba escrito
+  // `!ocupado && (btnJugar.disabled || aplica(...))`, así que en el ÚNICO caso
+  // donde el botón está deshabilitado de verdad —jugar sin batería— el `||` daba
+  // true y salía `aria-disabled="false"`: la tecla decía por ARIA que estaba
+  // disponible justo cuando no lo estaba.
+  //
+  // Visualmente no se notaba, porque el CSS engancha con
+  // `:disabled, [aria-disabled='true']` y la primera mitad ya alcanzaba. Lo que
+  // dejaba era un contrato contradictorio: el mismo botón mostrando una
+  // combinación distinta según el momento, sin que se pudiera saber cuál era la
+  // regla.
+  //
+  // Y no hace falta nada en su lugar: `aplica('jugar', estado)` ya devuelve false
+  // cuando no hay batería —lo chequea en su primera línea— así que las tres
+  // teclas usan ahora exactamente la misma expresión.
   btnJugar.disabled = !puedeJugar(estado);
-  apagarSiNoHaceFalta(btnJugar, !ocupado && (btnJugar.disabled || aplica('jugar', estado)));
+  apagarSiNoHaceFalta(btnJugar, !ocupado && aplica('jugar', estado));
 }
 
 function apagarSiNoHaceFalta(boton, hace) {
@@ -2539,6 +2777,8 @@ export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = 
   // de partida es el conector del pecho, que se mide sobre la caja REAL de
   // #chip, y esa caja cambia con el viewport. Es una cuenta de dos restas y una
   // cúbica — más barato que escuchar el resize.
+  pintarPolvo(claveSprite);
+  pintarCapaOrugas(claveSprite);
   dibujarCable();
   medirBotonera();
   actualizarBarras(estado);

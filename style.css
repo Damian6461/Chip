@@ -4000,6 +4000,150 @@ body.es-noche #piso {
 /* Si el sistema pide menos movimiento no hay rebote, no hay salto y las barras
    van directo al valor nuevo. Va al final del archivo porque gana por orden:
    misma especificidad que las reglas de arriba, declarada después. */
+
+/* ============================================================================
+   EL POLVO DE LAS ORUGAS — punto 8
+
+   La misma idea que el arco de luz en los aros: las orugas no se pueden mover
+   —el aro pintado es una elipse lisa y rotarla la acuesta en vez de hacerla
+   rodar— así que el movimiento se cuenta POR LO QUE PRODUCE.
+
+   Las motas nacen en el punto de contacto, salen hacia atrás y afuera, suben
+   poco y se disuelven. Los puntos no son nuevos: salen de AROS_ORUGA, que ya
+   estaba medida pose por pose.
+   ============================================================================ */
+
+#polvo-orugas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Entre el cuerpo y la capa de orugas. Ver #orugas-capa. */
+  z-index: 1;
+}
+
+.mota-polvo {
+  position: absolute;
+  width: var(--polvo-radio-nace);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--polvo-color);
+  opacity: 0;
+  /* El punto de contacto lo escribe ui.js por mota, desde AROS_ORUGA. */
+  left: var(--mota-x);
+  top: var(--mota-y);
+  translate: -50% -50%;
+}
+
+/* SÓLO CUANDO LAS ORUGAS GIRAN. En reposo no hay polvo, que es la misma regla
+   que ya tienen los reflejos de los aros y por el mismo motivo: una mota
+   saliendo de un personaje quieto se lee como un GIF en loop.
+
+   `levantando-polvo` la pone ui.js en el cuarto de vuelta de una acción, y la
+   clase de `jugando` la sostiene mientras dura el mecerse. */
+#cuerpo.levantando-polvo .mota-polvo,
+#cuerpo.estado-jugando .mota-polvo {
+  animation: levantar-polvo var(--mota-ciclo) ease-out infinite;
+  animation-delay: var(--mota-retraso);
+}
+
+/* Nace chica y opaca cero, crece, y se disuelve. El pico de opacidad está en el
+   medio y no al principio: una mota que aparece a full es un destello, y esto
+   tiene que notarse sin mirarlo. */
+@keyframes levantar-polvo {
+  0% {
+    opacity: 0;
+    width: var(--polvo-radio-nace);
+    translate: -50% -50%;
+  }
+  35% { opacity: var(--polvo-opacidad); }
+  100% {
+    opacity: 0;
+    width: var(--polvo-radio-muere);
+    /* Hacia atrás y AFUERA. El signo lo pone ui.js por el lado del aro, así que
+       la izquierda tira a la izquierda y la derecha a la derecha. Y sube poco:
+       el polvo de una oruga sale a ras del suelo, no en una nube. */
+    translate:
+      calc(-50% + var(--polvo-afuera) * var(--mota-lado))
+      calc(-50% - var(--polvo-arriba));
+  }
+}
+
+/* LAS ORUGAS COMO CAPA PROPIA. Existe para que el polvo quepa DEBAJO, y no para
+   animarlas — el punto 8 argumenta justamente lo contrario.
+
+   Sólo hay recorte sin orugas para idle. En el resto de las poses el canvas
+   dibuja el cuerpo completo, esta capa se esconde, y el polvo queda por encima
+   de la oruga pintada. A tamaño real, con la mota en 0,28 de opacidad, la
+   diferencia no se ve; se hace bien donde se puede y se anota dónde no. */
+#orugas-capa {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+  z-index: 2;
+}
+
+#orugas-capa[hidden] {
+  display: none;
+}
+
+/* ============================================================================
+   LA MIRADA — punto 6
+
+   La atención es un CAMBIO de estado y no un estado. Un Chip que mira siempre a
+   la cámara es un póster; uno que estaba mirando la ventana y se da vuelta
+   cuando llegás, está vivo.
+
+   Por eso son dos clases y no una: `distraida` es un estado que SE QUEDA
+   —la cabeza se va hacia la ventana y no vuelve sola— y `atenta` es el gesto de
+   volver. Una cabeza que va y vuelve sola sería un tic más, como el ladeo
+   ocasional que ya existe.
+   ============================================================================ */
+
+/* IRSE ES LENTO. Distraerse pasa sin que uno lo note.
+
+   Es una transición y no una animación, a propósito: una animación termina y
+   deja de aplicar, y esto tiene que QUEDARSE puesto hasta que algo lo saque. */
+#cabeza-grupo {
+  transition: rotate var(--mirada-vuelve) ease-out;
+}
+
+#cabeza-grupo.distraida {
+  rotate: calc(var(--mirada-angulo) * var(--mirada-lado));
+  transition: rotate var(--mirada-se-va) ease-in-out;
+}
+
+/* Y LOS OJOS SE VAN CON ELLA. Es el experimento que el punto 6 pide hacer antes
+   de encargar arte, y salió que sí: debajo de #ojos está #parpado —la forma de
+   los ojos rellena de un color plano— así que al correr la capa de arriba, del
+   lado contrario asoma ese crema. Se lee como un ojo moviéndose adentro de su
+   cuenca, no como la capa despegada.
+
+   Hay pupilas gratis: no hace falta recorte nuevo.
+
+   Va con la MISMA asimetría que la cabeza —lento para irse, rápido para
+   volver— porque son el mismo gesto. */
+#cabeza-grupo.distraida #ojos {
+  translate: calc(var(--mirada-ojos) * var(--mirada-lado)) 0;
+  transition: translate var(--mirada-se-va) ease-in-out;
+}
+
+#cabeza-grupo #ojos {
+  transition: translate var(--mirada-vuelve) ease-out;
+}
+
+/* VOLVER ES RÁPIDO. No hace falta ninguna regla para el gesto de volver: sacar
+   la clase deja el `rotate` en cero y la transición de arriba —la corta— lo
+   lleva. La asimetría entre los dos tiempos ES el gesto. */
+
+/* Y LA RESPIRACIÓN SE ACELERA AL LLEGAR, un segundo. `--mirada-respiracion` es
+   cuánto dura el sobresalto; el factor lo escribe ui.js por escalón, porque
+   depende de cuánto tiempo estuviste afuera. */
+#contenedor-mascota.atenta {
+  animation-duration: calc(var(--ciclo-respiracion) / var(--factor-llegada, 1));
+}
 @media (prefers-reduced-motion: reduce) {
   #contenedor-mascota,
   /* El sobresalto del tap, que heredó el squash de la vieja `.acariciado` y
@@ -4021,6 +4165,9 @@ body.es-noche #piso {
   #cable path,
   #cable-atras path,
   .pulso-cable,
+  /* El polvo de las orugas es movimiento puro: no cuenta nada que no cuente ya
+     el cambio de estado. Se va entero. */
+  .mota-polvo,
   #cuerpo.cambiando,
   #cuerpo.saltando.cambiando,
   #cuerpo.saltando {

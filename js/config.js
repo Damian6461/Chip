@@ -1765,6 +1765,181 @@ export const VARS_ORUGAS = {
 
 export const CLASE_ACOMODO = 'acomodando';
 
+// ============================================================================
+// EL POLVO DE LAS ORUGAS — punto 8
+// ============================================================================
+//
+// La misma idea que el arco de luz en los aros: en vez de mover una pieza que no
+// se puede mover, se cuenta el movimiento POR LO QUE PRODUCE. Las orugas no
+// pueden rodar —el aro pintado es una elipse lisa, y rotarla sobre su centro la
+// acuesta en vez de hacerla rodar— pero una oruga que gira levanta piso, y eso
+// sí se puede dibujar.
+//
+// DÓNDE NACEN: en los puntos de contacto, que YA ESTÁN MEDIDOS. Salen de
+// AROS_ORUGA, que trae los dos aros de cada pose en % del lienzo, cruzados
+// contra APOYO_ORUGAS. No hay ninguna coordenada nueva acá: si alguien agrega
+// una pose y le mide los aros, el polvo la acompaña sin tocar nada.
+//
+// CUÁNDO: sólo cuando las orugas giran, o sea en el cuarto de vuelta de una
+// acción y en el mecerse de `jugando`. En reposo no hay polvo — es la misma
+// regla que ya tienen los reflejos, y por el mismo motivo: una mota saliendo de
+// un personaje quieto se lee como un GIF.
+export const POLVO_ORUGAS = {
+  // Dos por oruga. Tres ya se leen como humo, y la spec avisa: si se ve
+  // claramente, está de más.
+  porOruga: 2,
+
+  // Ciclo corto: una mota de piso levantado no se queda flotando.
+  ciclo: { min: 620, max: 880 },
+
+  // A dónde va cada mota, en % del lienzo de 256. HACIA ATRÁS Y AFUERA respecto
+  // del centro de Chip, y sube poco: el polvo de una oruga sale a ras del suelo,
+  // no en una nube.
+  //
+  // `afuera` es hacia el borde más cercano —la oruga izquierda tira a la
+  // izquierda y la derecha a la derecha— y ui.js le pone el signo por el lado
+  // del aro, así que acá va sin signo.
+  viaje: { afuera: 5.5, arriba: 2.6 },
+
+  // El tamaño, en % del lienzo. Chico: una mota, no una bola.
+  radio: { nace: 0.9, muere: 2.2 },
+
+  // MUY TENUES, que es lo que la spec repite dos veces. 0,28 es el techo del
+  // rango que pide (0,25 a 0,3) y es lo máximo que alcanza una mota a la mitad
+  // de su vida; nace y muere en cero.
+  opacidad: 0.28,
+
+  // Desfasadas entre las dos orugas para que no salgan en espejo, y desfasadas
+  // entre las motas de la misma oruga para que no salgan en abanico. En ms.
+  desfase: { entreOrugas: 190, entreMotas: 130 }
+};
+
+// El color del polvo es EL DEL PISO, no blanco ni cian: el polvo es piso
+// levantado. Sale del mismo tono que ya usa la sombra de contacto de las piezas
+// —el gris de las baldosas de la panorámica, medido— y no de un gris inventado.
+export const COLOR_POLVO = '#9aa3ad';
+
+export const VARS_POLVO = {
+  color: '--polvo-color',
+  opacidad: '--polvo-opacidad',
+  radioNace: '--polvo-radio-nace',
+  radioMuere: '--polvo-radio-muere',
+  afuera: '--polvo-afuera',
+  arriba: '--polvo-arriba'
+};
+
+export const CLASE_POLVO = 'levantando-polvo';
+
+// El cuerpo de idle SIN las orugas. Es el tercer escalón del recorte: el sprite
+// entero, el cuerpo sin cabeza ni brazos (RUTAS_CUERPO), y éste, que además saca
+// las orugas.
+//
+// PARA QUÉ SIRVE, concretamente: con las orugas afuera del canvas se pueden
+// poner como capa propia, y entonces el polvo cabe DEBAJO de ellas. Una mota que
+// nace en el punto de contacto y sale por encima de la oruga se ve pegada
+// arriba; una que sale por debajo se ve saliendo de abajo, que es de donde sale.
+//
+// NO ES PARA MOVER LAS ORUGAS. El punto 8 argumenta justamente lo contrario —
+// contar el movimiento por lo que produce en vez de mover la pieza— y esta capa
+// no se anima nunca.
+export const RUTAS_CUERPO_SIN_ORUGAS = {
+  idle: 'sprites/idle-cuerpo-sin-orugas.png'
+};
+
+export const RUTA_ORUGAS = 'sprites/idle-orugas.webp';
+
+// ============================================================================
+// LA MIRADA — punto 6
+// ============================================================================
+//
+// "Lo que hace que un personaje se sienta atento no es que te mire: es que dejó
+// de mirar otra cosa para mirarte." La atención es un CAMBIO de estado y no un
+// estado, así que hacen falta las dos mitades: una mirada que se va y una que
+// vuelve.
+//
+// Sin arte nuevo. Lo que se mueve es la cabeza, que ya tiene su grupo, su pivote
+// por pose y su animación de ladeo.
+export const MIRADA = {
+  // ---- La mirada que se va ----
+  //
+  // Si no pasa nada por 40 a 60 segundos, Chip se distrae y mira hacia la
+  // ventana. Y SE QUEDA AHÍ: no vuelve solo. Ese "se queda" es la mitad que hace
+  // que volver signifique algo — una cabeza que va y vuelve sola es un tic.
+  seDistraeEn: { min: 40_000, max: 60_000 },
+
+  // Hacia dónde. La ventana está a la IZQUIERDA de la escena, así que la cabeza
+  // se ladea para ese lado: en pantalla eso es una rotación negativa, porque el
+  // eje de rotación de CSS es horario.
+  lado: -1,
+
+  // Un poco más que el ladeo ocasional, que vale 3°: distraerse es un gesto más
+  // marcado que una muletilla, y además tiene que durar.
+  angulo: 4.5,
+
+  // IRSE ES LENTO Y VOLVER ES RÁPIDO, y esa asimetría es el gesto entero.
+  // Distraerse pasa sin que uno lo note; darse vuelta porque llegaste es un
+  // movimiento con intención. Con los dos tiempos iguales no se lee ninguna de
+  // las dos cosas.
+  seVa: 1500,
+  vuelve: 380,
+
+  // LOS OJOS SE VAN CON LA CABEZA, y esto salió del experimento que el punto 6
+  // pide hacer ANTES de encargar arte: "trasladá #ojos 3 px a un lado y mirá la
+  // captura a 4×; si se lee como una mirada que se mueve, hay pupilas gratis".
+  //
+  // Se probó y se lee. Debajo de #ojos está #parpado, que es la forma de los
+  // ojos rellena de un color plano; al correr la capa de arriba, del lado
+  // contrario asoma ese crema — que es exactamente cómo se ve un ojo moviéndose
+  // adentro de su cuenca. No se ve la capa despegada: no hay costura ni borde
+  // suelto. O sea que no hace falta pedir un recorte de pupila.
+  //
+  // En píxeles del lienzo de 256, que es la unidad en la que están medidos todos
+  // los recortes. Tres: con dos no se nota y con cuatro el aro de la cuenca
+  // empieza a comerse el crema del otro lado.
+  ojosPx: 3,
+  lienzo: 256,
+
+  // ---- La mirada que vuelve ----
+  //
+  // Al abrir la app, después del fundido: la cabeza se ladea y vuelve, el bulbo
+  // pulsa y la respiración se acelera un momento. "Levantó la vista porque
+  // entraste".
+  //
+  // Y ESCALA CON LA AUSENCIA. El dato ya existe: `horasFuera` sale de la visita.
+  // Nada de culpa ni de reproche — es alegría proporcional. Gana el ÚLTIMO
+  // escalón cuyo `desdeHoras` se haya superado.
+  llegada: {
+    retraso: 260,
+    escalones: [
+      // Volviste enseguida: no pasa nada. Un personaje que festeja cada vez que
+      // mirás la pantalla se vuelve ruido en un día.
+      { desdeHoras: 0, ladeos: 0, destella: false, respiracion: 1 },
+      // Un rato: levanta la vista.
+      { desdeHoras: 2, ladeos: 1, destella: true, respiracion: 1.35 },
+      // Un día o más: dos ladeos y el bulbo más fuerte.
+      { desdeHoras: 24, ladeos: 2, destella: true, respiracion: 1.6 }
+    ],
+    // Cuánto dura la respiración acelerada. Un segundo: es un sobresalto, no un
+    // estado de ánimo.
+    respiracionMs: 1100
+  }
+};
+
+export const VARS_MIRADA = {
+  angulo: '--mirada-angulo',
+  lado: '--mirada-lado',
+  seVa: '--mirada-se-va',
+  vuelve: '--mirada-vuelve',
+  ojos: '--mirada-ojos'
+};
+
+// `llegada.respiracionMs` NO viaja por el puente: lo usa un setTimeout de ui.js
+// para sacar la clase, y el CSS no lo necesita. Estuvo un rato acá y el guardián
+// del puente lo marcó como escrito sin lector, que es exactamente lo que era.
+
+export const CLASE_DISTRAIDA = 'distraida';
+export const CLASE_ATENTA = 'atenta';
+
 // ---- LA SOMBRA SON DOS MANCHAS, no una elipse ----
 //
 // "Todo flota" era el reporte, y la sombra de Chip es la que más pesa porque es

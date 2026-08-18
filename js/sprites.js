@@ -7,6 +7,7 @@ import {
   ESTADOS_VISUALES as E,
   RUTAS_SPRITES,
   RUTAS_CUERPO,
+  RUTAS_CUERPO_SIN_ORUGAS,
   UMBRAL_CRITICO_BATERIA,
   HORA_STANDBY_INICIO,
   HORA_STANDBY_FIN,
@@ -206,9 +207,13 @@ export async function cargarSprites() {
   // prefijada. Así obtenerSprite los encuentra igual que a los demás y el
   // fallback vale para ellos también: si uno no carga, se cae al sprite entero
   // y Chip se ve sin gesto, no sin cabeza.
-  const cuerpos = Object.fromEntries(
-    Object.entries(RUTAS_CUERPO).map(([pose, ruta]) => ['cuerpo:' + pose, ruta])
-  );
+  const cuerpos = Object.fromEntries([
+    ...Object.entries(RUTAS_CUERPO).map(([pose, ruta]) => ['cuerpo:' + pose, ruta]),
+    // El tercer escalón del recorte: el cuerpo sin cabeza, sin brazos Y SIN
+    // ORUGAS. Con las orugas fuera del canvas se pueden poner como capa propia,
+    // y entonces el polvo del punto 8 cabe DEBAJO de ellas.
+    ...Object.entries(RUTAS_CUERPO_SIN_ORUGAS).map(([pose, ruta]) => ['sin-orugas:' + pose, ruta])
+  ]);
 
   const resultados = await Promise.all(
     Object.entries({ ...RUTAS_SPRITES, ...cuerpos }).map(([nombre, ruta]) =>
@@ -243,8 +248,20 @@ export function obtenerSprite(nombre) {
 // El sprite que le toca al CANVAS: si la pose tiene cuerpo recortado, ese; si no,
 // el entero. El fallback encadena hasta el sprite completo, así que un cuerpo que
 // no cargue deja a Chip sin gesto pero nunca sin cabeza.
+// TRES ESCALONES, y se prueba de más recortado a menos:
+//
+//   sin-orugas:  el cuerpo sin cabeza, sin brazos y sin orugas. Sólo idle. Con
+//                las orugas afuera del canvas, el polvo del punto 8 cabe debajo
+//                de ellas — ver #orugas-capa.
+//   cuerpo:      sin cabeza ni brazos, que es el que ya existía.
+//   el sprite:   una pose sin ningún recorte no se entera de que esto existe.
+//
+// El orden importa: si se probara primero `cuerpo:`, el recorte sin orugas
+// nunca ganaría y el sprite de Damián volvería a quedar huérfano.
 export function obtenerCuerpo(nombre) {
-  return imagenDe('cuerpo:' + nombre) ?? obtenerSprite(nombre);
+  return (
+    imagenDe('sin-orugas:' + nombre) ?? imagenDe('cuerpo:' + nombre) ?? obtenerSprite(nombre)
+  );
 }
 
 

@@ -50,7 +50,32 @@ http://127.0.0.1:5500/index.html?debug=1
 
 Sin el parámetro, `js/debug.js` ni se descarga (import dinámico).
 
-**En la app instalada el parámetro no llega** —la PWA arranca en la `start_url` cacheada y el service worker responde con `caches.match` sin `ignoreSearch`—, así que hay una puerta de servicio: **cinco toques rápidos en la esquina de arriba a la izquierda**, dentro de dos segundos. Era mantener apretado el botón del menú tres segundos y se cambió porque no funcionaba con el dedo aunque tuviera las cuatro cosas que un gesto sostenido necesita; ver `TOQUES_DEBUG` en `config.js`.
+**En la app instalada el parámetro no llega** —la PWA arranca en la `start_url` cacheada y el service worker responde con `caches.match` sin `ignoreSearch`—, así que hay una puerta de servicio.
+
+> ### CÓMO SE ABRE EL PANEL EN EL TELÉFONO
+>
+> **Cinco toques rápidos en la esquina de arriba a la izquierda**, dentro de dos
+> segundos. La zona es de 56 × 56 px y está 12 px adentro del canto.
+>
+> **YA NO ES MANTENER APRETADO EL BOTÓN DEL MENÚ.** Ese era el gesto anterior y
+> se cambió porque no funcionaba con el dedo, aunque tuviera las cuatro cosas
+> que un gesto sostenido necesita.
+>
+> Cada toque, del segundo en adelante, deja una marca blanca de 220 ms en la
+> esquina. El quinto la deja **cian**: eso quiere decir que el gesto entró y el
+> panel se está pidiendo. Si después no aparece nada, el problema es la descarga
+> y no el gesto — y en ese caso la marca se pone **roja**.
+
+Ese cambio de gesto tardó en llegarle a la única persona que lo usa, y eso fue
+el defecto real del punto 9: el mecanismo andaba desde hacía cincuenta commits y
+la instrucción vivía nada más que en un comentario de `index.html`, donde nadie
+la iba a leer. Por eso está acá arriba y no en una nota al pie.
+
+**Y si no hay conexión, el gesto correcto falla igual.** `js/debug.js` NO está en
+`ARCHIVOS_CACHE` a propósito —es superficie de desarrollo y no parte del juego
+instalado— así que ese import sale a la red. La marca roja es lo que distingue
+"no bajó" de "no se registró el gesto", y la consola lo dice con todas las
+letras. Ver `TOQUES_DEBUG` en `config.js`.
 
 | Control | Qué hace |
 |---|---|

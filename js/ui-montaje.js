@@ -72,6 +72,12 @@ export const toma = document.getElementById('toma');
 // La fila de las tres chapas. La necesita medirBotonera, que le escribe el ancho
 // en píxeles enteros — ver el punto 3.7.
 export const nodoAcciones = document.getElementById('acciones');
+
+// El polvo de las orugas y la capa que lo tapa. Van juntos: el polvo existe
+// para verse saliendo de DEBAJO de la oruga, y para eso la oruga tiene que ser
+// una capa y no píxeles del canvas. Ver el punto 8.
+export const nodoPolvo = document.getElementById('polvo-orugas');
+export const capaOrugas = document.getElementById('orugas-capa');
 export const nodoCable = document.getElementById('cable');
 export const nodoCableAtras = document.getElementById('cable-atras');
 export const repisa = document.getElementById('repisa');
