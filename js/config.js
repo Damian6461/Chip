@@ -3828,11 +3828,34 @@ export const PARAM_DEBUG = 'debug';
 export const TOQUES_DEBUG = 5;
 export const VENTANA_DEBUG_MS = 2000;
 
-// La esquina, en píxeles: el mismo 44 del mínimo táctil. En px y no en % por la
-// misma razón que la caja del objeto — el dedo no se achica con la ventana.
-export const ESQUINA_DEBUG = 44;
+// La esquina, en píxeles. En px y no en % por la misma razón que la caja del
+// objeto — el dedo no se achica con la ventana.
+//
+// SUBIÓ DE 44 A 56, y no es "por las dudas". 44 es el mínimo táctil para un
+// control que se VE: el dedo apunta a algo. Acá no hay nada dibujado, así que
+// el jugador apunta a una esquina de memoria y el error de puntería es mayor.
+// Un blanco invisible del tamaño del mínimo visible está mal dimensionado.
+export const ESQUINA_DEBUG = 56;
 
-export const VARS_DEBUG = { esquina: '--esquina-debug' };
+// Y NO ARRANCA PEGADA AL BORDE. Estaba en el vértice exacto del área segura, y
+// esa franja es de la que menos se puede confiar en un teléfono: ahí viven el
+// gesto de barrido del sistema, la barra de estado y el borde curvo de la
+// pantalla. Un toque a 2 px del canto lo puede tragar cualquiera de los tres,
+// y desde el JS eso se ve igual que un toque que nunca pasó.
+//
+// 12 px adentro la saca de esa franja sin moverla de la esquina.
+export const MARGEN_DEBUG = 12;
+
+// CUÁNTO DURA EL ACUSE DE CADA TOQUE. Ver la puerta de servicio en style.css:
+// existe porque cinco toques que no abren nada eran indistinguibles de cinco
+// toques que no se registraron, y en un teléfono no hay consola para desempatar.
+export const ACUSE_DEBUG_MS = 220;
+
+export const VARS_DEBUG = {
+  esquina: '--esquina-debug',
+  margen: '--margen-debug',
+  acuse: '--acuse-debug'
+};
 export const OPCION_DEBUG_AUTO = 'auto';
 
 // Opciones del selector de hora del panel: 0 a 23. Forzar la hora mueve el

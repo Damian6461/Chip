@@ -17,6 +17,16 @@
     color: #e6e6e6; font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer;
   }
   button:hover { background: #262a35; }
+  .aviso {
+    border: 1px solid #7a3d18; background: #241a12; border-radius: 8px;
+    padding: 12px 16px; margin: 0 0 14px; max-width: 72ch;
+  }
+  .aviso strong { color: #ffb060; }
+  .aviso p { margin: 8px 0 0; color: #c9ced7; }
+  .aviso table { border-collapse: collapse; margin: 8px 0 0; font-size: 13px; }
+  .aviso td { padding: 2px 16px 2px 0; color: #c9ced7; }
+  .aviso td:last-child { text-align: right; color: #e6e6e6; }
+  .peso { font-size: 12px; color: #ffb060; }
   .zona { position: relative; }
   .zona::after {
     content: ''; position: absolute; inset: 10%; border: 1px dashed #ff2bd1;
@@ -26,9 +36,51 @@
 </head>
 <body>
 <h1>Generador de íconos</h1>
+
+<div class="aviso">
+  <strong>Lo que baja esta página NO se puede mover a <code>/icons/</code> tal
+  cual.</strong>
+  <p>
+    <code>canvas.toDataURL('image/png')</code> es un mal compresor: escribe RGBA
+    de 8 bits por canal, sin paleta y con compresión floja. Los tres juntos
+    salen de acá pesando <strong>806 KB</strong> contra los <strong>217 KB</strong>
+    que hay guardados en el repo. Sobre una instalación de ~1,6 MB, eso convierte
+    a los íconos en casi la mitad — y no se nota nunca, porque los íconos no se
+    miran, se instalan.
+  </p>
+  <p>
+    <strong>Pasalos por un compresor de PNG antes de moverlos</strong>, con
+    paleta de 256 colores y dithering. Medido sobre estos mismos tres:
+  </p>
+  <table>
+    <tr><td>lo que baja esta página</td><td>806 KB</td></tr>
+    <tr><td>RGBA bien comprimido, sin paleta</td><td>799 KB</td></tr>
+    <tr><td>paleta 256 con dither &nbsp;←&nbsp; lo que está guardado</td><td>217 KB</td></tr>
+    <tr><td>paleta 256 sin dither</td><td>195 KB</td></tr>
+  </table>
+  <p>
+    Hay un techo de <strong>260 KB entre los tres</strong> y una prueba que lo
+    verifica: si los movés sin comprimir, <code>node tests/correr.mjs</code>
+    falla con el peso adentro del mensaje. Es a propósito — este error es
+    invisible en todos los lugares donde uno mira.
+  </p>
+</div>
+
+<div class="aviso">
+  <strong>Esta página no funciona con doble clic.</strong>
+  <p>
+    Usa <code>&lt;script type="module"&gt;</code> para importar
+    <code>ICONOS</code> de <code>js/config.js</code>, y los módulos ES están
+    bloqueados sobre <code>file://</code>. Si la abriste desde el explorador de
+    archivos vas a ver esta página vacía, sin ningún error visible. Hay que
+    servirla por HTTP: con Live Server, o
+    <code>python -m http.server</code> desde la raíz del repo y después
+    <code>/icons/generador.html</code>.
+  </p>
+</div>
+
 <p>
-  Dibuja los tres PNG que pide <code>manifest.json</code> y los baja al disco.
-  Movelos a <code>/icons/</code> pisando los que ya están. Cero herramientas
+  Dibuja los tres PNG que pide <code>manifest.json</code>. Cero herramientas
   externas: es sólo canvas.
 </p>
 <p>
@@ -146,21 +198,37 @@ for (const pieza of piezas) {
   const pie = document.createElement('figcaption');
   pie.textContent = `${pieza.nombre} — ${pieza.n}×${pieza.n}`;
 
+  // toDataURL('image/png') sale SIEMPRE en RGBA de 8 bits por canal, sin paleta.
+  // Los íconos que había estaban indexados a 256 colores —contra los 19.391 del
+  // sprite— y por eso la splash de Android mostraba bandeo: no los había
+  // cuantizado esta página, los cuantizó algo después.
+  const datos = canvas.toDataURL('image/png');
+
+  // EL PESO, AL LADO DEL BOTÓN. El aviso de arriba dice el total; esto dice lo
+  // que va a pesar ESTE archivo, antes de bajarlo. Una advertencia que hay que
+  // leer se saltea; un número que aparece solo al lado del botón, no.
+  //
+  // El data URL es base64, así que cada cuatro caracteres son tres bytes. Se le
+  // descuenta el encabezado y el relleno.
+  const base64 = datos.slice(datos.indexOf(',') + 1);
+  const relleno = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+  const kb = ((base64.length * 3) / 4 - relleno) / 1024;
+
+  const peso = document.createElement('div');
+  peso.className = 'peso';
+  peso.textContent = `${kb.toFixed(0)} KB sin comprimir — comprimir antes de mover`;
+
   const boton = document.createElement('button');
   boton.type = 'button';
   boton.textContent = 'bajar ' + pieza.nombre;
   boton.addEventListener('click', () => {
     const enlace = document.createElement('a');
     enlace.download = pieza.nombre;
-    // toDataURL('image/png') sale SIEMPRE en RGBA de 8 bits por canal, sin
-    // paleta. Los íconos que había estaban indexados a 256 colores —contra los
-    // 19.391 del sprite— y por eso la splash de Android mostraba bandeo: no los
-    // había cuantizado esta página, los cuantizó algo después.
-    enlace.href = canvas.toDataURL('image/png');
+    enlace.href = datos;
     enlace.click();
   });
 
-  figura.append(caja, pie, boton);
+  figura.append(caja, pie, peso, boton);
   contenedor.appendChild(figura);
 }
 </script>

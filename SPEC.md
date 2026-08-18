@@ -483,6 +483,23 @@ ninguna luz signifique nada porque todas hacen lo mismo.
 Si al implementarlo se ve ruidoso junto con el resto de las luces, **reportalo y se saca**.
 Es la menos importante de todas.
 
+## CERRADO: descartado
+
+No pasan la condición que la propia spec les puso, y el motivo es de diseño y no de
+esfuerzo: **un indicador se gana el lugar cuando lo que señala está fuera de la pantalla**,
+y acá no hay nada fuera de la pantalla. El objeto del piso se ve en el piso, el evento sin
+leer es la línea del panel, la pieza nueva está en el estante. La oreja diría "mirá el
+piso" con el piso a la vista: eso no es información, es una quinta luz sin nada propio que
+decir.
+
+El costo se suma pero no es el motivo: los LEDs están pintados ADENTRO de los sprites de
+cabeza, así que encenderlos es superponer un brillo alineado por cabeza —son dos, en
+lugares distintos— y arrastrado por el grupo que rota y por la inclinación de la caricia.
+Es el problema de los ojos, que se llevó los puntos 12, 15 y 17.
+
+El razonamiento completo, y la condición con la que esto se revisa, quedaron en
+`EL-PORQUE.md`.
+
 ---
 
 # 11. Los íconos — AGREGADO 17/08, después del primer commit

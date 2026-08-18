@@ -42,6 +42,7 @@ import {
   CLASE_OJOS_CERRADO,
   TOQUES_DEBUG,
   VENTANA_DEBUG_MS,
+  ACUSE_DEBUG_MS,
   VUELO_OBJETO,
   VARS_PISO,
   CLASE_VOLANDO,
@@ -275,6 +276,54 @@ if (menu) {
 // botón del menú está en la otra punta.
 
 let toquesDebug = [];
+let acuseDebug = null;
+
+// EL GESTO AHORA ACUSA RECIBO, y eso es el arreglo del punto 9.
+//
+// El mecanismo de los cinco toques estaba bien y quedó verificado: en ráfaga
+// abre el panel. Lo que estaba mal es que era MUDO. Cinco toques que no abrían
+// nada eran indistinguibles de cinco toques que no se registraron, y en un
+// teléfono no hay consola para desempatar entre los tres candidatos —la
+// puntería, la ventana de 2 s, o que la descarga de debug.js falló—.
+//
+// Un aparte que vale anotar, porque casi lo reporto como un bug del gesto: al
+// medirlo desde una pestaña EN SEGUNDO PLANO los cinco toques tardaron 6,5 s en
+// vez de 750 ms, porque el navegador estrangula setTimeout a ~1 s. La ventana de
+// 2 s los descartaba y el panel no abría. El instrumento era el que fallaba. En
+// ráfaga sincrónica —span de 0 ms— abre siempre.
+function acusarToque(cuantos) {
+  if (!puertaServicio) return;
+
+  // Del primero no se dice nada: un toque suelto en esa esquina no es una
+  // intención, y destellar sin que nadie haya pedido nada se lee como un bug.
+  if (cuantos < 2) return;
+
+  clearTimeout(acuseDebug);
+  puertaServicio.classList.toggle('abriendo', cuantos >= TOQUES_DEBUG);
+  puertaServicio.style.setProperty('--acuse', cuantos >= TOQUES_DEBUG ? '0.85' : '0.28');
+
+  acuseDebug = setTimeout(() => {
+    puertaServicio.style.setProperty('--acuse', '0');
+    puertaServicio.classList.remove('abriendo');
+  }, ACUSE_DEBUG_MS);
+}
+
+// Y SI LA DESCARGA FALLA, LA PUERTA LO DICE. `debug.js` no está en
+// ARCHIVOS_CACHE a propósito, así que ese import sale a la red y sin red no
+// llega. Estaba contestado con un `console.warn`, que en un teléfono no existe:
+// el jugador ve el destello de "se abrió" y después nada, que es el mismo
+// síntoma que un gesto no registrado. Con esto son dos síntomas distintos.
+export function marcarDebugFallido() {
+  if (!puertaServicio) return;
+  clearTimeout(acuseDebug);
+  puertaServicio.classList.remove('abriendo');
+  puertaServicio.classList.add('fallo');
+  puertaServicio.style.setProperty('--acuse', '0.9');
+  acuseDebug = setTimeout(() => {
+    puertaServicio.style.setProperty('--acuse', '0');
+    puertaServicio.classList.remove('fallo');
+  }, ACUSE_DEBUG_MS * 4);
+}
 
 export function conectarDebugOculto(alActivar) {
   if (!puertaServicio) return;
@@ -286,6 +335,7 @@ export function conectarDebugOculto(alActivar) {
     const ahora = Date.now();
     toquesDebug = toquesDebug.filter((t) => ahora - t < VENTANA_DEBUG_MS);
     toquesDebug.push(ahora);
+    acusarToque(toquesDebug.length);
 
     if (toquesDebug.length < TOQUES_DEBUG) return;
     toquesDebug = [];

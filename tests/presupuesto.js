@@ -24,6 +24,27 @@ export const LIMITES_PESO = [
 // Antes de pasar los assets a WebP eran 7579 KB; hoy son ~1556.
 export const PRESUPUESTO_TOTAL_KB = 2500;
 
+// ---- Los tres íconos, como bolsa aparte ----
+//
+// El techo por archivo no alcanza para lo que hay que atrapar acá, y el caso es
+// concreto y está medido: `icons/generador.html` produce los PNG con
+// `canvas.toDataURL('image/png')`, que es un mal compresor —escribe RGBA sin
+// paleta y con compresión floja— y la propia página dice "movelos a /icons/
+// pisando los que ya están".
+//
+// Ese flujo, tal como está escrito, CUADRUPLICA el peso sin que nada avise:
+//
+//   lo que baja el navegador             806 KB
+//   RGBA bien comprimido, sin paleta     799 KB
+//   paleta 256 con dither  <- guardado   217 KB
+//   paleta 256 sin dither                195 KB
+//
+// Sobre una instalación de ~1,6 MB, los íconos pasarían de ser el 13% a ser
+// casi la mitad. Y nadie lo vería: los íconos no se miran, se instalan.
+//
+// 260 KB deja margen sobre los 217 de hoy y atrapa el caso por más de 3x.
+export const PRESUPUESTO_ICONOS_KB = 260;
+
 // ---- Los ambientes, que son otra bolsa ----
 //
 // El sonido NO entra en el presupuesto de arriba, y no por descuido: los

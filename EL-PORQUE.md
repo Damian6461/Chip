@@ -678,3 +678,45 @@ aparato sin cambiar de proporción.
 
 Y una nube es dos elipses corridas, no una: una elipse sola tiene silueta de
 pastilla, y lo que la hace leer como nube es que el contorno sea irregular.
+
+## Las luces de las orejas: descartadas, y por qué
+
+Los rectángulos naranjas del costado de la cabeza tienen LEDs cian pintados. La
+idea era hacerlos vivir como **indicador de "pasó algo"**: apagados casi siempre,
+un barrido corto cuando hay un evento sin leer, un objeto encontrado sin guardar
+o un objeto esperando en el piso.
+
+La condición que la propia spec les puso era la correcta: *tienen que tener una
+función propia, distinta de las demás*, porque ya late el bulbo, ya late el rayo
+y ya laten los tres LED de los botones. Sumar otra cosa que parpadea arriesga que
+Chip se lea como un arbolito y que ninguna luz signifique nada.
+
+**No pasan esa condición, y el motivo es de diseño y no de esfuerzo.**
+
+Un indicador se gana el lugar cuando **lo que señala está fuera de la pantalla**.
+Acá no hay nada fuera de la pantalla: el galpón entero ES la pantalla, y las tres
+cosas que las orejas anunciarían ya están a la vista.
+
+| lo que anunciaría | lo que ya se ve |
+|---|---|
+| un objeto esperando en el piso | el objeto, en el piso |
+| un evento sin leer | la línea del panel, y el botón del panel |
+| un objeto encontrado sin guardar | la pieza nueva en el estante |
+
+O sea que la oreja diría "mirá el piso" mientras el piso está a la vista. Eso no
+es información: es una luz más compitiendo con las cuatro que ya hay, y encima
+sin nada propio que decir. La spec pedía una función distinta y lo que aparece es
+una redundancia iluminada.
+
+**Y hay un costo concreto además del ruido.** Los LEDs están PINTADOS ADENTRO de
+los sprites de cabeza, así que encenderlos es superponer un brillo sobre un
+detalle que vive dentro de la imagen, alineado por cabeza —son dos, `idle` y
+`feliz`, con las piezas en lugares distintos— y arrastrado por el grupo que rota
+la cabeza y por la inclinación de la caricia. Es exactamente el problema de los
+ojos, que se llevó los puntos 12, 15 y 17 y tres rondas de medición para quedar
+alineado. Pagar eso de nuevo por una luz redundante no se sostiene.
+
+**Si alguna vez hace falta un indicador de "pasó algo"**, la condición que tiene
+que cumplir está escrita arriba: que señale algo que NO esté a la vista. El día
+que exista una segunda pantalla, un histórico, o algo que caduque sin avisar,
+esta decisión se revisa. Antes no.

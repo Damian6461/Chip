@@ -33,7 +33,25 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v82';
+const CACHE_VERSION = 'chip-cache-v83';
+
+// LA HUELLA DEL CONTENIDO DE ARCHIVOS_CACHE. No la lee nadie en runtime: existe
+// para que un test pueda contestar la única pregunta que importa acá, que es si
+// alguien cambió un archivo cacheado sin subir la versión.
+//
+// Ese error se llevó dos deploys en un día y es invisible: todo compila, todas
+// las pruebas pasan, el push sale bien, y el teléfono sigue mostrando lo de
+// ayer. El fetch es cache-first puro y el activate sólo borra las cachés con
+// nombre distinto de CACHE_VERSION, así que sin bump no se baja nada nunca.
+//
+// Vive ACÁ y no en un archivo aparte para que subir la versión y reescribir la
+// huella sean la MISMA edición. Con la huella suelta, el camino corto para callar
+// el test sería regenerarla sin tocar la versión — o sea el mismo error, ahora
+// bendecido por un test.
+//
+// Se escribe sola: `node tests/sellar-cache.mjs` sube la versión y la recalcula.
+// No se edita a mano.
+const HUELLA_CACHE = '59ea57dcb169d428';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -126,6 +144,13 @@ const ARCHIVOS_CACHE = [
 ];
 
 self.addEventListener('install', (evento) => {
+  // Se anuncia qué versión y qué contenido se está instalando. Es la única forma
+  // de contestar "¿qué tiene puesto este teléfono?" sin adivinar: con el
+  // depurador remoto se lee esta línea y se compara contra el sw.js del repo.
+  // Cuando el bug del caché pegó, la pregunta que no se podía contestar era
+  // exactamente ésta.
+  console.log(`[chip] instalando ${CACHE_VERSION} — huella ${HUELLA_CACHE}`);
+
   evento.waitUntil(
     caches
       .open(CACHE_VERSION)

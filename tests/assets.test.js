@@ -17,8 +17,10 @@
 // Las dos eran disciplina. La disciplina se olvida; un test no.
 
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { prueba, igual, verdadero } from './runner.js';
+import { archivosSellados, huellaDe, leerHuella, leerVersion } from './huella-cache.mjs';
 import {
   RUTAS_SPRITES,
   RUTAS_OJOS,
@@ -41,6 +43,7 @@ import {
 import {
   LIMITES_PESO,
   PRESUPUESTO_TOTAL_KB,
+  PRESUPUESTO_ICONOS_KB,
   LIMITE_AMBIENTE_KB,
   PRESUPUESTO_SONIDO_KB
 } from './presupuesto.js';
@@ -76,10 +79,60 @@ prueba('peso: el total de la instalación entra en el presupuesto', () => {
   );
 });
 
+prueba('peso: los tres íconos juntos entran en su propia bolsa', () => {
+  // El techo por archivo no alcanza para lo que hay que atrapar: el generador
+  // baja los tres PNG sin comprimir —806 KB medidos contra los 217 guardados— y
+  // la propia página indica moverlos tal cual a icons/. Eso convertiría a los
+  // íconos en casi la mitad de la instalación, y nadie lo vería: los íconos no
+  // se miran, se instalan.
+  //
+  // Es el mismo tipo de guardia que la del caché: el error es invisible y el
+  // test es la única forma de que avise.
+  const iconos = ASSETS.filter((a) => a.carpeta === 'icons');
+  const total = iconos.reduce((s, a) => s + a.kb, 0);
+
+  verdadero(iconos.length === 3, `esperaba tres íconos y hay ${iconos.length}`);
+  verdadero(
+    total <= PRESUPUESTO_ICONOS_KB,
+    `los íconos suman ${total.toFixed(0)} KB y el techo es ${PRESUPUESTO_ICONOS_KB} KB. ` +
+      'Si los acabás de generar: pasalos por un compresor de PNG antes de moverlos.'
+  );
+});
+
 function limiteDe(nombre) {
   const regla = LIMITES_PESO.find((r) => r.patron.test(nombre));
   return regla ? regla.kb : LIMITES_PESO.at(-1).kb;
 }
+
+// ---- EL GUARDIÁN DEL DEPLOY ----
+//
+// Falla si cambió cualquier archivo de ARCHIVOS_CACHE sin que suba
+// CACHE_VERSION. Es el cierre del punto 0, que se llevó dos deploys en un día.
+//
+// POR QUÉ HACE FALTA UN TEST Y NO ALCANZA CON LA DISCIPLINA: el error es
+// invisible en todos los lugares donde uno mira. Todo compila, todas las
+// pruebas pasan, el push sale bien, GitHub Pages publica — y el teléfono sigue
+// mostrando lo de ayer. El fetch del service worker es cache-first puro y el
+// activate sólo borra las cachés con nombre distinto de CACHE_VERSION, así que
+// sin bump no se vuelve a bajar nada nunca.
+//
+// Y ya falló de las dos maneras posibles: la primera vez por descuido, y la
+// segunda por una decisión razonable —"el bump va al final de todo"— que a la
+// escala de cinco commits estaba mal. Cuando la disciplina falla por descuido y
+// por criterio, lo que queda es un test.
+prueba('deploy: nada cambia en ARCHIVOS_CACHE sin que suba CACHE_VERSION', () => {
+  const archivos = archivosSellados(SW);
+  const guardada = leerHuella(SW);
+  const ahora = huellaDe(archivos, new URL('..', import.meta.url), createHash);
+
+  verdadero(guardada !== null, 'falta HUELLA_CACHE en sw.js');
+  verdadero(
+    guardada === ahora,
+    `el contenido de los ${archivos.length} archivos cacheados da ${ahora} y sw.js dice ${guardada}. ` +
+      `CACHE_VERSION está en ${leerVersion(SW)} y no se movió: corré \`node tests/sellar-cache.mjs\`, ` +
+      'que sube la versión y reescribe la huella en la misma edición.'
+  );
+});
 
 // ---- Cruce sprites/ contra ARCHIVOS_CACHE ----
 
@@ -469,4 +522,74 @@ prueba('ojos: cada OJO tiene su propio ajuste, y los dos agrandan', () => {
       }
     }
   }
+});
+
+// ---- QUE EL SONIDO VUELVA AL REABRIR ----
+//
+// El punto 7. El ajuste se guardaba bien y el toggle aparecía en "activado" al
+// reabrir, pero no sonaba nada: `encender()` SÓLO se llamaba desde el toggle, así
+// que nadie prendía el audio en el arranque. Un estado que se contradice: la
+// interfaz decía que el sonido estaba puesto y el galpón estaba mudo.
+//
+// No se puede arreglar llamando a `encender(true)` al arrancar —el navegador
+// exige un gesto del usuario y el arranque no lo es— así que el arreglo es
+// enganchar el PRIMER TOQUE de la sesión, sea cual sea.
+//
+// Se verifica leyendo el código y no ejecutándolo, y el motivo vale anotarlo: en
+// este banco NO se puede probar que salga sonido. Los eventos sintéticos no
+// producen activación de usuario —medido: `navigator.userActivation.hasBeenActive`
+// queda en false— así que el navegador deja el AudioContext suspendido y el
+// <audio> ni siquiera descarga. Lo que sí se midió, con eventos sintéticos: antes
+// del toque hay 0 elementos <audio> y el toggle en "activado"; después del primero
+// hay 2 con el ambiente de la franja puesto; después del segundo siguen siendo 2,
+// o sea que el listener se borró solo. Que suene lo prueba Damián en el teléfono.
+
+const MAIN_JS = readFileSync(join(RAIZ, 'js/main.js'), 'utf8');
+
+prueba('sonido: el ajuste guardado se rescata con el primer toque de la sesión', () => {
+  verdadero(
+    /export function arrancarConElPrimerGesto/.test(SONIDO_JS),
+    'sonido.js tiene que ofrecer el enganche del primer gesto'
+  );
+  verdadero(
+    /arrancarConElPrimerGesto\(/.test(MAIN_JS),
+    'main.js tiene que cablearlo en el arranque, o el ajuste guardado no prende nada'
+  );
+  verdadero(
+    /addEventListener\('pointerdown'[\s\S]{0,120}once:\s*true/.test(SONIDO_JS),
+    'el listener va en `once`: si no, cada toque volvería a intentar prender'
+  );
+  verdadero(
+    /capture:\s*true/.test(SONIDO_JS),
+    'y en captura, para que ningún stopPropagation de más arriba se lo coma'
+  );
+});
+
+prueba('sonido: el ajuste se consulta al tocar, no al armar el listener', () => {
+  // Entre el arranque y el primer toque el jugador puede haber apagado el
+  // sonido. Si el valor se congelara al armar, ese toque prendería algo que el
+  // jugador ya apagó.
+  verdadero(
+    /consultarAjuste\s*=\s*ajuste/.test(SONIDO_JS) && /if \(!consultarAjuste\(\)\) return;/.test(SONIDO_JS),
+    'tiene que guardarse la función y llamarse en el momento del toque'
+  );
+});
+
+prueba('sonido: un resume rechazado vuelve a armar el gesto', () => {
+  // El peor estado posible es el silencioso: contexto suspendido, `encendido` en
+  // true, las capas creadas y el <audio> sin descargar. Medido en ese estado:
+  // readyState 0 y networkState 2 nueve segundos después, con el mismo archivo
+  // bajando por fetch en 8 ms. Antes el resultado de `resume()` se tiraba a la
+  // basura y no había nada que lo rescatara.
+  const rescates = SONIDO_JS.match(/armarElGesto\b/g) || [];
+  verdadero(
+    rescates.length >= 4,
+    `armarElGesto aparece ${rescates.length} veces: hacen falta la definición, el ` +
+      'export, el rescate del resume de encender() y el de reanudar()'
+  );
+  verdadero(
+    /\.resume\(\)\s*\n?\s*\.catch\(armarElGesto\)/.test(SONIDO_JS) ||
+      /resume\(\)\.catch\(armarElGesto\)/.test(SONIDO_JS),
+    'encender() tiene que mirar si el resume falló'
+  );
 });

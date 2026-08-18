@@ -750,3 +750,121 @@ prueba('ids: cada tabla de la repisa trae su propio gradiente', () => {
     igual(sueltas.join(', '), '', `nivel ${nivel}: referencias url(#...) sin id en el mismo svg`);
   }
 });
+
+// ---- LOS OJOS: UNA SOLA CAPA DE CREMA ENCENDIDA A LA VEZ ----
+//
+// El punto 17. Damián: "en idle y feliz se siguen viendo las capas en los ojos,
+// hay varios bordes. Deberían llegar a lo gris."
+//
+// Medido en el navegador, con la transición desactivada para leer el estado
+// final: en el cierre completo quedaban CUATRO superficies de crema en opacidad
+// 1 al mismo tiempo —#parpado, #ojos, ojos-contento y ojos-cerrado—. Cada
+// recorte trae su propio aro oscuro pintado adentro de la cuenca, y cada uno va
+// a una escala distinta: cuatro capas encendidas son cuatro aros concéntricos.
+//
+// POR QUÉ ESTO SE VERIFICA EN UN TEST Y NO MIRANDO. Lo que hace que el arreglo
+// funcione no es el valor sino el ORDEN: las reglas que apagan tienen la MISMA
+// especificidad que las que encienden —dos ids y una clase— así que ganan sólo
+// por venir después. Alguien reordenando el archivo, o agrupando selectores
+// parecidos, deshace el arreglo sin tocar un solo valor y sin que nada se queje.
+// Eso no se ve en una captura: se ve acá.
+
+const ORDEN_OJOS = (() => {
+  const posicion = (fragmento) => CSS.indexOf(fragmento);
+  return {
+    enciendeGesto: posicion('#chip.ojos-contento #ojos-contento-izq'),
+    apagaOjos: posicion('#chip.ojos-contento #ojos'),
+    apagaContento: posicion('#chip.ojos-cerrado #ojos-contento-izq')
+  };
+})();
+
+prueba('ojos: encender una capa apaga la de abajo, y no la suma', () => {
+  verdadero(
+    ORDEN_OJOS.apagaOjos > 0,
+    'falta la regla que apaga #ojos cuando entra el gesto: sin ella son dos cremas'
+  );
+  verdadero(
+    ORDEN_OJOS.apagaContento > 0,
+    'falta la regla que apaga `contento` cuando entra `cerrado`: sin ella son tres'
+  );
+});
+
+prueba('ojos: las reglas que apagan van DESPUÉS de las que encienden', () => {
+  // Misma especificidad, así que el orden es lo único que decide. Si alguien las
+  // sube, el cruce vuelve a sumar y vuelven los cuatro aros.
+  verdadero(
+    ORDEN_OJOS.apagaContento > ORDEN_OJOS.enciendeGesto,
+    `la regla que apaga \`contento\` está en ${ORDEN_OJOS.apagaContento} y la que lo enciende en ` +
+      `${ORDEN_OJOS.enciendeGesto}: con la misma especificidad, la de arriba pierde`
+  );
+});
+
+prueba('ojos: las cuatro capas del ojo comparten el filtrado', () => {
+  // #parpado era la única sin `pixelated` —medido: `auto` contra `pixelated` en
+  // las otras tres—. Su máscara es el mismo .webp de 256 escalado a la caja de
+  // Chip, así que sin esto su borde se interpola y el de las capas de encima no:
+  // dos bordes con distinta dureza en el mismo lugar.
+  const bloque = CSS.slice(CSS.indexOf('#parpado {'), CSS.indexOf('#parpado[hidden]'));
+  verdadero(
+    /image-rendering:\s*pixelated/.test(bloque),
+    '#parpado tiene que filtrar igual que #ojos y que las capas de gesto'
+  );
+});
+
+prueba('ojos: #ojos cruza con transición y no se apaga de golpe', () => {
+  const bloque = CSS.slice(CSS.indexOf('#ojos {'), CSS.indexOf('#ojos[hidden]'));
+  verdadero(
+    /transition:\s*opacity\s+var\(--ojos-cruce\)/.test(bloque),
+    '#ojos necesita la misma duración que las capas de gesto para que el cruce sea un cruce'
+  );
+});
+
+// ---- LAS DOS CAPAS DEL CABLE SE MUEVEN JUNTAS ----
+//
+// El cable se dibuja en DOS nodos: #cable adelante y #cable-atras detrás del
+// sprite. Los dos corren el mismo balanceo. Si el bloque de movimiento reducido
+// apaga uno y no el otro, media pieza se queda quieta y la otra media sigue
+// colgando, que es peor que las dos moviéndose — y el corte entre las dos se
+// abre y se cierra en cada vuelta.
+//
+// Estuvo así: la lista decía `#cable path` y nada más.
+prueba('movimiento reducido: apaga las dos capas del cable, no una', () => {
+  const bloque = CSS.slice(CSS.indexOf('@media (prefers-reduced-motion'));
+  const hasta = bloque.indexOf('animation: none;');
+  const lista = bloque.slice(0, hasta);
+
+  verdadero(/#cable path/.test(lista), 'falta la capa de adelante');
+  verdadero(/#cable-atras path/.test(lista), 'falta la capa de atrás, que es la que sube al toma');
+});
+
+// ---- LA PUERTA DE SERVICIO NO ARRANCA PEGADA AL CANTO ----
+//
+// Cinco toques en la esquina abren el panel de debug, que en la app instalada es
+// la única forma de llegar. Estaba en el vértice exacto del área segura, y esa
+// franja es la menos confiable de un teléfono: ahí viven el barrido del sistema,
+// la barra de estado y la curva de la pantalla. Un toque que se traga cualquiera
+// de los tres se ve, desde el JS, igual que un toque que nunca pasó.
+prueba('debug: la puerta de servicio entra desde el borde del área segura', () => {
+  const bloque = CSS.slice(CSS.indexOf('#puerta-servicio {'), CSS.indexOf('#puerta-servicio::after'));
+  verdadero(
+    /top:\s*calc\(env\(safe-area-inset-top[^)]*\)[^)]*\+\s*var\(--margen-debug\)\)/.test(bloque),
+    'la puerta tiene que separarse del canto de arriba'
+  );
+  verdadero(
+    /left:\s*calc\(env\(safe-area-inset-left[^)]*\)[^)]*\+\s*var\(--margen-debug\)\)/.test(bloque),
+    'y del canto de la izquierda'
+  );
+});
+
+prueba('debug: el gesto acusa recibo, o un fallo es indistinguible de un no-toque', () => {
+  // Cinco toques que no abrían nada eran indistinguibles de cinco toques que no
+  // se registraron, y en un teléfono no hay consola para desempatar entre los
+  // tres candidatos: la puntería, la ventana de 2 s, o que debug.js no bajó.
+  verdadero(/#puerta-servicio::after/.test(CSS), 'falta la marca del acuse');
+  verdadero(/#puerta-servicio\.abriendo::after/.test(CSS), 'falta el aviso del quinto toque');
+  verdadero(/#puerta-servicio\.fallo::after/.test(CSS), 'falta el aviso de que la descarga falló');
+  verdadero(
+    /marcarDebugFallido/.test(UI_FUENTE),
+    'ui.js tiene que poder marcar el fallo de la descarga'
+  );
+});

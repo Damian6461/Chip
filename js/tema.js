@@ -70,6 +70,8 @@ import {
   VARS_ZONA_CHIP,
   OBJETO_PISO,
   ESQUINA_DEBUG,
+  MARGEN_DEBUG,
+  ACUSE_DEBUG_MS,
   VARS_DEBUG,
   VARS_ORUGAS,
   VARS_PISO,
@@ -274,6 +276,8 @@ export function variablesDeTema() {
     [VARS_OJOS_GESTO.cruce]: ms(CARICIA_OJOS.cruce),
     [VARS_ZONA_CHIP.forma]: poligonoDeSilueta(SILUETA_CHIP),
     [VARS_DEBUG.esquina]: px(ESQUINA_DEBUG),
+    [VARS_DEBUG.margen]: px(MARGEN_DEBUG),
+    [VARS_DEBUG.acuse]: ms(ACUSE_DEBUG_MS),
 
     // La inclinación de cabeza
     [VARS_CABEZA.pivoteX]: pct(PIVOTES_CABEZA.idle.x),

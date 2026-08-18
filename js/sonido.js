@@ -270,7 +270,16 @@ export function encender(activo) {
   asegurarCargado();
   // El contexto puede haber nacido suspendido: este click es el gesto que lo
   // habilita.
-  contexto().resume();
+  //
+  // Y SI EL NAVEGADOR SE NIEGA, SE VUELVE A ARMAR EL GESTO. Antes el resultado de
+  // `resume()` se tiraba a la basura, y eso deja el peor estado posible: las dos
+  // capas creadas, el src puesto, `encendido` en true y el contexto suspendido —
+  // así que el <audio> ni siquiera descarga. Medido: readyState 0 y networkState
+  // 2 nueve segundos después, con el archivo bajando por fetch en 8 ms. Un
+  // silencio que ni el propio módulo sabía que existía.
+  contexto()
+    .resume()
+    .catch(armarElGesto);
 
   if (!capas[0].vigilada) {
     for (const capa of capas) {
@@ -283,6 +292,67 @@ export function encender(activo) {
   if (ruta) cruzar(indiceActivo, ruta, SONIDO.entradaMs);
 }
 
+// ---- QUE EL SONIDO VUELVA SOLO AL REABRIR ----
+//
+// EL DEFECTO ERA QUE `encender()` SÓLO SE LLAMABA DESDE EL TOGGLE. El ajuste se
+// guarda y al reabrir la app el toggle aparece en "activado" —eso andaba bien—
+// pero nadie prendía nada, así que quedaba diciendo que el sonido estaba puesto
+// mientras el galpón estaba mudo. Un estado que se contradice consigo mismo.
+//
+// Y no se arregla llamando a `encender(true)` en el arranque: el navegador exige
+// un gesto del usuario para reproducir audio, y el arranque no lo es. Eso no es
+// un bug que se pueda saltear y está bien que sea así.
+//
+// Lo que sí se puede es NO HACERLO BUSCAR EL TOGGLE OTRA VEZ. El primer toque de
+// la sesión —tocar a Chip, apretar un botón, abrir el menú, cualquiera— sirve
+// como gesto. Un listener de una sola vez sobre el documento, en captura para
+// que ningún `stopPropagation` de más arriba lo tape, y que se borra solo.
+//
+// El ajuste se consulta en el momento del toque y no cuando se arma: entre el
+// arranque y el primer toque el jugador puede haber apagado el sonido, y en ese
+// caso el toque no tiene que prender nada.
+let consultarAjuste = () => false;
+let gestoArmado = false;
+
+function armarElGesto() {
+  if (gestoArmado) return;
+  gestoArmado = true;
+
+  const alPrimerToque = () => {
+    gestoArmado = false;
+    if (!consultarAjuste()) return;
+    // Si ya está sonando de verdad no hay nada que hacer. "De verdad" incluye el
+    // estado del contexto: `encendido` puede ser true con el contexto suspendido,
+    // y eso es exactamente el caso que hay que rescatar.
+    if (encendido && ctx && ctx.state === 'running') return;
+    encender(true);
+  };
+
+  document.addEventListener('pointerdown', alPrimerToque, { capture: true, once: true });
+}
+
+export function arrancarConElPrimerGesto(ajuste) {
+  consultarAjuste = ajuste;
+  armarElGesto();
+}
+
+// Volver de segundo plano es el otro escenario, y es distinto: acá el contexto ya
+// existe y tuvo su gesto. Lo que puede haber pasado es que quedara `suspended`,
+// que es lo que hacen varios navegadores al ocultar la pestaña.
+//
+// Se consulta el estado y se resume explícitamente en vez de llamar a `resume()`
+// a ciegas, y sobre todo SE MIRA SI FALLA: si el navegador se niega —pasa en
+// iOS, que trata el volver a primer plano como una sesión nueva— se vuelve a
+// armar el gesto, así el próximo toque lo rescata. Antes esto era
+// `contexto().resume()` con el resultado tirado a la basura y un `.catch(() => {})`
+// vacío en el play: si fallaba, el silencio era definitivo y nada lo decía.
+function reanudar() {
+  const c = contexto();
+  const sonar = () => capas[indiceActivo].audio.play().catch(armarElGesto);
+  if (c.state === 'suspended') c.resume().then(sonar, armarElGesto);
+  else sonar();
+}
+
 // Cuando la pestaña pierde el foco, el ambiente se calla. Sigue el mismo
 // criterio que el resto del proyecto sobre las pestañas en segundo plano: no se
 // deja nada corriendo que nadie está mirando —o escuchando—.
@@ -293,7 +363,6 @@ document.addEventListener('visibilitychange', () => {
   if (pausadoPorFoco) {
     for (const capa of capas) capa.audio.pause();
   } else {
-    contexto().resume();
-    capas[indiceActivo].audio.play().catch(() => {});
+    reanudar();
   }
 });

@@ -791,6 +791,12 @@ body.es-noche #rayo {
   inset: 0;
   pointer-events: none;
   background-color: var(--color-parpado);
+  /* Era la única de las cuatro capas del ojo SIN pixelated —medido: `auto`
+     contra `pixelated` en las otras tres—. La máscara es el mismo .webp de 256
+     escalado a la caja de Chip, así que sin esto su borde se interpola y el de
+     las capas de encima no: dos bordes con distinta dureza en el mismo lugar,
+     que es un escalón más de los que el punto 17 viene a sacar. */
+  image-rendering: pixelated;
   -webkit-mask-image: var(--mascara-ojos);
   mask-image: var(--mascara-ojos);
   -webkit-mask-size: 100% 100%;
@@ -814,6 +820,10 @@ body.es-noche #rayo {
      recortes. Con el origen en el medio de la caja el ojo se cerraría hacia
      arriba en vez de cerrarse sobre sí mismo. */
   transform-origin: 50% var(--origen-parpadeo);
+  /* La misma duración que las capas de gesto, y por eso: cuando `contento`
+     entra, ésta tiene que SALIR al mismo ritmo. Sin la transición se apagaría de
+     golpe y el cruce que se construyó abajo dejaría un hueco de un cuadro. */
+  transition: opacity var(--ojos-cruce) ease-out;
 }
 
 #ojos[hidden] {
@@ -903,6 +913,36 @@ body.es-noche #rayo {
 #chip.ojos-cerrado #ojos-cerrado-izq,
 #chip.ojos-cerrado #ojos-cerrado-der {
   opacity: 1;
+}
+
+/* ---- EL CRUCE REEMPLAZA, NO SUMA ----
+
+   Acá estaba el defecto del punto 17, y es el que produce los cuatro bordes.
+
+   Medido, con la transición desactivada para leer el estado final: en el cierre
+   completo quedaban CUATRO superficies de crema en opacidad 1 a la vez —
+   #parpado, #ojos, ojos-contento y ojos-cerrado—. Cada recorte trae SU PROPIO
+   aro oscuro pintado adentro de la cuenca, y cada uno va a una escala distinta,
+   así que cuatro capas encendidas dejan cuatro aros concéntricos. Eso es la
+   rampa de bordes que se ve: no es el recorte —el borde de alfa de los sprites
+   es duro, 1 o 2 px— son los aros apilados.
+
+   Encender una capa nueva no alcanza: hay que APAGAR la de abajo. Y con la misma
+   duración, así que en el medio del cruce cada una vale 0,5 y la suma sigue
+   siendo una. Con las dos en 1 la suma es dos, que es de donde salían las dos
+   mesetas de crema distintas que se midieron en el perfil horizontal.
+
+   VAN DESPUÉS Y NO ANTES: estos selectores tienen la MISMA especificidad que los
+   de arriba —dos ids y una clase— así que lo único que los hace ganar es el
+   orden. Moverlos arriba deshace el arreglo sin que nada lo diga, y por eso hay
+   un test que verifica la posición y no el valor. */
+#chip.ojos-contento #ojos {
+  opacity: 0;
+}
+
+#chip.ojos-cerrado #ojos-contento-izq,
+#chip.ojos-cerrado #ojos-contento-der {
+  opacity: 0;
 }
 
 .parpadeando {
@@ -4686,14 +4726,63 @@ body.sin-movimiento *::after {
    puerta de servicio— y anunciarla al lector de pantalla la convertiría en un
    botón sin nombre en el primer lugar del recorrido. Para teclado y escritorio
    sigue estando ?debug=1, que es donde ese gesto tiene sentido. */
+/* NO ARRANCA PEGADA AL CANTO. Estaba en el vértice exacto del área segura, y esa
+   franja de dos o tres píxeles es la menos confiable de un teléfono: ahí viven
+   el barrido del sistema, la barra de estado y la curva de la pantalla. Un toque
+   que se traga cualquiera de los tres se ve, desde el JS, igual que un toque que
+   nunca pasó. `--margen-debug` la mete 12 px adentro sin sacarla de la esquina. */
 #puerta-servicio {
   position: absolute;
-  top: env(safe-area-inset-top, 0px);
-  left: env(safe-area-inset-left, 0px);
+  top: calc(env(safe-area-inset-top, 0px) + var(--margen-debug));
+  left: calc(env(safe-area-inset-left, 0px) + var(--margen-debug));
   width: var(--esquina-debug);
   height: var(--esquina-debug);
   z-index: 2;
   -webkit-tap-highlight-color: transparent;
+
+  /* El acuse vive en el ::after para que el div siga siendo una zona sensible
+     vacía. Sin esto la puerta no puede decir nada. */
+  --acuse: 0;
+}
+
+/* EL ACUSE DE RECIBO. Cinco toques que no abren nada eran indistinguibles de
+   cinco toques que no se registraron, y en un teléfono no hay consola para
+   desempatar entre los tres candidatos: la puntería, la ventana de 2 s, o que la
+   descarga de debug.js falló.
+
+   Ahora cada toque deja una marca de 220 ms. Es la diferencia entre "no anda" y
+   "registró tres de cinco", que son dos problemas distintos.
+
+   NO SE MUESTRA EN EL PRIMER TOQUE, y eso es a propósito: un toque suelto en esa
+   esquina puede ser cualquiera, y un jugador que ve destellar una parte vacía de
+   la escena sin haber pedido nada tiene razón en pensar que algo está roto. A
+   partir del segundo ya hay intención. */
+#puerta-servicio::after {
+  content: '';
+  position: absolute;
+  inset: 35%;
+  border-radius: 50%;
+  background: #ffffff;
+  opacity: var(--acuse);
+  transition: opacity var(--acuse-debug) ease-out;
+  pointer-events: none;
+}
+
+/* Y el quinto avisa distinto: más fuerte y en el cian del juego, para que "se
+   abrió" no se confunda con "van cuatro". Si después de esto el panel no
+   aparece, el problema es la descarga de debug.js y no el gesto — que era
+   justamente lo que no se podía distinguir. */
+#puerta-servicio.abriendo::after {
+  inset: 15%;
+  background: var(--cable-energia);
+}
+
+/* Y EL FALLO DE LA DESCARGA, que es el tercer síntoma y hasta ahora no existía.
+   Rojo y cuatro veces más largo: "el gesto llegó, lo que no llegó es debug.js".
+   Antes eso era un console.warn, o sea nada en un teléfono. */
+#puerta-servicio.fallo::after {
+  inset: 15%;
+  background: #ff4d5a;
 }
 
 /* ============================================================================

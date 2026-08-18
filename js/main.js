@@ -21,7 +21,13 @@ import { hitoPendiente, eventoDeHito, capaPorDias } from './gigantes.js';
 import { cargarSprites, franjaDelDia } from './sprites.js';
 import { abrirVisita } from './visita.js';
 import { crearSesion } from './sesion.js';
-import { ambientar, encender, llover as lloverAmbiente, dejarDeLlover as dejarDeLloverAmbiente } from './sonido.js';
+import {
+  ambientar,
+  encender,
+  arrancarConElPrimerGesto,
+  llover as lloverAmbiente,
+  dejarDeLlover as dejarDeLloverAmbiente
+} from './sonido.js';
 import {
   render,
   sembrarFondo,
@@ -35,6 +41,7 @@ import {
   conectarPiso,
   ponerEnElPiso,
   conectarDebugOculto,
+  marcarDebugFallido,
   ponerClima,
   enojarse,
   animarAccion,
@@ -126,6 +133,17 @@ mostrarGigantes(sesion.estado().diasDePresencia, sesion.estado().hitosVistos);
 // Los ajustes se aplican ANTES del primer pintado: si no, el juego arranca con
 // todo moviéndose y recién después se apaga, que es peor que no tener ajuste.
 aplicarAjustes(sesion.estado().ajustes);
+
+// EL SONIDO GUARDADO SE RESCATA CON EL PRIMER TOQUE, sea cual sea.
+//
+// El ajuste persiste, pero `encender()` no se puede llamar acá: el navegador
+// exige un gesto del usuario y el arranque no lo es. Sin esto, quien dejó el
+// sonido activado reabría la app, veía el toggle en "activado" y no escuchaba
+// nada — y para arreglarlo tenía que ir a apagarlo y prenderlo de nuevo.
+//
+// Va DESPUÉS de aplicarAjustes y ANTES de conectarMenu porque no depende de
+// ninguno de los dos: es un listener sobre el documento que se borra solo.
+arrancarConElPrimerGesto(() => Boolean(sesion.estado().ajustes.sonido));
 
 conectarMenu({
   ajustesActuales: () => sesion.estado().ajustes,
@@ -403,6 +421,7 @@ function abrirPanelDebug() {
       // toques, nada, y ninguna forma de saber si el problema era el gesto o la
       // descarga. Se permite reintentar.
       panelDebugPedido = false;
+      marcarDebugFallido();
       console.warn('No se pudo abrir el panel de debug:', e);
     });
 }
