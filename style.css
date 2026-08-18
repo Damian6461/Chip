@@ -334,6 +334,20 @@ body.es-noche .banda.deformable {
   animation: disolver-fondo var(--duracion-cruce-fondo) ease-in-out;
 }
 
+/* ESTA DISOLVENCIA SE QUEDA, Y NO CONTRADICE LA REGLA DEL PIXEL ART.
+
+   La regla —el pixel art corta, no disuelve, porque dos dibujos al 50% inventan
+   colores que nadie puso— vale para DIBUJOS CON CONTORNO: dos caras de 3 px,
+   dos recortes con su línea dura, donde la mezcla ensucia justo el borde y se
+   ve. Ahí se cambió el cruce por un corte, y por eso los ojos ya no cruzan.
+
+   Acá son dos cielos de pantalla completa cruzándose en 2600 ms. No hay línea
+   dura que ensuciar, la mezcla de dos graduaciones de luz es lo que hace un
+   atardecer, y la alternativa —un corte seco de la escena entera— sería peor.
+
+   Está escrito para que el próximo que lea la regla del README no venga a
+   "unificar" esto con los ojos: son dos casos distintos y la diferencia es si
+   hay contorno. */
 @keyframes disolver-fondo {
   from { opacity: 1; }
   to { opacity: 0; }

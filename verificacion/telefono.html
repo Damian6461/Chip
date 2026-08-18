@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Qué se ve del fondo en un teléfono</title>
+<style>
+  body {
+    background: #0d0f14; color: #e6e6e6; margin: 0; padding: 24px 24px 60px;
+    font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  h1 { font-size: 19px; margin: 0 0 6px; }
+  h2 { font-size: 15px; color: #ffb060; margin: 30px 0 6px; font-weight: normal; }
+  p { color: #9aa0ab; font-size: 13px; max-width: 86ch; }
+  code { color: #c9ced7; }
+  table { border-collapse: collapse; font-size: 12px; margin: 10px 0; }
+  td, th { padding: 2px 16px 2px 0; text-align: left; }
+  th { color: #9aa0ab; font-weight: normal; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .dentro { color: #63d68a; }
+  .fuera { color: #ff6b78; }
+  .par { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px; }
+  figure { margin: 0; }
+  figcaption { font-size: 12px; color: #9aa0ab; max-width: 60ch; }
+  canvas { border: 1px solid #2a2d38; display: block; image-rendering: pixelated; }
+  iframe { width: 390px; height: 844px; border: 1px solid #2a2d38; background: #000; }
+  .aviso { border-left: 3px solid #ffb060; padding: 2px 0 2px 12px; margin: 14px 0; }
+</style>
+</head>
+<body>
+
+
+<!-- ============================================================================
+     CÓMO ABRIR ESTA PÁGINA — leer antes de concluir que no muestra nada.
+
+     Va INLINE y en un script CLÁSICO, no en un módulo, y las dos cosas son a
+     propósito: es el único código de la página que tiene que correr aunque todo
+     lo demás esté bloqueado.
+
+     El bloque está REPETIDO en TODAS las páginas de verificacion/, y eso
+     también es deliberado. Un archivo compartido es una cosa más que puede no
+     cargar, y el caso que este bloque atiende es exactamente ése. Que las cuatro
+     copias no se separen lo hace cumplir tests/assets.test.js.
+     ============================================================================ -->
+<style>
+  #como-abrirla {
+    border: 1px solid #2a2d38; border-left: 3px solid #ffb060;
+    padding: 10px 14px; margin: 0 0 22px; max-width: 84ch;
+    font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: #9aa0ab;
+  }
+  #como-abrirla p { margin: 0 0 6px; max-width: none; font-size: 13px; color: inherit; }
+  #como-abrirla p:last-child { margin-bottom: 0; }
+  #como-abrirla a { color: #ffb060; }
+  #aviso-protocolo { color: #ff6b78; }
+  #version-sw:empty { display: none; }
+</style>
+<div id="como-abrirla">
+  <p id="aviso-protocolo" hidden>
+    <strong>ASÍ NO SE VE NADA, Y NO ES QUE NO HAYA NADA.</strong>
+    Esta página se dibuja con módulos ES, y el navegador los bloquea en
+    <code>file://</code>. El script no corre, queda sólo el texto, y el resultado
+    se parece a «no hay nada que mostrar». Hay que servirla por HTTP:
+  </p>
+  <p>
+    <strong>En el teléfono:</strong>
+    <a href="https://damian6461.github.io/Chip/verificacion/telefono.html">damian6461.github.io/Chip/verificacion/telefono.html</a>
+  </p>
+  <p>
+    <strong>En la máquina:</strong> <code>python3 -m http.server</code> en la raíz
+    del repo, y abrir <code>localhost:8000/verificacion/telefono.html</code>
+  </p>
+  <p id="version-sw"></p>
+</div>
+<script>
+  (function () {
+    if (location.protocol === 'file:') {
+      document.getElementById('aviso-protocolo').hidden = false;
+      return;
+    }
+
+    /* Y LA OTRA MITAD DE ABRIRLA BIEN: CON QUÉ VERSIÓN SE ESTÁ MIRANDO.
+
+       js/config.js y js/tema.js SÍ están en ARCHIVOS_CACHE, así que un teléfono
+       con un service worker viejo le sirve a esta página los módulos de esa
+       versión. La página anda, dibuja, no se queja — y mide una versión que ya
+       no existe. Es el mismo modo de falla que costó dos deploys, ahora del lado
+       de la herramienta que tendría que detectarlo.
+
+       Todo esto es informativo y no puede romper la página: si algo falla, el
+       renglón queda vacío y el CSS lo esconde. */
+    var linea = document.getElementById('version-sw');
+    function decir(texto, alarma) {
+      linea.textContent = texto;
+      linea.style.color = alarma ? '#ffb060' : '#6d747f';
+    }
+
+    fetch('../sw.js', { cache: 'no-store' })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var publicada = (t.match(/CACHE_VERSION\s*=\s*'([^']+)'/) || [])[1] || '?';
+
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+          decir('Sin service worker: los módulos vienen de la red. Publicado: ' + publicada + '.', false);
+          return;
+        }
+
+        var canal = new MessageChannel();
+        var reloj = setTimeout(function () {
+          decir('El service worker no contestó en 400 ms. Publicado: ' + publicada + '.', true);
+        }, 400);
+
+        canal.port1.onmessage = function (e) {
+          clearTimeout(reloj);
+          var puesta = (e.data && e.data.version) || '?';
+          decir(
+            puesta === publicada
+              ? 'Service worker ' + puesta + ', igual que lo publicado.'
+              : 'OJO: esta página se sirve con ' + puesta + ' y lo publicado es ' +
+                publicada + '. Estás mirando una versión vieja — recargá dos veces.',
+            puesta !== publicada
+          );
+        };
+
+        navigator.serviceWorker.controller.postMessage('version', [canal.port2]);
+      })
+      .catch(function () {});
+  })();
+</script>
+
+<h1>Qué se ve del fondo en un teléfono</h1>
+
+<p>
+  El galpón se dibuja con <code>background-size: auto 100%</code>: la imagen se
+  escala por ALTO y lo que sobra a los costados se recorta. O sea que
+  <strong>un porcentaje de la escena no es un porcentaje del fondo</strong>, y
+  cuánto se ve depende de la relación de aspecto. En un monitor ancho entra casi
+  todo el dibujo; en un teléfono entra una franja angosta.
+</p>
+<p>
+  Esta página abre el juego adentro de un <strong>iframe de 390&times;844</strong>,
+  que es un viewport de layout de verdad —no una estimación— y mide contra él.
+  Existe porque una constante que apunta a algo DIBUJADO EN EL FONDO
+  —<code>TOMA_PARED</code>— se verificó contra sí misma: la punta del cable
+  llegaba exactamente a la constante, y la constante no apuntaba a ningún toma
+  dibujado dentro de la franja visible.
+</p>
+
+<div class="aviso">
+  <p>
+    <strong>Lo que este iframe NO reproduce</strong>, dicho antes de que alguien
+    lo tome por un teléfono: <code>devicePixelRatio</code> es 1 y no 3, y
+    <code>env(safe-area-inset-*)</code> vale 0. Ninguna de las dos cosas mueve el
+    recorte del fondo, que es lo único que se mide acá. Para juzgar nitidez o
+    márgenes del sistema, hace falta el aparato.
+  </p>
+</div>
+
+<div id="medida"></div>
+
+<h2>el juego a 390&times;844</h2>
+<div class="par">
+  <iframe id="marco" src="../index.html" title="Chip a 390x844"></iframe>
+  <div id="recortes"></div>
+</div>
+
+<h2>los seis fondos, y qué parte entra</h2>
+<p>
+  De cada fondo: el ancho que ocupa escalado al alto de la escena, la franja
+  visible en % del ancho de la imagen, y los grupos de píxeles CIAN que
+  encuentra — que es como se ven los tomas de pared encendidos. El detector se
+  corre sobre <strong>la imagen del fondo sola</strong>, sin la escena compuesta:
+  Chip tiene el mismo cian en la antena y en el pecho, y un detector de color
+  sobre la escena entera encuentra a Chip.
+</p>
+<div id="fondos"></div>
+
+<script type="module">
+const FONDOS = [
+  'sprites/fondo-amanecer.webp',
+  'sprites/fondo-mediodia.webp',
+  'sprites/fondo-dia.webp',
+  'sprites/fondo-noche.webp',
+  'sprites/fondo-niebla.webp',
+  'sprites/fondo-tormenta.webp'
+];
+
+const marco = document.getElementById('marco');
+const medida = document.getElementById('medida');
+const salidaFondos = document.getElementById('fondos');
+const recortes = document.getElementById('recortes');
+
+const n2 = (v) => +v.toFixed(2);
+
+await new Promise((listo) => {
+  if (marco.contentDocument?.readyState === 'complete') listo();
+  else marco.addEventListener('load', listo, { once: true });
+});
+// Un respiro para que el juego termine de montar la escena.
+await new Promise((r) => setTimeout(r, 700));
+
+const doc = marco.contentDocument;
+const escena = doc.getElementById('escena');
+const cs = getComputedStyle(escena);
+const caja = escena.getBoundingClientRect();
+
+// LA VENTANA VISIBLE DEL FONDO, en coordenadas de la IMAGEN.
+//
+// background-size: auto 100% => la imagen se escala para que su alto sea el de
+// la caja; su ancho escalado es alto * (anchoImagen / altoImagen).
+// background-position-x da el corrimiento, que acá es negativo: la imagen se
+// corre a la izquierda y lo que se ve arranca en -x.
+function ventanaDelFondo(anchoImg, altoImg, cajaEscena, posX) {
+  const escala = cajaEscena.height / altoImg;
+  const anchoEscalado = anchoImg * escala;
+  const desde = -posX / escala;
+  const hasta = desde + cajaEscena.width / escala;
+  return {
+    escala,
+    anchoEscalado,
+    desdePx: desde,
+    hastaPx: hasta,
+    desdePc: (100 * desde) / anchoImg,
+    hastaPc: (100 * hasta) / anchoImg
+  };
+}
+
+const posX = parseFloat(cs.backgroundPositionX);
+
+medida.innerHTML =
+  '<h2>la escena adentro del iframe</h2>' +
+  '<table>' +
+  `<tr><th>viewport del iframe</th><td>${marco.contentWindow.innerWidth} &times; ${marco.contentWindow.innerHeight}</td></tr>` +
+  `<tr><th>caja de #escena</th><td>${n2(caja.width)} &times; ${n2(caja.height)}</td></tr>` +
+  `<tr><th>background-size</th><td><code>${cs.backgroundSize}</code></td></tr>` +
+  `<tr><th>background-position</th><td><code>${cs.backgroundPositionX} ${cs.backgroundPositionY}</code></td></tr>` +
+  '</table>';
+
+// EL DETECTOR DE CIAN. Un píxel cuenta si es claramente azul-verdoso y
+// luminoso: azul y verde altos, rojo bajo, y los dos primeros parecidos entre
+// sí. Los grupos se arman por vecindad y se descartan los de menos de 6 píxeles,
+// que son ruido del dibujo.
+const OPACO_CIAN = (r, g, b) => b > 110 && g > 90 && r < g - 35 && Math.abs(g - b) < 90;
+
+function gruposCian(datos, ancho, alto) {
+  const marcado = new Uint8Array(ancho * alto);
+  for (let i = 0; i < ancho * alto; i++) {
+    const p = i * 4;
+    if (OPACO_CIAN(datos[p], datos[p + 1], datos[p + 2]) && datos[p + 3] > 200) marcado[i] = 1;
+  }
+
+  const visto = new Uint8Array(ancho * alto);
+  const grupos = [];
+  for (let i = 0; i < marcado.length; i++) {
+    if (!marcado[i] || visto[i]) continue;
+    const pila = [i];
+    visto[i] = 1;
+    let n = 0, sx = 0, sy = 0, x0 = ancho, x1 = 0, y0 = alto, y1 = 0;
+    while (pila.length) {
+      const j = pila.pop();
+      const x = j % ancho, y = (j - x) / ancho;
+      n++; sx += x; sy += y;
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const vx = x + dx, vy = y + dy;
+        if (vx < 0 || vy < 0 || vx >= ancho || vy >= alto) continue;
+        const k = vy * ancho + vx;
+        if (marcado[k] && !visto[k]) { visto[k] = 1; pila.push(k); }
+      }
+    }
+    if (n >= 6) grupos.push({ n, x: sx / n, y: sy / n, x0, x1, y0, y1 });
+  }
+  return grupos.sort((a, b) => b.n - a.n);
+}
+
+for (const ruta of FONDOS) {
+  const img = new Image();
+  img.src = '../' + ruta;
+  const seccion = document.createElement('section');
+  salidaFondos.appendChild(seccion);
+
+  try {
+    await img.decode();
+  } catch (e) {
+    seccion.innerHTML = `<h2>${ruta}</h2><p class="fuera">no se pudo cargar: ${e.message}. ` +
+      'Si dice SecurityError, la página se abrió con file://.</p>';
+    continue;
+  }
+
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(img, 0, 0);
+  let datos;
+  try {
+    datos = x.getImageData(0, 0, c.width, c.height).data;
+  } catch (e) {
+    seccion.innerHTML = `<h2>${ruta}</h2><p class="fuera">canvas teñido: ${e.message}. Hay que servirla por HTTP.</p>`;
+    continue;
+  }
+
+  const v = ventanaDelFondo(img.naturalWidth, img.naturalHeight, caja, posX);
+  const grupos = gruposCian(datos, c.width, c.height).slice(0, 8);
+
+  const filas = grupos.map((g) => {
+    const pc = (100 * g.x) / img.naturalWidth;
+    const dentro = pc >= v.desdePc && pc <= v.hastaPc;
+    return `<tr><td class="num">${g.n}</td><td class="num">${n2(pc)}%</td>` +
+      `<td class="num">${n2((100 * g.y) / img.naturalHeight)}%</td>` +
+      `<td class="num">${Math.round(g.x)}, ${Math.round(g.y)}</td>` +
+      `<td class="${dentro ? 'dentro' : 'fuera'}">${dentro ? 'ENTRA' : 'fuera de cuadro'}</td></tr>`;
+  }).join('');
+
+  // El mapa: la imagen entera en chico, la franja visible marcada, y un círculo
+  // en cada grupo. Se dibuja para MIRARLO — un detector de color sin la marca
+  // encima es un número que no se puede cruzar.
+  const mapa = document.createElement('canvas');
+  const escalaMapa = 620 / img.naturalWidth;
+  mapa.width = Math.round(img.naturalWidth * escalaMapa);
+  mapa.height = Math.round(img.naturalHeight * escalaMapa);
+  const mx = mapa.getContext('2d');
+  mx.drawImage(img, 0, 0, mapa.width, mapa.height);
+  mx.strokeStyle = '#ffb060';
+  mx.lineWidth = 2;
+  mx.strokeRect(v.desdePx * escalaMapa, 1, (v.hastaPx - v.desdePx) * escalaMapa, mapa.height - 2);
+  mx.fillStyle = 'rgba(255, 60, 90, 0.35)';
+  mx.strokeStyle = '#ff3c5a';
+  mx.lineWidth = 1.5;
+  for (const g of grupos) {
+    mx.beginPath();
+    mx.arc(g.x * escalaMapa, g.y * escalaMapa, 9, 0, Math.PI * 2);
+    mx.fill();
+    mx.stroke();
+  }
+
+  seccion.innerHTML =
+    `<h2>${ruta}</h2>` +
+    '<table>' +
+    `<tr><th>imagen</th><td>${img.naturalWidth} &times; ${img.naturalHeight}</td></tr>` +
+    `<tr><th>escalada al alto de la escena</th><td>${n2(v.anchoEscalado)} px de ancho</td></tr>` +
+    `<tr><th>franja visible</th><td>px ${Math.round(v.desdePx)} a ${Math.round(v.hastaPx)} ` +
+    `&nbsp;&mdash;&nbsp; <strong>${n2(v.desdePc)}% a ${n2(v.hastaPc)}%</strong> del ancho</td></tr>` +
+    '</table>' +
+    (grupos.length
+      ? '<table><tr><th>px cian</th><th>x (% imagen)</th><th>y (% imagen)</th><th>centro px</th><th></th></tr>' + filas + '</table>'
+      : '<p>el detector no encontró ningún grupo cian.</p>');
+
+  const fig = document.createElement('figure');
+  fig.appendChild(mapa);
+  const pie = document.createElement('figcaption');
+  pie.textContent = 'ámbar = lo que se ve a 390x844 · círculos rojos = grupos de píxeles cian';
+  fig.appendChild(pie);
+  seccion.appendChild(fig);
+}
+
+// Y EL RECORTE DE LA ESCENA REAL, al lado del iframe: dónde cae TOMA_PARED
+// dentro de lo que se ve.
+const toma = doc.getElementById('toma');
+if (toma) {
+  const rt = toma.getBoundingClientRect();
+  const rc = escena.getBoundingClientRect();
+  recortes.innerHTML =
+    '<h2>dónde cae TOMA_PARED</h2>' +
+    '<table>' +
+    `<tr><th>caja del nodo #toma</th><td>${n2(rt.width)} &times; ${n2(rt.height)} px</td></tr>` +
+    `<tr><th>en % de la escena</th><td>x ${n2((100 * (rt.x - rc.x)) / rc.width)}%, ` +
+    `y ${n2((100 * (rt.y - rc.y)) / rc.height)}%</td></tr>` +
+    '</table>' +
+    '<p>El nodo está donde dice la constante. La pregunta es si abajo hay un toma ' +
+    'dibujado, y eso lo contesta la tabla de los fondos.</p>';
+}
+
+document.title = 'teléfono — franja visible medida';
+</script>
+</body>
+</html>
