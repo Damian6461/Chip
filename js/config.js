@@ -3344,37 +3344,52 @@ export const CABLE = {
 // conserva. Guardar píxeles sería un archivo congelado que deja de coincidir con
 // el arte al primer ajuste — el mismo problema que tuvieron los íconos.
 //
-// LO QUE DICE LA FORMA, y es lo que hay que preservar si alguien la toca:
+// LO QUE DICE LA FORMA, Y QUÉ SE LE SACÓ.
 //
-//   - PANZA de 0,2496 del largo del eje, alrededor de t = 0,42. Es una U ancha,
-//     no un arco: baja hasta cerca del centro y de ahí sube.
-//   - ARRANQUE CON t NEGATIVO. Los tres primeros puntos van hacia atrás: el
-//     cable sale del enchufe, cae al piso y recién ahí empieza el recorrido. No
-//     sale horizontal hacia la pared.
-//   - EL QUIEBRE EN S, y es lo más importante. Entre t = 0,8045 y t = 0,7832 el
-//     parámetro RETROCEDE —0,0403 del eje sumado sobre todo el tramo—: el cable
-//     se dobla sobre sí mismo. Por eso el camino no se puede escribir como una
-//     función de t ni como una curva simple, y por eso se lee como un cable que
-//     alguien dejó ahí y no como una curva trazada. Si alguien "simplifica" esta
-//     tabla y el retroceso desaparece, se perdió lo único que hacía que el cable
-//     pareciera un cable.
-// GENERADO. Sale de `node verificacion/cable-normalizar.mjs`, que lee los puntos
-// medidos de verificacion/cable-puntos.mjs. No se edita a mano: si hay que
-// mover el camino, se mueven los puntos y se regenera.
+// Hasta v99 la tabla salía de calcar referencia-cable.png, y decía tres cosas:
+// una PANZA de 0,2496 del eje alrededor de t = 0,42; un ARRANQUE CON t NEGATIVO
+// —el cable salía del enchufe, caía al piso y recién ahí empezaba el recorrido—;
+// y un QUIEBRE EN S cerca de t = 0,80, donde el parámetro retrocedía 0,0403 y el
+// cable se doblaba sobre sí mismo. De ese quiebre estaba escrito que era lo
+// único que hacía que el cable pareciera un cable.
 //
-// Y se verifica con `node verificacion/cable-verificar.mjs`, que mide la
-// luminancia alrededor de cada punto sobre la referencia. Hoy: 35 de 35 sobre el
-// cable, con medianas de 28 a 68 contra un piso de 170+.
+// LAS TRES ERAN DE UN CABLE QUE IBA AL PISO Y A UNA TOMA DE PARED. Cuando el
+// destino pasó a estar fuera de cuadro, las tres se quedaron sin a qué
+// responder: no hay piso donde apoyarse, y el quiebre existía para entrar al
+// conector — sin conector queda un rulo en el aire, y encima ahora caería DENTRO
+// del cuadro y no contra la pared.
+//
+// Y la panza, además, era el defecto. Bajaba de 74,52% a 88,54% del alto de la
+// escena para después salir por el 58%: un cable que va a un punto MÁS ALTO no
+// pasa antes por abajo. De paso cruzaba el panel de mensajes.
+//
+// LO QUE DICE LA FORMA AHORA, y es lo que hay que preservar:
+//
+//   - SALE DEL PUERTO CASI HORIZONTAL. La subida va con smoothstep, cuya
+//     derivada es cero en el arranque. Un cable que sale en diagonal se ve
+//     tirado, no enchufado.
+//   - SE AFLOJA TRES PUNTOS y no doce: baja hasta el 77,52% del alto y ahí da la
+//     vuelta. El panel de mensajes con tres líneas arranca en el 81,3%, así que
+//     quedan 3,8 puntos de aire.
+//   - CRUZA EL BORDE DERECHO en el 59,38% del alto, con x = 99,8%, y sigue hasta
+//     el 106%, donde el overflow lo corta.
+//
+// Lo que se perdió es el trazo del ilustrador. Lo que se ganó es que esas tres
+// frases SEAN el código: la tabla la genera `node tools/recorrido-cable.mjs` a
+// partir de ellas, y cambiar la forma es cambiar un número ahí y regenerar.
+// tests/coleccion.test.js hace cumplir las tres.
 export const RECORRIDO_CABLE = [
-  [0, 0], [-0.0166, 0.0546], [-0.019, 0.1132], [0.0355, 0.1653],
-  [0.0889, 0.1926], [0.1777, 0.2275], [0.3092, 0.246], [0.3661, 0.249],
-  [0.423, 0.2496], [0.4799, 0.2478], [0.5367, 0.2437], [0.5936, 0.2385],
-  [0.6505, 0.2285], [0.7073, 0.2197], [0.7547, 0.2145], [0.7737, 0.2049],
-  [0.7903, 0.1938], [0.8021, 0.1775], [0.8045, 0.1601], [0.8033, 0.1412],
-  [0.7974, 0.124], [0.7927, 0.1117], [0.7891, 0.0995], [0.7855, 0.0873],
-  [0.7832, 0.0741], [0.7879, 0.057], [0.8009, 0.0432], [0.8152, 0.0354],
-  [0.8436, 0.0257], [0.872, 0.0195], [0.9005, 0.0145], [0.9289, 0.0107],
-  [0.9573, 0.0069], [0.987, 0.0056], [1, 0]
+  [0, 0], [0.0233, 0.0125], [0.0465, 0.0251], [0.0698, 0.0385],
+  [0.093, 0.0532], [0.1163, 0.0695], [0.1395, 0.0876], [0.1628, 0.1075],
+  [0.186, 0.1289], [0.2093, 0.1517], [0.2326, 0.1754], [0.2558, 0.1996],
+  [0.2791, 0.2236], [0.3023, 0.247], [0.3256, 0.269], [0.3488, 0.289],
+  [0.3721, 0.3065], [0.3953, 0.3208], [0.4186, 0.3316], [0.4419, 0.3384],
+  [0.4651, 0.3409], [0.4884, 0.3389], [0.5116, 0.3325], [0.5349, 0.3216],
+  [0.5581, 0.3065], [0.5814, 0.2876], [0.6047, 0.2652], [0.6279, 0.24],
+  [0.6512, 0.2126], [0.6744, 0.1838], [0.6977, 0.1542], [0.7209, 0.1247],
+  [0.7442, 0.0962], [0.7674, 0.0692], [0.7907, 0.0447], [0.814, 0.0232],
+  [0.8372, 0.0052], [0.8605, -0.0087], [0.8837, -0.0182], [0.907, -0.0232],
+  [0.9302, -0.0236], [0.9535, -0.0196], [0.9767, -0.0116], [1, 0]
 ];
 
 // EL PULSO SE ACHICA CON EL CABLE, y antes no: viajaba con radio fijo de 4,2 px
@@ -3425,51 +3440,41 @@ export const PULSOS_CABLE = {
 // él — y lo que está más lejos se dibuja detrás.
 export const PASA_DETRAS_CABLE = 82;
 
-// DÓNDE APOYA LA PANZA DEL CABLE, en % del alto de la escena. Es el tercer
-// anclaje del recorrido, y sin él el cable queda colgado en el aire.
+// ---- ACÁ ESTABA APOYO_CABLE, Y SE FUE CON LA PANZA ----
 //
-// El motivo largo está contado en lineaDelCable. El corto: la referencia y la
-// escena no comparten encuadre, así que la panza —que allá es el 30% del alto de
-// la imagen— acá entraba a la mitad de tamaño relativo y no llegaba al suelo.
-// Los dos extremos no alcanzan para ubicar un cable que se apoya; hace falta
-// decirle dónde está el piso.
+// Era el tercer anclaje del recorrido: la línea del alto de la escena donde la
+// panza del cable se apoyaba. `lineaDelCable` reescalaba TODA la caída para que
+// el punto más bajo aterrizara justo ahí.
 //
-// 86 y no 82, que es la línea de apoyo de Chip: el cable le pasa POR DELANTE de
-// las orugas, y lo que está más cerca está más abajo en el cuadro. Con los dos
-// números iguales la panza corre exactamente por la base de Chip y las dos
-// siluetas se pegan — el cable deja de leerse delante y pasa a leerse como parte
-// del contorno.
-// SE QUEDA EN 86, Y SE INTENTÓ SUBIRLO. Queda escrito porque el intento estaba
-// bien planteado y lo que lo tumbó no se ve sin medirlo.
+// Hacía falta cuando la tabla salía de calcar referencia-cable.png: la
+// referencia y la escena no comparten encuadre, así que la panza —que allá es el
+// 30% del alto de la imagen— acá entraba a la mitad de tamaño relativo y no
+// llegaba al suelo. Los dos extremos no alcanzaban para ubicar un cable que se
+// apoya.
 //
-// El pedido era subir la panza para que el cable dejara de cruzar el panel de
-// mensajes. Medido, a 390x844, con la panza DIBUJADA —no la línea de apoyo, que
-// no es lo mismo— y leyendo el alfa del canvas para saber si toca a Chip:
+// AHORA LA FORMA SE GENERA CON LAS ALTURAS DE ESTA ESCENA YA ADENTRO —ver
+// tools/recorrido-cable.mjs— así que reescalarla la deformaba. Medido: el diseño
+// pide bajar hasta el 77,52% del alto, y con el apoyo todavía puesto el cable
+// bajaba al 86,6%, otra vez adentro del panel de mensajes. La tabla ya dice
+// dónde va cada punto; corregirla después era pisar la decisión.
 //
-//   apoyo 80  panza 80,5%  ->  171 puntos del cable sobre la silueta, x 51 a 78%
-//   apoyo 81  panza 81,7%  ->  131 puntos sobre la silueta, x 51 a 79%
-//   apoyo 82  panza 83,1%  ->   33 puntos, x 51 a 53%  (sólo el enchufe)
-//   apoyo 86  panza 88,5%  ->   33 puntos, x 51 a 53%  (sólo el enchufe)
+// EL INTENTO DE SALVARLO, QUE NO ERA EL CAMINO PERO VALE LA MEDICIÓN. Antes de
+// sacarle la panza al cable se probó subir esta constante para que dejara de
+// cruzar el panel. No hay número que sirva, y las dos mitades del por qué son:
 //
-// O sea que la panza tiene que quedar POR DEBAJO de la base de Chip —82%, que es
-// --piso-chip— o le cruza las orugas por encima. El corte es limpio entre 81 y
-// 82.
+//   apoyo 80  panza 80,5%  ->  171 puntos del cable sobre la silueta de Chip
+//   apoyo 81  panza 81,7%  ->  131 puntos sobre la silueta
+//   apoyo 82  panza 83,1%  ->   33 puntos, sólo el enchufe
+//   apoyo 86  panza 88,5%  ->   33 puntos, sólo el enchufe
 //
-// Y DEL OTRO LADO NO HAY LUGAR, porque el borde de arriba del panel NO ES UNA
-// LÍNEA FIJA: el panel está anclado abajo y crece con el largo del mensaje.
+// o sea que la panza tenía que quedar por debajo de la base de Chip —82%, que es
+// --piso-chip— o le cruzaba las orugas. Y del otro lado el borde de arriba del
+// panel NO ES UNA LÍNEA FIJA: crece con el largo del mensaje, del 85,5% con una
+// línea al 81,3% con tres. Evitar a Chip pedía >= 82 y evitar el panel pedía
+// <= 81,3: las dos ventanas no se tocan.
 //
-//   mensaje de 1 línea   el panel arranca en 85,5%
-//   mensaje de 2         83,4%
-//   mensaje de 3         81,3%
-//
-// Con la panza en 83,1 el cable queda afuera del panel corto, al borde del
-// mediano, y 1,8 puntos ADENTRO del largo. Las dos ventanas —evitar a Chip pide
-// >= 82, evitar el panel más alto pide <= 81,3— no se tocan. No hay número.
-//
-// Así que el cruce del cable con el texto NO se arregla con esta constante, y
-// queda como estaba. El motivo original de 86, que sigue en pie, está justo
-// arriba.
-export const APOYO_CABLE = 86;
+// La salida no era mover la panza. Era que no hubiera panza.
+
 
 export const TOMA_PARED = {
   // EL CABLE SE VA DE CUADRO, y por eso este número pasa de 90 a 106.

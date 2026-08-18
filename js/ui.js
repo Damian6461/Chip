@@ -140,7 +140,6 @@ import {
   CONECTOR_PECHO,
   RECORRIDO_CABLE,
   PASA_DETRAS_CABLE,
-  APOYO_CABLE,
   TOMA_PARED,
   VARS_CABLE
 } from './config.js';
@@ -1332,8 +1331,17 @@ export function dibujarCable() {
     // En % del eje, igual que el grosor: lo que entra al cuerpo tiene que seguir
     // tapando la ficha cuando la escena cambia de tamaño.
     (CABLE.entraAlCuerpo / 100) * Math.hypot(hasta.x - desde.x, hasta.y - desde.y),
-    (PASA_DETRAS_CABLE / 100) * escena.height,
-    (APOYO_CABLE / 100) * escena.height
+    (PASA_DETRAS_CABLE / 100) * escena.height
+    // Y NO VA MÁS UN TERCER ANCLAJE. Acá iba `(APOYO_CABLE / 100) * altura`, la
+    // línea donde el cable se apoyaba: lineaDelCable reescalaba toda la caída
+    // para que la panza aterrizara justo ahí. Hacía falta cuando el camino salía
+    // de calcar una referencia con otro encuadre y la panza no llegaba al piso.
+    //
+    // Ahora la forma se genera con las alturas de esta escena ya adentro —ver
+    // tools/recorrido-cable.mjs— así que reescalarla la deformaba: el diseño
+    // pedía bajar hasta el 77,5% del alto y con el apoyo puesto bajaba al 86,6%,
+    // otra vez adentro del panel de mensajes. La tabla ya dice dónde va cada
+    // punto; no hay que corregirla después.
   );
 
   // La ficha sigue yendo encima, en la capa de adelante: es la pieza que se ve.

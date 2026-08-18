@@ -663,48 +663,98 @@ prueba('cable: el grosor va en % del EJE y no del ancho de la escena', () => {
   );
 });
 
-prueba('cable: la tabla trae el quiebre en S, y el quiebre RETROCEDE', () => {
-  // ES LO QUE HACE QUE EL CABLE PAREZCA UN CABLE: cerca del 80% del recorrido el
-  // camino se dobla sobre sí mismo, o sea que `t` retrocede. Si alguien
-  // "simplifica" la tabla y el retroceso desaparece, queda una curva trazada y se
-  // perdió el punto entero del punto 16.
+// ---- LA FORMA DEL CABLE, Y LOS DOS TESTS QUE REEMPLAZA ----
+//
+// ACÁ HABÍA DOS PRUEBAS QUE YA NO SE PUEDEN CUMPLIR, y vale decir cuáles eran
+// porque defendían una decisión de diseño escrita, no un detalle:
+//
+//   'la tabla trae el quiebre en S, y el quiebre RETROCEDE' — pedía que el
+//   parámetro t retrocediera al menos 0,008, o sea que el cable se doblara sobre
+//   sí mismo. Al lado estaba escrito que ese quiebre era "lo único que hacía que
+//   el cable pareciera un cable".
+//
+//   'el camino dibujado es bastante más largo que la recta' — pedía que el arco
+//   midiera más de 1,3 veces la recta entre los extremos. Con la panza y el
+//   quiebre daba de sobra.
+//
+// LAS DOS DESCRIBÍAN UN CABLE QUE IBA A UNA TOMA DE PARED Y SE APOYABA EN EL
+// PISO. El destino se fue de cuadro —ver TOMA_PARED— y con él la razón de las
+// dos: sin conector, el quiebre es un rulo en el aire y ahora caería DENTRO del
+// cuadro; sin piso, la panza es un cable que baja para después subir a un punto
+// más alto que donde salió.
+//
+// Que hoy el arco mida 1,18 veces la recta en vez de 1,3 no es que se haya
+// aplanado por descuido: es que se le sacó el rulo. El aflojamiento sigue ahí y
+// se mide abajo, en puntos de alto de escena, que es la unidad en la que se
+// decidió.
+//
+// SE ANOTA EN VEZ DE BORRARSE porque quien vea el cable más liso tiene que poder
+// encontrar acá que fue a propósito, y contra qué se cambió.
+
+prueba('cable: sale del puerto casi horizontal', () => {
+  // Un cable que arranca en diagonal se ve tirado, no enchufado. La subida usa
+  // smoothstep justamente porque su derivada es cero en el arranque.
   //
-  // SE MIDE SOBRE LA TABLA Y NO SOBRE LA LÍNEA DIBUJADA, y eso costó tres
-  // intentos. Medir el retroceso entre muestras consecutivas de la línea
-  // depende de la densidad del muestreo: el mismo quiebre repartido en cinco
-  // pasos da un quinto del retroceso por paso, y parece que desapareció cuando
-  // lo único que pasó es que hay más puntos. Es el mismo error que ya nos mordió
-  // midiendo radios de curvatura antes de remuestrear.
-  //
-  // La tabla no tiene ese problema: es el dato, y el dato o tiene el retroceso o
-  // no lo tiene.
-  // Y se mide el retroceso TOTAL del tramo, no el mayor entre dos puntos
-  // seguidos: el quiebre retrocede repartido en varios puntos —0,7872 hasta
-  // 0,7747— y quedarse con el escalón más grande da 0,0040 en vez de 0,0125.
-  // Partir un retroceso en más pasos no lo hace más chico.
-  const t = RECORRIDO_CABLE.map(([x]) => x);
-  let retroceso = 0;
-  for (let i = 0; i < t.length; i++) {
-    for (let j = i + 1; j < t.length && t[j] <= t[i]; j++) {
-      retroceso = Math.max(retroceso, t[i] - t[j]);
-    }
-  }
-  verdadero(retroceso > 0.008, `el retroceso del quiebre es ${retroceso.toFixed(4)} del eje`);
+  // Se mide sobre los primeros puntos DIBUJADOS y no sobre la tabla: lo que
+  // importa es el ángulo en la escena, y la tabla está en el marco del eje.
+  const linea = lineaDelCable(CONECTOR, TOMA, CABLE, RECORRIDO_CABLE);
+  const a = linea[0];
+  const b = linea[3];
+  const grados = Math.abs((Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI);
+
+  verdadero(
+    grados < 12,
+    `el cable sale del puerto a ${grados.toFixed(1)}° de la horizontal`
+  );
 });
 
-prueba('cable: el camino dibujado es bastante más largo que la recta', () => {
-  // La otra mitad, y esta sí sobre lo dibujado: un camino con panza y quiebre
-  // recorre bastante más que la recta entre los dos extremos. Si alguien lo
-  // aplanara, esto cae — y no depende del muestreo, porque el largo de arco es
-  // el mismo con diez puntos que con mil.
+prueba('cable: se afloja, pero no llega al panel de mensajes', () => {
+  // LAS DOS MITADES DE LA MISMA DECISIÓN, y por eso van juntas:
+  //
+  //   un cable que no cuelga no es un cable  ->  el punto más bajo tiene que
+  //                                              quedar POR DEBAJO del puerto
+  //   la panza cruzaba el texto              ->  y no puede llegar al panel
+  //
+  // El panel de mensajes está anclado abajo y crece con el largo del mensaje:
+  // con tres líneas su borde de arriba llega al 81,3% del alto de la escena.
+  // Medido en verificacion/telefono.html, a 390x844.
+  const PANEL_ARRIBA = 81.3;
+
   const linea = lineaDelCable(CONECTOR, TOMA, CABLE, RECORRIDO_CABLE);
-  let arco = 0;
-  for (let i = 1; i < linea.length; i++) {
-    arco += Math.hypot(linea[i].x - linea[i - 1].x, linea[i].y - linea[i - 1].y);
-  }
-  const recta = Math.hypot(TOMA.x - CONECTOR.x, TOMA.y - CONECTOR.y);
-  const razon = arco / recta;
-  verdadero(razon > 1.3, `el cable recorre ${razon.toFixed(2)} veces la recta`);
+  const pc = (y) => (100 * y) / ESCENA.alto;
+  const puerto = pc(CONECTOR.y);
+  const masBajo = pc(Math.max(...linea.map((p) => p.y)));
+
+  verdadero(
+    masBajo > puerto,
+    `el cable no cuelga: su punto más bajo (${masBajo.toFixed(2)}%) no pasa del puerto (${puerto.toFixed(2)}%)`
+  );
+  verdadero(
+    masBajo - puerto < 6,
+    `se afloja ${(masBajo - puerto).toFixed(2)} puntos, que ya es una panza y no un aflojamiento`
+  );
+  verdadero(
+    masBajo < PANEL_ARRIBA,
+    `el cable baja hasta ${masBajo.toFixed(2)}% y el panel de mensajes arranca en ${PANEL_ARRIBA}%`
+  );
+});
+
+prueba('cable: cruza el borde derecho en vez de terminar cerca', () => {
+  // Un cable que termina a tres píxeles del canto se ve peor que uno que termina
+  // en el medio. Tiene que pasarse y que lo corte el overflow de la escena.
+  const linea = lineaDelCable(CONECTOR, TOMA, CABLE, RECORRIDO_CABLE);
+  const xMax = (100 * Math.max(...linea.map((p) => p.x))) / ESCENA.ancho;
+
+  verdadero(xMax > 103, `el cable llega al ${xMax.toFixed(1)}% del ancho`);
+
+  // Y el punto donde CRUZA el borde tiene que estar arriba, no abajo: es lo que
+  // hace que se lea yéndose hacia el fondo y no cayéndose de la pantalla.
+  const dentro = linea.filter((p) => p.x <= ESCENA.ancho).at(-1);
+  const yBorde = (100 * dentro.y) / ESCENA.alto;
+  verdadero(
+    yBorde < 70,
+    `cruza el borde en el ${yBorde.toFixed(1)}% del alto, que es demasiado abajo`
+  );
 });
 
 prueba('cable: la panza baja hacia el piso y no hacia arriba', () => {
