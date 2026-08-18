@@ -658,3 +658,95 @@ prueba('deploy: en los binarios no se normaliza nada', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ============================================================================
+// LAS PÁGINAS DE verificacion/ TIENEN QUE DECIR CÓMO ABRIRLAS
+// ============================================================================
+//
+// Una herramienta de verificación que no se puede abrir no verifica nada. Y si
+// falla EN SILENCIO es peor que no existir, porque se lee como "no hay nada que
+// ver" — que es la conclusión opuesta a la correcta en una herramienta de
+// medición.
+//
+// Pasó, y costó caro: botonera-hueca.html estuvo cinco intercambios frenando la
+// última decisión abierta del proyecto porque abrirla con doble clic la deja
+// muda. Todas estas páginas se dibujan con módulos ES, y el navegador los
+// bloquea en `file://` por CORS: el script no corre y queda sólo la prosa. Las
+// capturas mostraban una página con texto y sin nada más, y eso se parece
+// exactamente a una herramienta que no encontró nada.
+//
+// Así que cada página lleva, arriba de todo y en un script CLÁSICO —el único
+// que corre igual con los módulos bloqueados—: el aviso de `file://` y la URL
+// del deploy, para poder abrirla en el teléfono. Lo segundo no es un adorno: la
+// decisión de la botonera es de dedo sobre vidrio.
+//
+// El bloque está repetido en las cuatro páginas a propósito —un archivo
+// compartido es una cosa más que puede no cargar— así que lo que hay que
+// impedir es que las copias se separen, y de eso se ocupa la última aserción.
+
+const PAGINAS_VERIFICACION = readdirSync(RAIZ + 'verificacion').filter((n) => n.endsWith('.html'));
+
+// El bloque, normalizado: sin el nombre del archivo, que es lo único que cambia
+// legítimamente entre las cuatro copias.
+function cabeceraDe(html, pagina) {
+  const desde = html.indexOf('<div id="como-abrirla">');
+  const hasta = html.indexOf('</script>', desde);
+  if (desde < 0 || hasta < 0) return null;
+  return html.slice(desde, hasta).split(pagina).join('%%PAGINA%%');
+}
+
+prueba('verificacion/: cada página avisa si la abrieron por file://', () => {
+  verdadero(PAGINAS_VERIFICACION.length > 0, 'el parser no encontró ninguna página en verificacion/');
+
+  for (const pagina of PAGINAS_VERIFICACION) {
+    const html = readFileSync(RAIZ + 'verificacion/' + pagina, 'utf8');
+
+    verdadero(
+      html.includes('id="aviso-protocolo"'),
+      `${pagina} no tiene el aviso: abierta con doble clic queda muda y parece vacía`
+    );
+    verdadero(
+      /location\.protocol\s*===\s*'file:'/.test(html),
+      `${pagina} tiene el aviso pero nada lo enciende`
+    );
+    // Y el aviso NO puede venir en un módulo, que es justo lo que se bloquea.
+    const antesDelAviso = html.slice(0, html.indexOf('location.protocol'));
+    const scriptQueLoContiene = antesDelAviso.lastIndexOf('<script');
+    verdadero(
+      !/type=["']module["']/.test(html.slice(scriptQueLoContiene, scriptQueLoContiene + 60)),
+      `en ${pagina} el aviso vive adentro de un módulo, o sea que no corre cuando hace falta`
+    );
+  }
+});
+
+prueba('verificacion/: cada página trae su URL del deploy, para abrirla en el teléfono', () => {
+  for (const pagina of PAGINAS_VERIFICACION) {
+    const html = readFileSync(RAIZ + 'verificacion/' + pagina, 'utf8');
+    verdadero(
+      html.includes('https://damian6461.github.io/Chip/verificacion/' + pagina),
+      `${pagina} no dice dónde abrirse en el teléfono, y la decisión que pide es de dedo`
+    );
+  }
+});
+
+prueba('verificacion/: las cuatro copias de la cabecera no se separaron', () => {
+  const cabeceras = PAGINAS_VERIFICACION.map((pagina) => ({
+    pagina,
+    texto: cabeceraDe(readFileSync(RAIZ + 'verificacion/' + pagina, 'utf8'), pagina)
+  }));
+
+  for (const { pagina, texto } of cabeceras) {
+    verdadero(texto !== null, `no se pudo aislar la cabecera de ${pagina}`);
+  }
+
+  const patron = cabeceras[0];
+  for (const otra of cabeceras.slice(1)) {
+    verdadero(
+      otra.texto === patron.texto,
+      `la cabecera de ${otra.pagina} se separó de la de ${patron.pagina}. ` +
+        'Están repetidas a propósito, pero tienen que ser la misma: si una se ' +
+        'arregla y las otras no, el arreglo no se nota hasta que alguien abre ' +
+        'la página equivocada.'
+    );
+  }
+});
