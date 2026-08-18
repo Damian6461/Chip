@@ -26,7 +26,44 @@
 // sin él no se pueden correr.
 
 import { writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { PUNTOS } from './cable-puntos.mjs';
+
+// EL COMMIT CON EL QUE SE GENERÓ, ESTAMPADO ADENTRO DEL SVG.
+//
+// Es la última puerta abierta de esta familia de errores, y la familia ya pegó
+// tres veces en un día: los íconos congelados, el cuerpo sin orugas, y este
+// mismo overlay — que se verificó estando una revisión atrás de la tabla, sin
+// que nadie pudiera saberlo mirándolo.
+//
+// Regenerar desde la tabla arregla que el archivo se desincronice. Lo que NO
+// arregla es que el que lo mira no sepa contra QUÉ está verificando: un SVG al
+// día y uno viejo se ven igual. Con el hash adentro, la pregunta "¿de qué
+// commit es esto?" se contesta abriendo el archivo.
+//
+// Y va el estado del árbol también: si está sucio, el hash del commit NO
+// describe lo que se dibujó. Decir "sucio" vale más que un hash que miente.
+function selloDelCommit() {
+  const raiz = new URL('..', import.meta.url);
+  try {
+    const git = (args) => execFileSync('git', args, { cwd: raiz, encoding: 'utf8' }).trim();
+    const hash = git(['rev-parse', '--short', 'HEAD']);
+    // El propio SVG se excluye del chequeo: generarlo ensucia el árbol, así que
+    // sin esto el sello diría SUCIO siempre y la palabra dejaría de significar
+    // algo. Lo que importa es si cambió alguna de sus ENTRADAS.
+    const sucio = git(['status', '--porcelain'])
+      .split(/\r?\n/)
+      .filter((l) => l.trim() && !l.includes('verificacion/cable-encima.svg'));
+
+    return sucio.length > 0 ? hash + ' + ÁRBOL SUCIO' : hash;
+  } catch {
+    // Sin git —un zip, un checkout exportado— el overlay se genera igual. Lo
+    // único que no se puede hacer es mentir sobre de dónde salió.
+    return 'sin git: no se pudo determinar';
+  }
+}
+
+const SELLO = selloDelCommit();
 
 // El tamaño de referencia-cable.png, leído del encabezado PNG (ancho y alto son
 // dos enteros de 32 bits en el chunk IHDR, a partir del byte 16).
@@ -55,13 +92,16 @@ const marcas = PUNTOS.map(([x, y], i) => {
 const linea = PUNTOS.map(([x, y]) => `${x},${y}`).join(' ');
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
-  <title>Los ${PUNTOS.length} puntos del cable, sobre la referencia</title>
+  <title>Los ${PUNTOS.length} puntos del cable, sobre la referencia — ${SELLO}</title>
+  <desc>Generado por verificacion/cable-encima.mjs desde verificacion/cable-puntos.mjs, en el commit ${SELLO}. Los marcadores NO están dibujados a mano: salen de la tabla, así que este archivo no puede quedar atrasado respecto de ella sin que el hash lo diga.</desc>
   <image href="../referencia-cable.png" xlink:href="../referencia-cable.png" x="0" y="0" width="${W}" height="${H}"/>
   <rect x="${VENTANA.x0}" y="${VENTANA.y0}" width="${VENTANA.x1 - VENTANA.x0}" height="${VENTANA.y1 - VENTANA.y0}"
         fill="none" stroke="rgb(90,200,255)" stroke-width="2" stroke-dasharray="8 6" opacity="0.7"/>
   <text x="${VENTANA.x0 + 6}" y="${VENTANA.y0 - 8}" font-size="14" fill="rgb(90,200,255)" font-family="monospace">ventana del trazado: x ${VENTANA.x0}-${VENTANA.x1}, y ${VENTANA.y0}-${VENTANA.y1}</text>
   <polyline points="${linea}" fill="none" stroke="${MARCA}" stroke-width="1.5" opacity="0.45"/>
   ${marcas}
+  <rect x="0" y="0" width="470" height="26" fill="rgb(0,0,0)" opacity="0.55"/>
+  <text x="8" y="18" font-size="13" fill="rgb(255,255,255)" font-family="monospace">${PUNTOS.length} puntos — commit ${SELLO}</text>
 </svg>
 `;
 

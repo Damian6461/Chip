@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>La fuente pixel, a tamaño real y ampliada</title>
+<style>
+  @font-face {
+    font-family: 'Chip Pixel';
+    src: url('../fuentes/chip-pixel.ttf') format('truetype');
+    font-display: block;
+  }
+  body {
+    background: #14161c; color: #e6e6e6; margin: 0; padding: 24px;
+    font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  p { color: #9aa0ab; font-size: 13px; max-width: 76ch; }
+  section { margin: 0 0 28px; }
+  h2 { font-size: 14px; color: #ffb060; margin: 0 0 8px; font-weight: normal; }
+  .muestra { font-family: 'Chip Pixel'; color: #cdd3dd; background: #2b313c;
+             display: inline-block; padding: 6px 10px; }
+  canvas { image-rendering: pixelated; background: #000; display: block; margin: 8px 0; }
+  table { border-collapse: collapse; font-size: 13px; }
+  td, th { padding: 3px 14px 3px 0; text-align: left; }
+  th { color: #9aa0ab; font-weight: normal; }
+  .ok { color: #63d68a; }
+  .mal { color: #ff6b78; }
+</style>
+</head>
+<body>
+
+<h1>La fuente pixel, a tamaño real y ampliada</h1>
+<p>
+  El criterio del punto 3 es que <strong>cada borde sea una transición de un
+  píxel entre dos colores</strong>. Si aparece un píxel intermedio, hay
+  antialiasing y algo quedó fuera de la grilla. Acá abajo eso no se juzga a ojo:
+  se cuenta.
+</p>
+<p>
+  La fuente está diseñada a <strong>8 px</strong> con <code>unitsPerEm 1024</code>,
+  así que un píxel de diseño son 128 unidades exactas. A 8, 16 y 24 px cada píxel
+  cae sobre un número entero de píxeles de pantalla. A 12 o a 18, no — y esa fila
+  está puesta para poder ver la diferencia.
+</p>
+
+<section>
+  <h2>A tamaño real</h2>
+  <div id="reales"></div>
+</section>
+
+<section>
+  <h2>Ampliada 8×, sin suavizado</h2>
+  <p>Es la misma tira dibujada en un canvas y escalada con <code>image-rendering: pixelated</code>: lo que se ve es el píxel real, no una interpolación.</p>
+  <div id="zooms"></div>
+</section>
+
+<section>
+  <h2>El conteo: cuántos tonos distintos hay en cada tamaño</h2>
+  <p>
+    Se dibuja en blanco sobre negro y se cuentan los valores del canal rojo. Dos
+    valores —0 y 255— quiere decir que no hay ningún píxel a medio camino.
+  </p>
+  <table id="conteo">
+    <tr><th>tamaño</th><th>tonos</th><th>píxeles intermedios</th><th></th></tr>
+  </table>
+</section>
+
+<script type="module">
+const TEXTO = 'Cargar Jugar Limpiar';
+const TAMANOS = [8, 16, 24, 12];
+
+await document.fonts.load('16px "Chip Pixel"');
+await document.fonts.ready;
+
+const reales = document.getElementById('reales');
+for (const px of TAMANOS) {
+  const d = document.createElement('div');
+  d.style.margin = '6px 0';
+  d.innerHTML = `<span style="color:#9aa0ab">${String(px).padStart(2)} px </span>` +
+                `<span class="muestra" style="font-size:${px}px">${TEXTO}</span>`;
+  reales.appendChild(d);
+}
+
+// El canvas se dibuja SIN suavizado de fuente donde el navegador lo permita, y
+// en blanco puro sobre negro puro: cualquier valor que no sea 0 ni 255 es
+// antialiasing y no hay forma de confundirlo con otra cosa.
+function medir(px) {
+  const c = document.createElement('canvas');
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.font = `${px}px "Chip Pixel"`;
+  const ancho = Math.ceil(ctx.measureText(TEXTO).width) + 4;
+  c.width = ancho;
+  c.height = Math.ceil(px * 2);
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.fillStyle = '#000';
+  x.fillRect(0, 0, c.width, c.height);
+  x.font = `${px}px "Chip Pixel"`;
+  x.textBaseline = 'top';
+  x.fillStyle = '#fff';
+  x.fillText(TEXTO, 2, Math.round(px * 0.4));
+
+  const d = x.getImageData(0, 0, c.width, c.height).data;
+  const tonos = new Set();
+  let intermedios = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    tonos.add(d[i]);
+    if (d[i] !== 0 && d[i] !== 255) intermedios++;
+  }
+  return { canvas: c, tonos: [...tonos].sort((a, b) => a - b), intermedios };
+}
+
+const zooms = document.getElementById('zooms');
+const tabla = document.getElementById('conteo');
+
+for (const px of TAMANOS) {
+  const r = medir(px);
+
+  const etiqueta = document.createElement('div');
+  etiqueta.style.color = '#9aa0ab';
+  etiqueta.textContent = `${px} px`;
+  zooms.appendChild(etiqueta);
+  r.canvas.style.width = r.canvas.width * 8 + 'px';
+  r.canvas.style.height = r.canvas.height * 8 + 'px';
+  zooms.appendChild(r.canvas);
+
+  const fila = document.createElement('tr');
+  const bien = r.intermedios === 0;
+  fila.innerHTML =
+    `<td>${px} px</td>` +
+    `<td>${r.tonos.length} (${r.tonos.slice(0, 6).join(', ')}${r.tonos.length > 6 ? '…' : ''})</td>` +
+    `<td>${r.intermedios}</td>` +
+    `<td class="${bien ? 'ok' : 'mal'}">${bien ? 'sin antialiasing' : 'HAY ANTIALIASING'}</td>`;
+  tabla.appendChild(fila);
+}
+
+// Y el dato duro para el parte, en el título de la pestaña.
+const total = TAMANOS.map((px) => `${px}:${medir(px).intermedios}`).join(' ');
+document.title = 'intermedios ' + total;
+</script>
+</body>
+</html>

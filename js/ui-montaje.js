@@ -69,6 +69,9 @@ export const grillaGigantes = document.getElementById('gigantes-grilla');
 export const detalleGigantes = document.getElementById('gigantes-detalle');
 export const canvas = document.getElementById('canvas-mascota');
 export const toma = document.getElementById('toma');
+// La fila de las tres chapas. La necesita medirBotonera, que le escribe el ancho
+// en píxeles enteros — ver el punto 3.7.
+export const nodoAcciones = document.getElementById('acciones');
 export const nodoCable = document.getElementById('cable');
 export const nodoCableAtras = document.getElementById('cable-atras');
 export const repisa = document.getElementById('repisa');

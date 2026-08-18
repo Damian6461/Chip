@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>La botonera del punto 3, a tamaño real y ampliada</title>
+<!-- La hoja del juego, sin copiar nada: las reglas de la botonera son las que
+     se ven acá. Si alguien las cambia, esta página cambia sola. -->
+<link rel="stylesheet" href="../style.css">
+<style>
+  body {
+    background: #14161c; color: #e6e6e6; margin: 0; padding: 24px;
+    font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 14px; color: #ffb060; margin: 24px 0 8px; font-weight: normal; }
+  p { color: #9aa0ab; font-size: 13px; max-width: 78ch; }
+  .piso {
+    background: #3a4048;
+    padding: 12px 0 20px;
+    width: 480px;
+    max-width: 100%;
+  }
+  .ampliada { zoom: 4; width: 480px; }
+  .lado { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+  table { border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  td, th { padding: 3px 18px 3px 0; text-align: left; }
+  th { color: #9aa0ab; font-weight: normal; }
+  .ok { color: #63d68a; }
+  .mal { color: #ff6b78; }
+  code { color: #c9ced7; }
+</style>
+</head>
+<body>
+
+<h1>La botonera del punto 3</h1>
+<p>
+  Las tres chapas con las reglas reales de <code>style.css</code> — esta página
+  enlaza la hoja del juego, no copia nada. El piso gris de atrás está para que se
+  vea el canto: en el juego, atrás hay panorámica.
+</p>
+
+<h2>A tamaño real, sobre un ancho de escena de 480 px</h2>
+<div class="piso" id="real"></div>
+
+<h2>Al 4×</h2>
+<p>
+  Es un <code>zoom</code> del navegador, así que el texto y los bordes se
+  <strong>vuelven a rasterizar</strong> a 4× — no es una ampliación de los
+  píxeles ya dibujados. Sirve para juzgar las formas, la grilla del ícono y los
+  cantos; no sirve para contar píxeles intermedios.
+</p>
+<div class="piso ampliada" id="grande"></div>
+
+<h2>Lo que sí se puede contar</h2>
+<p>
+  La propiedad que garantiza que no haya medio píxel de borde es que
+  <strong>toda la geometría sea entera</strong>. Eso no depende de mirar: se
+  mide.
+</p>
+<table id="medidas">
+  <tr><th>qué</th><th>valor</th><th></th></tr>
+</table>
+
+<script type="module">
+import { variablesDeTema } from '../js/tema.js';
+import { BOTONERA, FUENTE_BOTONERA, BOTONES_EN_LA_FILA } from '../js/config.js';
+
+// El mismo puente que usa el juego. Sin esto, todas las reglas de la botonera
+// caerían a sus valores por defecto y esta página mostraría otra cosa.
+for (const [nombre, valor] of Object.entries(variablesDeTema())) {
+  document.documentElement.style.setProperty(nombre, valor);
+}
+
+// LA FUENTE SE CARGA CON UNA QUERY, y no es una precaución de más: el navegador
+// cachea las fuentes por URL con muchas ganas, y una página de verificación que
+// muestra la fuente de ayer es el mismo defecto que el overlay congelado del
+// cable. Ya pasó acá: se regeneró la fuente, se recargó, y la página seguía
+// mostrando la anterior — medido, la `i` avanzaba 6 px cuando en disco ya
+// avanzaba 4.
+//
+// En el juego esto no hace falta: ahí lo resuelve CACHE_VERSION.
+const fresca = new FontFace(
+  'Chip Pixel Fresca',
+  `url(../${FUENTE_BOTONERA.ruta}?v=${Date.now()})`
+);
+await fresca.load();
+document.fonts.add(fresca);
+document.documentElement.style.setProperty('--fuente-pixel', "'Chip Pixel Fresca'");
+
+const ICONOS = {
+  jugar: [[5,2,6],[3,3,2],[11,3,2],[2,4,1],[13,4,1],[2,5,1],[13,5,1],[1,6,1],[6,6,4],[14,6,1],[1,7,1],[4,7,2],[10,7,2],[14,7,1],[1,8,1],[12,8,1],[14,8,1],[2,9,1],[11,9,1],[14,9,1],[2,10,1],[5,10,6],[14,10,1],[3,11,2],[11,11,2],[5,12,6]],
+  limpiar: [[11,2,3],[10,3,3],[9,4,3],[8,5,3],[7,6,3],[6,7,3],[5,8,3],[4,9,4],[3,10,6],[2,11,8],[2,12,8],[3,13,6]],
+  cargar: [[9,2,3],[8,3,3],[7,4,3],[6,5,3],[5,6,8],[10,7,3],[9,8,3],[8,9,3],[7,10,3],[6,11,3],[5,12,3]]
+};
+
+const svg = (clave) =>
+  `<svg viewBox="0 0 16 16" aria-hidden="true">` +
+  ICONOS[clave].map(([x, y, w]) => `<rect x="${x}" y="${y}" width="${w}" height="1"/>`).join('') +
+  `</svg>`;
+
+// Los tres estados que pide la verificación del punto 3: normal, apretado y
+// deshabilitado. El apretado se fuerza con una clase, porque :active necesita un
+// dedo encima y una captura no lo tiene.
+function fila(estado) {
+  const piezas = [
+    ['jugar', 'Jugar'],
+    ['limpiar', 'Limpiar'],
+    ['cargar', 'Cargar']
+  ];
+  return (
+    `<div id="acciones">` +
+    piezas
+      .map(([clave, texto]) => {
+        const apagado = estado === 'apagado' ? ` aria-disabled="true"` : '';
+        const apretado = estado === 'apretado' ? ' class="fingiendo-apretado"' : '';
+        return (
+          `<button type="button"${apagado}${apretado}>` +
+          `<span class="led" aria-hidden="true"></span>${svg(clave)}<span>${texto}</span>` +
+          `</button>`
+        );
+      })
+      .join('') +
+    `</div>`
+  );
+}
+
+const marcado =
+  fila('normal') +
+  `<div style="height:12px"></div>` +
+  fila('apretado') +
+  `<div style="height:12px"></div>` +
+  fila('apagado');
+
+document.getElementById('real').innerHTML = marcado;
+document.getElementById('grande').innerHTML = marcado;
+
+// El estado apretado, sin dedo: se copian a mano las mismas dos declaraciones
+// que tiene la regla :active. Si alguien cambia la regla y no esto, las dos
+// filas se ven distinto y la diferencia canta.
+const est = document.createElement('style');
+est.textContent =
+  '.fingiendo-apretado { transform: translateY(2px); background: var(--panel-hueco) !important; }';
+document.head.appendChild(est);
+
+// ---- Las medidas ----
+await document.fonts.ready;
+const boton = document.querySelector('#real #acciones button');
+const c = getComputedStyle(boton);
+const r = boton.getBoundingClientRect();
+const svgEl = boton.querySelector('svg');
+const cs = getComputedStyle(svgEl);
+
+const entero = (v) => Number.isInteger(v);
+const filas = [
+  ['ancho de la chapa', r.width + ' px', entero(r.width)],
+  ['alto de la chapa', r.height + ' px', entero(r.height)],
+  ['fuente', c.fontSize, parseFloat(c.fontSize) % FUENTE_BOTONERA.nativo === 0],
+  ['espaciado entre letras', c.letterSpacing, c.letterSpacing === 'normal' || parseFloat(c.letterSpacing) === 0],
+  ['radio de esquina', c.borderRadius, parseFloat(c.borderRadius) === 0],
+  ['transform', c.transform, c.transform === 'none'],
+  ['perspectiva de la fila', getComputedStyle(boton.parentElement).perspective, getComputedStyle(boton.parentElement).perspective === 'none'],
+  ['ícono en pantalla', cs.width, parseFloat(cs.width) % 16 === 0],
+  ['grilla del ícono', svgEl.getAttribute('viewBox'), svgEl.getAttribute('viewBox') === '0 0 16 16'],
+  ['rasterizado del ícono', cs.shapeRendering, cs.shapeRendering.toLowerCase() === 'crispedges'],
+  ['familia', c.fontFamily, c.fontFamily.includes(FUENTE_BOTONERA.familia)],
+  ['botones en la fila', String(BOTONES_EN_LA_FILA), true],
+  ['unidad del módulo', BOTONERA.unidad + ' px', true]
+];
+
+const tabla = document.getElementById('medidas');
+for (const [que, valor, bien] of filas) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${que}</td><td><code>${valor}</code></td>` +
+                 `<td class="${bien ? 'ok' : 'mal'}">${bien ? 'entero' : 'REVISAR'}</td>`;
+  tabla.appendChild(tr);
+}
+
+document.title = filas.every(([, , b]) => b) ? 'geometría entera: TODO OK' : 'geometría: HAY DECIMALES';
+</script>
+</body>
+</html>

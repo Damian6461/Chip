@@ -91,6 +91,8 @@ import {
   VARS_PERSONAJE,
   POSICIONES_ANTENA,
   VARS_ANTENA,
+  VARS_BOTONERA,
+  BOTONES_EN_LA_FILA,
   APOYO_ORUGAS,
   VARS_SOMBRA,
   PANTALLAS_PECHO,
@@ -200,6 +202,7 @@ import {
   contenedorLluvia,
   crearBanda,
   nodoCable,
+  nodoAcciones,
   nodoCableAtras,
   escena,
   nodoPiso
@@ -2537,7 +2540,41 @@ export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = 
   // #chip, y esa caja cambia con el viewport. Es una cuenta de dos restas y una
   // cúbica — más barato que escuchar el resize.
   dibujarCable();
+  medirBotonera();
   actualizarBarras(estado);
+}
+
+// EL ANCHO DE LAS CHAPAS, EN PÍXELES ENTEROS. Punto 3.7.
+//
+// Era `flex: 1`, o sea un reparto en porcentaje, y ahí está el defecto: un botón
+// de 30% sobre 390 px son 117, pero sobre 393 son 117,9. Ese decimal es medio
+// píxel de borde borroso en los dos cantos verticales de las tres chapas, todo
+// el tiempo, en cualquier teléfono cuyo ancho no sea múltiplo de tres. Y no se
+// arregla con `border-radius: 0` ni con la fuente pixel: el canto lo pone el
+// layout, no el dibujo.
+//
+// Se mide el ancho real disponible, se le restan el margen y las dos
+// separaciones —que son múltiplos enteros de la unidad de 8— y lo que queda se
+// reparte entre tres redondeando HACIA ABAJO. Lo que sobra queda de aire a los
+// costados y no se ve; medio píxel de borde, sí.
+//
+// Va en cada render y no en un listener de resize por la misma razón que el
+// cable: es una resta y una división, más barato que mantener un listener vivo.
+function medirBotonera() {
+  if (!nodoAcciones) return;
+
+  const caja = nodoAcciones.getBoundingClientRect();
+  if (!caja.width) return;
+
+  const cs = getComputedStyle(nodoAcciones);
+  const disponible =
+    caja.width -
+    parseFloat(cs.paddingLeft) -
+    parseFloat(cs.paddingRight) -
+    parseFloat(cs.gap) * (BOTONES_EN_LA_FILA - 1);
+
+  const ancho = Math.max(1, Math.floor(disponible / BOTONES_EN_LA_FILA));
+  nodoAcciones.style.setProperty(VARS_BOTONERA.ancho, `${ancho}px`);
 }
 
 // Separada de render() a propósito: los eventos se pintan una sola vez, al

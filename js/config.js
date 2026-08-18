@@ -2563,23 +2563,36 @@ export const COLORES_PANEL = {
 //
 // El naranja es el MISMO de la toma, y usado igual: una franja pintada en el
 // canto, gastada, no un contorno encendido alrededor de la tecla.
+// ============================================================================
+// LOS DOCE GRISES SE FUERON, Y ESO ES EL PUNTO 3.3
+// ============================================================================
+//
+// Acá vivían doce tonos propios —arriba, chapa, bajo, fondo, filo, brillo,
+// remache, mate, mate-bajo, mate-texto— y ese era el problema entero: la
+// botonera tenía SU PROPIA PALETA. Una pieza con paleta propia es de otro
+// juego, por más que cada tono esté bien elegido.
+//
+// Ahora usa los tonos que la escena ya tiene declarados, y los usa por su
+// nombre: `--panel-chapa`, `--panel-filo`, `--panel-hueco` y `--panel-linea`
+// salen de COLORES_PANEL y los escribe el mismo puente de siempre. No se
+// repiten acá, porque repetirlos sería volver a tener dos fuentes.
+//
+// Lo único que queda en esta tabla es lo que es de la botonera y de nada más:
+//
+//   texto     el gris claro de las etiquetas. NO es nuevo: es el que la
+//             botonera ya usaba. Medido contra la chapa nueva da 8,68 a 1,
+//             bastante arriba del 4,5 que pide AA.
+//   naranja   #ffa300, el de la paleta cerrada. Reemplaza al #c8781f, que era
+//             un tono inventado para la botonera vieja. Sobre la chapa da 6,53
+//             y sobre el hueco 9,06, así que no hace falta bajarle nada.
+//
+// El apagado no necesita tono propio: es el mismo relleno con el texto en
+// `--panel-linea`. Contra la chapa da 2,25, que para texto normal sería poco —
+// y para texto deshabilitado es exactamente lo que se quiere, porque "apagado"
+// tiene que leerse como apagado.
 export const COLORES_BOTON = {
-  arriba: '#737a86',
-  chapa: '#5e6672',
-  bajo: '#3d434d',
-  fondo: '#2b3039',
-  // Bajó de #171b21 a #0f1217 por el test de contraste: el ícono grabado sobre
-  // `chapa` daba 2,98 y AA pide 3 para un elemento gráfico. Con este da 3,23.
-  filo: '#0f1217',
-  brillo: '#aeb6c2',
-  remache: '#20252c',
-  naranja: '#c8781f',
   texto: '#cdd3dd',
-  // El apagado, para el mismo tratamiento por material que ya funcionaba:
-  // chapa mate, relieve aplanado y sin LED.
-  mate: '#3a3f47',
-  'mate-bajo': '#262a31',
-  'mate-texto': '#7b828d'
+  naranja: '#ffa300'
 };
 
 // ---- LAS CHAPAS APOYADAS EN EL PISO ----
@@ -2641,27 +2654,110 @@ export const COLORES_BOTON = {
 // O sea: el número a controlar era el corte, no el achique. La convergencia que
 // queda es de 0,7° y alcanza, porque no trabaja sola — abajo está la sombra de
 // contacto, y las dos juntas son las que apoyan la pieza.
+// ============================================================================
+// SE FUE LA PERSPECTIVA, Y ES LO PRIMERO DEL PUNTO 3
+// ============================================================================
+//
+// Estaban `inclinacion: 6`, `perspectiva: 620` y el punto de fuga, y las cuatro
+// se van juntas. No es que estuvieran mal calculadas —la fuga era la medida del
+// galpón, y la convergencia de 0,7° estaba verificada—: es que INCLINAR ALGO EN
+// 3D OBLIGA AL NAVEGADOR A RESAMPLEAR CADA BORDE fuera de la grilla de píxeles.
+// Con la inclinación puesta, ningún otro arreglo de este punto se puede ver: los
+// cantos duros, la fuente pixel y los íconos de 16 unidades quedan todos
+// interpolados por el mismo transform.
+//
+// Lo que la inclinación sostenía —que la chapa se lea apoyada y no pegada como
+// una calcomanía— lo sigue haciendo la sombra de contacto, que se queda.
+//
+// TODO EN UNIDADES ENTERAS, que es el punto 3.7. La unidad es 8 px, la misma
+// que el tamaño nativo de la fuente: así el alto, la separación, el texto y los
+// íconos son todos múltiplos del mismo módulo y no hay dónde aparezca un
+// decimal.
 export const BOTONERA = {
-  inclinacion: 6,
-  perspectiva: 620,
-  fuga: { x: 138, y: 55.26 },
+  // El módulo. Ocho, como el em de la fuente pixel.
+  unidad: 8,
+  // 6 unidades = 48 px de alto. Arriba de los 44 del mínimo táctil.
+  altoEnUnidades: 6,
+  separacionEnUnidades: 1,
+  margenEnUnidades: 2,
+
+  // 16 px de fuente: DOS veces el tamaño nativo de 8, o sea un múltiplo entero.
+  // A 12 —lo que tenía Arial— cada píxel de diseño mediría 1,5 y volvería el
+  // antialiasing que todo este punto viene a sacar.
+  fuente: 16,
+
+  // El ícono se dibuja en una grilla de 16x16 y se muestra a 16 px: 1 a 1, así
+  // que cada unidad del SVG es un píxel de pantalla. Un múltiplo entero también
+  // serviría; 1 a 1 es el único que no hay que verificar.
+  icono: 16,
+
+  // NO HAY MUESCA, y vale decir por qué se descartó. El punto 3.2 la ofrece
+  // como opción —"si el canto hace falta"— y el problema es que un chaflán se
+  // recorta con `clip-path`, y `clip-path` recorta TAMBIÉN los pseudo-elementos:
+  // se llevaría puesta la sombra de contacto, que vive fuera de la caja y es lo
+  // único que apoya la chapa en el piso. Cambiar una esquina por la sombra es
+  // mal negocio. El canto duro alcanza.
+
   // La elipse del piso. `ancho` en % de la chapa: más angosta que la pieza,
   // porque una sombra de contacto no se derrama hasta el borde — nace donde el
   // material toca. `alto` en px, y bajo: es una elipse en escorzo vista casi de
   // canto, igual que los aros de las orugas.
+  //
+  // ES LO ÚNICO SUAVE QUE QUEDA, y a propósito: una sombra real es suave. El
+  // punto 3.6 la deja explícitamente afuera del tratamiento de cantos duros.
   sombra: { ancho: 76, alto: 7, alfa: 0.5, difuminado: 5 }
 };
 
+// `unidad` NO viaja por el puente: no la lee el CSS, sólo sirve para derivar el
+// alto, la separación y el margen acá al lado. Una variable escrita sin lector
+// es exactamente lo que el guardián del puente denuncia — y lo denunció.
 export const VARS_BOTONERA = {
-  inclinacion: '--boton-inclinacion',
-  perspectiva: '--boton-perspectiva',
-  fugaX: '--boton-fuga-x',
-  fugaY: '--boton-fuga-y',
+  alto: '--boton-alto',
+  separacion: '--boton-separacion',
+  margen: '--boton-margen',
+  fuente: '--boton-fuente',
+  icono: '--boton-icono',
   sombraAncho: '--boton-sombra-ancho',
   sombraAlto: '--boton-sombra-alto',
   sombraAlfa: '--boton-sombra-alfa',
-  sombraDifuminado: '--boton-sombra-difuminado'
+  sombraDifuminado: '--boton-sombra-difuminado',
+  // El ancho de cada chapa NO sale de acá: lo mide ui.js y lo escribe en píxeles
+  // enteros, porque depende del ancho de la escena. Ver medirBotonera.
+  ancho: '--boton-ancho'
 };
+
+// LA FUENTE PIXEL DE LAS ETIQUETAS. Punto 3.5.
+//
+// Se genera con `node tools/fuente-chip.mjs` y vive en el repo: no se carga de
+// ningún CDN, porque Chip funciona sin red y una fuente remota rompe eso. Está
+// en ARCHIVOS_CACHE, así que la primera apertura offline ya la tiene.
+//
+// Diseñada a 8 px con unitsPerEm 1024: un píxel de diseño son 128 unidades
+// exactas, y por eso se dibuja a 8, 16 o 24 y nunca a 12 ni a 18.
+//
+// `block` y no `swap`: con `swap` se ve un cuadro con la fuente de reserva y las
+// etiquetas saltan de forma al llegar la buena — justo el parpadeo que el punto
+// 4 vino a sacar.
+export const FUENTE_BOTONERA = {
+  familia: 'Chip Pixel',
+  ruta: 'fuentes/chip-pixel.ttf',
+  formato: 'truetype',
+  display: 'block',
+  // Los tamaños en los que se ve nítida, para que el test pueda cruzar contra
+  // BOTONERA.fuente en vez de contra un número escrito dos veces.
+  nativo: 8
+};
+
+export const VARS_FUENTE = {
+  familia: '--fuente-pixel'
+};
+
+// Cuántas chapas hay en la fila. Lo usa medirBotonera para repartir el ancho en
+// enteros, y está acá y no escrito a mano en ui.js porque es la misma cuenta que
+// haría cualquiera que agregue una cuarta acción: si el número queda dentro de
+// la función, el día que entre otro botón las tres viejas se desalinean sin que
+// nada lo diga.
+export const BOTONES_EN_LA_FILA = 3;
 
 // Versión que se muestra en Sobre Chip. Se sube a mano, con el mismo criterio
 // que CACHE_VERSION: es una decisión, no un efecto colateral.

@@ -129,7 +129,9 @@ import {
   COLORES_PANEL,
   COLORES_BOTON,
   BOTONERA,
-  VARS_BOTONERA
+  VARS_BOTONERA,
+  VARS_FUENTE,
+  FUENTE_BOTONERA
 } from './config.js';
 
 const ms = (n) => `${n}ms`;
@@ -348,13 +350,15 @@ export function variablesDeTema() {
     ...tonos('panel', COLORES_PANEL),
     ...tonos('boton', COLORES_BOTON),
 
-    // Las tres chapas apoyadas en el piso: la fuga que comparten con las
-    // baldosas y la sombra de contacto. Ver BOTONERA en config.js, que trae la
-    // cuenta de por qué la perspectiva es corta.
-    [VARS_BOTONERA.inclinacion]: BOTONERA.inclinacion + 'deg',
-    [VARS_BOTONERA.perspectiva]: px(BOTONERA.perspectiva),
-    [VARS_BOTONERA.fugaX]: pct(BOTONERA.fuga.x),
-    [VARS_BOTONERA.fugaY]: pct(BOTONERA.fuga.y),
+    // Las tres chapas apoyadas en el piso. Todo en unidades enteras: la fuga y
+    // la inclinación se fueron con el punto 3, y lo que queda es un módulo de
+    // 8 px del que salen el alto, la separación, el texto y los íconos.
+    [VARS_BOTONERA.alto]: px(BOTONERA.unidad * BOTONERA.altoEnUnidades),
+    [VARS_BOTONERA.separacion]: px(BOTONERA.unidad * BOTONERA.separacionEnUnidades),
+    [VARS_BOTONERA.margen]: px(BOTONERA.unidad * BOTONERA.margenEnUnidades),
+    [VARS_BOTONERA.fuente]: px(BOTONERA.fuente),
+    [VARS_BOTONERA.icono]: px(BOTONERA.icono),
+    [VARS_FUENTE.familia]: `'${FUENTE_BOTONERA.familia}'`,
     [VARS_BOTONERA.sombraAncho]: pct(BOTONERA.sombra.ancho),
     [VARS_BOTONERA.sombraAlto]: px(BOTONERA.sombra.alto),
     [VARS_BOTONERA.sombraAlfa]: String(BOTONERA.sombra.alfa),

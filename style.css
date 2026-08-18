@@ -3697,143 +3697,131 @@ body.es-noche #piso {
   border: 0;
 }
 
-/* ---- Tres chapas apoyadas en el piso del galpón ----
+/* ============================================================================
+   TRES CHAPAS APOYADAS EN EL PISO — reescritas enteras por el punto 3
 
-   Teclas rectangulares con borde visible y un canto duro abajo que las levanta
-   del fondo. Al apretarlas bajan 1 px y el canto se achica a la mitad: la tecla
-   se hunde contra el chasis en vez de "resaltarse".
+   El diagnóstico de Damián fue "es de otro juego", y era exacto: la botonera
+   estaba bien construida y hablaba otro idioma. Chip está dibujado a mano en
+   píxeles y estaba apoyado sobre tres paneles con perspectiva, degradés
+   metálicos, remaches de tres capas y Arial.
 
-   SE FUE LA BARRA, y era lo que más gritaba "interfaz". Había un degradé oscuro
-   que las contenía, y un contenedor con fondo propio es una barra de
-   aplicación: no importa cuántos remaches tengan las teclas adentro, el marco
-   las declara ajenas al galpón.
+   Lo que se fue, y por qué cada cosa:
 
-   Lo que la barra parecía sostener —que el texto se leyera— no dependía de
-   ella: el contraste del texto se mide contra la CHAPA, que es opaca y sigue
-   igual. Lo verifica el test de la botonera, no el ojo.
+   1. LA PERSPECTIVA Y LA INCLINACIÓN. Es lo primero y lo que más pesa. Inclinar
+      algo en 3D obliga al navegador a resamplear cada borde fuera de la grilla
+      de píxeles: con el rotateX puesto, ningún otro arreglo de este punto se
+      puede ver. Los cantos duros, la fuente pixel y los íconos de 16 unidades
+      quedaban todos interpolados por el mismo transform.
 
-   Lo que queda en su lugar: la fuga compartida con las baldosas y una sombra de
-   contacto por chapa. Ver BOTONERA en config.js. */
+      Lo que la inclinación sostenía —que la chapa se lea apoyada y no pegada
+      como una calcomanía— lo sigue haciendo la sombra de contacto, que se queda
+      y es lo único suave que hay acá.
+
+   2. LOS DOCE GRISES PROPIOS. Una pieza con paleta propia es de otro juego por
+      más que cada tono esté bien elegido. Ahora usa `--panel-*`, que ya estaban
+      declarados para el resto de la escena.
+
+   3. LOS DEGRADÉS, EL BISEL, LOS REMACHES Y EL BRILLO. Un color por superficie:
+      un relleno, un filo, y nada en el medio. Los remaches eran tres capas de
+      radial-gradient cada uno — arte de otro estilo, agregado a un dibujo que
+      no lo tiene.
+
+   4. ARIAL 12. Ver el bloque de la fuente, más abajo.
+
+   5. EL border-radius. Un radio redondeado nunca cae en la grilla: son tres o
+      cuatro píxeles interpolados en cada esquina, justo donde el ojo busca el
+      canto.
+
+   Lo que NO se fue: la sombra de contacto (punto 3.6), el LED, y los tres
+   estados. Y `#btn-jugar` sigue con `disabled` en false y `aria-disabled` en
+   true, que es el patrón correcto y es fácil de romper reescribiendo estados.
+   ============================================================================ */
+
+/* LA FUENTE PIXEL. Punto 3.5.
+
+   La ruta va literal y no por var(): `@font-face` se resuelve antes de que
+   exista ninguna custom property, así que acá no se puede leer el puente. Es el
+   mismo carve-out que ya tienen `sw.js` y el `<style>` de arranque del index, y
+   como todos ellos lleva un test que lo cruza contra config.js — ver
+   FUENTE_BOTONERA.
+
+   `block` y no `swap`: con `swap` se ve un cuadro con la fuente de reserva y las
+   etiquetas saltan de forma al llegar la buena, que es el parpadeo que el punto
+   4 vino a sacar. `block` muestra el texto invisible hasta que la fuente está;
+   sobre un archivo de 3 KB que además viene del caché, eso es un cuadro. */
+@font-face {
+  font-family: 'Chip Pixel';
+  src: url('fuentes/chip-pixel.ttf') format('truetype');
+  font-display: block;
+}
 
 #acciones {
   display: flex;
-  gap: var(--esp-1);
-  padding: var(--esp-1) var(--esp-2);
+  justify-content: center;
+  gap: var(--boton-separacion);
+  padding: var(--boton-margen);
   /* La barra de gestos de Android y el borde inferior del iPhone se comen lo
      que haya acá abajo. viewport-fit=cover en index.html deja que la escena
      llegue al borde físico; esto evita que las teclas queden abajo de todo. */
-  padding-bottom: calc(var(--esp-1) + env(safe-area-inset-bottom, 0px));
-
-  /* LA FUGA VIVE ACÁ Y NO EN CADA CHAPA, y esa es la parte que hace que
-     funcione: con el origen de perspectiva puesto en el punto de fuga del
-     galpón, cada tecla recibe la convergencia que le toca por dónde está parada
-     —la de la izquierda fuga hacia la derecha, la de la derecha casi no fuga— y
-     no hay que calcular nada por botón. Es el mismo mecanismo que tiene una
-     cámara: un solo punto de vista, tres objetos.
-
-     El origen es el 138% del ancho: afuera del cuadro por la derecha, que es
-     donde está el punto de fuga medido del galpón. */
-  perspective: var(--boton-perspectiva);
-  perspective-origin: var(--boton-fuga-x) var(--boton-fuga-y);
+  padding-bottom: calc(var(--boton-margen) + env(safe-area-inset-bottom, 0px));
 }
 
 #acciones button {
   position: relative;
-  flex: 1;
-  /* Target de pulgar: 44 px es el mínimo cómodo, y con el ícono arriba del
-     texto la tecla queda más alta que eso igual. */
-  min-height: 44px;
+
+  /* EL ANCHO ES UN ENTERO DE PÍXELES, y esto es el punto 3.7.
+
+     Antes era `flex: 1`, o sea un reparto en porcentaje: un botón de 30% sobre
+     390 px son 117, y sobre 393 son 117,9. Ese decimal es medio píxel de borde
+     borroso en los dos cantos verticales de las tres chapas, todo el tiempo, en
+     cualquier teléfono cuyo ancho no sea múltiplo de tres.
+
+     `--boton-ancho` lo mide ui.js y lo escribe redondeado hacia abajo. Lo que
+     sobra queda de aire a los costados, que no se ve; medio píxel de borde, sí.
+     Ver medirBotonera. */
+  width: var(--boton-ancho);
+  height: var(--boton-alto);
+  box-sizing: border-box;
+
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 8px 0 6px;
+  gap: 2px;
 
-  /* SE INCLINA SOBRE SU BASE. El pivote va abajo a propósito: la chapa está
-     apoyada en el piso, así que lo que se mueve es el borde de arriba yéndose al
-     fondo, no la pieza entera girando en el aire. Con la base clavada, el punto
-     de contacto —y la sombra que va con él— no se mueven.
+  /* PLANO: un relleno y un filo. Nada en el medio. */
+  background: var(--panel-chapa);
+  border: 1px solid var(--panel-filo);
+  /* Punto 3.2. Cero, no "poco": 3px de radio son tres píxeles interpolados en
+     cada esquina. */
+  border-radius: 0;
 
-     El ángulo se lee de una variable en vez de estar acá, porque :active y el
-     bloque de movimiento reducido tienen que repetir el transform entero: en CSS
-     un transform pisa al otro, no se suman. Sin la variable, apretar la tecla la
-     enderezaría de golpe. */
-  transform-origin: bottom;
-  transform: rotateX(var(--boton-inclinacion));
-
-  /* CHAPA CON RELIEVE, no una caja gris.
-     El degradé tiene un quiebre marcado en el 52%: arriba la cara que recibe
-     luz, abajo la que queda en sombra. Un degradé parejo se lee como plástico;
-     el quiebre es lo que dice "esto es metal doblado".
-
-     LOS GRISES SUBIERON, y ese era el problema de fondo: la botonera era mucho
-     más oscura que las dos cosas de metal que tiene alrededor —la chapa de Chip
-     y la caja del fondo—, así que leía como otro material. Ahora `chapa` es
-     prácticamente la chapa de la cabeza de Chip. Ver COLORES_BOTON en config.js,
-     que además tiene la remedición de contraste del texto.
-
-     Y DOS REMACHES, uno por lado, que es lo que más rápido dice "esto es una
-     pieza atornillada". Van al costado y no en las cuatro esquinas por dos
-     razones: la de arriba a la derecha chocaría con el LED, y cuatro tornillos
-     en una tecla de 144x50 es ruido — la spec avisa de eso.
-
-     A 34% de alto y no a la mitad: a la mitad caían justo sobre el quiebre del
-     degradé, con media cabeza en la cara iluminada y media en la sombra, y ahí
-     se leían como manchas. Un remache necesita una sola luz para leerse como
-     remache. Son tres capas cada uno —anillo, cabeza y brillo corrido hacia
-     arriba— que es el mismo truco del ícono grabado. */
-  background:
-    /* remache izquierdo: brillo, cabeza y anillo */
-    radial-gradient(circle 1.6px at 9.2px calc(34% - 1.1px), var(--boton-brillo) 0 60%, transparent 66%),
-    radial-gradient(circle 3.2px at 10px 34%, var(--boton-chapa) 0 30%, var(--boton-remache) 70% 100%, transparent 100%),
-    radial-gradient(circle 4.2px at 10px 34%, transparent 0 64%, var(--boton-filo) 70% 90%, transparent 94%),
-    /* y el derecho, espejado */
-    radial-gradient(circle 1.6px at calc(100% - 10.8px) calc(34% - 1.1px), var(--boton-brillo) 0 60%, transparent 66%),
-    radial-gradient(circle 3.2px at calc(100% - 10px) 34%, var(--boton-chapa) 0 30%, var(--boton-remache) 70% 100%, transparent 100%),
-    radial-gradient(circle 4.2px at calc(100% - 10px) 34%, transparent 0 64%, var(--boton-filo) 70% 90%, transparent 94%),
-    linear-gradient(
-      180deg,
-      var(--boton-arriba) 0%,
-      var(--boton-chapa) 52%,
-      var(--boton-bajo) 52.5%,
-      var(--boton-fondo) 100%
-    );
-  border: 1px solid var(--boton-filo);
-  border-radius: 3px;
   color: var(--boton-texto);
-  font-size: 12px;
-  letter-spacing: 0.02em;
+  font-family: var(--fuente-pixel), monospace;
+  /* 16 px = dos veces el tamaño nativo de 8. Un múltiplo entero, así que cada
+     píxel del diseño mide dos de pantalla exactos. */
+  font-size: var(--boton-fuente);
+  /* Cero, y no 0.02em. Un espaciado fraccionario corre cada letra un poco y las
+     manda fuera de la grilla — es la forma más fácil de deshacer todo esto. */
+  letter-spacing: 0;
+  line-height: 1;
   cursor: pointer;
 
-  /* Bisel claro arriba, sombra abajo, y el canto que le da espesor. */
-  box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--boton-brillo) 60%, transparent),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-    0 2px 0 var(--boton-filo),
-    0 3px 4px rgba(0, 0, 0, 0.45);
   /* SOLTAR ES MÁS LENTO QUE APRETAR. El dedo baja de golpe y el material vuelve
-     solo; con las dos mitades iguales el botón se siente de plástico duro. La
-     transición de reposo usa el tiempo LARGO —o sea el de volver— y la de
-     :active lo pisa con el corto. */
-  transition:
-    transform var(--presion-sube) ease-out,
-    box-shadow var(--presion-sube) ease-out,
-    filter var(--presion-sube) ease-out;
+     solo. La transición de reposo usa el tiempo LARGO —el de volver— y la de
+     :active lo pisa con el corto. Sólo el color: el movimiento es de 2 px
+     enteros y no necesita interpolarse. */
+  transition: background-color var(--presion-sube) ease-out;
 }
 
 /* LA FRANJA NARANJA DEL CANTO. Es el acento del juego usado como lo usa el
-   mundo: pintura sobre el canto de la chapa, gastada, igual que la banda de la
-   caja de conexión y los aros de las orugas. NO es un contorno encendido
-   alrededor de la tecla — eso la devolvería a ser un icono.
+   mundo: pintura sobre el canto de la chapa, igual que la banda de la caja de
+   conexión y los aros de las orugas. NO es un contorno encendido alrededor de
+   la tecla — eso la devolvería a ser un ícono.
 
-   Va sobre el filo de abajo, que es donde la pintura de una consola se ve
-   primero y donde se descascara. Con `overflow: hidden` en el botón queda
-   recortada por el radio del borde sin ninguna cuenta. */
-/* El `overflow: hidden` del botón se fue con la sombra de contacto —un
-   pseudo-elemento que vive ABAJO de la chapa no puede estar recortado por
-   ella— así que la franja se redondea sola. 2px y no 3: el borde de 1 px se
-   come el radio interior. */
+   Plana. Antes era un degradé de tres paradas con un color-mix a negro para
+   simular el desgaste; el desgaste pintado a mano en un degradé es exactamente
+   el tipo de rasgo que el punto 3 saca. */
 #acciones button::after {
   content: '';
   position: absolute;
@@ -3841,34 +3829,21 @@ body.es-noche #piso {
   right: 0;
   bottom: 0;
   height: 2px;
-  border-radius: 0 0 2px 2px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--boton-naranja) 82%, transparent) 0%,
-    var(--boton-naranja) 60%,
-    color-mix(in srgb, black 45%, var(--boton-naranja)) 100%
-  );
+  background: var(--boton-naranja);
   pointer-events: none;
 }
 
-/* LA SOMBRA DE CONTACTO. Una elipse en el piso, abajo de cada chapa, que es lo
-   que las mete en el espacio en vez de dejarlas flotando. Es el mismo recurso
-   que ya usan la caja de conexión y las piezas de la repisa, y es más barato y
-   más convincente que cualquier textura.
+/* LA SOMBRA DE CONTACTO, y es lo único suave que queda. El punto 3.6 la deja
+   afuera del tratamiento de cantos duros a propósito: una sombra real es suave,
+   y es lo que mete la chapa en el espacio en vez de dejarla flotando.
 
-   Por qué una elipse y no un box-shadow: un box-shadow sigue la forma de la
-   caja, o sea que da un rectángulo borroso. Lo que apoya en el piso no proyecta
-   un rectángulo, proyecta una mancha — y vista casi de canto, en escorzo, esa
-   mancha es una elipse baja. Los aros de las orugas están dibujados con el
-   mismo criterio.
+   Es el mismo recurso que ya usan la caja de conexión y las piezas de la
+   repisa. Por qué una elipse y no un box-shadow: un box-shadow sigue la forma de
+   la caja, o sea que da un rectángulo borroso. Lo que apoya en el piso no
+   proyecta un rectángulo, proyecta una mancha — y vista casi de canto, esa
+   mancha es una elipse baja.
 
-   `z-index: -1` la manda atrás de la chapa. Vive fuera de la caja porque el
-   contacto está en el borde de abajo y la sombra se derrama hacia afuera; por
-   eso el botón perdió su `overflow: hidden`.
-
-   Y NO se inclina con la chapa. El transform del botón la arrastraría al fondo
-   junto con el borde de arriba, y una sombra que se va al fondo es una sombra
-   despegada del piso. Se cancela con la rotación inversa. */
+   Ya no hace falta cancelarle ninguna rotación: no hay ninguna. */
 #acciones button::before {
   content: '';
   position: absolute;
@@ -3877,7 +3852,6 @@ body.es-noche #piso {
   width: var(--boton-sombra-ancho);
   height: var(--boton-sombra-alto);
   translate: -50% 60%;
-  transform: rotateX(calc(var(--boton-inclinacion) * -1));
   border-radius: 50%;
   background: radial-gradient(
     ellipse at center,
@@ -3890,127 +3864,93 @@ body.es-noche #piso {
   pointer-events: none;
 }
 
-/* La chapa apagada también apoya: lo que se apagó es la luz que le pegaba, no
-   el hecho de estar en el piso. Pero proyecta menos, porque la sombra de
-   contacto la arma la misma luz. */
+/* La chapa apagada también apoya: lo que se apagó es la luz que le pegaba, no el
+   hecho de estar en el piso. Pero proyecta menos, porque la sombra de contacto
+   la arma la misma luz. */
 #acciones button:disabled::before,
 #acciones button[aria-disabled='true']::before {
   opacity: 0.55;
 }
 
-/* EL ÍCONO VA GRABADO, no dibujado encima. El truco es de dos capas: el trazo
-   propio en un gris apenas más oscuro que la chapa, y debajo una copia
-   desplazada un píxel hacia abajo en casi blanco. Eso es exactamente lo que se
-   ve en un metal estampado: el filo de abajo del surco atrapa la luz. */
+/* LOS ÍCONOS, COMO PÍXELES Y NO COMO TRAZOS. Punto 3.4.
+
+   Eran `<svg viewBox="0 0 24 24">` con `stroke-width: 1.8` y `stroke-linecap:
+   round`: trazos de ancho fraccionario con puntas redondeadas, o sea lo más
+   lejos que hay de un dibujo en píxeles. Encima llevaban un drop-shadow de un
+   píxel para fingir un grabado en metal.
+
+   Ahora son `<rect>` rellenos sobre una grilla de 16x16, y se muestran a 16 px:
+   uno a uno, así que cada unidad del SVG es un píxel de pantalla exacto. Sin
+   stroke, sin filtros y con `crispEdges`, que le dice al rasterizador que no
+   interpole. */
 #acciones button svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: var(--boton-filo);
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.13));
-  transition: stroke var(--duracion-presion) ease-out;
-}
-
-/* El botón Cargar tiene el rayo relleno, no trazado. */
-#btn-cargar svg {
-  fill: var(--boton-filo);
+  width: var(--boton-icono);
+  height: var(--boton-icono);
+  fill: var(--boton-texto);
   stroke: none;
+  shape-rendering: crispEdges;
 }
 
-/* LUZ PROPIA cuando la acción está disponible. Un LED chico arriba a la
-   derecha: es lo que convierte una chapa en un aparato encendido. */
+/* EL LED. Es una luz, no una superficie: se queda, porque es lo que convierte
+   una chapa en un aparato encendido.
+
+   Cuadrado de 2 px y no un círculo de 4: un `border-radius: 50%` sobre cuatro
+   píxeles son cuatro esquinas interpoladas. Un píxel encendido es un cuadrado.
+   Y sin el halo de box-shadow, que era un degradé. */
 .led {
   position: absolute;
-  top: 5px;
-  right: 6px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
+  top: 3px;
+  right: 3px;
+  width: 2px;
+  height: 2px;
   background: var(--color-bateria);
-  box-shadow: 0 0 4px 1px color-mix(in srgb, var(--color-bateria) 70%, transparent);
-  animation: latir-led var(--ciclo-led) ease-in-out infinite;
+  animation: latir-led var(--ciclo-led) steps(1, end) infinite;
 }
 
+/* `steps` y no `ease-in-out`: la opacidad interpolada de un LED de 2x2 px son
+   dos píxeles a medio encender. Prendido o apagado, como una lámpara. */
 @keyframes latir-led {
-  0%, 100% { opacity: 0.45; }
-  50% { opacity: 1; }
+  0%,
+  49% { opacity: 1; }
+  50%,
+  100% { opacity: 0.35; }
 }
 
-#acciones button:hover:not(:disabled):not([aria-disabled='true']) {
-  filter: brightness(1.12);
-  color: #fff;
-}
-
-/* SE HUNDE DE VERDAD: baja 2 px —el espesor entero del canto— y el canto
-   desaparece. Con 1 px y el canto puesto, la tecla se movía pero no se hundía. */
-/* La OTRA mitad del gesto: apretar va con el tiempo corto y pisa al de arriba,
-   que es el de volver. Bajar 60 ms y volver 140 es la proporción que hace que un
-   botón se sienta de un material y no de plástico duro. */
-/* El transform REPITE la inclinación, no la reemplaza: en CSS un transform pisa
-   al otro. Sin esto, apretar la tecla la enderezaría de golpe — que es un
-   movimiento que nadie pidió y que además delata que la fuga es un truco. */
+/* APRETADO: la chapa se hunde en el hueco. Baja 2 px enteros —no 1,5— y cambia
+   de relleno al tono del hueco del panel, que es el que ya usa la escena para
+   lo que está por debajo de la superficie. Sin biseles internos ni sombras. */
 #acciones button:active:not(:disabled):not([aria-disabled='true']) {
-  transform: translateY(2px) rotateX(var(--boton-inclinacion));
-  transition:
-    transform var(--presion-baja) ease-in,
-    box-shadow var(--presion-baja) ease-in,
-    filter var(--presion-baja) ease-in;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 2px 5px rgba(0, 0, 0, 0.6),
-    0 0 0 #0a0d12;
+  transform: translateY(2px);
+  background: var(--panel-hueco);
+  transition: background-color var(--presion-baja) ease-in;
 }
 
-/* El ícono destella un instante al tocar: el surco se llena de luz. */
+/* El ícono se enciende al tocar. Es un cambio de color plano, no un destello
+   con blur. */
 #acciones button:active:not(:disabled):not([aria-disabled='true']) svg {
-  stroke: var(--color-bateria);
-  filter: drop-shadow(0 0 4px var(--color-bateria));
-}
-
-#btn-cargar:active:not(:disabled):not([aria-disabled='true']) svg {
   fill: var(--color-bateria);
-  stroke: none;
 }
 
-/* Y el LED pulsa fuerte, una sola vez. */
-#acciones button:active:not(:disabled):not([aria-disabled='true']) .led {
-  animation: pulso-led var(--duracion-presion) ease-out;
-}
+/* DESHABILITADO: el mismo relleno y el texto en `--panel-linea`, que es lo que
+   pide el punto 3.3. Contra la chapa da 2,25 a 1 — poco para texto normal, y
+   exactamente lo que se quiere para texto apagado, porque "apagado" tiene que
+   leerse como apagado.
 
-@keyframes pulso-led {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(2.4); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-/* Deshabilitado tiene que cantarse de un vistazo, no adivinarse: la chapa se
-   apaga, el relieve se aplana y el LED se APAGA del todo. Que el LED esté o no
-   esté es la diferencia más rápida de leer que hay — antes que el color, antes
-   que el contraste. */
-/* El mismo tratamiento apagado para los dos motivos: chapa mate, relieve
-   aplanado y sin LED. Al jugador no le importa la diferencia entre "no hace
-   falta" y "no puedo" mirando la tecla — la diferencia la explica Chip. */
+   El mismo tratamiento para los dos motivos: al jugador no le importa la
+   diferencia entre "no hace falta" y "no puedo" mirando la tecla — esa
+   diferencia la explica Chip. */
 #acciones button:disabled,
 #acciones button[aria-disabled='true'] {
-  /* Chapa MATE: se va el quiebre entre las dos caras, se van los remaches
-     brillantes y se aplana el relieve. La pieza sigue estando; lo que se apagó
-     es la luz que le pegaba. Es tratamiento por material, no una opacidad. */
-  background: linear-gradient(180deg, var(--boton-mate) 0%, var(--boton-mate-bajo) 100%);
-  color: var(--boton-mate-texto);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 1px 0 var(--boton-filo);
+  color: var(--panel-linea);
   cursor: not-allowed;
 }
 
 /* Y la pintura del canto se apaga con el resto: una consola sin corriente no
-   tiene la franja encendida, la tiene sucia. */
+   tiene la franja encendida. Se cambia el color, no se le pone un filtro: un
+   `saturate()` sobre un color plano es una forma cara de escribir otro color. */
 #acciones button:disabled::after,
 #acciones button[aria-disabled='true']::after {
-  filter: saturate(0.35) brightness(0.55);
+  background: var(--panel-linea);
 }
 
 #acciones button:disabled .led,
@@ -4020,28 +3960,11 @@ body.es-noche #piso {
 
 #acciones button:disabled svg,
 #acciones button[aria-disabled='true'] svg {
-  stroke: #2a2f39;
-  filter: none;
+  fill: var(--panel-linea);
 }
 
-#btn-cargar:disabled svg,
-#btn-cargar[aria-disabled='true'] svg {
-  fill: #2a2f39;
-}
-
-/* ACÁ HABÍA UNA SEGUNDA REGLA `#acciones button svg`, y estaba matando al
-   grabado.
-
-   Declaraba `stroke: currentColor` con la misma especificidad que la de arriba y
-   más abajo en la hoja, así que ganaba: el ícono se dibujaba con el color del
-   texto —claro, encima de la chapa— y todo el tratamiento de relieve que el
-   bloque de arriba explica no se veía nunca. Es el mismo error de la regla
-   duplicada que ya se documentó con el shorthand `animation`, con la diferencia
-   de que este no rompía nada visiblemente: sólo dejaba el ícono peor.
-
-   Lo único que aportaba era su comentario, que sí vale y queda: los íconos son
-   tres trazos cada uno y no llevan significado propio —el texto de abajo es el
-   que nombra la acción— y por eso van aria-hidden. */
+/* Los íconos son tres formas cada uno y no llevan significado propio: el texto
+   de abajo es el que nombra la acción, y por eso van `aria-hidden`. */
 
 /* ---- El evento, apoyado en el piso del galpón ----
 
@@ -4125,10 +4048,12 @@ body.es-noche #piso {
     animation: none;
   }
 
-  /* La inclinación NO se va con el movimiento reducido: no es movimiento, es la
-     forma de la pieza. Lo que se va es el viaje de los 2 px. */
+  /* El viaje de 2 px al apretar se va; el cambio de relleno se queda, porque no
+     es movimiento sino la respuesta de que el toque llegó. Antes acá había que
+     repetir la inclinación —un transform pisa al otro— y con la perspectiva
+     fuera del punto 3 eso ya no hace falta: alcanza con no mover nada. */
   #acciones button:active:not(:disabled) {
-    transform: rotateX(var(--boton-inclinacion));
+    transform: none;
   }
 
   /* El cambio de momento del día se muestra igual: lo que se va es la

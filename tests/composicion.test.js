@@ -26,13 +26,16 @@
 //     nivel; hoy TODA la geometría de los efectos vive ahí, y el chequeo de
 //     inventario de abajo es lo que avisa si eso deja de ser cierto.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { prueba, igual, verdadero } from './runner.js';
 import { svgDeRepisa } from '../js/formas.js';
 import {
   INHALACION,
   INCLINACION_CABEZA,
   COLORES_BOTON,
+  COLORES_PANEL,
+  BOTONERA,
+  FUENTE_BOTONERA,
   ANTENA_INERCIA,
   RITMOS_RAYO,
   UMBRAL_CRITICO_BATERIA,
@@ -378,33 +381,159 @@ function contraste(a, b) {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 
-prueba('botonera: el texto sigue en AA sobre la chapa nueva', () => {
-  for (const cara of ['bajo', 'fondo']) {
-    const c = contraste(COLORES_BOTON.texto, COLORES_BOTON[cara]);
-    verdadero(c >= 4.5, `texto sobre ${cara}: ${c.toFixed(2)} a 1, y AA pide 4,5`);
-  }
+// ---- LA BOTONERA DESPUÉS DEL PUNTO 3 ----
+//
+// Los doce grises propios se fueron: ahora usa `--panel-*`, que ya estaban
+// declarados para el resto de la escena. Lo único que le queda de tabla propia
+// es el gris del texto y el naranja.
 
-  for (const cara of ['arriba', 'chapa']) {
-    const c = contraste(COLORES_BOTON.filo, COLORES_BOTON[cara]);
-    verdadero(c >= 3, `ícono grabado sobre ${cara}: ${c.toFixed(2)} a 1, y AA gráfico pide 3`);
-  }
-
-  const apagado = contraste(COLORES_BOTON['mate-texto'], COLORES_BOTON['mate-bajo']);
-  verdadero(apagado >= 3, `la tecla apagada da ${apagado.toFixed(2)} a 1 y tiene que seguir legible`);
+prueba('botonera: el texto entra en AA sobre la chapa del panel', () => {
+  const c = contraste(COLORES_BOTON.texto, COLORES_PANEL.chapa);
+  verdadero(c >= 4.5, `texto sobre la chapa: ${c.toFixed(2)} a 1, y AA pide 4,5`);
+  // El ícono es un elemento gráfico y AA le pide 3. Va del mismo gris que el
+  // texto, así que si el texto pasa éste pasa — se mide igual, porque el día que
+  // alguien le ponga color propio al ícono esto lo agarra.
+  verdadero(c >= 3, `ícono sobre la chapa: ${c.toFixed(2)} a 1`);
 });
 
-// Y que la chapa siga siendo del mismo material que lo que tiene al lado. Si
-// alguien la vuelve a oscurecer, la botonera vuelve a leerse como interfaz.
-prueba('botonera: la chapa está en la familia de la chapa de Chip', () => {
-  const suya = luminancia(COLORES_BOTON.chapa);
-  // El gris del casco, medido del sprite. Estaba tomado de COLOR_PARPADO, que
-  // valía lo mismo de casualidad; cuando el párpado volvió al crema, esto habría
-  // pasado a comparar la chapa contra un durazno y el test habría dado 80% sin
-  // que nadie hubiera tocado la botonera. Ahora sale de su propia constante.
-  const chip = luminancia(GRIS_CHAPA_CABEZA);
-  const lejos = Math.abs(suya - chip) / chip;
+prueba('botonera: el naranja es el de la paleta cerrada y no uno propio', () => {
+  // Era #c8781f, un tono inventado para la botonera vieja. El punto 3.3 pide el
+  // #ffa300 de la paleta y avisa: si sobre este fondo quema, se le baja la
+  // opacidad y se anota el número. No quema, y el número está acá.
+  igual(COLORES_BOTON.naranja.toLowerCase(), '#ffa300', 'el naranja de la paleta cerrada');
 
-  verdadero(lejos < 0.35, `la chapa está a ${(lejos * 100).toFixed(0)}% de la de Chip en luminancia`);
+  const sobreChapa = contraste(COLORES_BOTON.naranja, COLORES_PANEL.chapa);
+  const sobreHueco = contraste(COLORES_BOTON.naranja, COLORES_PANEL.hueco);
+  verdadero(sobreChapa >= 3, `naranja sobre la chapa: ${sobreChapa.toFixed(2)} a 1`);
+  verdadero(sobreHueco >= 3, `naranja sobre el hueco: ${sobreHueco.toFixed(2)} a 1`);
+});
+
+prueba('botonera: la tecla apagada se lee apagada, no ilegible', () => {
+  // El punto 3.3 propone `--panel-linea` para el texto deshabilitado. Contra la
+  // chapa da 2,25: poco para texto normal, y es a propósito — "apagado" tiene
+  // que leerse como apagado. Lo que sí hay que garantizar es que se DISTINGA del
+  // fondo, o la tecla parecería vacía.
+  const apagada = contraste(COLORES_PANEL.linea, COLORES_PANEL.chapa);
+  const encendida = contraste(COLORES_BOTON.texto, COLORES_PANEL.chapa);
+  verdadero(apagada >= 1.8, `la tecla apagada da ${apagada.toFixed(2)} a 1 y tiene que verse`);
+  verdadero(apagada < encendida, 'y tiene que contrastar MENOS que la encendida, o no se distinguen');
+});
+
+// ---- Lo que el punto 3 saca, y que nadie lo vuelva a poner ----
+//
+// Estas cuatro cosas no son gusto: cada una manda píxeles fuera de la grilla, y
+// con cualquiera puesta el resto del punto no se puede ver.
+
+prueba('botonera: no hay perspectiva ni inclinación', () => {
+  // Es lo primero y lo más importante del punto 3. Inclinar algo en 3D obliga al
+  // navegador a resamplear cada borde fuera de la grilla de píxeles: con el
+  // rotateX puesto, los cantos duros, la fuente pixel y los íconos de 16
+  // unidades quedan todos interpolados por el mismo transform.
+  const bloque = CSS.slice(CSS.indexOf('#acciones {'), CSS.indexOf('#acciones button::after'));
+  verdadero(!/perspective/.test(bloque), 'volvió la perspectiva a #acciones');
+  verdadero(!/rotateX/.test(bloque), 'volvió el rotateX a las chapas');
+  verdadero(!('inclinacion' in BOTONERA), 'BOTONERA no puede volver a declarar inclinación');
+  verdadero(!('perspectiva' in BOTONERA), 'BOTONERA no puede volver a declarar perspectiva');
+  verdadero(!('fuga' in BOTONERA), 'BOTONERA no puede volver a declarar el punto de fuga');
+});
+
+prueba('botonera: las esquinas son duras', () => {
+  const bloque = CSS.slice(CSS.indexOf('#acciones button {'), CSS.indexOf('#acciones button::after'));
+  const radio = bloque.match(/border-radius:\s*([^;]+);/);
+  verdadero(radio !== null, 'la chapa tiene que declarar border-radius explícito');
+  igual(radio[1].trim(), '0', 'un radio redondeado nunca cae en la grilla');
+});
+
+prueba('botonera: la chapa es plana, sin degradés ni brillos ni remaches', () => {
+  // Un color por superficie: un relleno, un filo y nada en el medio. Los
+  // remaches eran tres radial-gradient cada uno, o sea arte de otro estilo
+  // agregado a un dibujo que no lo tiene.
+  const bloque = CSS.slice(CSS.indexOf('#acciones button {'), CSS.indexOf('#acciones button::before'));
+  verdadero(!/gradient/.test(bloque), 'volvió un degradé a la chapa');
+  verdadero(!/box-shadow/.test(bloque), 'volvió el relieve de box-shadow');
+  verdadero(!/color-mix/.test(bloque), 'volvió un tono mezclado en vez de uno de la paleta');
+});
+
+prueba('botonera: la sombra de contacto se queda, y sigue siendo suave', () => {
+  // Punto 3.6: es lo ÚNICO que tiene que ser suave, porque una sombra real lo
+  // es. Si alguien "termina" el punto 3 sacándole el degradé a esto, la chapa
+  // vuelve a flotar.
+  const bloque = CSS.slice(
+    CSS.indexOf('#acciones button::before'),
+    CSS.indexOf('#acciones button:disabled::before')
+  );
+  verdadero(/radial-gradient/.test(bloque), 'la sombra necesita su degradé');
+  verdadero(/blur/.test(bloque), 'y su difuminado');
+});
+
+prueba('botonera: los íconos son píxeles y no trazos', () => {
+  // Eran viewBox de 24x24 con stroke-width 1.8 y linecap round: trazos de ancho
+  // fraccionario con puntas redondeadas. Ahora son <rect> sobre una grilla de
+  // 16x16, mostrados a 16 px, o sea uno a uno.
+  const botones = [...INDICE.matchAll(/<button id="btn-[\s\S]*?<\/button>/g)].map((m) => m[0]);
+  igual(botones.length, 3, 'tienen que seguir siendo tres botones');
+
+  for (const b of botones) {
+    const vb = b.match(/viewBox="([^"]*)"/);
+    verdadero(vb !== null, 'cada botón tiene su ícono');
+    igual(vb[1], '0 0 16 16', 'la grilla del ícono es de 16 unidades');
+    verdadero(!/stroke/.test(b), 'ningún stroke: todo tiene que ser relleno');
+    verdadero(!/<path/.test(b), 'ningún path: sólo rectángulos enteros');
+    verdadero(/<rect /.test(b), 'y tiene que tener rectángulos');
+  }
+
+  const bloque = CSS.slice(CSS.indexOf('#acciones button svg'), CSS.indexOf('.led {'));
+  verdadero(/crispEdges/.test(bloque), 'el ícono necesita shape-rendering: crispEdges');
+  igual(BOTONERA.icono % 16, 0, 'el tamaño en pantalla es un múltiplo entero de la grilla');
+});
+
+prueba('botonera: la fuente pixel se dibuja a un múltiplo entero de su nativo', () => {
+  // Una fuente diseñada a 8 px se ve nítida a 8, 16 o 24. A 12 —lo que tenía
+  // Arial— cada píxel de diseño mediría 1,5 y volvería el antialiasing que todo
+  // este punto viene a sacar.
+  igual(
+    BOTONERA.fuente % FUENTE_BOTONERA.nativo,
+    0,
+    `${BOTONERA.fuente} px no es múltiplo de los ${FUENTE_BOTONERA.nativo} de diseño`
+  );
+
+  // Y el @font-face del CSS tiene que apuntar al mismo archivo que declara
+  // config.js. La ruta va literal en la hoja porque @font-face se resuelve antes
+  // de que exista ninguna custom property: es un carve-out, y como todos los
+  // carve-outs de este proyecto lleva su cruce.
+  const cara = CSS.slice(CSS.indexOf('@font-face'), CSS.indexOf('#acciones {'));
+  verdadero(cara.includes(FUENTE_BOTONERA.ruta), `el @font-face no apunta a ${FUENTE_BOTONERA.ruta}`);
+  verdadero(
+    cara.includes(FUENTE_BOTONERA.familia),
+    'la familia del CSS y la de config tienen que coincidir'
+  );
+  verdadero(
+    new RegExp('font-display:\\s*' + FUENTE_BOTONERA.display).test(cara),
+    'font-display tiene que ser block: con swap las etiquetas saltan de forma'
+  );
+});
+
+prueba('botonera: la fuente está en el repo y en ARCHIVOS_CACHE', () => {
+  // Autohospedada: Chip funciona sin red y una fuente remota rompe eso. Y si no
+  // estuviera en el caché, la primera apertura offline caería a la fuente de
+  // reserva y las etiquetas cambiarían de forma.
+  verdadero(!/https?:/.test(FUENTE_BOTONERA.ruta), 'la fuente no puede venir de un CDN');
+  verdadero(existsSync(RAIZ + FUENTE_BOTONERA.ruta), `falta ${FUENTE_BOTONERA.ruta} en el repo`);
+  verdadero(SW_BOTONERA.includes(FUENTE_BOTONERA.ruta), 'la fuente tiene que estar en ARCHIVOS_CACHE');
+});
+
+prueba('botonera: el ancho de las chapas se reparte en píxeles enteros', () => {
+  // Punto 3.7. Era `flex: 1`, o sea un reparto en porcentaje: 30% sobre 390 px
+  // son 117, y sobre 393 son 117,9. Ese decimal es medio píxel de borde borroso
+  // en los dos cantos verticales de las tres chapas, en cualquier teléfono cuyo
+  // ancho no sea múltiplo de tres.
+  const bloque = CSS.slice(CSS.indexOf('#acciones button {'), CSS.indexOf('#acciones button::after'));
+  verdadero(!/flex:\s*1/.test(bloque), 'volvió el reparto por flex, que da decimales');
+  verdadero(/width:\s*var\(--boton-ancho\)/.test(bloque), 'el ancho tiene que venir medido');
+  verdadero(
+    /Math\.floor/.test(UI_FUENTE) && /VARS_BOTONERA\.ancho/.test(UI_FUENTE),
+    'ui.js tiene que redondear el ancho HACIA ABAJO antes de escribirlo'
+  );
 });
 
 // ---- `hidden` contra `display`, que es una trampa del navegador ----
@@ -429,6 +558,8 @@ prueba('botonera: la chapa está en la familia de la chapa de Chip', () => {
 // El id tiene que ser el SUJETO de la regla y no un ancestro: `#rayo svg` le da
 // display al svg, no a #rayo, y contarlo daría un falso positivo.
 
+const SW_BOTONERA = readFileSync(RAIZ + 'sw.js', 'utf8');
+const INDICE = readFileSync(RAIZ + 'index.html', 'utf8');
 const UI_FUENTE = readFileSync(RAIZ + 'js/ui.js', 'utf8');
 const MONTAJE_FUENTE = readFileSync(RAIZ + 'js/ui-montaje.js', 'utf8');
 const FUENTE_VISTA = UI_FUENTE + '\n' + MONTAJE_FUENTE;
