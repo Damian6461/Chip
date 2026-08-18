@@ -3209,9 +3209,17 @@ export const CABLE = {
   // se puede cruzar, porque el eje es la misma pieza en las dos.
   //
   // Medido sobre la referencia: 25,3 px de cable sobre un eje de 849,6. Son
-  // 2,98%. En la escena de 480x944 el eje mide 240 px, así que el cable sale de
-  // 7,2 — contra los 5,3 que daba el 1,1% del ancho.
-  grosor: 2.98,
+  // 2,58%, y era 2,98 hasta que el toma se fue de cuadro. NO ES UN CAMBIO DE
+  // CRITERIO: es la compensación de que el eje se alargó.
+  //
+  // El grosor es un % del eje pecho->toma, y mover el toma del 90% al 106% del
+  // ancho estira ese eje de 256,3 a 296,2 px en una escena de 390x844. Con el
+  // 2,98 intacto el cable engordaba de 7,64 a 8,83 px —un 15,6%— sin que nadie
+  // hubiera pedido un cable más gordo. 2,58 lo devuelve a los 7,64 de antes.
+  //
+  // Antes de eso: en la escena de 480x944 el eje medía 240 px y el 2,98 daba 7,2,
+  // contra los 5,3 que daba el 1,1% del ancho.
+  grosor: 2.58,
 
   // EL RADIO MÍNIMO VA EN SEMIANCHOS Y NO EN PÍXELES, y el número absoluto que
   // había casi borra el quiebre en S.
@@ -3431,10 +3439,60 @@ export const PASA_DETRAS_CABLE = 82;
 // números iguales la panza corre exactamente por la base de Chip y las dos
 // siluetas se pegan — el cable deja de leerse delante y pasa a leerse como parte
 // del contorno.
+// SE QUEDA EN 86, Y SE INTENTÓ SUBIRLO. Queda escrito porque el intento estaba
+// bien planteado y lo que lo tumbó no se ve sin medirlo.
+//
+// El pedido era subir la panza para que el cable dejara de cruzar el panel de
+// mensajes. Medido, a 390x844, con la panza DIBUJADA —no la línea de apoyo, que
+// no es lo mismo— y leyendo el alfa del canvas para saber si toca a Chip:
+//
+//   apoyo 80  panza 80,5%  ->  171 puntos del cable sobre la silueta, x 51 a 78%
+//   apoyo 81  panza 81,7%  ->  131 puntos sobre la silueta, x 51 a 79%
+//   apoyo 82  panza 83,1%  ->   33 puntos, x 51 a 53%  (sólo el enchufe)
+//   apoyo 86  panza 88,5%  ->   33 puntos, x 51 a 53%  (sólo el enchufe)
+//
+// O sea que la panza tiene que quedar POR DEBAJO de la base de Chip —82%, que es
+// --piso-chip— o le cruza las orugas por encima. El corte es limpio entre 81 y
+// 82.
+//
+// Y DEL OTRO LADO NO HAY LUGAR, porque el borde de arriba del panel NO ES UNA
+// LÍNEA FIJA: el panel está anclado abajo y crece con el largo del mensaje.
+//
+//   mensaje de 1 línea   el panel arranca en 85,5%
+//   mensaje de 2         83,4%
+//   mensaje de 3         81,3%
+//
+// Con la panza en 83,1 el cable queda afuera del panel corto, al borde del
+// mediano, y 1,8 puntos ADENTRO del largo. Las dos ventanas —evitar a Chip pide
+// >= 82, evitar el panel más alto pide <= 81,3— no se tocan. No hay número.
+//
+// Así que el cruce del cable con el texto NO se arregla con esta constante, y
+// queda como estaba. El motivo original de 86, que sigue en pie, está justo
+// arriba.
 export const APOYO_CABLE = 86;
 
 export const TOMA_PARED = {
-  x: 90,
+  // EL CABLE SE VA DE CUADRO, y por eso este número pasa de 90 a 106.
+  //
+  // Estuvo en 90 apuntando a una caja dibujada por código sobre pared lisa, y el
+  // motivo por el que se fue está medido en verificacion/telefono.html: el
+  // galpón se recorta con `background-size: auto 100%`, así que en un teléfono
+  // de 390x844 sólo se ve del 8,0% al 34,0% del ancho del dibujo — y los DOS
+  // tomas que el arte sí dibuja viven en el 87,8%. Nunca entran en pantalla.
+  //
+  // Y no alcanzaba con mudar la constante a algo que sí entre, porque un % de la
+  // ESCENA no puede seguir a un rasgo del FONDO: el mismo punto del dibujo cae
+  // en 75,17% de la escena a 390x844 y en 68,39% en pantalla ancha. Cualquier
+  // valor está bien en un aparato y mal en el otro.
+  //
+  // Un cable que sale de cuadro no le debe explicación a nadie, funciona igual
+  // en todos los anchos, y de paso se lleva puesta la ficha de la punta —que
+  // apoyada contra pared lisa era el defecto— y el cruce del cable sobre el
+  // panel de mensajes. Un solo número para tres cosas.
+  //
+  // 106 y no 101: tiene que CRUZAR el borde y quedar cortado por el overflow.
+  // Terminar a tres píxeles del canto se ve peor que terminar en el medio.
+  x: 106,
   y: 58,
 
   // 3,4% del ancho, y antes eran 4,7: un 28% más chica.

@@ -1345,22 +1345,29 @@ export function dibujarCable() {
   const salida = { x: linea[1].x - linea[0].x, y: linea[1].y - linea[0].y };
   const ficha = fichaDelPuerto(desde, salida, grosor);
 
-  // Y LA OTRA PUNTA TAMBIÉN TERMINA EN ALGO. Medido antes de tocar nada: el
-  // extremo del cable cae en 90,5% / 58,1% de la escena y TOMA_PARED está en
-  // 90 / 58, o sea que llegaba exacto. Lo que faltaba no era llegar: era que se
-  // notara que llegó. Un tubo que se corta a la altura de una caja chica, sin
-  // pieza que lo reciba, se lee como una línea que termina en el aire — que es
-  // exactamente cómo se reportó.
+  // ---- LA FICHA DE LA OTRA PUNTA, SACADA A PROPÓSITO ----
   //
-  // Se reusa la misma ficha del pecho, girada según el ÚLTIMO tramo real del
-  // cable y apuntando al revés: la del pecho mira hacia afuera del cuerpo, ésta
-  // mira hacia adentro de la pared. Sin el giro de 180° la ficha sale del lado
-  // de afuera del toma y queda flotando contra el muro.
-  const entrada = {
-    x: linea.at(-1).x - linea.at(-2).x,
-    y: linea.at(-1).y - linea.at(-2).y
-  };
-  const fichaToma = fichaDelPuerto(hasta, entrada, grosor);
+  // Estuvo puesta y andaba: la misma ficha del pecho, girada 180° según el
+  // último tramo real del cable, dibujada en la capa de atrás. La punta llegaba
+  // exacto —medido, 90,5% / 58,1% contra un TOMA_PARED en 90 / 58— y la ficha
+  // caía adentro de la caja del toma.
+  //
+  // Se fue porque el problema no era la ficha: era DÓNDE terminaba. Enchufaba en
+  // una caja dibujada por código sobre pared lisa, mientras los dos tomas que el
+  // arte dibuja quedan fuera de cuadro en un teléfono. Ahora el cable se va por
+  // el borde derecho, y un cable que sale de cuadro no necesita ficha: lo que no
+  // se ve terminar no tiene que terminar en nada.
+  //
+  // El código queda escrito y no borrado porque la ficha está bien y el día que
+  // el encuadre cambie vuelve tal cual. Eran estas cuatro líneas, más el mismo
+  // par de <rect> que dibuja la del pecho, adentro de #cable-atras:
+  //
+  //   const entrada = {
+  //     x: linea.at(-1).x - linea.at(-2).x,
+  //     y: linea.at(-1).y - linea.at(-2).y
+  //   };
+  //   const fichaToma = fichaDelPuerto(hasta, entrada, grosor);
+  //   const ejeToma = `translate(${hasta.x} ${hasta.y}) rotate(${fichaToma.giro + 180})`;
 
   const caja = `0 0 ${Math.round(escena.width)} ${Math.round(escena.height)}`;
   nodoCable.setAttribute('viewBox', caja);
@@ -1370,22 +1377,10 @@ export function dibujarCable() {
     nodoCableAtras.setAttribute('viewBox', caja);
     // Con sus filos: la capa de atrás resuelve QUIÉN TAPA A QUIÉN, no el
     // sombreado. El tramo que sube al toma vive acá y sin esto salía plano.
-    // La ficha del toma va ACÁ y no en la capa de adelante, por dónde vive esa
-    // punta: el tramo que sube a la pared se dibuja atrás, y una ficha en la
-    // capa de adelante se vería pasar por encima de Chip cuando el cable cruza
-    // detrás de él. Va ÚLTIMA, igual que la del pecho: lo que tapa la punta es
-    // la pieza que va encima.
-    const ejeToma =
-      `translate(${hasta.x.toFixed(1)} ${hasta.y.toFixed(1)}) rotate(${(fichaToma.giro + 180).toFixed(1)})`;
-
     nodoCableAtras.innerHTML =
       `<path class="cable-cuerpo" d="${atras}"/>` +
       `<path class="cable-filo-abajo" d="${filoAbajoAtras}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>` +
-      `<path class="cable-filo-arriba" d="${filoArribaAtras}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>` +
-      `<g class="cable-ficha" transform="${ejeToma}">` +
-      `<rect class="cable-ficha-cuerpo" x="${(-fichaToma.largoFicha * 0.18).toFixed(1)}" y="${(-fichaToma.ancho / 2).toFixed(1)}" width="${fichaToma.largoFicha.toFixed(1)}" height="${fichaToma.ancho.toFixed(1)}" rx="${fichaToma.radio.toFixed(1)}"/>` +
-      `<rect class="cable-ficha-filo" x="${(-fichaToma.largoFicha * 0.18).toFixed(1)}" y="${(-fichaToma.ancho / 2).toFixed(1)}" width="${(fichaToma.largoFicha * 0.26).toFixed(1)}" height="${fichaToma.ancho.toFixed(1)}" rx="${(fichaToma.radio * 0.8).toFixed(1)}"/>` +
-      `</g>`;
+      `<path class="cable-filo-arriba" d="${filoArribaAtras}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>`;
   }
 
   const pulsos = Array.from(

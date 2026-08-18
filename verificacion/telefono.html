@@ -187,6 +187,21 @@
 <iframe id="marco-ancho" src="../index.html" title="Chip en una ventana ancha"
         style="width: 1100px; height: 945px; margin-top: 10px"></iframe>
 
+<h2>el eje pecho&rarr;toma, y por qué mover el toma mueve el grosor</h2>
+<p>
+  El grosor del cable es un <strong>% del eje pecho&rarr;toma</strong>
+  —<code>CABLE.grosor</code>— porque así la silueta se conserva cuando cambia el
+  tamaño de la escena. La consecuencia, que no es obvia: <strong>mover el toma
+  cambia el grosor dibujado sin que nadie haya pedido un cable más
+  gordo</strong>. Se guarda medido, para el día que se reabra el encuadre.
+</p>
+<p>
+  El método: el eje es <code>hypot((tomaX &minus; pechoX)% &times; ancho,
+  (tomaY &minus; pechoY)% &times; alto)</code> sobre la caja de la escena
+  medida arriba, y el grosor es <code>eje &times; CABLE.grosor / 100</code>.
+</p>
+<div id="ejes"></div>
+
 <h2>los seis fondos, y qué parte entra</h2>
 <p>
   De cada fondo: el ancho que ocupa escalado al alto de la escena, la franja
@@ -522,6 +537,31 @@ for (const ruta of FONDOS) {
   tabla.appendChild(fila);
 }
 puntoToma.appendChild(tabla);
+
+// ---- EL EJE Y EL GROSOR, PARA LOS TRES DESTINOS QUE SE EVALUARON ----
+const PECHO = { x: 52.7, y: 83 };
+const DESTINOS = [
+  { nombre: 'el toma de código, como estaba', x: 90, grosor: 2.98 },
+  { nombre: 'el panel de máquina (opción C, descartada)', x: 75.17, grosor: 2.98 },
+  { nombre: 'fuera de cuadro (lo que quedó)', x: 106, grosor: 2.58 }
+];
+
+const ejeCon = (x, cajaEsc) =>
+  Math.hypot(((x - PECHO.x) / 100) * cajaEsc.width, ((58 - PECHO.y) / 100) * cajaEsc.height);
+
+document.getElementById('ejes').innerHTML =
+  '<table><tr><th>destino del cable</th><th>x</th><th>eje a 390&times;844</th>' +
+  '<th>CABLE.grosor</th><th>grosor dibujado</th></tr>' +
+  DESTINOS.map((d) => {
+    const eje = ejeCon(d.x, caja);
+    return `<tr><td>${d.nombre}</td><td class="num">${d.x}%</td>` +
+      `<td class="num">${n2(eje)} px</td><td class="num">${d.grosor}%</td>` +
+      `<td class="num">${n2((eje * d.grosor) / 100)} px</td></tr>`;
+  }).join('') + '</table>' +
+  '<p>Los tres grosores dibujados dan lo mismo, y no por casualidad: al sacar el ' +
+  'toma de cuadro el eje se estiró un 15,6% y <code>CABLE.grosor</code> bajó de ' +
+  '2,98 a 2,58 para compensarlo. Sin esa compensación el cable engordaba de 7,6 ' +
+  'a 8,8 px de rebote. Lo hace cumplir <code>tests/coleccion.test.js</code>.</p>';
 
 document.title = 'teléfono — franja visible medida';
 </script>

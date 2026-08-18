@@ -19,6 +19,7 @@ import {
   CABLE,
   RECORRIDO_CABLE,
   TOMA_PARED,
+  CONECTOR_PECHO,
   PASA_DETRAS_CABLE
 } from '../js/config.js';
 import { OBJETOS, objetosDelEvento, objetoPorId } from '../js/datos-objetos.js';
@@ -624,11 +625,41 @@ prueba('cable: el grosor va en % del EJE y no del ancho de la escena', () => {
   // conserva cuando cambia el tamaño de la escena.
   verdadero(grosorDelCable(eje * 2, CABLE) === g * 2, 'escala con el eje');
 
-  // Y el número sale de la referencia: 25,3 px de cable sobre un eje de 849,6.
+  // Y EL NÚMERO SIGUE SALIENDO DE LA REFERENCIA, aunque ya no sea 2,98.
+  //
+  // La referencia mide 25,3 px de cable sobre un eje de 849,6, o sea 2,978%. Ese
+  // porcentaje valía mientras el eje del juego fuera la misma pieza que el de la
+  // referencia: pecho -> toma de la pared, con el toma en el 90% del ancho.
+  //
+  // El toma se fue de cuadro —al 106%, ver TOMA_PARED— así que el eje se estiró
+  // sin que el CABLE haya cambiado de grosor. Mantener el 2,978 sobre un eje más
+  // largo habría engordado el trazo un 15,6% de rebote: 8,82 px donde antes había
+  // 7,63. Lo que se conserva es el GROSOR DIBUJADO, no el porcentaje.
+  //
+  // Así que el porcentaje se re-deriva, y acá se re-deriva de nuevo en vez de
+  // creerle a la constante: 2,978% escalado por (eje viejo / eje nuevo).
+  const ESCENA = { ancho: 390, alto: 844 }; // el teléfono, que es el aparato
+  const ejeCon = (x) =>
+    Math.hypot(
+      ((x - CONECTOR_PECHO.x) / 100) * ESCENA.ancho,
+      ((TOMA_PARED.y - CONECTOR_PECHO.y) / 100) * ESCENA.alto
+    );
+  const DONDE_ESTABA_EL_TOMA = 90;
   const medido = (25.3 / 849.6) * 100;
+  const esperado = medido * (ejeCon(DONDE_ESTABA_EL_TOMA) / ejeCon(TOMA_PARED.x));
+
   verdadero(
-    Math.abs(CABLE.grosor - medido) < 0.05,
-    `${CABLE.grosor}% contra el ${medido.toFixed(2)}% medido en la referencia`
+    Math.abs(CABLE.grosor - esperado) < 0.05,
+    `${CABLE.grosor}% contra el ${esperado.toFixed(2)}% que sale de la referencia ` +
+      `re-escalada por el eje (${medido.toFixed(2)}% cuando el toma estaba en el 90%)`
+  );
+
+  // Y EL GROSOR DIBUJADO, que es lo que de verdad se conserva: 7,6 px en el
+  // teléfono, los mismos que había antes de mover el toma.
+  const px = grosorDelCable(ejeCon(TOMA_PARED.x), CABLE);
+  verdadero(
+    Math.abs(px - 7.63) < 0.3,
+    `el cable dibujado mide ${px.toFixed(2)} px y antes medía 7,63`
   );
 });
 
