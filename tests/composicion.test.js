@@ -1098,31 +1098,87 @@ const FAMILIAS_SHORTHAND = {
   ]
 };
 
-// EL SUJETO de un selector: el último compuesto, sin sus pseudo-clases, y de
-// ahí el id si lo hay. Así caen en la misma bolsa:
+// EL COMPUESTO FINAL de un selector: lo último, que es lo que el selector
+// realmente apunta. `#cabeza-grupo.distraida #ojos` apunta a `#ojos`.
+const compuestoFinalDe = (selector) =>
+  selector.trim().split(/[\s>+~]+/).filter(Boolean).at(-1) ?? '';
+
+// EL SUJETO: el compuesto final reducido a una clave, para que dos selectores
+// que apuntan al mismo elemento caigan en la misma bolsa.
 //
 //   `#cabeza-grupo.distraida #ojos` y `#ojos`      ->  #ojos
 //   `.estado-standby .zeta` y `.zeta:nth-child(2)` ->  .zeta
+//   `#puerta-servicio::after`                      ->  #puerta-servicio::after
 //
-// El segundo par importa: es la forma exacta de las tres primeras mordidas con
-// `animation`, y con las pseudo-clases adentro de la clave los dos selectores
-// caían en bolsas distintas y el guardián no comparaba nada.
+// LAS PSEUDO-CLASES SE SACAN Y EL PSEUDO-ELEMENTO SE QUEDA, y las dos mitades
+// costaron un bug cada una:
 //
-// LO QUE ESTA CLAVE NO VE, dicho en voz alta: `.a.b` y `.a` matchean elementos
-// en común y quedan en bolsas distintas. Agrupar por cada clase suelta cerraría
-// ese hueco y abriría el de los falsos positivos sobre reglas que no se
-// superponen nunca. Con ids —que es como está escrita casi toda esta hoja— la
-// clave es exacta.
+// - Con las pseudo-clases adentro, `.zeta:nth-child(2)` y `.zeta` caían en
+//   bolsas distintas y no se comparaban nunca — o sea que la familia
+//   `animation`, la que mordió tres veces, se colaba igual. Son el mismo
+//   elemento: la pseudo-clase filtra cuáles, no cambia la caja.
+//
+// - Con el pseudo-elemento sacado, `#x::after` y `#x` caían en la MISMA bolsa, y
+//   eso es un falso positivo: un pseudo-elemento es OTRA CAJA y no comparte
+//   cascada con su elemento, así que un shorthand en una no le resetea nada a la
+//   otra. Bloqueaba un cambio legítimo — darle una transición propia a
+//   #puerta-servicio ponía el guardián en rojo.
+//
+// La primera versión de esto TENÍA el ternario
+// `coincidencia.startsWith(':') ? '' : coincidencia`, que parece distinguir los
+// dos casos y no distingue nada: '::after'.startsWith(':') es `true`, así que la
+// rama derecha no corría nunca. El comentario de al lado describía la intención
+// y no la conducta, así que leerlo confirmaba el error. Ver la regla del README:
+// una condición que siempre da lo mismo se lee como una decisión y no lo es.
 function sujetoDe(selector) {
-  const ultimo = (selector.trim().split(/[\s>+~]+/).filter(Boolean).at(-1) ?? '')
-    .replace(/::?[\w-]+(\([^()]*\))?/g, (coincidencia) =>
-      // Se sacan las pseudo-clases y los pseudo-elementos, no las clases: el
-      // punto y los dos puntos son cosas distintas y este replace toca sólo el
-      // segundo.
-      coincidencia.startsWith(':') ? '' : coincidencia
-    );
-  const id = ultimo.match(/#[\w-]+/);
-  return id ? id[0] : ultimo;
+  const compuesto = compuestoFinalDe(selector);
+  const pseudo = compuesto.match(/::[\w-]+/)?.[0] ?? '';
+  const sinPseudo = compuesto.replace(/::?[\w-]+(\([^()]*\))?/g, '');
+  const id = sinPseudo.match(/#[\w-]+/);
+  return (id ? id[0] : sinPseudo) + pseudo;
+}
+
+// ---- EL SEGUNDO PASE: `.a.b` CONTRA `.a` ----
+//
+// La clave de arriba no ve este par —son dos claves distintas— y el hueco es
+// real: `.objeto` con `.objeto.volando`, `.objeto.llegando` y `.objeto.en-piso`
+// ya existe en la hoja. Hoy ninguna declara longhands, pero es exactamente la
+// forma que va a tener el día que alguien quiera desfasar la llegada.
+//
+// LA REGLA ES ANGOSTA A PROPÓSITO, Y EL ANCHO SE DESCARTÓ CON EL NÚMERO:
+//
+//   comparar por conjuntos de clases, suelto      975 hallazgos, todos ruido
+//   idem exigiendo ids iguales                    145 hallazgos, todos ruido
+//   puras clases y contención estricta              0 hallazgos
+//
+// El ruido sale siempre de lo mismo: un compuesto final SIN restricción de
+// clases contiene a todos los demás. `#antena` contra `.banda.deformable`, un
+// `svg` pelado contra media hoja, `body.sin-movimiento *` contra todo.
+//
+// Así que se comparan dos compuestos sólo si los DOS son de puras clases —sin
+// id, sin tipo de elemento, sin `*`, sin atributo, y con el mismo
+// pseudo-elemento— y uno contiene ESTRICTAMENTE al otro. Ahí la contención es
+// exacta y no hay ningún "podría tener cualquier clase" de por medio: todo
+// elemento que matchea `.a.b` matchea `.a`.
+//
+// Es un pase que SE SUMA a la clave por id, no la reemplaza.
+function clasesPurasDe(selector) {
+  const compuesto = compuestoFinalDe(selector);
+  const pseudo = compuesto.match(/::[\w-]+/)?.[0] ?? '';
+  const sinPseudo = compuesto.replace(/::?[\w-]+(\([^()]*\))?/g, '');
+  if (!/^(\.[\w-]+)+$/.test(sinPseudo)) return null;
+  return { pseudo, clases: new Set(sinPseudo.match(/\.[\w-]+/g)) };
+}
+
+const contieneEstrictamente = (grande, chico) =>
+  grande.size > chico.size && [...chico].every((c) => grande.has(c));
+
+// ¿Estos dos compuestos de puras clases se superponen de forma comprobable?
+function seSuperponenPorClases(a, b) {
+  const ca = clasesPurasDe(a);
+  const cb = clasesPurasDe(b);
+  if (!ca || !cb || ca.pseudo !== cb.pseudo) return false;
+  return contieneEstrictamente(ca.clases, cb.clases) || contieneEstrictamente(cb.clases, ca.clases);
 }
 
 // ---- LA ESPECIFICIDAD ----
@@ -1230,7 +1286,17 @@ function crucesPeligrosos(css) {
 
     for (const s of cortos) {
       for (const l of largos) {
-        if (s.sujeto !== l.sujeto || s.orden === l.orden) continue;
+        if (s.orden === l.orden) continue;
+
+        // Dos caminos para decidir que las dos reglas se pisan: la misma clave
+        // de sujeto —el caso normal, exacto cuando hay id— o la contención
+        // estricta entre compuestos de puras clases, que es el segundo pase.
+        const mismoSujeto = s.sujeto === l.sujeto;
+        if (!mismoSujeto && !seSuperponenPorClases(s.sel, l.sel)) continue;
+
+        // Y quién gana: más especificidad, o igual especificidad y después en el
+        // archivo. Un longhand escrito DESPUÉS con la misma especificidad está
+        // bien y no se marca.
         const cmp = comparar(s.espec, l.espec);
         if (cmp > 0 || (cmp === 0 && s.orden > l.orden)) {
           hallazgos.push(
@@ -1398,6 +1464,48 @@ prueba('guardián: se lo ve rojo con el defecto real, y no ladra donde no debe',
     #ojos { transition-property: opacity, translate; }
     @media (prefers-reduced-motion: reduce) { #ojos { transition: none; } }`;
   verdadero(crucesPeligrosos(apagado).length === 0, '`transition: none` es un reset a propósito');
+
+  // 6. UN PSEUDO-ELEMENTO ES OTRA CAJA. `#x::after` no comparte cascada con
+  //    `#x`, así que un shorthand en uno no le resetea nada al otro. Marcarlo
+  //    bloquea un cambio legítimo, y ya pasó: darle una transición propia a
+  //    #puerta-servicio ponía el guardián en rojo por su ::after.
+  //
+  //    Este fixture es de los que NO tienen que ladrar, y sin él el arreglo se
+  //    revierte sin que nada avise — que es justamente cómo llegó el ternario
+  //    muerto de `sujetoDe` hasta acá.
+  const pseudoElemento = `
+    #puerta-servicio { transition-property: opacity; transition-duration: 200ms; }
+    #puerta-servicio::after { transition: opacity 220ms ease-out; }`;
+  verdadero(
+    crucesPeligrosos(pseudoElemento).length === 0,
+    'un pseudo-elemento es otra caja: no comparte cascada con su elemento'
+  );
+
+  // 7. `.a.b` CONTRA `.a`, que es el segundo pase. La forma existe en la hoja
+  //    —`.objeto` con `.objeto.volando`, `.objeto.llegando` y `.objeto.en-piso`—
+  //    y va a tener longhands el día que alguien desfase la llegada.
+  const contencion = `
+    .objeto { animation-delay: 120ms; }
+    .objeto.volando { animation: volar 400ms ease-out; }`;
+  const rojoPorClases = crucesPeligrosos(contencion);
+  verdadero(
+    rojoPorClases.length > 0,
+    'la contención estricta entre compuestos de puras clases tiene que verse'
+  );
+  verdadero(
+    /\.objeto\.volando/.test(rojoPorClases[0]) && /animation-delay/.test(rojoPorClases[0]),
+    `el mensaje tiene que nombrar el par, y dice: ${rojoPorClases[0]}`
+  );
+
+  // 8. Y LA CONTENCIÓN NO ALCANZA SOLA: si el shorthand es el de MENOS clases,
+  //    pierde por especificidad y no pisa nada.
+  const alRevés = `
+    .objeto.volando { animation-delay: 120ms; }
+    .objeto { animation: volar 400ms ease-out; }`;
+  verdadero(
+    crucesPeligrosos(alRevés).length === 0,
+    'el shorthand menos específico no le gana al longhand más específico'
+  );
 });
 
 prueba('los ojos cruzan Y se mueven: #ojos declara las dos transiciones', () => {
