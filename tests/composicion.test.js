@@ -1035,11 +1035,21 @@ prueba('debug: el gesto acusa recibo, o un fallo es indistinguible de un no-toqu
 // —corrida arriba y a la derecha, porque es un recorte de otra pose— todavía se
 // apagaba. 260 ms con dos ojos dibujados en dos lugares.
 //
-// Es la MISMA forma que la regla del shorthand `animation` del README, que ya
-// mordió tres veces pisando `animation-delay`. Distinta propiedad, misma
-// trampa, y esta vez tardó una sesión entera en aparecer porque las dos reglas
-// las escribieron dos puntos distintos de la spec —el 17 el cruce, el 6 la
-// mirada— con un commit de diferencia.
+// Es la CUARTA mordida de la regla de los shorthands del README: tres veces
+// `animation` pisando `animation-delay`, y ésta. Distinta propiedad, misma
+// trampa, y por eso la regla dejó de estar escrita para `animation` y pasó a
+// valer para cualquier shorthand — todos resetean su familia entera.
+//
+// Ésta tardó una sesión entera en aparecer porque las dos reglas las escribieron
+// dos puntos distintos de la spec —el 17 el cruce, el 6 la mirada— con un commit
+// de diferencia.
+//
+// ESTE TEST NO COMPRUEBA UN VALOR, PROHÍBE UNA CONSTRUCCIÓN, y la diferencia es
+// el motivo de que exista: el test que ya había buscaba el texto
+// `transition: opacity var(--ojos-cruce)` y ahí estaba, escrito tal cual,
+// mientras el defecto corría. Un grep sobre la hoja no puede resolver la
+// cascada — mira la declaración, y el navegador aplica el valor calculado. Lo
+// que sí se puede prohibir es dejar el valor a merced de la especificidad.
 //
 // QUÉ SE PROHÍBE, exactamente: que dos reglas con el MISMO sujeto usen el
 // shorthand `transition` declarando propiedades DISTINTAS. Que lo usen las dos

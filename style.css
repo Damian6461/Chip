@@ -836,10 +836,10 @@ body.es-noche #rayo {
      todavía se estaba apagando. Doscientos sesenta milisegundos con DOS ojos
      dibujados en dos lugares distintos.
 
-     Es la regla del shorthand del README, la que ya mordió tres veces con
-     `animation` pisando delays: un shorthand no declara lo que dice, declara
-     TODO lo de su familia. Con longhands, la regla de la mirada puede cambiarle
-     la duración al translate sin tocar la del opacity. */
+     Es la regla de los shorthands del README, la cuarta mordida: un shorthand
+     no declara lo que dice, declara TODO lo de su familia y le pone el valor
+     inicial a lo que uno no nombró. Con longhands, la regla de la mirada puede
+     cambiarle la duración al translate sin tocar la del opacity. */
   transition-property: opacity, translate;
   transition-duration: var(--ojos-cruce), var(--mirada-vuelve);
   transition-timing-function: ease-out, ease-out;

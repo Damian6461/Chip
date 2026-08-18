@@ -113,8 +113,7 @@ Se rompen y el proyecto se degrada rápido.
 - **`acciones.js` es puro.** Señala "no apliqué" devolviendo la misma referencia.
 - **`config.js` es el único hogar de las constantes del juego.** Tres carve-outs documentados en el propio archivo: `sw.js`, `manifest.json` y `tests/config.pruebas.js`.
 - **El decay se calcula por diferencia de timestamps, nunca con un contador corriendo.**
-- **Nunca el shorthand `animation` en una regla que pueda pisar delays de `:nth-child`.** Se declaran las propiedades por separado, o los `animation-delay` van **después** de la regla del shorthand y con el mismo prefijo de estado. Ver abajo: mordió tres veces.
-- **Y lo mismo con `transition`, que es el mismo shorthand con otro nombre.** Si dos reglas con el mismo sujeto declaran `transition` de propiedades **distintas**, la que gana por especificidad no agrega la suya: **resetea la familia entera** y borra la otra, en silencio y sin consola. Pasó con `#ojos { transition: opacity … }` contra `#cabeza-grupo #ojos { transition: translate … }` —un id contra dos— y el resultado fue "los ojos se salen de la órbita": el cruce de opacidad no existía, así que `#ojos` saltaba de 0 a 1 de golpe mientras la capa de gesto —corrida arriba y a la derecha— seguía apagándose. 260 ms con dos ojos dibujados en dos lugares. Van longhands: `transition-property` en la regla base, y las otras tocan sólo `-duration` y `-timing-function`. Lo hace cumplir `tests/composicion.test.js`.
+- **Ningún shorthand de CSS en una propiedad que otra regla declare por su cuenta.** No es una regla sobre `animation` ni sobre `transition`: es sobre **todos** los shorthands, porque todos hacen lo mismo. Un shorthand no declara lo que uno escribió: declara **toda su familia**, y le pone el valor inicial a los longhands que uno no nombró. Así que si dos reglas comparten sujeto y una usa el shorthand, la que gane por especificidad no *agrega* lo suyo — **borra lo que declaró la otra**, sin error, sin consola y sin que ninguna de las dos se vea mal leída por separado. Van longhands: la regla base declara la lista completa y las demás tocan sólo el valor que les toca. Ver abajo: **mordió cuatro veces**.
 - **Todo asset nuevo entra en `ARCHIVOS_CACHE` con su bump de `CACHE_VERSION`**, y `tests/assets.test.js` lo verifica: el cruce ya no es disciplina.
 - **Nunca medir con `getBoundingClientRect` un elemento con `transform`.** Devuelve la caja del bounding box rotado, no la del elemento. Para la caja de layout van `offsetWidth` / `offsetHeight`. Ver abajo: el instrumento miente.
 - **Cualquier gesto sostenido o de arrastre necesita `touch-action: none`, `user-select: none`, `-webkit-touch-callout: none` y `contextmenu` prevenido**, o el navegador lo cancela solo: el long-press nativo —menú contextual, selección, guardar imagen— emite `pointercancel` y aborta el gesto. Además hay que capturar el puntero y cancelar por DISTANCIA, no con `pointerleave`: un dedo apoyado tres segundos se mueve solo. Ver abajo: el instrumento miente, y acá el instrumento es el evento sintético.
@@ -197,27 +196,45 @@ Y hay un segundo escalón, que **tampoco es un lujo**: una constante que sólo l
 
 ---
 
-### La regla del shorthand `animation`
+### La regla de los shorthands
 
-Mordió **tres veces** en el mismo archivo, con el mismo mecanismo y tres síntomas distintos:
+Mordió **cuatro veces**, con el mismo mecanismo y cuatro síntomas que no se parecen en nada:
 
 | dónde | qué se veía | qué pasaba |
 |---|---|---|
 | las Z de `standby` | "apenas se ve una Z" | las tres latían al unísono |
 | las chispas del enchufe | nada raro, por suerte | las cuatro salían juntas |
 | las motas de polvo | el galpón quieto | las seis corrían el mismo ciclo con el mismo arranque |
+| los ojos, al soltar la caricia | "los ojos se salen de la órbita" | `#ojos` saltaba de 0 a 1 en un cuadro |
 
-Siempre lo mismo: `animation` es un **shorthand**, así que una regla como `.estado-standby .zeta { animation: … }` resetea `animation-delay` a `0s`. Y le gana a `.zeta:nth-child(N)`, que declara el delay, porque **tienen la misma especificidad** (0,2,0 contra 0,2,0 — o peor, 0,2,1 en el caso del polvo) y viene después en el archivo.
+Las tres primeras son `animation` pisando `animation-delay`: una regla como `.estado-standby .zeta { animation: … }` resetea el delay a `0s` y le gana a `.zeta:nth-child(N)`, que sí lo declara, porque **tienen la misma especificidad** (0,2,0 contra 0,2,0 — o peor, 0,2,1 en el caso del polvo) y viene después en el archivo.
 
-Lo peligroso es que **no se detecta mirando ni midiendo el resultado**: los elementos están, tienen su color y su tamaño, y la animación corre. Lo único que lo delata es leer el `animation-delay` computado. Tres Z superpuestas y sincronizadas se ven exactamente como una Z.
+La cuarta es `transition` pisando `transition-property`, y por eso la regla dejó de ser sobre `animation`:
 
-Las burbujas de `limpiando` nunca tuvieron el problema, y no por suerte: su regla de estado usa longhands (`animation-name`, `animation-duration`, …) en vez del shorthand. Ese es el patrón a copiar.
+```css
+#ojos               { transition: opacity   … }   /* un id */
+#cabeza-grupo #ojos { transition: translate … }   /* DOS ids, gana */
+```
 
-Tres veces es patrón, no casualidad. Por eso está arriba, entre las reglas de arquitectura.
+El segundo no agrega el `translate`: deja `transition-property` en `translate` **solo**, y el cruce de opacidad de los ojos deja de existir. Consecuencia medida: `#ojos` pasaba de 0 a 1 sin transición mientras la capa de gesto —corrida arriba y a la derecha, porque es un recorte de otra pose— seguía apagándose 260 ms. Un cuarto de segundo con dos ojos dibujados en dos lugares.
+
+Lo que las cuatro tienen en común, y es la razón de que la regla sea general:
+
+- **Las dos reglas se leen bien por separado.** Ninguna dice nada falso. El daño está en la relación entre las dos, que no se ve desde ninguna de las dos.
+- **No lo detecta mirar ni medir el resultado.** Los elementos están, tienen su color y su tamaño, y la animación corre. Tres Z superpuestas y sincronizadas se ven exactamente como una Z. Lo único que lo delata es leer el **valor computado** del longhand.
+- **Las dos reglas suelen tener autores o momentos distintos.** El cruce de los ojos lo escribió el punto 17 y lo rompió el punto 6, con un commit de diferencia y el mismo día.
+
+Las burbujas de `limpiando` nunca tuvieron el problema, y no por suerte: su regla de estado usa longhands (`animation-name`, `animation-duration`, …). Ese es el patrón a copiar, y ahora también el de `#ojos`: `transition-property` en la regla base, y las reglas más específicas tocando sólo `-duration` y `-timing-function`.
+
+**Lo hace cumplir un test** (`tests/composicion.test.js`), y sólo para `transition` por ahora: prohíbe que dos reglas con el mismo sujeto declaren el shorthand con propiedades **distintas**. Que las tres reglas de `#cabeza-grupo` lo usen todas para `rotate` no se marca — el reset no le borra nada a nadie. `transition: none` tampoco: apagar todo es un reset a propósito.
+
+Cuatro veces no es una anécdota: es una propiedad del proyecto. Por eso está arriba, entre las reglas de arquitectura, y por eso está escrita para **cualquier** shorthand y no para los dos que ya mordieron.
+
+**Y un test puede estar verde mientras el defecto está vivo.** El del cruce de los ojos lo estuvo: buscaba el texto `transition: opacity var(--ojos-cruce)` en el CSS, y ahí estaba, escrito tal cual — pero otra regla lo reseteaba. Miraba la **declaración**; el navegador aplica el **valor calculado**. Un grep sobre la hoja no puede resolver la cascada, así que lo que un test de texto puede hacer no es comprobar el valor: es **prohibir la construcción** que deja el valor a merced de la especificidad. Es la misma trampa que "un valor no se verifica con el instrumento que lo generó", en su forma más pura.
 
 ### La regla del `[hidden]` contra el `display`
 
-De la misma familia que la anterior, y la más traicionera de las tres: **cosas que funcionan hasta que otro cambio, perfectamente legítimo, las apaga en silencio.**
+De la misma familia que la anterior, y la más traicionera de las cuatro: **cosas que funcionan hasta que otro cambio, perfectamente legítimo, las apaga en silencio.**
 
 `elemento.hidden = true` no esconde nada por sí solo. Lo esconde la regla `[hidden] { display: none }` de la hoja del **user agent**, y esa hoja pierde contra cualquier declaración de autor. Un `display: grid` en `style.css` deja el `hidden` sin efecto: no hay error, no hay consola, y el atributo queda puesto en el DOM como si funcionara.
 
@@ -235,15 +252,16 @@ Por eso ahora hay un test (`tests/composicion.test.js`) que cruza los dos archiv
 
 Un detalle que lo hace servir: **el id tiene que ser el sujeto de la regla, no un ancestro.** `#rayo svg { display: block }` le da display al `svg`, no a `#rayo`, y contarlo sería un falso positivo — que es la única aserción con nombre propio del test.
 
-**Las tres reglas de esta familia**, juntas porque el modo de falla es el mismo:
+**Las cuatro reglas de esta familia**, juntas porque el modo de falla es el mismo:
 
 | regla | qué la apaga | cómo se detecta |
 |---|---|---|
 | `animation-delay` por `:nth-child` | una regla posterior con el shorthand `animation` | leyendo el `delay` computado; mirar no alcanza |
+| `transition-property` de un elemento | una regla más específica con el shorthand `transition`, que lo resetea a lo suyo | leyendo el `transitionProperty` computado |
 | `transform` de una capa | otra regla que declara `transform` y lo pisa entero, porque no se suman | leyendo el `transform` computado |
 | `hidden` de un nodo | un `display` de autor en cualquier regla que lo matchee | cruzando JS contra CSS |
 
-Ninguna de las tres tira error. Ninguna se ve al escribirla. Las tres se cierran con un test o con un longhand, nunca con disciplina.
+Ninguna de las cuatro tira error. Ninguna se ve al escribirla. Todas se cierran con un test o con un longhand, nunca con disciplina.
 
 ### Cuando el instrumento miente
 
