@@ -4121,6 +4121,36 @@ body.es-noche #piso {
   transition: rotate var(--mirada-vuelve) ease-out;
 }
 
+/* TRES REGLAS LE ESCRIBEN `rotate` A ESTE ELEMENTO, Y ESTÁ DECIDIDO ASÍ.
+   Está anotado porque se midió buscando un defecto y el resultado fue que no lo
+   era — sin esta nota, el próximo que lo mida vuelve a hacer el mismo camino.
+
+     #cabeza-grupo                    (1 id)            la vuelta, en cero
+     #cabeza-grupo.distraida          (1 id, 1 clase)   -4,5° hacia la ventana
+     #chip.acariciando #cabeza-grupo  (2 ids, 1 clase)  sigue a la mano
+     .inclinada -> @keyframes ladear                    el ladeo ocasional
+
+   QUIÉN GANA, medido y no razonado:
+
+   - La ANIMACIÓN le gana a las tres declaraciones mientras corre, y con
+     `fill: both` también antes y después. O sea que durante el ladeo ocasional
+     no hay distracción ni caricia en el ángulo: hay ladeo.
+   - Entre las declaraciones gana LA CARICIA, por especificidad y sin necesidad
+     de ninguna animación: dos ids contra uno. Medido con las dos clases puestas:
+     `rotate: -1,2deg` con una transición de 260 ms —la de la caricia— y no los
+     1500 ms de la distracción. Los -4,5° se pierden enteros.
+   - `distraida` e `inclinada` SÍ conviven: 4 muestras de 90 en una sesión
+     normal, con las dos clases en el mismo elemento a la vez.
+
+   Y ESTÁ BIEN ASÍ: mientras la mano está encima, la cabeza la sigue a ella y no
+   a la ventana. Que la distracción reaparezca al soltar es lo que corresponde,
+   porque la clase sigue puesta. Lo que NO se puede hacer es agregar un cuarto
+   escritor sin volver a mirar esta lista.
+
+   Ojo con el shorthand: las tres declaran `transition` de la MISMA propiedad,
+   así que el reset no le borra nada a nadie. Una cuarta regla que declarara
+   `transition` de otra cosa sí — ver la regla de los shorthands en el README, y
+   el guardián en tests/composicion.test.js. */
 #cabeza-grupo.distraida {
   rotate: calc(var(--mirada-angulo) * var(--mirada-lado));
   transition: rotate var(--mirada-se-va) ease-in-out;
@@ -4578,7 +4608,13 @@ body.sin-movimiento *::after {
    total de 3000, o sea 20,7% y 70,7%.
 
    El lado lo sortea ui.js en cada gesto: siempre para el mismo lado se vuelve
-   una muletilla. */
+   una muletilla.
+
+   Y ES UNA ANIMACIÓN SOBRE `rotate`, o sea que mientras corre le gana a las
+   TRES declaraciones de rotate que tiene #cabeza-grupo —y con `both` también
+   antes y después—. Durante el ladeo no hay distracción ni caricia en el
+   ángulo: hay ladeo. Está decidido así; la lista completa y la medición están
+   en el bloque de LA MIRADA, al lado de #cabeza-grupo.distraida. */
 #cabeza-grupo.inclinada {
   animation: ladear var(--duracion-inclinacion) both;
 }
@@ -4765,7 +4801,13 @@ body.sin-movimiento *::after {
 
 /* LA CABEZA SIGUE LA MANO. Una insinuación de uno o dos grados, no un
    seguimiento literal: el ángulo lo escribe ui.js según hacia dónde va el dedo
-   y cambia si cambiás de dirección. */
+   y cambia si cambiás de dirección.
+
+   ÉSTA ES LA MÁS ESPECÍFICA DE LAS TRES QUE ESCRIBEN `rotate` en #cabeza-grupo
+   —dos ids contra uno— así que le gana a la distracción SIN necesitar ninguna
+   animación, y es a propósito: mientras la mano está encima, la cabeza la sigue
+   a ella y no a la ventana. La lista completa y la medición están en el bloque
+   de LA MIRADA, arriba, al lado de #cabeza-grupo.distraida. */
 #chip.acariciando #cabeza-grupo {
   rotate: var(--caricia-inclinacion, 0deg);
   transition: rotate 260ms ease-out;

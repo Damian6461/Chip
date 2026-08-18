@@ -117,6 +117,7 @@ Se rompen y el proyecto se degrada rápido.
 - **Todo asset nuevo entra en `ARCHIVOS_CACHE` con su bump de `CACHE_VERSION`**, y `tests/assets.test.js` lo verifica: el cruce ya no es disciplina.
 - **Nunca medir con `getBoundingClientRect` un elemento con `transform`.** Devuelve la caja del bounding box rotado, no la del elemento. Para la caja de layout van `offsetWidth` / `offsetHeight`. Ver abajo: el instrumento miente.
 - **Cualquier gesto sostenido o de arrastre necesita `touch-action: none`, `user-select: none`, `-webkit-touch-callout: none` y `contextmenu` prevenido**, o el navegador lo cancela solo: el long-press nativo —menú contextual, selección, guardar imagen— emite `pointercancel` y aborta el gesto. Además hay que capturar el puntero y cancelar por DISTANCIA, no con `pointerleave`: un dedo apoyado tres segundos se mueve solo. Ver abajo: el instrumento miente, y acá el instrumento es el evento sintético.
+- **Un guardián no está verificado hasta que se lo vio ROJO.** Verde no prueba nada: puede estar mirando el lugar equivocado. Y hay un motivo por el que suele estarlo — **un guardián escrito contra el bug que ya pasó cuida la forma vieja del código**. El arreglo cambia la forma, así que la reincidencia entra por la nueva y el test ni se entera. Pasó exactamente así con el shorthand `transition`: el guardián comparaba shorthand contra shorthand, y esa forma dejó de existir en el mismo commit que lo escribió, porque el arreglo pasó `#ojos` a longhands. El defecto reintroducido por la forma nueva daba **314 en verde**. Por eso los tests de esa familia llevan **fixtures con el defecto adentro** y exigen que el guardián falle: la prueba de que sirve no es que pase, es que se lo haya visto no pasar.
 - **Un número publicado viaja con su definición o no viaja.** Un umbral, un porcentaje o un "pierde 62 píxeles" sin decir *sobre qué se contó* no se reproduce, y lo que no se reproduce no se puede cruzar: dos personas miden, les da distinto, y no hay forma de saber cuál de las dos cuentas era otra cuenta. Mordió dos veces —el 95 del histograma del cable, que no decía sobre qué ventana; y el 62 de `verificacion/capas.html`, que no decía si los píxeles iban pegados—, y las dos veces el número estaba bien. Va **al lado del número**, en el archivo que lo publica, no en el commit ni en el parte. Y si el número es un corte que decide algo, va también de dónde salió y cuánto aire tiene.
 - **`main.js` es cableado y no decide nada.** Arma las piezas, les pasa el reloj real y el DOM real, y las conecta. Lo que decide vive en `visita.js` y `sesion.js`, que se prueban sin navegador.
 
@@ -226,11 +227,25 @@ Lo que las cuatro tienen en común, y es la razón de que la regla sea general:
 
 Las burbujas de `limpiando` nunca tuvieron el problema, y no por suerte: su regla de estado usa longhands (`animation-name`, `animation-duration`, …). Ese es el patrón a copiar, y ahora también el de `#ojos`: `transition-property` en la regla base, y las reglas más específicas tocando sólo `-duration` y `-timing-function`.
 
-**Lo hace cumplir un test** (`tests/composicion.test.js`), y sólo para `transition` por ahora: prohíbe que dos reglas con el mismo sujeto declaren el shorthand con propiedades **distintas**. Que las tres reglas de `#cabeza-grupo` lo usen todas para `rotate` no se marca — el reset no le borra nada a nadie. `transition: none` tampoco: apagar todo es un reset a propósito.
-
 Cuatro veces no es una anécdota: es una propiedad del proyecto. Por eso está arriba, entre las reglas de arquitectura, y por eso está escrita para **cualquier** shorthand y no para los dos que ya mordieron.
 
-**Y un test puede estar verde mientras el defecto está vivo.** El del cruce de los ojos lo estuvo: buscaba el texto `transition: opacity var(--ojos-cruce)` en el CSS, y ahí estaba, escrito tal cual — pero otra regla lo reseteaba. Miraba la **declaración**; el navegador aplica el **valor calculado**. Un grep sobre la hoja no puede resolver la cascada, así que lo que un test de texto puede hacer no es comprobar el valor: es **prohibir la construcción** que deja el valor a merced de la especificidad. Es la misma trampa que "un valor no se verifica con el instrumento que lo generó", en su forma más pura.
+**Lo hacen cumplir dos tests** (`tests/composicion.test.js`), sobre las familias `transition` y `animation`, y son dos porque el hueco se abre de dos formas:
+
+| forma | qué mira |
+|---|---|
+| shorthand contra shorthand | dos reglas del mismo sujeto declaran el shorthand con propiedades **distintas** |
+| **shorthand contra longhand** | un sujeto declara un longhand en cualquier regla y **otra de igual o mayor especificidad** usa el shorthand de esa familia |
+
+La segunda es la que faltaba, y no es un detalle: **es la forma que queda después de arreglar la primera.** Ver más abajo.
+
+Dos carve-outs, los dos sobre código que está bien: con especificidad **igual** manda el orden del archivo, así que un longhand escrito **después** no se marca —es lo que hacen `#chip.acariciando` y `#chip.volviendo` sobre `#cabeza-grupo`—, y dos declaraciones de la **misma regla** tampoco, porque ahí el orden se lee de arriba abajo, como en `.mota-polvo`. `transition: none` y `animation: none` tampoco: apagar todo es un reset a propósito.
+
+**Y un test puede estar verde mientras el defecto está vivo.** Pasó dos veces seguidas con el mismo defecto, de dos maneras distintas, y las dos vale tenerlas escritas:
+
+1. **El test miraba la declaración, no el valor calculado.** Buscaba el texto `transition: opacity var(--ojos-cruce)` en el CSS, y ahí estaba, escrito tal cual — pero otra regla lo reseteaba. Un grep sobre la hoja no puede resolver la cascada. Así que lo que un test de texto puede hacer no es comprobar el valor: es **prohibir la construcción** que deja el valor a merced de la especificidad.
+2. **El guardián que reemplazó a ese test cuidaba la forma vieja del código.** Comparaba shorthand contra shorthand; el arreglo pasó `#ojos` a longhands y esa forma dejó de existir **en el mismo commit**. Reintroducido el defecto por la forma nueva —una sola regla más específica con el shorthand— el suite daba 314 en verde con el bug vivo y medible en el navegador.
+
+De ahí sale la regla de arriba: **verde no prueba nada hasta que se lo vio rojo.** Por eso el guardián nuevo viene con cinco fixtures de CSS de mentira —el defecto de Damián, la forma de las Z, y los tres carve-outs— y el test exige que se ponga rojo en los dos primeros. Además se lo probó contra la hoja real: devolviendo `transition: translate …` a `#cabeza-grupo.distraida #ojos`, falla nombrando las dos reglas y el longhand pisado.
 
 ### La regla del `[hidden]` contra el `display`
 

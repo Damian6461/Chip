@@ -1056,12 +1056,193 @@ prueba('debug: el gesto acusa recibo, o un fallo es indistinguible de un no-toqu
 // para la misma propiedad no rompe nada —es lo que hace #cabeza-grupo con
 // `rotate` en sus tres reglas— porque el reset no se lleva puesto a nadie.
 
-// Saca el sujeto de un selector: el último compuesto, y de ahí el id si lo hay.
-// Así `#cabeza-grupo.distraida #ojos` y `#ojos` caen los dos en `#ojos`.
+// ---- EL AGUJERO QUE TENÍA LA PRIMERA VERSIÓN DE ESTE GUARDIÁN ----
+//
+// La primera versión comparaba SHORTHAND CONTRA SHORTHAND: pedía que dos reglas
+// del mismo sujeto usaran `transition:` con propiedades distintas.
+//
+// Esa forma dejó de existir en el archivo EN EL MISMO COMMIT que escribió el
+// guardián, porque el arreglo pasó #ojos a longhands. O sea que el guardián
+// quedó cuidando una forma de código que ya no está. La reincidencia iba a
+// entrar por la otra: base en longhands y UNA sola regla más específica con el
+// shorthand — que es exactamente el defecto de Damián, y pasaba verde.
+//
+// Reproducido: devolviendo `transition: translate …` a
+// `#cabeza-grupo.distraida #ojos` sobre el commit del arreglo, el suite daba
+// 314 en verde con el defecto vivo y medible en el navegador.
+//
+// LA REGLA QUE FALTABA, que es la inversa y la que se hace cumplir acá:
+//
+//   si un sujeto declara un longhand de una familia en CUALQUIER regla,
+//   ninguna otra regla de igual o mayor especificidad puede usar el SHORTHAND
+//   de esa familia sobre ese mismo sujeto.
+//
+// Y la lección, que vale más que el renglón: UN GUARDIÁN ESCRITO CONTRA EL BUG
+// QUE YA PASÓ CUIDA LA FORMA VIEJA DEL CÓDIGO. El arreglo cambia la forma. Por
+// eso los tres tests de abajo no se conforman con que la hoja esté limpia: le
+// meten el defecto a un CSS de mentira y exigen que el guardián se ponga ROJO.
+// Verde no prueba nada hasta que se lo vio rojo.
+
+// Las dos familias que ya mordieron. `animation` va porque la regla del README
+// vale para cualquier shorthand y el test se había quedado en `transition`.
+const FAMILIAS_SHORTHAND = {
+  transition: [
+    'transition-property', 'transition-duration',
+    'transition-timing-function', 'transition-delay', 'transition-behavior'
+  ],
+  animation: [
+    'animation-name', 'animation-duration', 'animation-timing-function',
+    'animation-delay', 'animation-iteration-count', 'animation-direction',
+    'animation-fill-mode', 'animation-play-state', 'animation-composition',
+    'animation-timeline', 'animation-range'
+  ]
+};
+
+// EL SUJETO de un selector: el último compuesto, sin sus pseudo-clases, y de
+// ahí el id si lo hay. Así caen en la misma bolsa:
+//
+//   `#cabeza-grupo.distraida #ojos` y `#ojos`      ->  #ojos
+//   `.estado-standby .zeta` y `.zeta:nth-child(2)` ->  .zeta
+//
+// El segundo par importa: es la forma exacta de las tres primeras mordidas con
+// `animation`, y con las pseudo-clases adentro de la clave los dos selectores
+// caían en bolsas distintas y el guardián no comparaba nada.
+//
+// LO QUE ESTA CLAVE NO VE, dicho en voz alta: `.a.b` y `.a` matchean elementos
+// en común y quedan en bolsas distintas. Agrupar por cada clase suelta cerraría
+// ese hueco y abriría el de los falsos positivos sobre reglas que no se
+// superponen nunca. Con ids —que es como está escrita casi toda esta hoja— la
+// clave es exacta.
 function sujetoDe(selector) {
-  const ultimo = selector.trim().split(/[\s>+~]+/).filter(Boolean).at(-1) ?? '';
+  const ultimo = (selector.trim().split(/[\s>+~]+/).filter(Boolean).at(-1) ?? '')
+    .replace(/::?[\w-]+(\([^()]*\))?/g, (coincidencia) =>
+      // Se sacan las pseudo-clases y los pseudo-elementos, no las clases: el
+      // punto y los dos puntos son cosas distintas y este replace toca sólo el
+      // segundo.
+      coincidencia.startsWith(':') ? '' : coincidencia
+    );
   const id = ultimo.match(/#[\w-]+/);
   return id ? id[0] : ultimo;
+}
+
+// ---- LA ESPECIFICIDAD ----
+//
+// (ids, clases, elementos). Alcanza para lo único que se le pide: comparar
+// quién le gana a quién.
+//
+// APROXIMACIONES, dichas en voz alta, porque un cálculo completo es un parser
+// de selectores entero y esta hoja no lo necesita:
+//   - `:where(…)` no aporta nada: se saca.
+//   - `:is()`, `:not()` y `:has()` aportan lo de su argumento. Con una LISTA de
+//     argumentos habría que tomar el más específico; acá se toman todos, que
+//     sobreestima. No hay ninguno con lista en la hoja.
+//   - el resto de las funcionales —`:nth-child(2n+1)`— cuentan como una
+//     pseudo-clase y su argumento no aporta.
+//
+// El test `especificidad: el cálculo da lo mismo que la cuenta a mano` cruza
+// esto contra selectores reales medidos a mano: si alguna aproximación deja de
+// alcanzar, se entera ahí y no en un falso negativo silencioso.
+function especificidad(selector) {
+  let s = ' ' + selector.trim() + ' ';
+  s = s.replace(/:where\([^()]*\)/g, ' ');
+  // Dos pasadas: alcanza para un nivel de anidamiento, que es todo lo que hay.
+  s = s.replace(/:(?:is|not|has|matches|any)\(([^()]*)\)/g, ' $1 ');
+  s = s.replace(/:(?:is|not|has|matches|any)\(([^()]*)\)/g, ' $1 ');
+  s = s.replace(/\([^()]*\)/g, '');
+  s = s.replace(/::[\w-]+/g, ' pseudoelemento ');
+
+  const ids = (s.match(/#[\w-]+/g) ?? []).length;
+  const clases =
+    (s.match(/\.[\w-]+/g) ?? []).length +
+    (s.match(/\[[^\]]*\]/g) ?? []).length +
+    (s.match(/:[\w-]+/g) ?? []).length;
+
+  const resto = s
+    .replace(/#[\w-]+/g, ' ')
+    .replace(/\.[\w-]+/g, ' ')
+    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/:[\w-]+/g, ' ');
+  const elementos = (resto.match(/[a-zA-Z][\w-]*/g) ?? []).length;
+
+  return [ids, clases, elementos];
+}
+
+function comparar(a, b) {
+  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] - b[i];
+  return 0;
+}
+
+// Las reglas de la hoja, con su orden. Se saltean los @keyframes —sus llaves
+// anidadas confunden al parser de bloques y adentro no hay cascada— y las
+// @media NO hace falta abrirlas: sus reglas caen como reglas normales, que es
+// lo correcto, porque una media query no agrega especificidad.
+function reglasDe(css) {
+  const sinKeyframes = css.replace(/@keyframes[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
+  return [...sinKeyframes.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, selectores, cuerpo], orden) => ({
+    orden,
+    cuerpo,
+    selectores: selectores
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s && !s.startsWith('@'))
+  }));
+}
+
+function declaracionesDe(cuerpo) {
+  return cuerpo
+    .split(';')
+    .map((d) => d.split(':'))
+    .filter((p) => p.length >= 2)
+    .map(([prop, ...valor]) => ({ prop: prop.trim(), valor: valor.join(':').trim() }));
+}
+
+// `transition: none` y `animation: none` son resets A PROPÓSITO —los usa el
+// bloque de movimiento reducido— y no le borran nada a nadie: apagan todo, que
+// es lo que dicen. Si contaran, el guardián marcaría en rojo el bloque que
+// mejor está escrito de la hoja.
+const esApagado = (valor) => /^(none|none\s*,\s*none)+$/.test(valor.trim());
+
+// EL CRUCE PELIGROSO: un shorthand que le gana a un longhand del mismo sujeto
+// declarado en OTRA regla. Con especificidad igual manda el orden del archivo,
+// así que un longhand escrito DESPUÉS está bien — es el patrón que ya usa
+// #chip.volviendo #cabeza-grupo. Y dos declaraciones de la MISMA regla tampoco
+// cuentan: ahí el orden es explícito y está a la vista, como en `.mota-polvo`.
+function crucesPeligrosos(css) {
+  const reglas = reglasDe(css);
+  const hallazgos = [];
+
+  for (const [familia, longhands] of Object.entries(FAMILIAS_SHORTHAND)) {
+    const cortos = [];
+    const largos = [];
+
+    for (const regla of reglas) {
+      const decl = declaracionesDe(regla.cuerpo);
+      const corto = decl.find((d) => d.prop === familia);
+      const propios = decl.filter((d) => longhands.includes(d.prop));
+      if (!corto && propios.length === 0) continue;
+
+      for (const sel of regla.selectores) {
+        const donde = { sujeto: sujetoDe(sel), espec: especificidad(sel), sel, orden: regla.orden };
+        if (corto && !esApagado(corto.valor)) cortos.push(donde);
+        for (const p of propios) largos.push({ ...donde, prop: p.prop });
+      }
+    }
+
+    for (const s of cortos) {
+      for (const l of largos) {
+        if (s.sujeto !== l.sujeto || s.orden === l.orden) continue;
+        const cmp = comparar(s.espec, l.espec);
+        if (cmp > 0 || (cmp === 0 && s.orden > l.orden)) {
+          hallazgos.push(
+            `${s.sujeto}: "${s.sel}" usa el shorthand \`${familia}\` y le gana a ` +
+              `"${l.sel}", que declara \`${l.prop}\``
+          );
+        }
+      }
+    }
+  }
+
+  return [...new Set(hallazgos)];
 }
 
 // Las propiedades que declara un shorthand `transition`. De cada tramo separado
@@ -1129,6 +1310,94 @@ prueba('shorthand: dos reglas con el mismo sujeto no pueden declarar `transition
       'especificidad borra en silencio lo que declaró la otra. Van longhands ' +
       '(transition-property / -duration / -timing-function):\n  ' + chocan.join('\n  ')
   );
+});
+
+// ---- Y LA FORMA INVERSA, QUE ES POR DONDE VOLVIÓ A ENTRAR ----
+
+prueba('especificidad: el cálculo da lo mismo que la cuenta a mano', () => {
+  // Sin esto, el guardián de abajo podría estar comparando cualquier cosa y
+  // pasando en verde por eso. Los cinco están medidos a mano y son de la hoja.
+  const medidos = [
+    ['#ojos', [1, 0, 0]],
+    ['#cabeza-grupo.distraida #ojos', [2, 1, 0]],
+    ['#chip.acariciando #cabeza-grupo', [2, 1, 0]],
+    ['.estado-standby .zeta', [0, 2, 0]],
+    ['.zeta:nth-child(2)', [0, 2, 0]],
+    ['#chip:has(.estado-esperando) #cuerpo', [2, 1, 0]]
+  ];
+
+  for (const [sel, esperada] of medidos) {
+    const dio = especificidad(sel);
+    verdadero(
+      comparar(dio, esperada) === 0,
+      `"${sel}" tendría que dar (${esperada}) y dio (${dio})`
+    );
+  }
+});
+
+prueba('guardián: un shorthand no puede ganarle a un longhand declarado en otra regla', () => {
+  const hallazgos = crucesPeligrosos(CSS);
+  verdadero(
+    hallazgos.length === 0,
+    'un shorthand resetea su familia entera, así que la regla que gana por especificidad ' +
+      'borra en silencio el longhand que declaró la otra. La regla más específica tiene que ' +
+      'usar longhands:\n  ' + hallazgos.join('\n  ')
+  );
+});
+
+// EL GUARDIÁN, VISTO EN ROJO. Un guardián que nunca falló no está verificado:
+// está sin estrenar. El anterior pasó verde desde el día uno y el defecto que
+// tenía que atajar estuvo vivo todo ese tiempo.
+//
+// Los cinco casos de abajo son CSS de mentira, cortos a propósito, y cada uno
+// tiene un nombre porque cada uno es una decisión del guardián que alguien
+// podría querer cambiar más adelante.
+prueba('guardián: se lo ve rojo con el defecto real, y no ladra donde no debe', () => {
+  // 1. EL DEFECTO DE DAMIÁN, tal cual estaba: base en longhands y UNA regla más
+  //    específica con el shorthand. Es la forma que el guardián viejo no veía.
+  const defecto = `
+    #ojos { transition-property: opacity, translate; }
+    #cabeza-grupo.distraida #ojos {
+      translate: 1px 0;
+      transition: translate 1500ms ease-in-out;
+    }`;
+  const rojo = crucesPeligrosos(defecto);
+  verdadero(rojo.length > 0, 'el guardián NO vio el defecto que ya se nos escapó una vez');
+  verdadero(
+    /#ojos/.test(rojo[0]) && /distraida/.test(rojo[0]) && /transition-property/.test(rojo[0]),
+    `el mensaje tiene que nombrar las dos reglas y el longhand pisado, y dice: ${rojo[0]}`
+  );
+
+  // 2. LA MISMA FORMA EN `animation`, que es como mordió las tres primeras
+  //    veces. Especificidad igual y el shorthand DESPUÉS: gana por orden.
+  const zetas = `
+    .zeta:nth-child(2) { animation-delay: 200ms; }
+    .estado-standby .zeta { animation: latir 2s infinite; }`;
+  verdadero(
+    crucesPeligrosos(zetas).length > 0,
+    'la familia `animation` tiene que estar cubierta igual que `transition`'
+  );
+
+  // 3. ORDEN: con especificidad IGUAL, el longhand escrito DESPUÉS gana y está
+  //    bien. Es lo que hacen #chip.acariciando y #chip.volviendo sobre
+  //    #cabeza-grupo, y marcarlo sería un falso positivo sobre código correcto.
+  const porOrden = `
+    #chip.acariciando #cabeza-grupo { transition: rotate 260ms ease-out; }
+    #chip.volviendo #cabeza-grupo { transition-duration: 900ms; }`;
+  verdadero(crucesPeligrosos(porOrden).length === 0, 'el longhand posterior con igual especificidad está bien');
+
+  // 4. MISMA REGLA: el polvo declara el shorthand y su delay en el mismo bloque
+  //    y en ese orden. Ahí no hay cascada que resolver — se lee de arriba abajo.
+  const mismaRegla = `
+    .mota-polvo { animation: levantar-polvo 2s linear infinite; animation-delay: 1s; }`;
+  verdadero(crucesPeligrosos(mismaRegla).length === 0, 'dos declaraciones de la misma regla no son un cruce');
+
+  // 5. APAGAR NO ES PISAR. El bloque de movimiento reducido usa el shorthand
+  //    para apagar todo, a propósito, y es la regla mejor escrita de la hoja.
+  const apagado = `
+    #ojos { transition-property: opacity, translate; }
+    @media (prefers-reduced-motion: reduce) { #ojos { transition: none; } }`;
+  verdadero(crucesPeligrosos(apagado).length === 0, '`transition: none` es un reset a propósito');
 });
 
 prueba('los ojos cruzan Y se mueven: #ojos declara las dos transiciones', () => {
