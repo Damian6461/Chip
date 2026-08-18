@@ -136,17 +136,12 @@
            Existen porque el aro pintado no tiene ningún rasgo angular: es una
            elipse lisa, y una elipse rotada sobre su centro no rueda, se tumba.
            Lo llena ui.js con la tabla de la pose. -->
-      <!-- EL POLVO QUE LEVANTAN LAS ORUGAS. Va ENTRE el cuerpo y la capa de
-           orugas: una mota que nace en el punto de contacto y sale por encima
-           de la oruga se ve pegada arriba; saliendo por debajo se ve saliendo
-           de donde sale. Lo llena ui.js con los puntos de AROS_ORUGA. -->
+      <!-- EL POLVO QUE LEVANTAN LAS ORUGAS. Nace en la línea de apoyo, que
+           está por DEBAJO del borde de la oruga pintada, así que se ve salir de
+           abajo sin necesidad de ninguna capa intermedia. Hubo una y se sacó:
+           ver el bloque de RUTAS_CUERPO en config.js. Lo llena ui.js con los
+           puntos de AROS_ORUGA. -->
       <div id="polvo-orugas" aria-hidden="true"></div>
-
-      <!-- LAS ORUGAS, como capa propia. Existe para que el polvo quepa debajo,
-           y NO para animarlas: el punto 8 argumenta justamente lo contrario.
-           Sólo hay recorte sin orugas para idle; en el resto de las poses el
-           canvas dibuja el cuerpo completo y esta capa se esconde. -->
-      <img id="orugas-capa" alt="" aria-hidden="true" hidden>
 
       <svg id="orugas" viewBox="0 0 100 100" aria-hidden="true"></svg>
 

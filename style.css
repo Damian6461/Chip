@@ -4017,7 +4017,8 @@ body.es-noche #piso {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  /* Entre el cuerpo y la capa de orugas. Ver #orugas-capa. */
+  /* Encima del cuerpo. Nace por debajo del borde de la oruga pintada, así que
+     no hace falta ninguna capa intermedia para que se vea salir de abajo. */
   z-index: 1;
 }
 
@@ -4068,26 +4069,17 @@ body.es-noche #piso {
   }
 }
 
-/* LAS ORUGAS COMO CAPA PROPIA. Existe para que el polvo quepa DEBAJO, y no para
-   animarlas — el punto 8 argumenta justamente lo contrario.
+/* ACÁ HUBO UNA CAPA CON LAS ORUGAS RECORTADAS, para que el polvo cupiera
+   debajo, y se sacó. El motivo está medido y vive en config.js, al lado de
+   RUTAS_CUERPO: los dos recortes no comparten su borde y componerlos deja 780
+   píxeles de agujero —una costura de 1 a 2 px por todo el contorno de las
+   orugas— que es lo que se reportó como "las ruedas comidas".
 
-   Sólo hay recorte sin orugas para idle. En el resto de las poses el canvas
-   dibuja el cuerpo completo, esta capa se esconde, y el polvo queda por encima
-   de la oruga pintada. A tamaño real, con la mota en 0,28 de opacidad, la
-   diferencia no se ve; se hace bien donde se puede y se anota dónde no. */
-#orugas-capa {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  image-rendering: pixelated;
-  z-index: 2;
-}
+   Y no alcanzaba con invertir el orden: hay 46 píxeles al revés, o sea que la
+   capa sobresale, y dibujarla encima del cuerpo completo pintaría un fleco.
 
-#orugas-capa[hidden] {
-  display: none;
-}
+   El polvo no la necesitaba: nace en la línea de apoyo, que está por debajo del
+   borde de la oruga pintada. */
 
 /* ============================================================================
    LA MIRADA — punto 6

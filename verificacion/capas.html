@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>¿Las capas reconstruyen el sprite entero?</title>
+<style>
+  body { background:#0d0f14; color:#e6e6e6; margin:0; padding:24px 24px 60px;
+         font:14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  h1 { font-size:19px; margin:0 0 6px; }
+  h2 { font-size:15px; color:#ffb060; margin:30px 0 6px; font-weight:normal; }
+  p { color:#9aa0ab; font-size:13px; max-width:86ch; }
+  .veredicto { font-size:15px; padding:8px 12px; margin:10px 0; border-left:3px solid; }
+  .mal { border-color:#ff6b78; color:#ff6b78; }
+  .bien { border-color:#63d68a; color:#63d68a; }
+  table { border-collapse:collapse; font-size:12px; margin:10px 0; }
+  td, th { padding:2px 16px 2px 0; text-align:left; }
+  th { color:#9aa0ab; font-weight:normal; }
+  canvas { image-rendering:pixelated; border:1px solid #2a2d38; margin:8px 12px 0 0; }
+  .par { display:flex; flex-wrap:wrap; align-items:flex-start; }
+  figure { margin:0 14px 0 0; }
+  figcaption { font-size:12px; color:#9aa0ab; }
+  code { color:#c9ced7; }
+</style>
+</head>
+<body>
+
+<h1>¿Las capas reconstruyen el sprite entero?</h1>
+<p>
+  Cuando un sprite se parte en capas, los recortes tienen que <strong>compartir
+  su borde</strong>. Si uno se comió un píxel más que el otro, entre los dos
+  queda una costura vacía — y no se ve en el código: se ve dibujada, y sólo
+  cuando alguien mira de cerca.
+</p>
+<p>
+  Eso ya pasó una vez. <code>idle-cuerpo-sin-orugas.png</code> +
+  <code>idle-orugas.webp</code> dejaban <strong>780 píxeles de agujero</strong>
+  contra <code>idle-cuerpo.webp</code>, casi todos en el contorno de abajo de las
+  orugas. Se reportó como «las ruedas comidas» y costó tres vueltas encontrarlo,
+  porque el cableado estaba bien y las cajas coincidían.
+</p>
+
+<div class="aviso">
+  <p>
+    <strong>Todos los recortes pierden algunos píxeles</strong>, y eso está bien:
+    es el antialias del borde. Lo que importa no es el total sino
+    <strong>la peor fila</strong>. Sesenta y dos píxeles en una misma fila son una
+    línea de 62 px — una costura. Ocho son ocho puntos sueltos que nadie ve.
+    Los tres recortes del proyecto, medidos: 62 el que falló, 8 y 15 los dos que
+    están en uso y funcionan.
+  </p>
+  <p>
+    <strong>Por qué esto es una página y no un test de <code>node</code>.</strong>
+    Hay que decodificar imágenes, y el proyecto no tiene dependencias: WebP
+    necesita un decodificador entero que no se puede escribir a mano en un rato.
+    El navegador ya lo trae. Así que esto se corre a mano <em>cuando se parte un
+    sprite en capas</em>, que es cuando el error se puede cometer — no en cada
+    commit, donde no aporta.
+  </p>
+</div>
+
+<div id="todo"></div>
+
+<script type="module">
+// LAS COMPOSICIONES A VERIFICAR.
+//
+// Cada entrada dice: un sprite entero, y las capas que TIENEN que reconstruirlo.
+// Se comparan por ALFA y no por color: lo que importa es que no falte
+// superficie. Dos recortes pueden tener el mismo píxel con tonos ligeramente
+// distintos por el antialias y eso está bien; lo que no puede haber es un píxel
+// opaco en el entero que en las capas sea transparente.
+const COMPOSICIONES = [
+  {
+    nombre: 'idle: cuerpo sin orugas + orugas  →  cuerpo',
+    entero: 'sprites/idle-cuerpo.webp',
+    capas: ['sprites/idle-cuerpo-sin-orugas.png', 'sprites/idle-orugas.webp'],
+    nota: 'La que falló. Está acá para que se pueda comprobar el arreglo el día que se rehaga alguno de los dos recortes.'
+  },
+  {
+    nombre: 'idle: cuerpo + cabeza + los dos brazos  →  sprite entero',
+    entero: 'sprites/idle.webp',
+    capas: [
+      'sprites/idle-cuerpo.webp',
+      'sprites/idle-cabeza.webp',
+      'sprites/idle-brazo-izq.webp',
+      'sprites/idle-brazo-der.webp'
+    ],
+    nota: 'El recorte que SÍ está en uso. Si éste tuviera el mismo defecto, la costura estaría a la vista todo el tiempo.'
+  },
+  {
+    nombre: 'feliz: cuerpo + cabeza + los dos brazos  →  sprite entero',
+    entero: 'sprites/feliz.webp',
+    capas: [
+      'sprites/feliz-cuerpo.webp',
+      'sprites/feliz-cabeza.webp',
+      'sprites/feliz-brazo-izq.webp',
+      'sprites/feliz-brazo-der.webp'
+    ],
+    nota: ''
+  }
+];
+
+const LADO = 256;
+const OPACO = 24; // alfa por encima del cual se considera que hay superficie
+
+async function alfaDe(ruta) {
+  const img = new Image();
+  img.src = '../' + ruta;
+  await img.decode();
+  const c = document.createElement('canvas');
+  c.width = LADO; c.height = LADO;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(img, 0, 0, LADO, LADO);
+  const d = x.getImageData(0, 0, LADO, LADO).data;
+  const a = new Uint8Array(LADO * LADO);
+  for (let i = 0; i < a.length; i++) a[i] = d[i * 4 + 3] > OPACO ? 1 : 0;
+  return { alfa: a, ancho: img.naturalWidth, alto: img.naturalHeight };
+}
+
+const todo = document.getElementById('todo');
+
+for (const comp of COMPOSICIONES) {
+  const seccion = document.createElement('section');
+  seccion.innerHTML = `<h2>${comp.nombre}</h2>` + (comp.nota ? `<p>${comp.nota}</p>` : '');
+  todo.appendChild(seccion);
+
+  let entero, capas;
+  try {
+    entero = await alfaDe(comp.entero);
+    capas = await Promise.all(comp.capas.map(alfaDe));
+  } catch (e) {
+    seccion.innerHTML += `<div class="veredicto mal">no se pudo cargar: ${e.message}</div>`;
+    continue;
+  }
+
+  // La unión de las capas.
+  const union = new Uint8Array(LADO * LADO);
+  for (const c of capas) for (let i = 0; i < union.length; i++) if (c.alfa[i]) union[i] = 1;
+
+  // Los dos sentidos. El que importa es `faltan`: superficie que el entero tiene
+  // y las capas no, o sea AGUJEROS. `sobran` es lo contrario y también vale
+  // saberlo: si las capas sobresalen, dibujarlas encima del entero pinta un
+  // fleco por fuera de la silueta.
+  const faltan = [], sobran = [];
+  for (let y = 0; y < LADO; y++) {
+    for (let x = 0; x < LADO; x++) {
+      const i = y * LADO + x;
+      if (entero.alfa[i] && !union[i]) faltan.push([x, y]);
+      else if (!entero.alfa[i] && union[i]) sobran.push([x, y]);
+    }
+  }
+
+  // Las peores filas: dónde está concentrado el agujero. Un hueco repartido
+  // parejo es antialias; uno concentrado en unas pocas filas es una costura.
+  const porFila = {};
+  for (const [, y] of faltan) porFila[y] = (porFila[y] || 0) + 1;
+  const peores = Object.entries(porFila).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+  // EL NÚMERO QUE DECIDE ES LA PEOR FILA, no el total, y esto salió de medir
+  // los tres recortes del proyecto en vez de inventar un umbral:
+  //
+  //   cuerpo-sin-orugas + orugas   787 agujeros, PEOR FILA 62   <- el roto
+  //   idle: cuerpo+cabeza+brazos   213 agujeros, peor fila  8   <- anda
+  //   feliz: cuerpo+cabeza+brazos  318 agujeros, peor fila 15   <- anda
+  //
+  // O sea que TODOS los recortes pierden algunos píxeles: es el antialias del
+  // borde, repartido, y no se ve. Lo que se ve es la CONCENTRACIÓN — 62 píxeles
+  // en una sola fila es una línea de 62 px de largo, o sea una costura; 8 son
+  // ocho puntos sueltos.
+  //
+  // El corte en 30 no sale de ninguna norma: sale de que el caso roto da 62 y el
+  // peor de los que funcionan da 15. Está en el medio y con margen para los dos
+  // lados. Si algún día un recorte cae entre 15 y 30, hay que mirarlo y no
+  // creerle a este número.
+  const peorFila = peores.length ? peores[0][1] : 0;
+  const bien = peorFila < 30;
+  seccion.innerHTML +=
+    `<div class="veredicto ${bien ? 'bien' : 'mal'}">` +
+    (bien
+      ? `Cierra. ${faltan.length} píxeles perdidos en total, pero la peor fila tiene ${peorFila}: ` +
+        'está repartido, o sea antialias del borde y no una costura.'
+      : `COSTURA: la peor fila pierde ${peorFila} píxeles seguidos, sobre ${faltan.length} en total. ` +
+        'Eso es una línea, no antialias.') +
+    `</div>` +
+    `<table>` +
+    `<tr><th>agujeros (faltan)</th><td>${faltan.length}</td></tr>` +
+    `<tr><th>sobrantes (las capas sobresalen)</th><td>${sobran.length}</td></tr>` +
+    (peores.length
+      ? `<tr><th>peores filas</th><td>${peores.map(([y, n]) => `y=${y}: ${n}`).join(' · ')}</td></tr>`
+      : '') +
+    `</table>`;
+
+  // Y el mapa, que es lo que hace entender el número: rojo donde falta, ámbar
+  // donde sobra, gris tenue el sprite entero de referencia.
+  const mapa = document.createElement('canvas');
+  mapa.width = LADO; mapa.height = LADO;
+  mapa.style.width = LADO * 2 + 'px';
+  mapa.style.height = LADO * 2 + 'px';
+  const mx = mapa.getContext('2d');
+  const img = mx.createImageData(LADO, LADO);
+  for (let i = 0; i < LADO * LADO; i++) {
+    const p = i * 4;
+    if (entero.alfa[i]) { img.data[p] = 40; img.data[p + 1] = 44; img.data[p + 2] = 52; img.data[p + 3] = 255; }
+    else { img.data[p + 3] = 255; }
+  }
+  for (const [x, y] of faltan) {
+    const p = (y * LADO + x) * 4;
+    img.data[p] = 255; img.data[p + 1] = 60; img.data[p + 2] = 90; img.data[p + 3] = 255;
+  }
+  for (const [x, y] of sobran) {
+    const p = (y * LADO + x) * 4;
+    img.data[p] = 255; img.data[p + 1] = 176; img.data[p + 2] = 60; img.data[p + 3] = 255;
+  }
+  mx.putImageData(img, 0, 0);
+
+  const par = document.createElement('div');
+  par.className = 'par';
+  const fig = document.createElement('figure');
+  fig.appendChild(mapa);
+  const pie = document.createElement('figcaption');
+  pie.textContent = 'rojo = agujero · ámbar = sobrante · gris = el sprite entero';
+  fig.appendChild(pie);
+  par.appendChild(fig);
+  seccion.appendChild(par);
+}
+
+document.title = 'capas — ' + (document.querySelectorAll('.veredicto.mal').length
+  ? document.querySelectorAll('.veredicto.mal').length + ' con agujeros'
+  : 'todas cierran');
+</script>
+</body>
+</html>

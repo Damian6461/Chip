@@ -95,8 +95,6 @@ import {
   BOTONES_EN_LA_FILA,
   POLVO_ORUGAS,
   CLASE_POLVO,
-  RUTAS_CUERPO_SIN_ORUGAS,
-  RUTA_ORUGAS,
   MIRADA,
   CLASE_DISTRAIDA,
   CLASE_ATENTA,
@@ -211,7 +209,6 @@ import {
   nodoCable,
   nodoAcciones,
   nodoPolvo,
-  capaOrugas,
   nodoCableAtras,
   escena,
   nodoPiso
@@ -1073,17 +1070,6 @@ export function levantarPolvo() {
   temporizadorPolvo = setTimeout(() => {
     cuerpo.classList.remove(CLASE_POLVO);
   }, GIRO_ORUGAS.acomodo.duracion + POLVO_ORUGAS.ciclo.max);
-}
-
-// La capa de orugas, que existe para que el polvo quepa DEBAJO. Sólo hay recorte
-// sin orugas para idle; en el resto de las poses el canvas dibuja el cuerpo
-// completo y esta capa se esconde.
-function pintarCapaOrugas(claveSprite) {
-  if (!capaOrugas) return;
-
-  const hay = Boolean(RUTAS_CUERPO_SIN_ORUGAS[claveSprite]);
-  capaOrugas.hidden = !hay;
-  if (hay && !capaOrugas.src.endsWith(RUTA_ORUGAS)) capaOrugas.src = RUTA_ORUGAS;
 }
 
 // ---- LA MIRADA ----
@@ -2778,7 +2764,6 @@ export function render(estado, estadoVisual, esNoche, luz = null, claveSprite = 
   // #chip, y esa caja cambia con el viewport. Es una cuenta de dos restas y una
   // cúbica — más barato que escuchar el resize.
   pintarPolvo(claveSprite);
-  pintarCapaOrugas(claveSprite);
   dibujarCable();
   medirBotonera();
   actualizarBarras(estado);

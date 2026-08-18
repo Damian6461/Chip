@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v87';
+const CACHE_VERSION = 'chip-cache-v89';
 
 // LA HUELLA DEL CONTENIDO DE ARCHIVOS_CACHE. No la lee nadie en runtime: existe
 // para que un test pueda contestar la única pregunta que importa acá, que es si
@@ -51,7 +51,7 @@ const CACHE_VERSION = 'chip-cache-v87';
 //
 // Se escribe sola: `node tests/sellar-cache.mjs` sube la versión y la recalcula.
 // No se edita a mano.
-const HUELLA_CACHE = 'be93d8e9cc110369';
+const HUELLA_CACHE = 'abfcf70e2384fed9';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -165,6 +165,34 @@ self.addEventListener('install', (evento) => {
       .then((cache) => cache.addAll(ARCHIVOS_CACHE))
       .then(() => self.skipWaiting())
   );
+});
+
+// ---- "¿QUÉ VERSIÓN TENÉS PUESTA?" ----
+//
+// La pregunta que no se podía contestar sin adivinar, y que costó dos deploys.
+// El `console.log` del install sólo se ve con el depurador remoto enchufado, o
+// sea nunca en el teléfono de Damián.
+//
+// Ahora el panel de debug pregunta y ESTE service worker contesta. Y contesta el
+// que está CONTROLANDO la página, no el que hay en el servidor: si el teléfono
+// quedó con una versión vieja, lo que se ve en el panel es esa versión vieja —
+// que es exactamente el dato que hace falta. Bajarse sw.js y leerlo diría lo que
+// hay publicado, que es la pregunta equivocada.
+// LA RESPUESTA VA POR EL PUERTO CUANDO HAY PUERTO, y esa distinción costó un
+// timeout. Quien pregunta abre un MessageChannel y escucha en su `port1`; el
+// service worker recibe el `port2` en `evento.ports[0]`. Contestar por
+// `evento.source` —que es el cliente— es una respuesta válida que nadie está
+// escuchando, así que el panel esperaba 400 ms y mostraba "el SW no contestó".
+//
+// Se deja el `source` como reserva para un postMessage sin puerto.
+self.addEventListener('message', (evento) => {
+  if (evento.data !== 'version') return;
+
+  const respuesta = { version: CACHE_VERSION, huella: HUELLA_CACHE };
+  const puerto = evento.ports && evento.ports[0];
+
+  if (puerto) puerto.postMessage(respuesta);
+  else evento.source?.postMessage(respuesta);
 });
 
 self.addEventListener('activate', (evento) => {

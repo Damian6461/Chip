@@ -165,6 +165,82 @@ function crearSelect(opciones) {
 export function iniciarDebug(api) {
   const panel = crearPanel();
 
+  // ---- QUÉ VERSIÓN TIENE PUESTA ESTE APARATO ----
+  //
+  // Va ARRIBA DE TODO y fuera del pliegue, y eso no es orden: es la primera
+  // pregunta que hay que poder contestar cuando algo "se ve mal". Costó dos
+  // deploys enteros — Damián estuvo dos veces mirando una versión vieja y
+  // ninguno de los dos podía saberlo sin adivinar.
+  //
+  // Lo que se muestra es lo que dice el SERVICE WORKER QUE CONTROLA ESTA PÁGINA,
+  // no lo que hay publicado. Si el teléfono quedó atrás, acá aparece la versión
+  // vieja, que es justamente el dato.
+  //
+  // Y abajo, la escena y el factor de escala. Los sprites son de 256 px y se
+  // dibujan escalados al ancho de la escena, así que cualquier defecto que
+  // dependa del tamaño cambia con ese número y no con el estado del juego. Un
+  // factor no entero quiere decir que el pixel art se está interpolando.
+  const filaVersion = document.createElement('div');
+  Object.assign(filaVersion.style, {
+    fontSize: '10px',
+    lineHeight: '1.45',
+    color: PANEL_DEBUG.tenue,
+    borderBottom: PANEL_DEBUG.borde,
+    paddingBottom: PANEL_DEBUG.separacion,
+    marginBottom: PANEL_DEBUG.separacion,
+    wordBreak: 'break-all'
+  });
+  filaVersion.textContent = 'leyendo versión…';
+
+  function refrescarVersion() {
+    const medida = api.medirEscena?.();
+    const escena = medida
+      ? `escena ${medida.escena} · lienzo ${medida.lienzo} · escala ${medida.factor}× · dpr ${medida.dpr}`
+      : 'escena: no medible';
+
+    api
+      .versionInstalada?.()
+      .then((v) => {
+        // Si Cache Storage tiene un nombre distinto del que dice el SW, ESA
+        // diferencia es el diagnóstico: quiere decir que hay una versión a
+        // medio instalar o una vieja que no se borró.
+        const guardadas = v.cachés.length ? v.cachés.join(', ') : 'ninguna';
+        // La marca de discrepancia sólo tiene sentido si el SW contestó de
+        // verdad: si no contestó, `version` es un mensaje de error y compararlo
+        // contra los nombres de caché siempre "no coincide", que es ruido.
+        const contesto = v.version.startsWith('chip-cache-');
+        const discrepa = contesto && v.cachés.length && !v.cachés.includes(v.version);
+        filaVersion.textContent =
+          `${v.version}${discrepa ? '  ← NO COINCIDE' : ''}\n` +
+          `huella ${v.huella}\n` +
+          `cachés: ${guardadas}\n` +
+          escena;
+        filaVersion.style.whiteSpace = 'pre-line';
+        filaVersion.style.color = discrepa ? PANEL_DEBUG.alerta : PANEL_DEBUG.tenue;
+      })
+      .catch(() => {
+        filaVersion.textContent = `versión: no se pudo leer\n${escena}`;
+        filaVersion.style.whiteSpace = 'pre-line';
+      });
+  }
+
+  refrescarVersion();
+
+  // Y SE VUELVE A LEER CUANDO EL SW TOMA CONTROL. En la PRIMERA visita —o después
+  // de limpiar el sitio— el service worker se registra pero todavía no controla
+  // la página, así que la primera lectura dice "no controla la página" y se
+  // queda con eso hasta la próxima recarga. Medido: pasa siempre en la carga
+  // inicial de un perfil limpio, que es justo cuando uno más quiere saber qué
+  // versión bajó.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(refrescarVersion).catch(() => {});
+    navigator.serviceWorker.addEventListener('controllerchange', refrescarVersion);
+  }
+  // El ancho de escena cambia al girar el teléfono, y el factor de escala con
+  // él. Es el número que hay que mirar cuando un defecto aparece en un tamaño y
+  // no en otro.
+  window.addEventListener('resize', refrescarVersion);
+
   // ---- Multiplicador de tiempo ----
   const filaMultiplicador = crearFila();
   const inputMultiplicador = crearNumero(MULTIPLICADOR_DEBUG_INICIAL);
@@ -398,7 +474,7 @@ export function iniciarDebug(api) {
   const filaFija = crearFila();
   filaFija.append(armarPlegado(panel, cuerpo), botonIdle, botonFeliz, botonGuia);
 
-  panel.append(filaFija, cuerpo);
+  panel.append(filaVersion, filaFija, cuerpo);
   document.body.appendChild(panel);
 
   // main.js llama a esto en cada pintada. Sin eso la lectura se queda vieja al

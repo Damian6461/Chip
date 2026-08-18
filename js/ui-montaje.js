@@ -73,11 +73,10 @@ export const toma = document.getElementById('toma');
 // en píxeles enteros — ver el punto 3.7.
 export const nodoAcciones = document.getElementById('acciones');
 
-// El polvo de las orugas y la capa que lo tapa. Van juntos: el polvo existe
-// para verse saliendo de DEBAJO de la oruga, y para eso la oruga tiene que ser
-// una capa y no píxeles del canvas. Ver el punto 8.
+// El polvo de las orugas. Hubo al lado una capa con las orugas recortadas, para
+// que el polvo cupiera debajo; se sacó porque los recortes no comparten borde.
+// Ver el bloque de RUTAS_CUERPO en config.js.
 export const nodoPolvo = document.getElementById('polvo-orugas');
-export const capaOrugas = document.getElementById('orugas-capa');
 export const nodoCable = document.getElementById('cable');
 export const nodoCableAtras = document.getElementById('cable-atras');
 export const repisa = document.getElementById('repisa');

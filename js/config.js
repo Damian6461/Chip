@@ -1830,23 +1830,40 @@ export const VARS_POLVO = {
 
 export const CLASE_POLVO = 'levantando-polvo';
 
-// El cuerpo de idle SIN las orugas. Es el tercer escalón del recorte: el sprite
-// entero, el cuerpo sin cabeza ni brazos (RUTAS_CUERPO), y éste, que además saca
-// las orugas.
+// ---- POR QUÉ NO HAY UN TERCER ESCALÓN DE RECORTE ----
 //
-// PARA QUÉ SIRVE, concretamente: con las orugas afuera del canvas se pueden
-// poner como capa propia, y entonces el polvo cabe DEBAJO de ellas. Una mota que
-// nace en el punto de contacto y sale por encima de la oruga se ve pegada
-// arriba; una que sale por debajo se ve saliendo de abajo, que es de donde sale.
+// Hubo uno: `idle-cuerpo-sin-orugas.png` como cuerpo, más `idle-orugas.webp`
+// como capa propia encima, para que el polvo cupiera debajo de las orugas.
+// Estuvo puesto y se sacó, y el motivo está medido.
 //
-// NO ES PARA MOVER LAS ORUGAS. El punto 8 argumenta justamente lo contrario —
-// contar el movimiento por lo que produce en vez de mover la pieza— y esta capa
-// no se anima nunca.
-export const RUTAS_CUERPO_SIN_ORUGAS = {
-  idle: 'sprites/idle-cuerpo-sin-orugas.png'
-};
-
-export const RUTA_ORUGAS = 'sprites/idle-orugas.webp';
+// LOS DOS RECORTES NO COMPARTEN SU BORDE. Comparando el alfa de los tres sprites
+// —los tres de 256x256— hay 780 píxeles que el cuerpo completo tiene y que las
+// dos capas juntas NO cubren. 287 de esos (el 37%) están en y >= 235, o sea el
+// contorno de abajo de las orugas; las peores filas son y=245 con 62 px, y=246
+// con 54 y y=244 con 43. Y hay un segundo grupo entre y=199 y y=206, unas 20
+// filas de las cuñas donde las orugas se juntan con las manos.
+//
+// Dibujado: una costura vacía de 1 a 2 px que recorre todo el contorno exterior
+// de las dos orugas. Uno de los dos recortes se comió un píxel más que el otro.
+// Antes no se veía porque estaba todo pintado en un solo sprite; partirlo lo
+// destapó. Eso es "las ruedas comidas" que se reportó.
+//
+// Y AL REVÉS TAMBIÉN: 46 píxeles que las capas tienen y el completo no. O sea
+// que tampoco sirve dibujar el cuerpo completo abajo y las orugas encima: ese
+// sobrante pintaría un fleco de 1 px por fuera de la silueta.
+//
+// LO QUE DECIDE ES QUE LA CAPA DE ORUGAS NUNCA SE MUEVE. Lo que gira es la barra
+// del cubo, que está dibujada por código en el SVG; la imagen de las orugas se
+// quedaba quieta. O sea que el recorte no compraba movimiento: compraba
+// únicamente poder meter el polvo por debajo — y el polvo nace en la línea de
+// apoyo, o sea POR DEBAJO del borde de la oruga, así que se ve igual sin la
+// capa.
+//
+// Un recorte que cuesta 780 píxeles de agujero y no habilita nada no se
+// sostiene. `idle-cuerpo-sin-orugas.png` queda en el repo y en ARCHIVOS_CACHE,
+// sin cablear, y con este comentario al lado: el día que los dos recortes
+// compartan borde —o que las orugas necesiten moverse de verdad— vuelve, y
+// verificacion/capas.html es la página que lo comprueba.
 
 // ============================================================================
 // LA MIRADA — punto 6

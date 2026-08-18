@@ -249,6 +249,68 @@ const apiDebug = {
 
   obtenerNombresVisuales: () => Object.values(E),
 
+  // ---- QUÉ VERSIÓN TIENE PUESTA ESTE TELÉFONO ----
+  //
+  // La pregunta que no se podía contestar sin adivinar, y que costó dos deploys
+  // enteros: Damián estuvo dos veces mirando una versión vieja y ninguno de los
+  // dos podía saberlo. El `console.log` del install existe pero sólo se ve con el
+  // depurador remoto enchufado, o sea nunca en el teléfono.
+  //
+  // SE LE PREGUNTA AL SERVICE WORKER QUE ESTÁ CONTROLANDO LA PÁGINA, no al que
+  // hay publicado. Bajarse sw.js y parsearlo contestaría qué versión está en el
+  // servidor, que es la pregunta equivocada: lo que hace falta saber es qué tiene
+  // ESTE aparato. Si quedó con una versión vieja, eso es lo que tiene que
+  // aparecer en el panel.
+  //
+  // Y se cruza contra Cache Storage, que guarda las cachés por NOMBRE de versión.
+  // Si los dos no coinciden, la diferencia es el diagnóstico.
+  async versionInstalada() {
+    const sinSW = { version: 'sin service worker', huella: '—', cachés: [] };
+    if (!('serviceWorker' in navigator)) return sinSW;
+
+    const cachés = 'caches' in window ? await caches.keys() : [];
+    const control = navigator.serviceWorker.controller;
+    if (!control) return { version: 'no controla la página', huella: '—', cachés };
+
+    // El SW contesta por postMessage. Con tope de tiempo: un SW que no responde
+    // es un dato, y colgar el panel esperándolo sería peor que no mostrar nada.
+    const respuesta = await new Promise((listo) => {
+      const canal = new MessageChannel();
+      const reloj = setTimeout(() => listo(null), 400);
+      canal.port1.onmessage = (e) => {
+        clearTimeout(reloj);
+        listo(e.data);
+      };
+      control.postMessage('version', [canal.port2]);
+    });
+
+    return respuesta
+      ? { ...respuesta, cachés }
+      : { version: 'el SW no contestó', huella: '—', cachés };
+  },
+
+  // EL ANCHO DE LA ESCENA Y EL FACTOR DE ESCALA. Los sprites son de 256 px y se
+  // dibujan escalados al ancho de la escena, así que cualquier defecto que
+  // dependa del tamaño —un recorte que se come una fila, un borde que cae en
+  // medio píxel— cambia con este número y no con el estado del juego.
+  //
+  // Tenerlo a la vista convierte "en mi teléfono se ve mal" en un dato.
+  medirEscena() {
+    const escena = document.getElementById('escena')?.getBoundingClientRect();
+    const lienzo = document.getElementById('canvas-mascota')?.getBoundingClientRect();
+    if (!escena || !lienzo) return null;
+
+    return {
+      escena: `${Math.round(escena.width)} × ${Math.round(escena.height)}`,
+      lienzo: Math.round(lienzo.width),
+      // El sprite mide 256 de lado; esto es cuántos píxeles de pantalla ocupa
+      // cada píxel de arte. Un factor no entero quiere decir que el pixel art se
+      // está interpolando.
+      factor: +(lienzo.width / 256).toFixed(3),
+      dpr: window.devicePixelRatio
+    };
+  },
+
   // Cambia la pose de idle a mano. Con el sorteo por sesión, verla cambiar pide
   // recargar; esto la fuerza sin recargar.
   cambiarPose: () => {
