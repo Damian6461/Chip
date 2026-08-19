@@ -1330,22 +1330,53 @@ export function cintaDelCable(
 // pasaba un cuarto argumento que la función ni miraba, así que no hubo error en
 // consola: salía una ficha de 0 px de ancho, invisible, y la unión volvía a ser
 // una punta de cable apoyada en el pecho.
-export function fichaDelPuerto(conector, direccion, grosor) {
-  const g = grosor;
+// EL CONECTOR DEL PECHO. Reemplaza a la ficha, que era otra cosa.
+//
+// LA FICHA ERA UNA FICHA: un rectángulo redondeado con su filo, la punta del
+// cable que se enchufa. Se veía floja, y el motivo no era el dibujo sino qué
+// pieza era. Una ficha es lo que TERMINA el cable; lo que hacía falta ahí es lo
+// que lo RECIBE — un puerto atornillado al pecho, con su boca, del que el cable
+// sale. La diferencia se ve en el salto entre el brillo cian del pecho y el
+// trazo: una ficha se apoya encima de ese salto, un conector lo tapa porque es
+// la pieza que explica por qué ahí hay un cable.
+//
+// TODO EN ENTEROS Y SIN ESQUINAS REDONDEADAS. La ficha tenía `rx` —un radio
+// fraccionario, o sea cuatro esquinas interpoladas— y un filo a opacidad 0,75.
+// Es la misma familia que se acaba de sacar del cable.
+//
+// EL LADO VIENE EN PÍXELES YA RESUELTO desde ui.js, en % de la caja de Chip: es
+// la unidad de lo que está pegado a un sprite. Ver CONECTOR_PECHO.lado.
+export function conectorDelPecho(conector, direccion, lado, grosor) {
   const largo = Math.hypot(direccion.x, direccion.y) || 1;
   const ux = direccion.x / largo;
   const uy = direccion.y / largo;
 
+  // PAR, para que la mitad también sea entera: una pieza de lado impar centrada
+  // sobre el eje del cable cae medio píxel corrida y se ve borrosa de un lado.
+  const L = Math.max(6, Math.round(lado / 2) * 2);
+  const mitad = L / 2;
+
+  // Cuánto entra al pecho y cuánto sobresale. El cuerpo es más ancho que largo:
+  // un puerto visto de costado es una pieza chata contra la chapa, no un tubo.
+  const dentro = Math.max(1, Math.round(L * 0.25));
+  const afuera = Math.max(2, Math.round(L * 0.5));
+
+  // La boca: la abertura por la que sale el cable, del alto del cable y no del
+  // conector. Si midiera lo mismo que la pieza no sería una boca, sería el canto.
+  const boca = Math.max(2, Math.round(grosor));
+
   return {
-    // Hasta dónde llega la punta del cable: bien adentro, para que la ficha la
-    // tape entera aunque el balanceo la mueva un pixel.
-    punta: { x: conector.x + ux * g * 0.9, y: conector.y + uy * g * 0.9 },
-    // La ficha: un poco más ancha que el cable y más corta que ancha, que es la
-    // proporción de una ficha de alimentación vista de costado.
-    ancho: g * 1.34,
-    largoFicha: g * 1.05,
-    radio: g * 0.22,
-    // Y el ángulo, para que la ficha acompañe la dirección de entrada.
+    // Hasta dónde llega la punta del cable: bien adentro, para que el conector la
+    // tape entera aunque el balanceo la mueva un píxel.
+    punta: { x: conector.x + ux * L * 0.7, y: conector.y + uy * L * 0.7 },
+    lado: L,
+    mitad,
+    dentro,
+    afuera,
+    ancho: dentro + afuera,
+    boca,
+    bocaY: -Math.round(boca / 2),
+    // El ángulo sale de la dirección real del cable, no de un número escrito.
     giro: (Math.atan2(uy, ux) * 180) / Math.PI
   };
 }

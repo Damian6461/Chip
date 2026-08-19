@@ -3268,7 +3268,26 @@ export const VARS_PANTALLA = {
 // pegado al canto y la unión se leía como un cable apoyado al lado del puerto.
 // Entrando en 83 el extremo queda ADENTRO de la pieza y la ficha lo tapa, que es
 // la diferencia entre "llega hasta" y "está enchufado".
-export const CONECTOR_PECHO = { x: 52.7, y: 83 };
+// Y EL LADO DE LA PIEZA VA EN LA MISMA UNIDAD, que es el punto entero.
+//
+// Lo que está pegado a un sprite escala con el sprite; lo que está en el mundo
+// —los objetos de la colección— va en píxeles fijos. Son reglas distintas a
+// propósito, y ésta es de las primeras: el conector está atornillado al pecho de
+// Chip, así que si Chip crece, crece con él.
+//
+// POR QUÉ NO UN % DE ESCENA, medido antes de dibujar nada: el arranque del cable
+// da 74,52 % de alto EXACTO en cinco viewports, pero en ancho se mueve entre
+// 52,57 y 52,92 — 0,35 puntos, 1,4 px sobre una escena de 390. La caja de Chip
+// es cuadrada y sale del alto, así que al cambiar la relación de aspecto Chip se
+// corre respecto del ancho. Sobre una pieza de 8 px, 1,4 px es el 18 %: el
+// conector quedaría descentrado del cable justo en los teléfonos donde la unión
+// se tiene que ver tapada. En % de la caja de Chip el punto es exacto POR
+// CONSTRUCCIÓN, porque es de donde el cable saca su propio arranque.
+//
+// 2,2 % de la caja da 8 px a 390x844, adentro de los 6 a 10 pedidos. El número
+// se redondea a un ENTERO PAR al dibujar, para que la mitad también sea entera y
+// la pieza quede centrada sobre el eje del cable sin medio píxel.
+export const CONECTOR_PECHO = { x: 52.7, y: 83, lado: 2.2 };
 
 // EL CABLE, dibujado y animado por código.
 //

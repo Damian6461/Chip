@@ -158,7 +158,7 @@ import {
   svgDeRayo,
   svgDeNumero,
   cintaDelCable,
-  fichaDelPuerto,
+  conectorDelPecho,
   caminoDeVuelo,
   reflejoDeAro
 } from './formas.js';
@@ -1289,7 +1289,11 @@ function puntoDelConector(escena) {
 
   return {
     x: chip.x - escena.x + (CONECTOR_PECHO.x / 100) * chip.width,
-    y: chip.y - escena.y + (CONECTOR_PECHO.y / 100) * chip.height
+    y: chip.y - escena.y + (CONECTOR_PECHO.y / 100) * chip.height,
+    // El lado del conector, en la MISMA unidad y desde la MISMA caja. Sale de
+    // acá y no de un cálculo aparte en el que dibuja: dos cuentas sobre la misma
+    // caja son dos lugares donde se pueden separar.
+    lado: (CONECTOR_PECHO.lado / 100) * chip.width
   };
 }
 
@@ -1351,7 +1355,7 @@ export function dibujarCable() {
   // cable salía recto hacia abajo, y una ficha que apunta para otro lado que su
   // propio cable deshace toda la unión.
   const salida = { x: linea[1].x - linea[0].x, y: linea[1].y - linea[0].y };
-  const ficha = fichaDelPuerto(desde, salida, grosor);
+  const conector = conectorDelPecho(desde, salida, desde.lado, grosor);
 
   // ---- LA FICHA DE LA OTRA PUNTA, SACADA A PROPÓSITO ----
   //
@@ -1414,10 +1418,22 @@ export function dibujarCable() {
   // llega hasta adentro del puerto—, después los pulsos, y la ficha ÚLTIMA,
   // tapándole la punta al cable. Con la ficha antes que la cinta no taparía nada
   // y el cable volvería a terminar a la vista, que es como se veía apoyado.
-  const eje = `translate(${desde.x.toFixed(1)} ${desde.y.toFixed(1)}) rotate(${ficha.giro.toFixed(1)})`;
+  // EL EJE ES EL MISMO PUNTO DEL QUE SALE EL CABLE, `desde`, sin redondear.
+  //
+  // Y NO SE REDONDEA A PROPÓSITO, aunque todo lo demás de esta pieza va en
+  // enteros: lo que se pide es CERO DERIVA entre el conector y el arranque del
+  // cable. Si el traslado se redondeara, el conector caería hasta medio píxel al
+  // costado del cable — y sobre una pieza de 8 px eso es justo la unión que
+  // viene a tapar. Los enteros van en las MEDIDAS, que son las que deciden dónde
+  // cae cada borde; el punto es compartido y por eso no puede separarse.
+  // Y EL PUNTO VA SIN REDONDEAR. Con `toFixed(1)` la deriva medida era de 0,05
+  // px — despreciable, pero no cero, y era CERO lo que se pidió. El redondeo no
+  // compraba nada: un `translate` no decide dónde cae un borde, lo decide la
+  // medida de lo que se traslada, y todas esas son enteras.
+  const eje = `translate(${desde.x} ${desde.y}) rotate(${conector.giro.toFixed(1)})`;
 
   nodoCable.innerHTML =
-    `<ellipse class="cable-sombra-puerto" transform="${eje}" rx="${(ficha.ancho * 0.78).toFixed(1)}" ry="${(ficha.ancho * 0.62).toFixed(1)}"/>` +
+    `<ellipse class="cable-sombra-puerto" transform="${eje}" rx="${(conector.ancho * 1.1).toFixed(1)}" ry="${(conector.ancho * 0.85).toFixed(1)}"/>` +
     `<path class="cable-cuerpo" d="${adelante}"/>` +
     // LAS DOS ARISTAS DEL TUBO. La de abajo primero: si el filo claro quedara
     // debajo del oscuro en un cruce del quiebre en S, el cable se vería
@@ -1425,9 +1441,22 @@ export function dibujarCable() {
     `<path class="cable-filo-abajo" d="${filoAbajo}" style="stroke-width:${grosorFilo}px"/>` +
     `<path class="cable-filo-arriba" d="${filoArriba}" style="stroke-width:${grosorFilo}px"/>` +
     pulsos +
-    `<g class="cable-ficha" transform="${eje}">` +
-    `<rect class="cable-ficha-cuerpo" x="${(-ficha.largoFicha * 0.18).toFixed(1)}" y="${(-ficha.ancho / 2).toFixed(1)}" width="${ficha.largoFicha.toFixed(1)}" height="${ficha.ancho.toFixed(1)}" rx="${ficha.radio.toFixed(1)}"/>` +
-    `<rect class="cable-ficha-filo" x="${(-ficha.largoFicha * 0.18).toFixed(1)}" y="${(-ficha.ancho / 2).toFixed(1)}" width="${(ficha.largoFicha * 0.26).toFixed(1)}" height="${ficha.ancho.toFixed(1)}" rx="${(ficha.radio * 0.8).toFixed(1)}"/>` +
+    // EL CONECTOR, ÚLTIMO Y ENCIMA DE TODO. Cuatro rectángulos, ningún radio,
+    // todas las medidas enteras:
+    //
+    //   cuerpo   la pieza, en el gris de plástico que ya estaba declarado para
+    //            esto. Más claro que el cable a propósito: tiene que leerse como
+    //            OTRA pieza y no como el cable engordado.
+    //   filo     una fila de 1 px arriba y otra abajo, con los dos tonos del
+    //            tubo. Es el mismo par que hace redondo al cable, y usarlo acá
+    //            es lo que hace que las dos piezas sean del mismo material.
+    //   boca     la abertura, del alto DEL CABLE y no del conector, en el negro
+    //            del puerto. Un cable sale de la abertura, no del canto.
+    `<g class="cable-conector" transform="${eje}">` +
+    `<rect class="cable-conector-cuerpo" x="${-conector.dentro}" y="${-conector.mitad}" width="${conector.ancho}" height="${conector.lado}"/>` +
+    `<rect class="cable-conector-filo-arriba" x="${-conector.dentro}" y="${-conector.mitad}" width="${conector.ancho}" height="1"/>` +
+    `<rect class="cable-conector-filo-abajo" x="${-conector.dentro}" y="${conector.mitad - 1}" width="${conector.ancho}" height="1"/>` +
+    `<rect class="cable-conector-boca" x="${conector.afuera - 1}" y="${conector.bocaY}" width="1" height="${conector.boca}"/>` +
     `</g>`;
 }
 

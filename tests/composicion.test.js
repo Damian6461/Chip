@@ -33,6 +33,7 @@ import {
   INHALACION,
   INCLINACION_CABEZA,
   CABLE,
+  CONECTOR_PECHO,
   PULSOS_CABLE,
   COLORES_BOTON,
   COLORES_BOTON_CHAPITA,
@@ -651,6 +652,34 @@ prueba('cable: las tres capas del tubo y el pulso piden bordes duros', () => {
   const pulso = bloqueEntre(CSS, '.pulso-cable {', '@keyframes viajar-pulso');
   const anillos = (pulso.match(/shape-rendering:\s*crispEdges/g) || []).length;
   igual(anillos, 2, 'las dos piezas del pulso —anillo y núcleo— piden crispEdges');
+});
+
+prueba('cable: el conector del pecho es una pieza de píxeles, no una ficha vectorial', () => {
+  // ACÁ HABÍA UNA FICHA, y el cambio de fondo no es el dibujo sino QUÉ PIEZA ES:
+  // una ficha TERMINA el cable, un conector lo RECIBE. Ver conectorDelPecho.
+  //
+  // Lo que este guardián cuida es que la pieza siga siendo de píxeles: la ficha
+  // tenía `rx` —cuatro esquinas interpoladas— y un filo a opacidad 0,75.
+  const bloque = bloqueEntre(CSS, '.cable-conector-cuerpo {', '#cable .cable-cuerpo,');
+  const cuantos = (bloque.match(/shape-rendering:\s*crispEdges/g) || []).length;
+  igual(cuantos, 4, 'las cuatro piezas del conector piden crispEdges');
+  verdadero(!/opacity:/.test(bloque), 'una opacidad en el conector vuelve a mezclar en vivo');
+  verdadero(!/gradient|blur/.test(bloque), 'ni degradés ni difuminados');
+
+  // Y QUE NO VUELVA EL RADIO. `rx` en un rectángulo de 8 px son cuatro esquinas
+  // a medio pintar, que a este tamaño es la mitad del contorno de la pieza.
+  const UI = readFileSync(RAIZ + 'js/ui.js', 'utf8');
+  const dibujo = bloqueEntre(UI, '<g class="cable-conector"', '</g>`;', 2000);
+  verdadero(!/rx=/.test(dibujo), 'volvió una esquina redondeada al conector');
+  verdadero(!/toFixed/.test(dibujo), 'una medida con decimales: al DOM tienen que llegar enteras');
+
+  // EL LADO VA EN % DE LA CAJA DE CHIP y no en píxeles fijos: lo que está pegado
+  // a un sprite escala con el sprite. Los objetos de la colección van al revés
+  // —píxeles fijos— porque están en el mundo y no sobre Chip.
+  verdadero(
+    typeof CONECTOR_PECHO.lado === 'number' && CONECTOR_PECHO.lado < 10,
+    `CONECTOR_PECHO.lado vale ${CONECTOR_PECHO.lado} y tiene que ser un % de la caja, no píxeles`
+  );
 });
 
 prueba('cable: el resplandor del pulso se dibuja, no se difumina', () => {

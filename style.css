@@ -4644,14 +4644,41 @@ body.sin-movimiento *::after {
   filter: blur(2px);
 }
 
-.cable-ficha-cuerpo {
+/* EL CONECTOR DEL PECHO. Cuatro rectángulos y ninguna esquina redondeada.
+
+   ACÁ ESTABA LA FICHA y era otra pieza: `.cable-ficha-cuerpo` con su `rx` —un
+   radio fraccionario, o sea cuatro esquinas interpoladas— y `.cable-ficha-filo`
+   a opacidad 0,75, que es una mezcla en vivo. Las dos cosas son de la misma
+   familia que se acaba de sacar del cable.
+
+   Pero el cambio de fondo no es el dibujo: es QUÉ PIEZA ES. Una ficha es lo que
+   TERMINA el cable; lo que hace falta en el pecho es lo que lo RECIBE. Por eso
+   el salto entre el brillo cian del pecho y el trazo se veía flojo: una ficha se
+   apoya encima de ese salto, un conector lo tapa porque es la pieza que explica
+   por qué ahí hay un cable.
+
+   Los tres tonos son los del tubo más el negro del puerto, así que el conector y
+   el cable se leen como el mismo material. Todo a opacidad 1. */
+.cable-conector-cuerpo {
   fill: var(--cable-ficha);
+  shape-rendering: crispEdges;
 }
 
-/* El filo del lado del puerto, mas oscuro: es la cara que entra, y en sombra. */
-.cable-ficha-filo {
+.cable-conector-filo-arriba {
+  fill: var(--cable-filo-arriba);
+  shape-rendering: crispEdges;
+}
+
+.cable-conector-filo-abajo {
+  fill: var(--cable-filo-abajo);
+  shape-rendering: crispEdges;
+}
+
+/* La boca. Va del alto DEL CABLE y no del conector: si midiera lo mismo que la
+   pieza no sería una abertura, sería el canto. */
+.cable-conector-boca {
   fill: var(--cable-sombra-puerto);
-  opacity: 0.75;
+  shape-rendering: crispEdges;
 }
 
 /* EL BALANCEO. Muy leve y muy lento: algo que apenas se mueve por su propio
