@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Plantillas para redibujar los ojos</title>
+<!-- La hoja del juego, porque el cruce contra el navegador usa las reglas
+     REALES de .ojos-gesto. Si alguien las cambia, esta página lo detecta. -->
+<link rel="stylesheet" href="../style.css">
+<style>
+  body {
+    background: #14161c; color: #e6e6e6; margin: 0; padding: 24px;
+    font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 14px; color: #ffb060; margin: 26px 0 8px; font-weight: normal; }
+  h3 { font-size: 13px; color: #c9ced7; margin: 0 0 6px; font-weight: normal; }
+  p { color: #9aa0ab; font-size: 13px; max-width: 82ch; }
+  code { color: #c9ced7; }
+  table { border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  td, th { padding: 3px 16px 3px 0; text-align: left; vertical-align: top; }
+  th { color: #9aa0ab; font-weight: normal; }
+  .bien { color: #63d68a; }
+  .flojo { color: #ff6b78; }
+  .nota {
+    border: 1px solid #2a2d38; border-left: 3px solid #ffb060;
+    padding: 10px 14px; margin: 14px 0; max-width: 84ch;
+  }
+  .nota p { margin: 0 0 6px; max-width: none; }
+  .nota p:last-child { margin: 0; }
+  .tira { display: flex; gap: 20px; flex-wrap: wrap; }
+  .pieza { }
+  .pieza canvas {
+    image-rendering: pixelated;
+    display: block;
+    /* Un tablero, para que la transparencia se vea COMO transparencia y no como
+       negro: lo que hay que mirar es el borde de la crema, y sobre negro un
+       borde oscuro desaparece. */
+    background:
+      repeating-conic-gradient(#2a2d38 0% 25%, #1c1f27 0% 50%) 0 0 / 16px 16px;
+  }
+  .pieza a { color: #ffb060; font-size: 12px; display: inline-block; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================================
+     CÓMO ABRIR ESTA PÁGINA — leer antes de concluir que no muestra nada.
+
+     Va INLINE y en un script CLÁSICO, no en un módulo, y las dos cosas son a
+     propósito: es el único código de la página que tiene que correr aunque todo
+     lo demás esté bloqueado.
+
+     El bloque está REPETIDO en TODAS las páginas de verificacion/, y eso
+     también es deliberado. Un archivo compartido es una cosa más que puede no
+     cargar, y el caso que este bloque atiende es exactamente ése. Que las cuatro
+     copias no se separen lo hace cumplir tests/assets.test.js.
+     ============================================================================ -->
+<style>
+  #como-abrirla {
+    border: 1px solid #2a2d38; border-left: 3px solid #ffb060;
+    padding: 10px 14px; margin: 0 0 22px; max-width: 84ch;
+    font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: #9aa0ab;
+  }
+  #como-abrirla p { margin: 0 0 6px; max-width: none; font-size: 13px; color: inherit; }
+  #como-abrirla p:last-child { margin-bottom: 0; }
+  #como-abrirla a { color: #ffb060; }
+  #aviso-protocolo { color: #ff6b78; }
+  #version-sw:empty { display: none; }
+</style>
+<div id="como-abrirla">
+  <p id="aviso-protocolo" hidden>
+    <strong>ASÍ NO SE VE NADA, Y NO ES QUE NO HAYA NADA.</strong>
+    Esta página se dibuja con módulos ES, y el navegador los bloquea en
+    <code>file://</code>. El script no corre, queda sólo el texto, y el resultado
+    se parece a «no hay nada que mostrar». Hay que servirla por HTTP:
+  </p>
+  <p>
+    <strong>En el teléfono:</strong>
+    <a href="https://damian6461.github.io/Chip/verificacion/plantillas-ojos.html">damian6461.github.io/Chip/verificacion/plantillas-ojos.html</a>
+  </p>
+  <p>
+    <strong>En la máquina:</strong> <code>python3 -m http.server</code> en la raíz
+    del repo, y abrir <code>localhost:8000/verificacion/plantillas-ojos.html</code>
+  </p>
+  <p id="version-sw"></p>
+</div>
+<script>
+  (function () {
+    if (location.protocol === 'file:') {
+      document.getElementById('aviso-protocolo').hidden = false;
+      return;
+    }
+
+    /* Y LA OTRA MITAD DE ABRIRLA BIEN: CON QUÉ VERSIÓN SE ESTÁ MIRANDO.
+
+       js/config.js y js/tema.js SÍ están en ARCHIVOS_CACHE, así que un teléfono
+       con un service worker viejo le sirve a esta página los módulos de esa
+       versión. La página anda, dibuja, no se queja — y mide una versión que ya
+       no existe. Es el mismo modo de falla que costó dos deploys, ahora del lado
+       de la herramienta que tendría que detectarlo.
+
+       Todo esto es informativo y no puede romper la página: si algo falla, el
+       renglón queda vacío y el CSS lo esconde. */
+    var linea = document.getElementById('version-sw');
+    function decir(texto, alarma) {
+      linea.textContent = texto;
+      linea.style.color = alarma ? '#ffb060' : '#6d747f';
+    }
+
+    fetch('../sw.js', { cache: 'no-store' })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var publicada = (t.match(/CACHE_VERSION\s*=\s*'([^']+)'/) || [])[1] || '?';
+
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+          decir('Sin service worker: los módulos vienen de la red. Publicado: ' + publicada + '.', false);
+          return;
+        }
+
+        var canal = new MessageChannel();
+        var reloj = setTimeout(function () {
+          decir('El service worker no contestó en 400 ms. Publicado: ' + publicada + '.', true);
+        }, 400);
+
+        canal.port1.onmessage = function (e) {
+          clearTimeout(reloj);
+          var puesta = (e.data && e.data.version) || '?';
+          decir(
+            puesta === publicada
+              ? 'Service worker ' + puesta + ', igual que lo publicado.'
+              : 'OJO: esta página se sirve con ' + puesta + ' y lo publicado es ' +
+                publicada + '. Estás mirando una versión vieja — recargá dos veces.',
+            puesta !== publicada
+          );
+        };
+
+        navigator.serviceWorker.controller.postMessage('version', [canal.port2]);
+      })
+      .catch(function () {});
+  })();
+</script>
+
+<h1>Plantillas para redibujar los ojos</h1>
+
+<div class="nota">
+  <p>
+    <strong>QUÉ ES CADA UNA.</strong> Las cuatro <code>plantilla-*</code> llevan
+    dos capas: la <strong>cabeza correcta</strong> del estado, y encima el
+    recorte del gesto <strong>ya con la transformación de hoy aplicada</strong> —
+    escala, corrimiento y recorte de <code>AJUSTE_OJOS</code>, remuestreados con
+    vecino más cercano. O sea: exactamente lo que se ve hoy en pantalla, pero
+    como archivo.
+  </p>
+  <p>
+    Las dos <code>referencia-*</code> son el caso que <strong>sí está bien</strong>:
+    el recorte de ojos del propio estado, sin transformación ninguna, sobre su
+    cabeza. Sirven para comparar cómo se ve un borde que encaja.
+  </p>
+  <p>
+    El fondo a cuadros es de esta página, no de los archivos: los PNG llevan
+    transparencia de verdad.
+  </p>
+</div>
+
+<h2>El cruce contra el navegador — antes de exportar nada</h2>
+<p>
+  Si la matriz de <code>plantillas-ojos.mjs</code> no reprodujera exactamente lo
+  que hace la hoja, las cuatro plantillas saldrían corridas y no se notaría hasta
+  que alguien dibuje encima de una mentira. Así que se arman las ocho capas de
+  verdad —cuatro plantillas por dos ojos— con las reglas reales de
+  <code>style.css</code>, y se compara la caja que devuelve
+  <code>getBoundingClientRect</code> contra la que predice la matriz.
+</p>
+<div id="cruce"></div>
+
+<h2>Y el mismo cruce mirándolo — el DOM contra la plantilla</h2>
+<p>
+  La comparación de cajas de arriba prueba la matriz, pero <strong>no prueba el
+  recorte ni el remuestreo</strong>: un <code>clip-path</code> mal traducido o un
+  suavizado bilineal darían la misma caja y otro dibujo. Así que acá está el DOM
+  de verdad —la cabeza más las dos mitades del gesto con las reglas de
+  <code>style.css</code>, opacidad 1— al lado de la plantilla que sale del canvas,
+  las dos a 256 y las dos ampliadas ×3 con vecino más cercano. Tienen que ser la
+  misma imagen.
+</p>
+<div id="cruce-visual" class="tira"></div>
+
+<h2>Las seis</h2>
+<div id="piezas" class="tira"></div>
+
+<h2>Guardarlas</h2>
+<p>
+  Cada una tiene su enlace de descarga acá arriba. Para dejarlas de una vez en
+  <code>verificacion/plantillas/</code>, que es donde van:
+</p>
+<pre style="color:#c9ced7;font-size:13px">node verificacion/plantillas-escribidor.mjs</pre>
+<p>
+  y recargar esta página con <code>?guardar=1</code>. El escribidor es un
+  servidor de doce líneas que sólo acepta PNG y sólo escribe adentro de esa
+  carpeta.
+</p>
+<div id="guardado"></div>
+
+<script type="module">
+import { AJUSTE_OJOS } from '../js/config.js';
+import { generar, cruzarContraElNavegador, PLANTILLAS } from './plantillas-ojos.mjs';
+
+// ---- El cruce, primero ----
+
+const filas = cruzarContraElNavegador();
+const peor = Math.max(...filas.map((f) => f.error));
+const origenes = [...new Set(filas.map((f) => f.origen))];
+const bien = peor < 0.1;
+
+document.getElementById('cruce').innerHTML =
+  `<table>` +
+  `<tr><th>capa</th><th>escala · x · y</th><th>el navegador</th><th>la matriz</th><th>error</th></tr>` +
+  filas.map((f) => {
+    const a = AJUSTE_OJOS[f.estado][f.gesto][f.lado];
+    const r = (c) => `${c.ancho.toFixed(2)}×${c.alto.toFixed(2)} @ ${c.x.toFixed(2)}, ${c.y.toFixed(2)}`;
+    return `<tr><th>${f.estado} ${f.gesto} ${f.lado}</th>` +
+      `<td>${a.escala} · ${a.x} % · ${a.y} %</td>` +
+      `<td>${r(f.real)}</td><td>${r(f.predicha)}</td>` +
+      `<td class="${f.error < 0.1 ? 'bien' : 'flojo'}">${f.error.toFixed(4)}</td></tr>`;
+  }).join('') +
+  `<tr><th>transform-origin leído</th><td colspan="4">${origenes.join(' · ')} — ${
+    origenes.length === 1 && origenes[0] === '128px 128px'
+      ? '<span class="bien">el centro de la caja, que es lo que supone la matriz</span>'
+      : '<span class="flojo">NO es el centro: la matriz está mal</span>'
+  }</td></tr>` +
+  `<tr><th>peor error</th><td colspan="4">${
+    bien ? `<span class="bien">${peor.toFixed(4)} px — el pipeline es el de la hoja</span>`
+         : `<span class="flojo">${peor.toFixed(4)} px — NO se exporta</span>`
+  }</td></tr>` +
+  `</table>`;
+
+if (!bien) {
+  document.getElementById('piezas').innerHTML =
+    '<p class="flojo">El cruce no dio. No se generan las plantillas: saldrían corridas.</p>';
+} else {
+  const piezas = await generar();
+
+  // ---- El cruce visual: el DOM de verdad al lado de la plantilla ----
+  //
+  // Se arma con `idle contento`, que es el caso con la escala más grande —1,17—
+  // o sea donde un remuestreo equivocado se vería primero.
+  {
+    const p = piezas.find((x) => x.archivo === 'plantilla-idle-contento.png');
+    const ajuste = AJUSTE_OJOS.idle.contento;
+
+    const dom = document.createElement('div');
+    dom.style.cssText = 'position:relative;width:256px;height:256px;overflow:hidden';
+    const cabeza = document.createElement('img');
+    cabeza.src = '../sprites/idle-cabeza.webp';
+    cabeza.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated';
+    dom.appendChild(cabeza);
+    for (const lado of ['izq', 'der']) {
+      const capa = document.createElement('img');
+      capa.className = 'ojos-gesto';
+      capa.id = `ojos-contento-${lado}`;
+      capa.src = '../sprites/idle-ojos-contento.webp';
+      capa.style.setProperty('--ojos-contento-corte', `${ajuste.corte}%`);
+      capa.style.setProperty(`--ojos-contento-${lado}-escala`, String(ajuste[lado].escala));
+      capa.style.setProperty(`--ojos-contento-${lado}-x`, `${ajuste[lado].x}%`);
+      capa.style.setProperty(`--ojos-contento-${lado}-y`, `${ajuste[lado].y}%`);
+      capa.style.opacity = '1';
+      dom.appendChild(capa);
+    }
+
+    // Una copia POR DIBUJO y no `cloneNode`: clonar un <canvas> copia el
+    // elemento y NO el bitmap, así que la columna ampliada salía vacía. Se ve
+    // enseguida, pero vale escribirlo porque el modo de falla —un canvas del
+    // tamaño correcto y en blanco— se parece a "no se generó nada".
+    const copiaDe = (fuente) => {
+      const c = document.createElement('canvas');
+      c.width = fuente.width;
+      c.height = fuente.height;
+      c.getContext('2d').drawImage(fuente, 0, 0);
+      return c;
+    };
+    const clon = copiaDe(p.lienzo);
+
+    const caja = document.getElementById('cruce-visual');
+    const conTitulo = (titulo, nodo, zoom) => {
+      const d = document.createElement('div');
+      d.className = 'pieza';
+      d.innerHTML = `<h3>${titulo}</h3>`;
+      const marco = document.createElement('div');
+      marco.style.cssText = zoom
+        ? 'width:256px;height:256px;overflow:hidden'
+        : '';
+      const dentro = document.createElement('div');
+      if (zoom) {
+        dentro.style.cssText = 'zoom:3;image-rendering:pixelated;margin-left:-38px;margin-top:-38px';
+      }
+      dentro.appendChild(nodo);
+      marco.appendChild(dentro);
+      d.appendChild(marco);
+      caja.appendChild(d);
+    };
+    conTitulo('el DOM, con las reglas de la hoja', dom, false);
+    conTitulo('la plantilla, del canvas', clon, false);
+    conTitulo('el DOM ×3', dom.cloneNode(true), true);
+    conTitulo('la plantilla ×3', copiaDe(p.lienzo), true);
+  }
+
+  const caja = document.getElementById('piezas');
+
+  for (const p of piezas) {
+    const url = p.lienzo.toDataURL('image/png');
+    const div = document.createElement('div');
+    div.className = 'pieza';
+    div.innerHTML = `<h3>${p.archivo}</h3>`;
+    div.appendChild(p.lienzo);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = p.archivo;
+    a.textContent = 'bajar ' + p.archivo;
+    div.appendChild(a);
+    caja.appendChild(div);
+    p.url = url;
+  }
+
+  // ---- Y el guardado, si lo pidieron ----
+  if (new URLSearchParams(location.search).has('guardar')) {
+    const linea = document.getElementById('guardado');
+    const dichos = [];
+    for (const p of piezas) {
+      try {
+        const cuerpo = await (await fetch(p.url)).blob();
+        const r = await fetch('http://localhost:8766/' + p.archivo, { method: 'PUT', body: cuerpo });
+        dichos.push(`${r.ok ? '✓' : '✗'} ${p.archivo} — ${await r.text()}`);
+      } catch (e) {
+        dichos.push(`✗ ${p.archivo} — ${e.message} (¿está corriendo el escribidor?)`);
+      }
+    }
+    linea.innerHTML = '<pre style="font-size:13px;color:#c9ced7">' + dichos.join('\n') + '</pre>';
+  }
+}
+</script>
+</body>
+</html>
