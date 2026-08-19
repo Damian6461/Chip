@@ -321,6 +321,7 @@ export function variablesDeTema() {
     [VARS_CABLE.cicloBalanceo]: ms(CABLE.balanceo.ciclo),
     [VARS_CABLE.amplitudBalanceo]: px(CABLE.balanceo.amplitud),
     [VARS_CABLE.energia]: CABLE.energia,
+    [VARS_CABLE.halo]: CABLE.halo,
     [VARS_CABLE.sombraPuerto]: CABLE.sombraPuerto,
     [VARS_CABLE.ficha]: CABLE.ficha,
     [VARS_LLUVIA.angulo]: LLUVIA.angulo + 'deg',

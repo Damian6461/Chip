@@ -380,6 +380,67 @@ propaga a un script.
 medición que agrupe por nombre tiene que imprimir al lado de qué archivo salió
 cada fila.
 
+### El resplandor se dibuja, la sombra se difumina
+
+Una **sombra** real es suave, y por eso la elipse de contacto de las piezas
+apoyadas es la excepción declarada del tratamiento de cantos duros. Pero una
+**luz** que sale de una pieza de píxeles no: en pixel art un resplandor es
+**escalonado**, y se dibuja en anillos de borde duro.
+
+Un `drop-shadow` con blur sobre un elemento de pixel art mete cientos de píxeles
+parciales que ninguna paleta tiene. Medido sobre un pulso del cable, en una caja
+de 28×28 y con el círculo ya en radio entero: **14 píxeles opacos y 440 parciales
+en 26 tonos**. Dibujado como un anillo: **32 opacos, 0 parciales, 2 colores** —
+los dos que hay escritos en `config.js`.
+
+Y la parte que hay que recordar: **`shape-rendering: crispEdges` no lo ve.** Los
+filtros se aplican *después* del rasterizado y son ciegos a él. Poner
+`crispEdges` y dejar el blur al lado es no haber cambiado nada, con aspecto de
+haberlo cambiado.
+
+El contraejemplo correcto está en la misma hoja: `#acciones button svg` usa
+cuatro `drop-shadow` con **blur 0** para hacerle un contorno al ícono. Eso es un
+offset entero, no un halo.
+
+Lo que sí va suave y no se toca: las sombras de contacto, las de los objetos, el
+blur de la lluvia, el del botón del menú y el de la sombra del puerto. Son sombra
+y atmósfera.
+
+### Probar un guardián en rojo también se puede hacer mal
+
+La regla de siempre es que un guardián no está verificado hasta que se le
+reintroduce el defecto y **se lo ve ponerse rojo**. Falta la otra mitad: si el
+defecto se inyecta **en el lugar equivocado**, el verde que sigue no dice que el
+guardián funcione — dice que no lo tocaste.
+
+Pasó con el cable. Para probar el guardián de `crispEdges` se inyectó el defecto
+buscando el par `stroke: none; shape-rendering: crispEdges`… que es también el
+par que tiene el ícono de la botonera, y aparece antes en la hoja. Se reemplazó
+el primero, el cable quedó intacto, y el resultado fue un guardián «verde» sin
+haber sido probado. Lo delató que el rojo que sí apareció era el del ícono.
+
+**La inyección tiene que ser única.** Verificá que el patrón que vas a reemplazar
+aparezca **una sola vez** en el archivo antes de reemplazarlo, y si no, alargalo
+hasta que lo sea.
+
+### Cuando un defecto tiene grados, el peor punto suele ser el que explica la causa
+
+El cable se midió cortándolo en tres puntos y contando colores: dieron **6, 7 y
+12**. Lo fácil es leer el 12 como «ahí está peor» y seguir. Lo que decía es
+**dónde**: el tercer corte cae justo en el cruce de las dos capas del cable, y
+ahí el filo de una pasa por encima del filo de la otra. Con los filos dibujados a
+opacidad 0,55 y 0,7, ese cruce apila dos mezclas — o sea que el peor punto no era
+el peor por azar, era **el único lugar donde la técnica fallaba dos veces**.
+
+Eso convierte una medición en un diagnóstico: el defecto no era «los bordes salen
+suaves», era «el tono se calcula en función de lo que haya debajo». Y la
+diferencia entre esas dos frases es la diferencia entre subir el contraste y
+cambiar la técnica.
+
+**Ante una escala de valores, el extremo no es sólo el caso más grave: es la
+muestra donde la causa se ve amplificada.** Vale la pena ir a mirar qué tiene de
+particular ese punto antes de promediar nada.
+
 ### Un guardián roto no se cae: se relaja
 
 **Un test que ubica su sujeto por búsqueda de texto se ensancha cuando el ancla

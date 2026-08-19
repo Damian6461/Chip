@@ -1391,15 +1391,23 @@ export function dibujarCable() {
       `<path class="cable-filo-arriba" d="${filoArribaAtras}" style="stroke-width:${grosorFilo}px"/>`;
   }
 
+  const radioPulso = Math.max(1, Math.round(grosor * PULSOS_CABLE.radioEnGrosores));
   const pulsos = Array.from(
     { length: PULSOS_CABLE.cuantos },
     (_, i) =>
-      // EL RADIO TAMBIÉN ENTERO, y llegaba como 2,20. Un círculo de radio
-      // fraccionario tiene su borde a mitad de píxel en las cuatro direcciones:
-      // es el peor caso posible para un punto de 4 px de diámetro, y son los
-      // cinco puntitos que se leen como suciedad. 6,47 · 0,34 da 2,20 y redondea
-      // a 2.
-      `<circle class="pulso-cable" r="${Math.max(1, Math.round(grosor * PULSOS_CABLE.radioEnGrosores))}" style="animation-delay: ${Math.round((i * PULSOS_CABLE.ciclo) / PULSOS_CABLE.cuantos)}ms"/>`
+      // EL RADIO ENTERO, y llegaba como 2,20. Un círculo de radio fraccionario
+      // tiene su borde a mitad de píxel en las cuatro direcciones: es el peor
+      // caso posible para un punto de 4 px de diámetro. 6,47 · 0,34 da 2,20 y
+      // redondea a 2.
+      //
+      // Y EL PULSO ES UN GRUPO Y NO UN CÍRCULO, porque el resplandor se DIBUJA.
+      // El anillo va debajo del núcleo, con el radio derivado del mismo número,
+      // así que los dos viajan juntos por el offset-path del grupo y cambiar el
+      // radio los mueve a los dos. Ver PULSOS_CABLE.anillo.
+      `<g class="pulso-cable" style="animation-delay: ${Math.round((i * PULSOS_CABLE.ciclo) / PULSOS_CABLE.cuantos)}ms">` +
+        `<circle class="pulso-cable-anillo" r="${radioPulso + PULSOS_CABLE.anillo}"/>` +
+        `<circle class="pulso-cable-nucleo" r="${radioPulso}"/>` +
+        `</g>`
   ).join('');
 
   // EL ORDEN DE PINTADO ES LA UNIÓN. La sombra primero, después la cinta —que

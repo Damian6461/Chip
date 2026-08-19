@@ -3398,6 +3398,11 @@ export const CABLE = {
   // energía viva— es todo el efecto. Si el cable también fuera cian, los pulsos
   // no tendrían contra qué destacarse.
   energia: '#5fe6ff',
+  // EL ANILLO DEL PULSO, y no es un hex nuevo: es el núcleo del bulbo de `idle`,
+  // el cian casi blanco que el juego ya usa para el centro caliente de una luz.
+  // Va MÁS CLARO que la energía y no más oscuro, que es como se lee una luz
+  // pequeña en pixel art: el borde es donde revienta, no donde se apaga.
+  halo: '#dffcff',
   // La sombra donde entra al puerto: sin ella el cable se apoya, no se enchufa.
   sombraPuerto: '#050a0e',
   // La ficha: un gris de plástico, más claro que el cable. Tiene que leerse como
@@ -3531,7 +3536,31 @@ export const PULSOS_CABLE = {
   //
   // 0,34 del grosor deja el pulso adentro con un margen visible de cable a los
   // lados, que es lo que hace que se lea como algo que VIAJA POR el cable.
-  radioEnGrosores: 0.34
+  radioEnGrosores: 0.34,
+
+  // ---- EL RESPLANDOR SE DIBUJA, NO SE DIFUMINA ----
+  //
+  // Acá había un `filter: drop-shadow(0 0 4px var(--cable-energia))` en la hoja,
+  // y era el defecto (d) entero: los puntitos que se leían como suciedad no eran
+  // el borde del círculo ni que fueran cinco. Medido en una caja de 28x28
+  // alrededor de un pulso, con el círculo ya en radio entero y con
+  // `shape-rendering: crispEdges` puesto:
+  //
+  //   14 píxeles opacos      el círculo, limpio
+  //   440 píxeles parciales  en 26 tonos distintos
+  //
+  // Y `shape-rendering` NO LO VE: los filtros se aplican después del rasterizado
+  // y son ciegos a él. Un blur sobre una pieza de píxeles mete cientos de tonos
+  // que ninguna paleta tiene, siempre.
+  //
+  // EN PIXEL ART UNA LUZ NO ES GAUSSIANA: ES ESCALONADA. Así que el resplandor
+  // pasa a ser un ANILLO dibujado — un círculo más grande debajo del núcleo, de
+  // borde duro y color de la paleta. Va ADENTRO del dibujo del pulso y no como
+  // filtro, así que si mañana cambia el radio el anillo se mueve con él.
+  //
+  // 1 px, entero. Con el núcleo en radio 2 el anillo queda en 3, o sea una banda
+  // de un píxel alrededor — que a este tamaño es todo el resplandor que entra.
+  anillo: 1
 };
 
 // LA CAJA DE CONEXIÓN, de vuelta y al fondo. Es la misma que se dibujó en su
@@ -3663,6 +3692,7 @@ export const VARS_CABLE = {
   filoArriba: '--cable-filo-arriba',
   filoAbajo: '--cable-filo-abajo',
   energia: '--cable-energia',
+  halo: '--cable-halo',
   sombraPuerto: '--cable-sombra-puerto',
   ficha: '--cable-ficha',
   // Acá estaban las cinco de la caja del toma —tomaX, tomaY, tomaAncho,

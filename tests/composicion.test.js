@@ -33,6 +33,7 @@ import {
   INHALACION,
   INCLINACION_CABEZA,
   CABLE,
+  PULSOS_CABLE,
   COLORES_BOTON,
   COLORES_BOTON_CHAPITA,
   COLORES_BULBO,
@@ -648,7 +649,30 @@ prueba('cable: las tres capas del tubo y el pulso piden bordes duros', () => {
   verdadero(!/shape-rendering:\s*auto/.test(tubo), 'volvió el antialias a alguna capa del tubo');
 
   const pulso = bloqueEntre(CSS, '.pulso-cable {', '@keyframes viajar-pulso');
-  verdadero(/shape-rendering:\s*crispEdges/.test(pulso), 'el pulso también, o vuelve a ser una mancha');
+  const anillos = (pulso.match(/shape-rendering:\s*crispEdges/g) || []).length;
+  igual(anillos, 2, 'las dos piezas del pulso —anillo y núcleo— piden crispEdges');
+});
+
+prueba('cable: el resplandor del pulso se dibuja, no se difumina', () => {
+  // ES LA MITAD QUE `shape-rendering` NO PUEDE CUIDAR. Los filtros se aplican
+  // DESPUÉS del rasterizado y son ciegos a él: un `crispEdges` con un blur al
+  // lado no cambia un solo píxel del halo. Por eso este guardián mira el filtro
+  // y no el rendering.
+  //
+  // Medido con el blur puesto, en una caja de 28x28 alrededor de un pulso: 14
+  // píxeles opacos y 440 parciales en 26 tonos.
+  const pulso = bloqueEntre(CSS, '.pulso-cable {', '@keyframes viajar-pulso');
+  verdadero(!/filter:/.test(pulso), 'volvió un filtro al pulso, y con él los píxeles parciales');
+  verdadero(!/blur/.test(pulso), 'volvió un blur al pulso');
+
+  // Y EL ANILLO ES PARTE DEL DIBUJO, no un adorno suelto: su radio sale del
+  // mismo número que el núcleo, así que cambiar el radio los mueve a los dos.
+  const UI = readFileSync(RAIZ + 'js/ui.js', 'utf8');
+  verdadero(
+    /r="\$\{radioPulso \+ PULSOS_CABLE\.anillo\}"/.test(UI),
+    'el anillo tiene que derivar del radio del núcleo, o se despega al cambiarlo'
+  );
+  verdadero(Number.isInteger(PULSOS_CABLE.anillo), 'el anillo va en píxeles enteros');
 });
 
 prueba('cable: los filos son colores y no mezclas en vivo', () => {

@@ -4682,19 +4682,38 @@ body.sin-movimiento *::after {
    `direction: reverse` los hace nacer en el extremo lejano y llegar al conector:
    la energía va HACIA Chip, que es lo que cierra el circuito con el latido del
    rayo del pecho. */
+/* EL PULSO ES UN GRUPO, Y LO QUE VIAJA ES EL GRUPO.
+
+   Acá había un `<circle>` con `filter: drop-shadow(0 0 4px var(--cable-energia))`
+   y ese filtro era el defecto (d) entero. Medido en una caja de 28x28 alrededor
+   de un pulso, con el círculo ya en radio entero y con `crispEdges` puesto: 14
+   píxeles opacos —el círculo, limpio— y 440 parciales en 26 tonos. Los puntitos
+   que se leían como suciedad eran el halo, no el borde.
+
+   `shape-rendering` NO LO VEÍA, y esa es la parte que hay que recordar: los
+   filtros se aplican DESPUÉS del rasterizado y son ciegos a él. Poner
+   `crispEdges` y dejar el blur es no haber cambiado nada.
+
+   Ahora el resplandor se DIBUJA: un anillo de borde duro debajo del núcleo. Ver
+   PULSOS_CABLE.anillo en config.js. */
 .pulso-cable {
-  fill: var(--cable-energia);
-  /* Mismo trato que el tubo. NO ALCANZA, y el número está medido: el círculo en
-     sí queda limpio —14 píxeles opacos— pero el `drop-shadow` de 4 px de abajo
-     lo rodea de 440 píxeles a medio pintar, en 26 tonos. `shape-rendering` no
-     toca los filtros. Ver el parte del cable: la decisión sobre ese halo es del
-     revisor y esto no la toca. */
-  shape-rendering: crispEdges;
   offset-path: var(--cable-camino);
   offset-rotate: 0deg;
   offset-distance: 0%;
-  filter: drop-shadow(0 0 4px var(--cable-energia));
   animation: viajar-pulso var(--cable-pulso-ciclo) linear infinite reverse;
+}
+
+/* El anillo va MÁS CLARO que el núcleo y no más oscuro: en pixel art una luz
+   chica revienta en el borde, no se apaga. Es el cian casi blanco del núcleo del
+   bulbo de idle, que el juego ya usa para el centro caliente de una luz. */
+.pulso-cable-anillo {
+  fill: var(--cable-halo);
+  shape-rendering: crispEdges;
+}
+
+.pulso-cable-nucleo {
+  fill: var(--cable-energia);
+  shape-rendering: crispEdges;
 }
 
 /* EL PULSO YA NO SE ACHICA, y se fueron seis custom properties con él.
