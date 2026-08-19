@@ -1250,7 +1250,20 @@ export function cintaDelCable(
       })
       .join(' ');
 
-  const grosorFilo = Math.max(0.9, semiancho * 2 * cable.filo);
+  // EL GROSOR DEL FILO LLEGA AL DOM COMO ENTERO, y llegaba como 1,42.
+  //
+  // Un stroke de 1,42 px NO PUEDE dar un borde duro por más `crispEdges` que se
+  // le ponga: el navegador tiene que repartir ese 0,42 entre dos filas de
+  // píxeles, así que es una banda borrosa siempre y en todos los aparatos. El
+  // piso de 0,9 tenía el mismo problema con otra cara.
+  //
+  // Se redondea ACÁ, donde el número se calcula, y no en el `toFixed` de ui.js:
+  // redondear al escribirlo dejaría el cálculo mintiendo sobre lo que se dibuja.
+  // Con el cable de 6,47 px de esta escena, 6,47 · 0,22 da 1,42 y redondea a 1 —
+  // que además es lo que pide el propio criterio de `cable.filo`: un filo grueso
+  // deja de ser una arista y pasa a ser un segundo cable pegado al primero. Con
+  // 2 quedaban 2,47 px de cuerpo entre dos aristas de 2. Verificado con captura.
+  const grosorFilo = Math.max(1, Math.round(semiancho * 2 * cable.filo));
 
   // LOS FILOS VAN EN LAS DOS CAPAS, con el mismo corte que el cuerpo.
   //

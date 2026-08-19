@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>El cable: cuántos colores tiene un corte</title>
+<style>
+  body {
+    background: #14161c; color: #e6e6e6; margin: 0; padding: 24px;
+    font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 14px; color: #ffb060; margin: 26px 0 8px; font-weight: normal; }
+  p { color: #9aa0ab; font-size: 13px; max-width: 84ch; }
+  code { color: #c9ced7; }
+  table { border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  td, th { padding: 3px 16px 3px 0; text-align: left; vertical-align: top; }
+  th { color: #9aa0ab; font-weight: normal; }
+  .bien { color: #63d68a; }
+  .flojo { color: #ff6b78; }
+  .nota {
+    border: 1px solid #2a2d38; border-left: 3px solid #ffb060;
+    padding: 10px 14px; margin: 14px 0; max-width: 84ch;
+  }
+  .nota p { margin: 0 0 6px; max-width: none; }
+  .nota p:last-child { margin: 0; }
+  canvas { image-rendering: pixelated; display: block; }
+  .tira { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .muestra { border: 1px solid #2a2d38; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================================
+     CÓMO ABRIR ESTA PÁGINA — leer antes de concluir que no muestra nada.
+
+     Va INLINE y en un script CLÁSICO, no en un módulo, y las dos cosas son a
+     propósito: es el único código de la página que tiene que correr aunque todo
+     lo demás esté bloqueado.
+
+     El bloque está REPETIDO en TODAS las páginas de verificacion/, y eso
+     también es deliberado. Un archivo compartido es una cosa más que puede no
+     cargar, y el caso que este bloque atiende es exactamente ése. Que las cuatro
+     copias no se separen lo hace cumplir tests/assets.test.js.
+     ============================================================================ -->
+<style>
+  #como-abrirla {
+    border: 1px solid #2a2d38; border-left: 3px solid #ffb060;
+    padding: 10px 14px; margin: 0 0 22px; max-width: 84ch;
+    font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: #9aa0ab;
+  }
+  #como-abrirla p { margin: 0 0 6px; max-width: none; font-size: 13px; color: inherit; }
+  #como-abrirla p:last-child { margin-bottom: 0; }
+  #como-abrirla a { color: #ffb060; }
+  #aviso-protocolo { color: #ff6b78; }
+  #version-sw:empty { display: none; }
+</style>
+<div id="como-abrirla">
+  <p id="aviso-protocolo" hidden>
+    <strong>ASÍ NO SE VE NADA, Y NO ES QUE NO HAYA NADA.</strong>
+    Esta página se dibuja con módulos ES, y el navegador los bloquea en
+    <code>file://</code>. El script no corre, queda sólo el texto, y el resultado
+    se parece a «no hay nada que mostrar». Hay que servirla por HTTP:
+  </p>
+  <p>
+    <strong>En el teléfono:</strong>
+    <a href="https://damian6461.github.io/Chip/verificacion/cable-cortes.html">damian6461.github.io/Chip/verificacion/cable-cortes.html</a>
+  </p>
+  <p>
+    <strong>En la máquina:</strong> <code>python3 -m http.server</code> en la raíz
+    del repo, y abrir <code>localhost:8000/verificacion/cable-cortes.html</code>
+  </p>
+  <p id="version-sw"></p>
+</div>
+<script>
+  (function () {
+    if (location.protocol === 'file:') {
+      document.getElementById('aviso-protocolo').hidden = false;
+      return;
+    }
+
+    /* Y LA OTRA MITAD DE ABRIRLA BIEN: CON QUÉ VERSIÓN SE ESTÁ MIRANDO.
+
+       js/config.js y js/tema.js SÍ están en ARCHIVOS_CACHE, así que un teléfono
+       con un service worker viejo le sirve a esta página los módulos de esa
+       versión. La página anda, dibuja, no se queja — y mide una versión que ya
+       no existe. Es el mismo modo de falla que costó dos deploys, ahora del lado
+       de la herramienta que tendría que detectarlo.
+
+       Todo esto es informativo y no puede romper la página: si algo falla, el
+       renglón queda vacío y el CSS lo esconde. */
+    var linea = document.getElementById('version-sw');
+    function decir(texto, alarma) {
+      linea.textContent = texto;
+      linea.style.color = alarma ? '#ffb060' : '#6d747f';
+    }
+
+    fetch('../sw.js', { cache: 'no-store' })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var publicada = (t.match(/CACHE_VERSION\s*=\s*'([^']+)'/) || [])[1] || '?';
+
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+          decir('Sin service worker: los módulos vienen de la red. Publicado: ' + publicada + '.', false);
+          return;
+        }
+
+        var canal = new MessageChannel();
+        var reloj = setTimeout(function () {
+          decir('El service worker no contestó en 400 ms. Publicado: ' + publicada + '.', true);
+        }, 400);
+
+        canal.port1.onmessage = function (e) {
+          clearTimeout(reloj);
+          var puesta = (e.data && e.data.version) || '?';
+          decir(
+            puesta === publicada
+              ? 'Service worker ' + puesta + ', igual que lo publicado.'
+              : 'OJO: esta página se sirve con ' + puesta + ' y lo publicado es ' +
+                publicada + '. Estás mirando una versión vieja — recargá dos veces.',
+            puesta !== publicada
+          );
+        };
+
+        navigator.serviceWorker.controller.postMessage('version', [canal.port2]);
+      })
+      .catch(function () {});
+  })();
+</script>
+
+<h1>El cable: cuántos colores tiene un corte</h1>
+
+<div class="nota">
+  <p>
+    <strong>EL NÚMERO QUE DICE SI FUNCIONÓ.</strong> Se corta el cable en
+    vertical en tres puntos distintos y se cuentan los <strong>colores
+    distintos</strong> de cada corte. Con antialias son seis o siete: los tonos
+    reales más una rampa de mezclas en cada borde. Sin antialias tienen que ser
+    <strong>tres</strong> —filo de arriba, cuerpo, panza— y ni uno más.
+  </p>
+  <p>
+    <strong>CÓMO SE OBTIENEN LOS PÍXELES, porque el número sin esto no se
+    reproduce.</strong> No hay forma de leer los píxeles que el navegador pintó
+    en el DOM. Lo que se hace es tomar el <code>&lt;svg&gt;</code> vivo del
+    cable, <strong>copiarle a cada nodo su estilo YA COMPUTADO</strong> —relleno,
+    trazo, ancho, opacidad, <code>shape-rendering</code>— y volver a dibujarlo en
+    un canvas del mismo tamaño. Misma geometría, mismos parámetros de pintado,
+    mismo motor. Lo único que cambia es el fondo: acá el cable se dibuja sobre
+    transparente, que es lo que hace legible el conteo.
+  </p>
+  <p>
+    Un píxel <strong>parcialmente transparente cuenta como color propio</strong>,
+    y es a propósito: un borde antialiaseado sobre transparente no produce un
+    tono mezclado, produce alfa intermedio. Es la misma suciedad, medida donde se
+    puede medir.
+  </p>
+</div>
+
+<h2>Los tres cortes</h2>
+<div id="cortes"></div>
+
+<h2>Lo que declara la hoja</h2>
+<div id="estilos"></div>
+
+<h2>El cable, ampliado</h2>
+<p>
+  Recortes de 60×60 alrededor de cada corte, ×6 con vecino más cercano. La línea
+  fina marca dónde se cortó.
+</p>
+<div id="ampliaciones" class="tira"></div>
+
+<script type="module">
+const ESCENA = { ancho: 390, alto: 844 };
+const CORTES_QUE = 3;
+
+// ---- El juego, en un viewport de layout de verdad ----
+const marco = document.createElement('iframe');
+marco.style.cssText = `border:0;width:${ESCENA.ancho}px;height:${ESCENA.alto}px;position:absolute;left:-9999px`;
+marco.src = '../index.html?debug';
+document.body.appendChild(marco);
+await new Promise((r) => { marco.onload = r; });
+await new Promise((r) => setTimeout(r, 2500));
+
+const doc = marco.contentDocument;
+
+// EL ESTADO SE FUERZA POR EL PANEL DE DEBUG, que es la única puerta que hay: la
+// api vive adentro del módulo y no está en window. Se busca el <select> que
+// tenga `cargando` entre sus opciones, se lo pone y se dispara el change — o
+// sea, exactamente lo que haría un dedo.
+const selects = [...doc.querySelectorAll('select')];
+const selVisual = selects.find((s) => [...s.options].some((o) => o.value === 'cargando'));
+if (!selVisual) throw new Error('no apareció el selector de estado visual del panel de debug');
+selVisual.value = 'cargando';
+selVisual.dispatchEvent(new marco.contentWindow.Event('change'));
+await new Promise((r) => setTimeout(r, 1200));
+
+// ---- El SVG del cable, con los estilos computados adentro ----
+//
+// PROPIEDADES QUE SE COPIAN Y POR QUÉ ÉSAS: son todas las que deciden un píxel
+// del cable. Si mañana alguien agrega una —un `stroke-dasharray`, un `filter`—
+// y no está en esta lista, el canvas dibujaría otra cosa que el DOM y el número
+// mentiría. Por eso la lista va acá, corta y a la vista.
+const PROPIEDADES = [
+  'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity',
+  'stroke-linecap', 'stroke-linejoin', 'opacity', 'shape-rendering', 'filter'
+];
+
+// EL CORTE ES DEL TUBO Y DE NADA MÁS, y el primer intento no filtraba nada.
+//
+// Adentro de #cable hay cinco cosas además del tubo: la sombra del puerto —que
+// lleva `blur(2px)` y se derrama 90 px a la izquierda—, la ficha con sus dos
+// piezas, y los cinco pulsos. Sin filtrar, el ancho "del cable" salía de la
+// sombra difusa, los tres cortes caían repartidos sobre ella y dos de los tres
+// no tocaban el cable: uno dio 0 píxeles y otro devolvió seis tonos de negro
+// casi transparente —(0,0,0,1) a (0,0,0,9)—, que es el degradé de la sombra y
+// no un borde del tubo. Un número perfectamente calculado sobre la pieza
+// equivocada.
+//
+// La pregunta es "cuántos colores tiene un corte del tubo", y el tubo son tres
+// nodos. Los pulsos se miden aparte, que es otro defecto.
+const DEL_TUBO = ['cable-cuerpo', 'cable-filo-arriba', 'cable-filo-abajo'];
+
+function congelar(svgVivo) {
+  const copia = svgVivo.cloneNode(true);
+  for (const nodo of [...copia.querySelectorAll('[class]')]) {
+    if (!DEL_TUBO.includes(nodo.getAttribute('class'))) nodo.remove();
+  }
+  // Los estilos se copian BUSCANDO CADA NODO EN EL VIVO POR SU CLASE Y SU
+  // POSICIÓN, y no emparejando dos listas por índice: al filtrar, la copia tiene
+  // menos nodos que el original y los índices dejan de corresponderse. Emparejar
+  // por índice después de borrar es cómo se le pone el estilo de una pieza a
+  // otra sin que nada se queje.
+  const vivosPorClase = new Map();
+  for (const nodo of svgVivo.querySelectorAll('[class]')) {
+    const c = nodo.getAttribute('class');
+    if (!vivosPorClase.has(c)) vivosPorClase.set(c, []);
+    vivosPorClase.get(c).push(nodo);
+  }
+  const usados = new Map();
+  for (const nodo of copia.querySelectorAll('[class]')) {
+    const c = nodo.getAttribute('class');
+    const i = usados.get(c) || 0;
+    usados.set(c, i + 1);
+    const vivo = vivosPorClase.get(c)[i];
+    const cs = marco.contentWindow.getComputedStyle(vivo);
+    nodo.setAttribute('style', PROPIEDADES.map((p) => `${p}:${cs.getPropertyValue(p)}`).join(';'));
+    nodo.removeAttribute('class');
+  }
+  copia.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  copia.setAttribute('width', ESCENA.ancho);
+  copia.setAttribute('height', ESCENA.alto);
+  return copia;
+}
+
+async function aImagen(svg) {
+  const texto = new XMLSerializer().serializeToString(svg);
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(texto);
+  await img.decode();
+  return img;
+}
+
+const lienzo = document.createElement('canvas');
+lienzo.width = ESCENA.ancho;
+lienzo.height = ESCENA.alto;
+const g = lienzo.getContext('2d', { willReadFrequently: true });
+
+// EL ORDEN ES EL DEL DOM: primero la capa de atrás, después la de adelante. Es
+// el mismo orden en el que las pinta el navegador, y cambiarlo cambiaría qué
+// tapa a qué en los cruces.
+const capas = ['#cable-atras', '#cable'].map((sel) => doc.querySelector(sel)).filter(Boolean);
+const estilosLeidos = [];
+for (const capa of capas) {
+  g.drawImage(await aImagen(congelar(capa)), 0, 0);
+  for (const nodo of capa.querySelectorAll('[class]')) {
+    const cs = marco.contentWindow.getComputedStyle(nodo);
+    estilosLeidos.push({
+      clase: nodo.getAttribute('class'),
+      capa: capa.id,
+      shape: cs.shapeRendering,
+      ancho: cs.strokeWidth,
+      opacidad: cs.opacity,
+      radio: nodo.getAttribute('r') || '—'
+    });
+  }
+}
+
+// ---- Los tres cortes ----
+//
+// Se eligen tres columnas REPARTIDAS a lo ancho de lo que ocupa el cable, y no
+// tres números escritos a mano: si mañana cambia el recorrido, los cortes se
+// mueven con él en vez de quedar apuntando al aire.
+const datos = g.getImageData(0, 0, ESCENA.ancho, ESCENA.alto).data;
+const pintado = (x, y) => datos[(y * ESCENA.ancho + x) * 4 + 3] > 0;
+
+let xMin = ESCENA.ancho;
+let xMax = -1;
+for (let x = 0; x < ESCENA.ancho; x++) {
+  for (let y = 0; y < ESCENA.alto; y++) {
+    if (pintado(x, y)) { if (x < xMin) xMin = x; if (x > xMax) xMax = x; break; }
+  }
+}
+
+const columnas = Array.from({ length: CORTES_QUE }, (_, i) =>
+  Math.round(xMin + ((xMax - xMin) * (i + 1)) / (CORTES_QUE + 1))
+);
+
+function corteEn(x) {
+  const vistos = new Map();
+  const filas = [];
+  for (let y = 0; y < ESCENA.alto; y++) {
+    const i = (y * ESCENA.ancho + x) * 4;
+    if (datos[i + 3] === 0) continue;
+    const clave = `${datos[i]},${datos[i + 1]},${datos[i + 2]},${datos[i + 3]}`;
+    vistos.set(clave, (vistos.get(clave) || 0) + 1);
+    filas.push(y);
+  }
+  return {
+    x,
+    alto: filas.length,
+    desde: filas[0],
+    colores: [...vistos.entries()].sort((a, b) => b[1] - a[1])
+  };
+}
+
+const cortes = columnas.map(corteEn);
+const peor = Math.max(...cortes.map((c) => c.colores.length));
+
+document.getElementById('cortes').innerHTML =
+  `<table>` +
+  `<tr><th>corte</th><th>alto del cable</th><th>colores distintos</th><th>cuáles (rgba · cuántos píxeles)</th></tr>` +
+  cortes.map((c) =>
+    `<tr><th>x = ${c.x}</th><td>${c.alto} px</td>` +
+    `<td class="${c.colores.length <= 3 ? 'bien' : 'flojo'}">${c.colores.length}</td>` +
+    `<td>${c.colores.map(([k, n]) => `${k} ×${n}`).join('<br>')}</td></tr>`
+  ).join('') +
+  `<tr><th>EL PEOR DE LOS TRES</th><td colspan="3" class="${peor <= 3 ? 'bien' : 'flojo'}">${peor}` +
+  `${peor <= 3 ? ' — filo, cuerpo y panza, y ni uno más' : ' — hay mezcla de borde'}</td></tr>` +
+  `</table>`;
+
+document.getElementById('estilos').innerHTML =
+  `<table>` +
+  `<tr><th>nodo</th><th>capa</th><th>shape-rendering</th><th>stroke-width</th><th>opacity</th><th>r</th></tr>` +
+  estilosLeidos.map((e) =>
+    `<tr><th>${e.clase}</th><td>${e.capa}</td>` +
+    `<td class="${e.shape === 'crispedges' ? 'bien' : 'flojo'}">${e.shape}</td>` +
+    `<td>${e.ancho}</td><td>${e.opacidad}</td><td>${e.radio}</td></tr>`
+  ).join('') +
+  `</table>`;
+
+// ---- Las ampliaciones ----
+const caja = document.getElementById('ampliaciones');
+for (const c of cortes) {
+  const lado = 60;
+  const zoom = 6;
+  const y0 = Math.max(0, c.desde + Math.round(c.alto / 2) - lado / 2);
+  const x0 = Math.max(0, c.x - lado / 2);
+
+  const amp = document.createElement('canvas');
+  amp.width = lado * zoom;
+  amp.height = lado * zoom;
+  const ga = amp.getContext('2d');
+  ga.imageSmoothingEnabled = false;
+  // Un fondo plano y neutro: sobre transparente los tonos oscuros del cable no
+  // se distinguen entre sí a simple vista.
+  ga.fillStyle = '#8d939c';
+  ga.fillRect(0, 0, amp.width, amp.height);
+  ga.drawImage(lienzo, x0, y0, lado, lado, 0, 0, lado * zoom, lado * zoom);
+  ga.fillStyle = 'rgba(255,0,0,0.55)';
+  ga.fillRect((c.x - x0) * zoom, 0, zoom, amp.height);
+
+  const div = document.createElement('div');
+  div.innerHTML = `<p style="margin:0 0 4px">x = ${c.x}</p>`;
+  amp.className = 'muestra';
+  div.appendChild(amp);
+  caja.appendChild(div);
+}
+
+marco.remove();
+</script>
+</body>
+</html>

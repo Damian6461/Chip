@@ -32,6 +32,7 @@ import { svgDeRepisa } from '../js/formas.js';
 import {
   INHALACION,
   INCLINACION_CABEZA,
+  CABLE,
   COLORES_BOTON,
   COLORES_BOTON_CHAPITA,
   COLORES_BULBO,
@@ -57,6 +58,47 @@ import {
 
 const RAIZ = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const CSS = readFileSync(RAIZ + 'style.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+
+// ============================================================================
+// EL CORTE DE UN BLOQUE DE LA HOJA, CON SU RED
+// ============================================================================
+//
+// PASÓ DOS VECES Y LA SEGUNDA CASI NO SE VE. Media docena de estos tests ubican
+// su sujeto buscando texto: `bloqueEntre(CSS, 'A', 'B')`. Si
+// el ancla B desaparece —porque alguien borró esa regla, que es exactamente lo
+// que pasa cuando el diseño avanza— `indexOf` devuelve −1, `slice` lo interpreta
+// como "un carácter antes del final" y el bloque pasa a ser LA HOJA ENTERA.
+//
+// Y ahí está lo peor: UN GUARDIÁN ROTO ASÍ NO SE CAE, SE RELAJA. El test sigue
+// verde porque encuentra lo que busca en cualquier otra pieza del archivo. La
+// primera vez fue el corte de los estados del botón, que denunciaba un `width`
+// a tres mil líneas; la segunda, el guardián de los íconos, que cortaba en
+// `.led {` y al irse el LED siguió pasando encontrando un `crispEdges` ajeno.
+//
+// Esta función es la red, y hace tres cosas que un slice suelto no hace:
+//   1. si falta cualquiera de las dos anclas, TIRA. No devuelve un bloque raro.
+//   2. si el bloque supera el tope, TIRA. Un bloque de regla son cientos de
+//      caracteres, no miles: el tope es lo que distingue "encontré mi regla" de
+//      "me comí el archivo".
+//   3. si el final quedara antes del principio, TIRA.
+//
+// El tope por defecto es holgado a propósito —una regla larga con sus longhands
+// entra cómoda— porque no está para medir el tamaño de una regla: está para
+// atrapar el salto de magnitud de comerse la hoja, que son 200 000 caracteres.
+function bloqueEntre(texto, desde, hasta, tope = 4000) {
+  const i = texto.indexOf(desde);
+  if (i < 0) throw new Error(`el corte no encontró su ancla de inicio: ${desde}`);
+  const j = texto.indexOf(hasta, i);
+  if (j < 0) throw new Error(`el corte no encontró su ancla de fin: ${hasta} (después de ${desde})`);
+  const bloque = texto.slice(i, j);
+  if (bloque.length > tope) {
+    throw new Error(
+      `el corte entre ${desde} y ${hasta} devolvió ${bloque.length} caracteres y el tope es ${tope}: ` +
+        'eso no es una regla, es medio archivo'
+    );
+  }
+  return bloque;
+}
 
 // Las familias que se posicionan en % y por lo tanto se pueden chequear.
 const FAMILIAS = ['corazon', 'destello', 'rayita', 'pulso', 'burbuja'];
@@ -544,7 +586,7 @@ prueba('botonera: no hay perspectiva ni inclinación', () => {
   // navegador a resamplear cada borde fuera de la grilla de píxeles: con el
   // rotateX puesto, los cantos duros, la fuente pixel y los íconos de 16
   // unidades quedan todos interpolados por el mismo transform.
-  const bloque = CSS.slice(CSS.indexOf('#acciones {'), CSS.indexOf('#acciones button::after'));
+  const bloque = bloqueEntre(CSS, '#acciones {', '#acciones button::after');
   verdadero(!/perspective/.test(bloque), 'volvió la perspectiva a #acciones');
   verdadero(!/rotateX/.test(bloque), 'volvió el rotateX a las chapas');
   verdadero(!('inclinacion' in BOTONERA), 'BOTONERA no puede volver a declarar inclinación');
@@ -553,7 +595,7 @@ prueba('botonera: no hay perspectiva ni inclinación', () => {
 });
 
 prueba('botonera: las esquinas son duras', () => {
-  const bloque = CSS.slice(CSS.indexOf('#acciones button {'), CSS.indexOf('#acciones button::after'));
+  const bloque = bloqueEntre(CSS, '#acciones button {', '#acciones button::after');
   const radio = bloque.match(/border-radius:\s*([^;]+);/);
   verdadero(radio !== null, 'la chapa tiene que declarar border-radius explícito');
   igual(radio[1].trim(), '0', 'un radio redondeado nunca cae en la grilla');
@@ -586,6 +628,59 @@ function sombrasDe(declaracion) {
     .filter((l) => l.length > 0);
 }
 
+// ---- EL CABLE, DIBUJADO CON LAS REGLAS DE LA ESCENA Y NO CON LAS DE UN VECTOR ----
+//
+// Los cuatro defectos que se le veían al cable —el trazo suave, el ancho
+// fraccionario, las opacidades que mezclan y los puntitos cian— eran uno solo:
+// estaba dibujado con convenciones de vector sobre una escena de pixel art, y
+// estaba PEDIDO así. El comentario de la hoja decía que la opacidad era para que
+// el filo se MEZCLARA con el cuerpo.
+//
+// Medido sobre un corte vertical del tubo, antes: 6, 7 y 12 colores distintos en
+// tres cortes. Después: 3, 3 y 3. Ver verificacion/cable-cortes.html.
+
+prueba('cable: las tres capas del tubo y el pulso piden bordes duros', () => {
+  // `shape-rendering: auto` quiere decir antialias. Es la misma hoja donde los
+  // íconos de la botonera ya piden `crispEdges` por el mismo motivo.
+  const tubo = bloqueEntre(CSS, '.cable-cuerpo {', '.cable-sombra-puerto');
+  const cuantos = (tubo.match(/shape-rendering:\s*crispEdges/g) || []).length;
+  igual(cuantos, 2, 'las tres capas del tubo van en dos reglas, y las dos tienen que pedir crispEdges');
+  verdadero(!/shape-rendering:\s*auto/.test(tubo), 'volvió el antialias a alguna capa del tubo');
+
+  const pulso = bloqueEntre(CSS, '.pulso-cable {', '@keyframes viajar-pulso');
+  verdadero(/shape-rendering:\s*crispEdges/.test(pulso), 'el pulso también, o vuelve a ser una mancha');
+});
+
+prueba('cable: los filos son colores y no mezclas en vivo', () => {
+  // LO QUE ESTE TEST CUIDA NO ES EL HEX: es que el hex SIGA SIENDO el resultado
+  // de la mezcla de la que salió. Si mañana alguien retoca `brillo` o `color`
+  // pensando que los filos lo siguen, esto se pone rojo y le dice el número.
+  const canal = (h, i) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+  const mezcla = (capa, fondo, alfa) =>
+    '#' +
+    [0, 1, 2]
+      .map((i) => Math.round(canal(capa, i) * alfa + canal(fondo, i) * (1 - alfa)))
+      .map((v) => v.toString(16).padStart(2, '0'))
+      .join('');
+
+  igual(
+    CABLE.filoArriba.toLowerCase(),
+    mezcla(CABLE.brillo, CABLE.color, 0.55),
+    'el filo de arriba tiene que ser el 55 % de `brillo` sobre `color`, resuelto'
+  );
+  igual(
+    CABLE.filoAbajo.toLowerCase(),
+    mezcla(CABLE.sombra, CABLE.color, 0.7),
+    'el filo de abajo tiene que ser el 70 % de `sombra` sobre `color`, resuelto'
+  );
+
+  // Y que la hoja no vuelva a mezclar en vivo. Una opacidad en el filo devuelve
+  // el defecto entero: el tono pasa a depender de qué haya debajo, y donde las
+  // dos capas del cable se cruzan aparece un cuarto color.
+  const filos = bloqueEntre(CSS, '.cable-filo-arriba,', '.cable-sombra-puerto');
+  verdadero(!/opacity:/.test(filos), 'volvió una opacidad a los filos, y con ella la mezcla');
+});
+
 prueba('botonera: la ficha es plana — ni degradés, ni relieve, ni un blur en reposo', () => {
   // Un color por trazo y nada en el medio. Lo que cambió respecto de la versión
   // con caja: ANTES acá se prohibía `box-shadow` a secas, porque el único
@@ -600,7 +695,7 @@ prueba('botonera: la ficha es plana — ni degradés, ni relieve, ni un blur en 
   // corrida un número entero de píxeles: no puede pintar un solo píxel parcial.
   // Un blur, sí — y ahí se va la fuente pixel, los cantos duros y los íconos de
   // 16 unidades, todos juntos.
-  const bloque = CSS.slice(CSS.indexOf('#acciones button {'), CSS.indexOf('#acciones button::before'));
+  const bloque = bloqueEntre(CSS, '#acciones button {', '#acciones button::before');
   verdadero(!/gradient/.test(bloque), 'volvió un degradé a la ficha');
   verdadero(!/color-mix/.test(bloque), 'volvió un tono mezclado en vez de uno de la paleta');
 
@@ -631,8 +726,8 @@ prueba('botonera: la ficha son dos trazos, y los dos caen en la grilla', () => {
   //
   // Las dos se compararon con captura antes de decidir: ver
   // verificacion/botonera-chapita.html, punto c.
-  const chapita = CSS.slice(CSS.indexOf('#acciones button::after {'), CSS.indexOf('#acciones button::before'));
-  const pie = CSS.slice(CSS.indexOf('#acciones button::before {'), CSS.indexOf('#acciones button svg'));
+  const chapita = bloqueEntre(CSS, '#acciones button::after {', '#acciones button::before');
+  const pie = bloqueEntre(CSS, '#acciones button::before {', '#acciones button svg');
 
   verdadero(/height:\s*var\(--boton-chapita-alto\)/.test(chapita), 'el alto de la chapita sale de config');
 
@@ -691,7 +786,7 @@ prueba('botonera: el área táctil no la paga la propuesta', () => {
   // siga siendo `border-box` con el mismo ancho y alto declarados, y que ninguna
   // regla de estado le toque la geometría. Sacar el borde de 1 px NO mueve nada
   // con border-box; agregarle un padding, sí.
-  const bloque = CSS.slice(CSS.indexOf('#acciones button {'), CSS.indexOf('#acciones button::after'));
+  const bloque = bloqueEntre(CSS, '#acciones button {', '#acciones button::after');
   verdadero(/box-sizing:\s*border-box/.test(bloque), 'sin border-box, sacar el borde encoge la caja');
   verdadero(/width:\s*var\(--boton-ancho\)/.test(bloque), 'el ancho lo sigue midiendo ui.js');
   verdadero(/height:\s*var\(--boton-alto\)/.test(bloque), 'y el alto sale del módulo de 8');
@@ -702,11 +797,9 @@ prueba('botonera: el área táctil no la paga la propuesta', () => {
   // EL LÍMITE VA A UN SELECTOR Y NO A UN COMENTARIO, y el primer intento usaba
   // un comentario: `CSS` acá viene con los comentarios YA SACADOS, así que el
   // indexOf daba −1, el slice se comía la hoja entera y el test denunciaba un
-  // `width` que estaba a tres mil líneas de la botonera.
-  const finDeLaBotonera = CSS.indexOf('}', CSS.indexOf('#acciones button:disabled svg')) + 1;
-  const desdeEstados = CSS.slice(CSS.indexOf('#acciones button:active'), finDeLaBotonera);
-  verdadero(desdeEstados.length > 200 && desdeEstados.length < 2000,
-    `el slice de los estados mide ${desdeEstados.length} y eso no es la botonera`);
+  // `width` que estaba a tres mil líneas de la botonera. Hoy eso lo atrapa
+  // `bloqueEntre` sola: es la función que salió de este defecto.
+  const desdeEstados = bloqueEntre(CSS, '#acciones button:active', '.evento {');
   for (const prohibida of ['width', 'height', 'padding', 'margin', 'inset']) {
     const re = new RegExp(`(^|[;{\\s])${prohibida}:`, 'm');
     verdadero(
@@ -743,11 +836,7 @@ prueba('botonera: los íconos son píxeles y no trazos', () => {
   // apunta a algo que se puede borrar; el límite ahora es el selector de la
   // regla siguiente, que si desaparece se lleva puesto el test en vez de
   // ablandarlo.
-  const desde = CSS.indexOf('#acciones button svg');
-  const hasta = CSS.indexOf('#acciones button:active', desde);
-  verdadero(desde >= 0 && hasta > desde, 'el slice del ícono no encontró sus límites');
-  const bloque = CSS.slice(desde, hasta);
-  verdadero(bloque.length < 2000, `el slice del ícono mide ${bloque.length} y eso no es una regla`);
+  const bloque = bloqueEntre(CSS, '#acciones button svg', '#acciones button:active');
   verdadero(/crispEdges/.test(bloque), 'el ícono necesita shape-rendering: crispEdges');
   igual(BOTONERA.icono % 16, 0, 'el tamaño en pantalla es un múltiplo entero de la grilla');
 });
@@ -766,7 +855,7 @@ prueba('botonera: la fuente pixel se dibuja a un múltiplo entero de su nativo',
   // config.js. La ruta va literal en la hoja porque @font-face se resuelve antes
   // de que exista ninguna custom property: es un carve-out, y como todos los
   // carve-outs de este proyecto lleva su cruce.
-  const cara = CSS.slice(CSS.indexOf('@font-face'), CSS.indexOf('#acciones {'));
+  const cara = bloqueEntre(CSS, '@font-face', '#acciones {');
   verdadero(cara.includes(FUENTE_BOTONERA.ruta), `el @font-face no apunta a ${FUENTE_BOTONERA.ruta}`);
   verdadero(
     cara.includes(FUENTE_BOTONERA.familia),
@@ -792,7 +881,7 @@ prueba('botonera: el ancho de las chapas se reparte en píxeles enteros', () => 
   // son 117, y sobre 393 son 117,9. Ese decimal es medio píxel de borde borroso
   // en los dos cantos verticales de las tres chapas, en cualquier teléfono cuyo
   // ancho no sea múltiplo de tres.
-  const bloque = CSS.slice(CSS.indexOf('#acciones button {'), CSS.indexOf('#acciones button::after'));
+  const bloque = bloqueEntre(CSS, '#acciones button {', '#acciones button::after');
   verdadero(!/flex:\s*1/.test(bloque), 'volvió el reparto por flex, que da decimales');
   verdadero(/width:\s*var\(--boton-ancho\)/.test(bloque), 'el ancho tiene que venir medido');
   verdadero(
@@ -1208,7 +1297,7 @@ prueba('ojos: las cuatro capas del ojo comparten el filtrado', () => {
   // las otras tres—. Su máscara es el mismo .webp de 256 escalado a la caja de
   // Chip, así que sin esto su borde se interpola y el de las capas de encima no:
   // dos bordes con distinta dureza en el mismo lugar.
-  const bloque = CSS.slice(CSS.indexOf('#parpado {'), CSS.indexOf('#parpado[hidden]'));
+  const bloque = bloqueEntre(CSS, '#parpado {', '#parpado[hidden]');
   verdadero(
     /image-rendering:\s*pixelated/.test(bloque),
     '#parpado tiene que filtrar igual que #ojos y que las capas de gesto'
@@ -1242,8 +1331,8 @@ prueba('ojos: las cuatro capas del ojo comparten el filtrado', () => {
 // de su cuenca no inventa ningún color.
 prueba('ojos: el cambio de cara es un corte y no una disolvencia', () => {
   const bloques = {
-    '#ojos': CSS.slice(CSS.indexOf('#ojos {'), CSS.indexOf('#ojos[hidden]')),
-    '.ojos-gesto': CSS.slice(CSS.indexOf('.ojos-gesto {'), CSS.indexOf('.ojos-gesto[hidden]'))
+    '#ojos': bloqueEntre(CSS, '#ojos {', '#ojos[hidden]'),
+    '.ojos-gesto': bloqueEntre(CSS, '.ojos-gesto {', '.ojos-gesto[hidden]')
   };
 
   for (const [nombre, bloque] of Object.entries(bloques)) {
@@ -1279,7 +1368,21 @@ prueba('ojos: el cambio de cara es un corte y no una disolvencia', () => {
 //
 // Estuvo así: la lista decía `#cable path` y nada más.
 prueba('movimiento reducido: apaga las dos capas del cable, no una', () => {
-  const bloque = CSS.slice(CSS.indexOf('@media (prefers-reduced-motion'));
+  // ESTE CORTE ES ABIERTO A PROPÓSITO Y LLEVA SU RED APARTE. Lo que se busca es
+  // "aparece el selector en algún lado del bloque de movimiento reducido", y el
+  // bloque es lo último de la hoja: no hay un ancla de fin que no sea el fin del
+  // archivo. Así que no puede usar `bloqueEntre`, y a cambio lleva las dos
+  // comprobaciones que aquélla haría: que el ancla exista, y un tope. Un corte
+  // abierto sin tope es el mismo defecto de siempre con otra cara — si alguien
+  // borrara el @media, el `indexOf` daría −1, el slice devolvería la hoja entera
+  // y el test seguiría verde encontrando `#cable` en su propia regla.
+  const arranque = CSS.indexOf('@media (prefers-reduced-motion');
+  verdadero(arranque >= 0, 'no existe el bloque de movimiento reducido');
+  const bloque = CSS.slice(arranque);
+  verdadero(
+    bloque.length < 12000,
+    `el bloque de movimiento reducido mide ${bloque.length} y eso es más hoja de la que hay ahí`
+  );
   const hasta = bloque.indexOf('animation: none;');
   const lista = bloque.slice(0, hasta);
 
@@ -1295,7 +1398,7 @@ prueba('movimiento reducido: apaga las dos capas del cable, no una', () => {
 // la barra de estado y la curva de la pantalla. Un toque que se traga cualquiera
 // de los tres se ve, desde el JS, igual que un toque que nunca pasó.
 prueba('debug: la puerta de servicio entra desde el borde del área segura', () => {
-  const bloque = CSS.slice(CSS.indexOf('#puerta-servicio {'), CSS.indexOf('#puerta-servicio::after'));
+  const bloque = bloqueEntre(CSS, '#puerta-servicio {', '#puerta-servicio::after');
   verdadero(
     /top:\s*calc\(env\(safe-area-inset-top[^)]*\)[^)]*\+\s*var\(--margen-debug\)\)/.test(bloque),
     'la puerta tiene que separarse del canto de arriba'

@@ -380,6 +380,41 @@ propaga a un script.
 medición que agrupe por nombre tiene que imprimir al lado de qué archivo salió
 cada fila.
 
+### Un guardián roto no se cae: se relaja
+
+**Un test que ubica su sujeto por búsqueda de texto se ensancha cuando el ancla
+desaparece, y ensancharse lo hace pasar más fácil, no menos.**
+
+Media docena de estas pruebas cortan la hoja con
+`CSS.slice(CSS.indexOf('A'), CSS.indexOf('B'))`. Si el ancla `B` deja de existir
+—porque alguien borró esa regla, que es lo que pasa cuando el diseño avanza—
+`indexOf` devuelve −1, `slice` lo lee como «un carácter antes del final» y el
+bloque pasa a ser **el archivo entero**. Y ahí el test no falla: encuentra lo que
+busca en cualquier otra pieza y sigue verde.
+
+Pasó dos veces. La primera, el corte de los estados del botón apuntaba a un
+comentario y `CSS` viene con los comentarios ya sacados: denunciaba un `width`
+que estaba a tres mil líneas de la botonera — ése al menos se cayó ruidosamente.
+La segunda fue peor y casi no se ve: el guardián de los íconos cortaba en
+`.led {`, se borró el LED, y **siguió pasando** encontrando un `crispEdges` de
+otra pieza.
+
+La salida no es revisar mejor: es que **el corte lleve su red adentro**. En
+`tests/composicion.test.js` vive `bloqueEntre(texto, desde, hasta, tope)`, y
+hace lo que un slice suelto no hace:
+
+- si falta cualquiera de las dos anclas, **tira** — no devuelve un bloque raro;
+- si el bloque supera el tope, **tira**: una regla son cientos de caracteres, no
+  miles, y el tope es lo que distingue «encontré mi regla» de «me comí la hoja»;
+- si el fin quedara antes del principio, tira.
+
+Los trece cortes del archivo pasaron por ahí. El único que queda abierto —el del
+bloque de movimiento reducido, que es lo último de la hoja y no tiene ancla de
+fin— lleva las dos comprobaciones escritas al lado, por lo mismo.
+
+**Todo corte por texto lleva su tope. Si el ancla no aparece, el test rompe en
+vez de ampliarse.**
+
 ### Una constante no está huérfana porque la hoja no la lea
 
 `--panel-chapa`, `--panel-filo` y `--panel-hueco` quedaron sin un solo lector en

@@ -316,8 +316,8 @@ export function variablesDeTema() {
 
     // EL CABLE
     [VARS_CABLE.color]: CABLE.color,
-    [VARS_CABLE.brillo]: CABLE.brillo,
-    [VARS_CABLE.sombra]: CABLE.sombra,
+    [VARS_CABLE.filoArriba]: CABLE.filoArriba,
+    [VARS_CABLE.filoAbajo]: CABLE.filoAbajo,
     [VARS_CABLE.cicloBalanceo]: ms(CABLE.balanceo.ciclo),
     [VARS_CABLE.amplitudBalanceo]: px(CABLE.balanceo.amplitud),
     [VARS_CABLE.energia]: CABLE.energia,

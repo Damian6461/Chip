@@ -4561,9 +4561,22 @@ body.sin-movimiento *::after {
    Ahora la línea media se muestrea, cada muestra lleva su profundidad y su
    semiancho, y sale un polígono cerrado. Los quiebres se redondean sobre la
    línea media, así que el doblez es un doblez. Ver cintaDelCable en formas.js. */
+/* CRISPEDGES EN LAS TRES CAPAS DEL TUBO, y estuvo en `auto` —o sea
+   antialiaseado— desde que se dibujó.
+
+   Es la misma hoja en la que los íconos de la botonera ya piden `crispEdges` y
+   por el mismo motivo, escrito en su comentario: un borde interpolado sobre una
+   escena de pixel art inventa medios tonos que nadie dibujó. El cable estaba
+   dibujado con convenciones de vector —bordes suaves, anchos fraccionarios,
+   opacidades que mezclan— sobre una escena que no las tiene.
+
+   Medido antes de tocarlo, sobre un corte vertical del tubo: 6, 7 y 12 colores
+   distintos en los tres cortes. Con esto y con los dos cambios de abajo son
+   tres — filo, cuerpo y panza. Ver verificacion/cable-cortes.html. */
 .cable-cuerpo {
   fill: var(--cable-color);
   stroke: none;
+  shape-rendering: crispEdges;
 }
 
 /* LAS DOS ARISTAS DEL TUBO. Es lo único que lo hace redondo.
@@ -4586,23 +4599,33 @@ body.sin-movimiento *::after {
   fill: none;
   stroke-linecap: butt;
   stroke-linejoin: round;
+  shape-rendering: crispEdges;
 }
 
+/* LAS DOS ARISTAS VAN A OPACIDAD 1, Y ESO ES UN CAMBIO DE TÉCNICA.
+
+   Acá decía: "semitransparente para que el filo se MEZCLE con el cuerpo en vez
+   de apoyarse encima. A opacidad plena las dos aristas se leen como tres cables
+   paralelos." La observación era buena y el remedio era el equivocado: lo que
+   hacía falta era el TONO intermedio, no la mezcla en vivo.
+
+   Así que el tono se calculó una vez y es una constante con nombre —ver
+   CABLE.filoArriba y CABLE.filoAbajo—. Es exactamente el mismo color que salía
+   de mezclar el 55 %, así que en el tramo normal no cambia nada. Donde sí
+   cambia es donde las dos capas del cable se cruzan: ahí el filo caía sobre otro
+   filo y la mezcla daba un cuarto tono que no existe en ninguna paleta. Ese
+   cruce era el corte que medía doce colores.
+
+   La de abajo era más opaca que la de arriba —0,7 contra 0,55— por una razón que
+   sigue en pie y que ahora está adentro del color: contra el piso claro del
+   galpón una panza tenue no se ve y el cable vuelve a quedar despegado del
+   suelo. */
 .cable-filo-arriba {
-  stroke: var(--cable-brillo);
-  /* Semitransparente para que el filo se MEZCLE con el cuerpo en vez de
-     apoyarse encima. A opacidad plena las dos aristas se leen como tres cables
-     paralelos. */
-  opacity: 0.55;
+  stroke: var(--cable-filo-arriba);
 }
 
-/* La de abajo pega más fuerte que la de arriba, y es a propósito: contra el
-   piso claro del galpón una panza tenue no se ve, y el cable vuelve a quedar
-   despegado del suelo. Es la misma arista que separa los caños de la
-   panorámica de su propia sombra. */
 .cable-filo-abajo {
-  stroke: var(--cable-sombra);
-  opacity: 0.7;
+  stroke: var(--cable-filo-abajo);
 }
 
 /* LA FICHA Y SU SOMBRA. Es lo que hace que la union se lea.
@@ -4661,6 +4684,12 @@ body.sin-movimiento *::after {
    rayo del pecho. */
 .pulso-cable {
   fill: var(--cable-energia);
+  /* Mismo trato que el tubo. NO ALCANZA, y el número está medido: el círculo en
+     sí queda limpio —14 píxeles opacos— pero el `drop-shadow` de 4 px de abajo
+     lo rodea de 440 píxeles a medio pintar, en 26 tonos. `shape-rendering` no
+     toca los filtros. Ver el parte del cable: la decisión sobre ese halo es del
+     revisor y esto no la toca. */
+  shape-rendering: crispEdges;
   offset-path: var(--cable-camino);
   offset-rotate: 0deg;
   offset-distance: 0%;

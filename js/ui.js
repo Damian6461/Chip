@@ -1387,14 +1387,19 @@ export function dibujarCable() {
     // sombreado. El tramo que sube al toma vive acá y sin esto salía plano.
     nodoCableAtras.innerHTML =
       `<path class="cable-cuerpo" d="${atras}"/>` +
-      `<path class="cable-filo-abajo" d="${filoAbajoAtras}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>` +
-      `<path class="cable-filo-arriba" d="${filoArribaAtras}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>`;
+      `<path class="cable-filo-abajo" d="${filoAbajoAtras}" style="stroke-width:${grosorFilo}px"/>` +
+      `<path class="cable-filo-arriba" d="${filoArribaAtras}" style="stroke-width:${grosorFilo}px"/>`;
   }
 
   const pulsos = Array.from(
     { length: PULSOS_CABLE.cuantos },
     (_, i) =>
-      `<circle class="pulso-cable" r="${(grosor * PULSOS_CABLE.radioEnGrosores).toFixed(2)}" style="animation-delay: ${Math.round((i * PULSOS_CABLE.ciclo) / PULSOS_CABLE.cuantos)}ms"/>`
+      // EL RADIO TAMBIÉN ENTERO, y llegaba como 2,20. Un círculo de radio
+      // fraccionario tiene su borde a mitad de píxel en las cuatro direcciones:
+      // es el peor caso posible para un punto de 4 px de diámetro, y son los
+      // cinco puntitos que se leen como suciedad. 6,47 · 0,34 da 2,20 y redondea
+      // a 2.
+      `<circle class="pulso-cable" r="${Math.max(1, Math.round(grosor * PULSOS_CABLE.radioEnGrosores))}" style="animation-delay: ${Math.round((i * PULSOS_CABLE.ciclo) / PULSOS_CABLE.cuantos)}ms"/>`
   ).join('');
 
   // EL ORDEN DE PINTADO ES LA UNIÓN. La sombra primero, después la cinta —que
@@ -1409,8 +1414,8 @@ export function dibujarCable() {
     // LAS DOS ARISTAS DEL TUBO. La de abajo primero: si el filo claro quedara
     // debajo del oscuro en un cruce del quiebre en S, el cable se vería
     // iluminado por abajo.
-    `<path class="cable-filo-abajo" d="${filoAbajo}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>` +
-    `<path class="cable-filo-arriba" d="${filoArriba}" style="stroke-width:${grosorFilo.toFixed(2)}px"/>` +
+    `<path class="cable-filo-abajo" d="${filoAbajo}" style="stroke-width:${grosorFilo}px"/>` +
+    `<path class="cable-filo-arriba" d="${filoArriba}" style="stroke-width:${grosorFilo}px"/>` +
     pulsos +
     `<g class="cable-ficha" transform="${eje}">` +
     `<rect class="cable-ficha-cuerpo" x="${(-ficha.largoFicha * 0.18).toFixed(1)}" y="${(-ficha.ancho / 2).toFixed(1)}" width="${ficha.largoFicha.toFixed(1)}" height="${ficha.ancho.toFixed(1)}" rx="${ficha.radio.toFixed(1)}"/>` +

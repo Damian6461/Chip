@@ -3350,8 +3350,36 @@ export const CABLE = {
   //
   // `brillo` es la arista de arriba y `sombra` la de abajo. No son un contorno:
   // son dónde le pega la luz y dónde no.
+  //
+  // LOS DOS SE QUEDAN COMO DOCUMENTACIÓN DEL ORIGEN, y lo que se DIBUJA son
+  // `filoArriba` y `filoAbajo`, dos líneas más abajo. Ver ahí por qué.
   brillo: '#7b858f',
   sombra: '#171b21',
+
+  // ---- LAS DOS ARISTAS, YA COMO COLOR Y NO COMO MEZCLA ----
+  //
+  // Hasta acá las aristas se dibujaban con `brillo` y `sombra` a opacidad 0,55 y
+  // 0,7, y el comentario de la hoja decía que era A PROPÓSITO: "semitransparente
+  // para que el filo se MEZCLE con el cuerpo en vez de apoyarse encima". O sea
+  // que la técnica estaba elegida, no heredada — por eso se decide de nuevo en
+  // vez de arreglarse.
+  //
+  // POR QUÉ SE DECIDE DE NUEVO. Mezclar dos capas en runtime sobre una escena de
+  // pixel art produce tonos que nadie dibujó, y es la misma familia del cruce de
+  // los ojos que ya se sacó por lo mismo. Con alfa, además, el tono depende de
+  // qué haya debajo: donde las dos capas del cable se cruzan, el filo cae sobre
+  // otro filo y da un cuarto color que no está en ninguna paleta. Medido antes
+  // de tocar nada: un corte vertical del tubo daba 6, 7 y 12 colores distintos.
+  //
+  // QUÉ SON ESTOS DOS NÚMEROS. Son exactamente el resultado de esa mezcla,
+  // calculado una vez: 55 % de `brillo` sobre `color` da #575f68, y 70 % de
+  // `sombra` sobre `color` da #1d2228. Lo que se ve no cambia en el tramo normal
+  // —es el mismo tono— y deja de cambiar donde antes se apilaba.
+  //
+  // Se dibujan a OPACIDAD 1. Un color plano sobre pixel art es un color; un
+  // color con alfa es una promesa de que abajo va a haber siempre lo mismo.
+  filoArriba: '#575f68',
+  filoAbajo: '#1d2228',
 
   // DE DÓNDE VIENE LA LUZ, como vector unitario en coordenadas de pantalla: x
   // hacia la derecha, y hacia ABAJO. Así que (-0,6, -0,8) apunta arriba y a la
@@ -3629,8 +3657,11 @@ export const VARS_CABLE = {
   // LAS DOS ARISTAS DEL TUBO, y son dos nombres y no uno. `brillo` estuvo solo
   // mientras el cable tenía un lomo; un tubo necesita el par, porque lo que lo
   // hace redondo es el CONTRASTE entre las dos caras y no la línea de luz.
-  brillo: '--cable-brillo',
-  sombra: '--cable-sombra',
+  // Y las dos aristas del tubo, que ya no son `brillo` y `sombra` con alfa sino
+  // dos colores planos. Los nombres viejos —--cable-brillo y --cable-sombra— se
+  // fueron con la mezcla: los leían las dos reglas de los filos y nada más.
+  filoArriba: '--cable-filo-arriba',
+  filoAbajo: '--cable-filo-abajo',
   energia: '--cable-energia',
   sombraPuerto: '--cable-sombra-puerto',
   ficha: '--cable-ficha',
