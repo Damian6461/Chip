@@ -173,6 +173,17 @@
 </p>
 <div id="cruce"></div>
 
+<h2>La silueta, bit a bit — que la cabeza sea la misma en las tres</h2>
+<p>
+  Las tres plantillas de un mismo estado comparten cabeza, así que
+  <strong>el mapa de píxeles transparentes tiene que ser idéntico en las tres</strong>.
+  Si una saliera con la cabeza escalada o corrida, se vería como una plantilla
+  perfectamente creíble y Damián dibujaría sobre una mentira — y no nos
+  enteraríamos hasta el final. No se cuentan los transparentes: se comparan
+  <em>cuáles</em>, uno por uno.
+</p>
+<div id="silueta"></div>
+
 <h2>Y el mismo cruce mirándolo — el DOM contra la plantilla</h2>
 <p>
   La comparación de cajas de arriba prueba la matriz, pero <strong>no prueba el
@@ -239,6 +250,75 @@ if (!bien) {
     '<p class="flojo">El cruce no dio. No se generan las plantillas: saldrían corridas.</p>';
 } else {
   const piezas = await generar();
+
+  // ---- La silueta, bit a bit ----
+  //
+  // NO SE CUENTAN LOS TRANSPARENTES, SE COMPARAN CUÁLES. Dos siluetas distintas
+  // pueden tener exactamente la misma cantidad de píxeles vacíos; lo que prueba
+  // que la cabeza es la misma es que el mapa coincida posición por posición.
+  //
+  // El alfa se compara contra 0 y no contra un umbral: acá no hay remuestreo de
+  // la cabeza —entra 1 a 1— así que un solo píxel de diferencia ya es una
+  // deformación, no ruido.
+  {
+    const mapaDe = (lienzo) => {
+      const d = lienzo.getContext('2d').getImageData(0, 0, 256, 256).data;
+      const mapa = new Uint8Array(256 * 256);
+      let vacios = 0;
+      for (let i = 0; i < mapa.length; i++) {
+        mapa[i] = d[i * 4 + 3] === 0 ? 1 : 0;
+        vacios += mapa[i];
+      }
+      return { mapa, vacios };
+    };
+
+    const FAMILIAS = {
+      idle: ['plantilla-idle-contento.png', 'plantilla-idle-cerrado.png', 'referencia-idle.png'],
+      feliz: ['plantilla-feliz-contento.png', 'plantilla-feliz-cerrado.png', 'referencia-feliz.png']
+    };
+
+    const filas = [];
+    for (const [familia, archivos] of Object.entries(FAMILIAS)) {
+      const mapas = archivos.map((a) => ({
+        archivo: a,
+        ...mapaDe(piezas.find((p) => p.archivo === a).lienzo)
+      }));
+      const patron = mapas[0];
+      for (const m of mapas.slice(1)) {
+        let distintos = 0;
+        for (let i = 0; i < patron.mapa.length; i++) if (patron.mapa[i] !== m.mapa[i]) distintos++;
+        filas.push({ familia, a: patron.archivo, b: m.archivo, distintos, vacios: m.vacios });
+      }
+      filas.push({ familia, a: patron.archivo, b: '(patrón)', distintos: 0, vacios: patron.vacios });
+    }
+
+    // Y que las DOS familias NO coincidan: si idle y feliz dieran la misma
+    // silueta, es que se usó la misma cabeza para las seis y el guardián de
+    // arriba estaría pasando por la razón equivocada.
+    const idle = mapaDe(piezas.find((p) => p.archivo === 'referencia-idle.png').lienzo);
+    const feliz = mapaDe(piezas.find((p) => p.archivo === 'referencia-feliz.png').lienzo);
+    let entreFamilias = 0;
+    for (let i = 0; i < idle.mapa.length; i++) if (idle.mapa[i] !== feliz.mapa[i]) entreFamilias++;
+
+    const todasIguales = filas.every((f) => f.distintos === 0);
+    document.getElementById('silueta').innerHTML =
+      `<table>` +
+      `<tr><th>familia</th><th>archivo</th><th>transparentes</th><th>píxeles distintos del patrón</th></tr>` +
+      filas.map((f) =>
+        `<tr><th>${f.familia}</th><td>${f.b === '(patrón)' ? f.a + ' (patrón)' : f.b}</td>` +
+        `<td>${f.vacios}</td>` +
+        `<td class="${f.distintos === 0 ? 'bien' : 'flojo'}">${f.distintos}</td></tr>`
+      ).join('') +
+      `<tr><th>idle contra feliz</th><td colspan="2">tienen que ser DISTINTAS</td>` +
+      `<td class="${entreFamilias > 0 ? 'bien' : 'flojo'}">${entreFamilias}${
+        entreFamilias > 0 ? '' : ' — las seis usan la misma cabeza'}</td></tr>` +
+      `<tr><th>veredicto</th><td colspan="3">${
+        todasIguales && entreFamilias > 0
+          ? '<span class="bien">cada familia comparte cabeza bit a bit, y las dos familias son distintas</span>'
+          : '<span class="flojo">hay una cabeza que no es la que dice ser</span>'
+      }</td></tr>` +
+      `</table>`;
+  }
 
   // ---- El cruce visual: el DOM de verdad al lado de la plantilla ----
   //
