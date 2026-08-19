@@ -33,6 +33,9 @@ import {
   INHALACION,
   INCLINACION_CABEZA,
   COLORES_BOTON,
+  COLORES_BOTON_CHAPITA,
+  COLORES_BULBO,
+  COLORES_TOMA,
   COLORES_PANEL,
   BOTONERA,
   FUENTE_BOTONERA,
@@ -381,42 +384,154 @@ function contraste(a, b) {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 
-// ---- LA BOTONERA DESPUÉS DEL PUNTO 3 ----
+// ---- LA BOTONERA SIN CAJA ----
 //
-// Los doce grises propios se fueron: ahora usa `--panel-*`, que ya estaban
-// declarados para el resto de la escena. Lo único que le queda de tabla propia
-// es el gris del texto y el naranja.
+// EL FONDO DE REFERENCIA CAMBIÓ, Y ESO ES LO PRIMERO. Estos tres tests medían
+// contra `--panel-chapa` y `--panel-hueco`, que eran el relleno del botón. El
+// botón ya no tiene relleno: lo que hay detrás de la etiqueta es el PISO DEL
+// GALPÓN, y el piso cambia cuatro veces por día.
+//
+// Los tres seguían pasando después de sacarle la caja, y ése era el problema:
+// un test verde midiendo contra una superficie que ya no está en pantalla.
+//
+// LOS CUATRO PISOS, MEDIDOS, NO ESTIMADOS. Salen de
+// verificacion/botonera-chapita.html: la panorámica de cada franja recortada al
+// encuadre del teléfono —390x844, `background-size: auto 100%`, que recorta por
+// los costados— compuesta con el charco de luz de la hora, y promediada en la
+// banda de 48 px que ocupa la botonera.
+//
+// Están copiados acá y no importados de ningún lado porque no existe del lado de
+// config: son una medición sobre cuatro imágenes, y para rehacerla hay que abrir
+// la página. Si alguien cambia una panorámica, esto queda viejo — y el modo de
+// enterarse es el mismo de siempre: mirarla.
+const PISOS = {
+  amanecer: '#353742', //  53, 55, 66 — luminancia 10
+  mediodia: '#585d62', //  88, 93, 98 — luminancia 28, el más claro de los cuatro
+  atardecer: '#413731', //  65, 55, 49 — luminancia 10
+  noche: '#17191a' //  23, 25, 26 — luminancia 2
+};
 
-prueba('botonera: el texto entra en AA sobre la chapa del panel', () => {
-  const c = contraste(COLORES_BOTON.texto, COLORES_PANEL.chapa);
-  verdadero(c >= 4.5, `texto sobre la chapa: ${c.toFixed(2)} a 1, y AA pide 4,5`);
-  // El ícono es un elemento gráfico y AA le pide 3. Va del mismo gris que el
-  // texto, así que si el texto pasa éste pasa — se mide igual, porque el día que
-  // alguien le ponga color propio al ícono esto lo agarra.
-  verdadero(c >= 3, `ícono sobre la chapa: ${c.toFixed(2)} a 1`);
+// El más claro es el que manda: es donde un naranja pierde. NO es el atardecer
+// —que es el que uno esperaría por el nombre— sino el MEDIODÍA. Medido.
+const PISO_CLARO = PISOS.mediodia;
+const PISO_OSCURO = PISOS.noche;
+
+prueba('botonera: el texto se lee sobre su contorno, no sobre un relleno', () => {
+  // Sin caja, la etiqueta ya no tiene un tono conocido debajo. Lo que la hace
+  // legible en las cuatro franjas es el contorno negro de 1 px: el texto se mide
+  // contra ÉL, y el contorno es el que se mide contra el piso.
+  const contraElContorno = contraste(COLORES_BOTON.texto, '#000000');
+  verdadero(contraElContorno >= 4.5, `texto sobre su contorno: ${contraElContorno.toFixed(2)} a 1, y AA pide 4,5`);
+
+  // Y contra el piso más claro, sin contorno, para tener el número que dice por
+  // qué el contorno hace falta.
+  const sinContorno = contraste(COLORES_BOTON.texto, PISO_CLARO);
+  verdadero(
+    sinContorno < contraElContorno,
+    `el contorno tiene que ayudar: sin él da ${sinContorno.toFixed(2)} sobre el mediodía`
+  );
 });
 
 prueba('botonera: el naranja es el de la paleta cerrada y no uno propio', () => {
   // Era #c8781f, un tono inventado para la botonera vieja. El punto 3.3 pide el
-  // #ffa300 de la paleta y avisa: si sobre este fondo quema, se le baja la
-  // opacidad y se anota el número. No quema, y el número está acá.
+  // #ffa300 de la paleta.
   igual(COLORES_BOTON.naranja.toLowerCase(), '#ffa300', 'el naranja de la paleta cerrada');
 
-  const sobreChapa = contraste(COLORES_BOTON.naranja, COLORES_PANEL.chapa);
-  const sobreHueco = contraste(COLORES_BOTON.naranja, COLORES_PANEL.hueco);
-  verdadero(sobreChapa >= 3, `naranja sobre la chapa: ${sobreChapa.toFixed(2)} a 1`);
-  verdadero(sobreHueco >= 3, `naranja sobre el hueco: ${sobreHueco.toFixed(2)} a 1`);
+  // Y los dos tonos nuevos de la chapita tampoco son hex nuevos: uno es el
+  // núcleo del bulbo de `cargando` y el otro el naranja gastado de la caja de
+  // conexión. Si alguien los reemplaza por un valor inventado, esto lo agarra.
+  igual(
+    COLORES_BOTON_CHAPITA['naranja-claro'],
+    COLORES_BULBO.cargando.nucleo,
+    'la chapita encendida usa el crema del bulbo de cargando, no un blanco propio'
+  );
+  igual(
+    COLORES_BOTON_CHAPITA['naranja-apagado'],
+    COLORES_TOMA.naranja,
+    'la chapita apagada usa el naranja gastado de la caja de conexión'
+  );
+});
+
+prueba('botonera: la chapita se despega del piso en las cuatro franjas', () => {
+  // LO QUE ESTE TEST NO DICE, y hay que decirlo: NO exige 4,5 del naranja contra
+  // el piso, porque el naranja NO lo saca. Sobre el mediodía da 2,81 de mediana
+  // y 2,56 en el peor píxel. Está medido y está publicado en
+  // verificacion/botonera-chapita.html; la decisión de si eso alcanza es del
+  // revisor y está abierta.
+  //
+  // Lo que sí se exige es lo que hace que la pieza no desaparezca: que en CADA
+  // franja haya algo —el naranja o el filo negro— que le saque 3 al piso. Son
+  // las dos mitades de la misma pieza y se turnan: sobre piso oscuro gana el
+  // naranja y el filo no se ve; sobre piso claro gana el filo y el naranja no.
+  //
+  // Y EL FILO RODEA LA CHAPITA, que es lo que hace que esta cuenta valga para
+  // los cuatro bordes y no para uno. Medido lado por lado sobre las cuatro
+  // franjas —dieciséis mínimos, el peor píxel de cada uno—: el peor de los
+  // dieciséis da 3,26, en el mediodía por la izquierda. Está en
+  // verificacion/botonera-chapita.html, punto c.bis.
+  //
+  // Con el filo abajo nomás, ese mismo peor daba 2,56.
+  for (const [franja, piso] of Object.entries(PISOS)) {
+    const porElNaranja = contraste(COLORES_BOTON.naranja, piso);
+    const porElFilo = contraste('#000000', piso);
+    verdadero(
+      Math.max(porElNaranja, porElFilo) >= 3,
+      `en ${franja} la chapita no se despega: naranja ${porElNaranja.toFixed(2)}, filo ${porElFilo.toFixed(2)}`
+    );
+  }
+
+  // Y que las dos mitades SE TURNEN de verdad, o el filo sería adorno. Lo que se
+  // prueba es la tendencia, que es lo que este test puede ver: al aclararse el
+  // piso, el naranja pierde y el filo gana.
+  //
+  // ESTE TEST MIDE CONTRA EL PROMEDIO DE LA BANDA, y ahí el naranja todavía le
+  // gana al filo por poco en el mediodía —3,32 contra 3,16—. Contra el PEOR
+  // PÍXEL se da vuelta: 2,56 el naranja y 3,21 el filo. Los dos números están en
+  // verificacion/botonera-chapita.html, que es donde se puede recorrer píxel por
+  // píxel; acá no hay canvas, así que acá va el promedio y queda dicho cuál es
+  // cuál. Un test que no puede reproducir un número no debería afirmarlo.
+  const naranjaClaro = contraste(COLORES_BOTON.naranja, PISO_CLARO);
+  const naranjaOscuro = contraste(COLORES_BOTON.naranja, PISO_OSCURO);
+  const filoClaro = contraste('#000000', PISO_CLARO);
+  const filoOscuro = contraste('#000000', PISO_OSCURO);
+
+  verdadero(
+    naranjaOscuro > naranjaClaro,
+    `el naranja tiene que perder al aclararse el piso: ${naranjaOscuro.toFixed(2)} de noche, ${naranjaClaro.toFixed(2)} al mediodía`
+  );
+  verdadero(
+    filoClaro > filoOscuro,
+    `y el filo tiene que ganar: ${filoOscuro.toFixed(2)} de noche, ${filoClaro.toFixed(2)} al mediodía`
+  );
+  verdadero(
+    filoClaro >= 3,
+    `sobre el piso más claro el filo es lo único que queda, y da ${filoClaro.toFixed(2)}`
+  );
 });
 
 prueba('botonera: la tecla apagada se lee apagada, no ilegible', () => {
-  // El punto 3.3 propone `--panel-linea` para el texto deshabilitado. Contra la
-  // chapa da 2,25: poco para texto normal, y es a propósito — "apagado" tiene
-  // que leerse como apagado. Lo que sí hay que garantizar es que se DISTINGA del
-  // fondo, o la tecla parecería vacía.
-  const apagada = contraste(COLORES_PANEL.linea, COLORES_PANEL.chapa);
-  const encendida = contraste(COLORES_BOTON.texto, COLORES_PANEL.chapa);
-  verdadero(apagada >= 1.8, `la tecla apagada da ${apagada.toFixed(2)} a 1 y tiene que verse`);
-  verdadero(apagada < encendida, 'y tiene que contrastar MENOS que la encendida, o no se distinguen');
+  // "Apagado" es una diferencia contra la chapita ENCENDIDA, no contra el piso:
+  // el jugador compara las tres teclas entre sí, que están una al lado de la
+  // otra. Lo que hay que garantizar es que el marrón se distinga del naranja y
+  // que no sea tan oscuro que la pieza desaparezca sobre el piso de noche.
+  const contraLaEncendida = contraste(
+    COLORES_BOTON_CHAPITA['naranja-apagado'],
+    COLORES_BOTON.naranja
+  );
+  // Medido: 1,70. El umbral va en 1,5 y no en 1,8 —que era el de la versión
+  // anterior, contra otro par de colores— porque acá además hay diferencia de
+  // TONO: naranja encendido contra marrón gastado. Dos superficies que sólo se
+  // distinguieran por luminancia pedirían más.
+  verdadero(contraLaEncendida >= 1.5, `apagada contra encendida: ${contraLaEncendida.toFixed(2)} a 1`);
+
+  const apagadaSobreOscuro = contraste(COLORES_BOTON_CHAPITA['naranja-apagado'], PISO_OSCURO);
+  verdadero(apagadaSobreOscuro >= 3, `apagada sobre el piso de noche: ${apagadaSobreOscuro.toFixed(2)} a 1`);
+
+  // Y el texto apagado: contra su contorno, que es lo que tiene debajo.
+  const texto = contraste(COLORES_PANEL.linea, '#000000');
+  const encendido = contraste(COLORES_BOTON.texto, '#000000');
+  verdadero(texto >= 1.8, `el texto apagado da ${texto.toFixed(2)} a 1 y tiene que verse`);
+  verdadero(texto < encendido, 'y tiene que contrastar MENOS que el encendido, o no se distinguen');
 });
 
 // ---- Lo que el punto 3 saca, y que nadie lo vuelva a poner ----
@@ -444,26 +559,166 @@ prueba('botonera: las esquinas son duras', () => {
   igual(radio[1].trim(), '0', 'un radio redondeado nunca cae en la grilla');
 });
 
-prueba('botonera: la chapa es plana, sin degradés ni brillos ni remaches', () => {
-  // Un color por superficie: un relleno, un filo y nada en el medio. Los
-  // remaches eran tres radial-gradient cada uno, o sea arte de otro estilo
-  // agregado a un dibujo que no lo tiene.
+// Las longitudes de cada sombra de un `box-shadow` o de un `text-shadow`: los
+// colores se descartan, incluidos los `rgb(...)` con sus propios paréntesis.
+// Las longitudes que declaran los `--boton-*` que aparecen adentro de una
+// sombra, para poder resolverlas antes de medirlas. SIN ESTO EL GUARDIÁN NO VE
+// LA EXPANSIÓN: el primer intento borraba los `var()` junto con los colores, así
+// que `0 0 0 var(--boton-chapita-filo)` se leía como una sombra de tres
+// longitudes en cero — verde, y sin haber mirado el único número que importa.
+const LARGOS_DE_LA_CHAPITA = {
+  '--boton-chapita-filo': BOTONERA.chapita.filo,
+  '--boton-chapita-halo': BOTONERA.chapita.halo
+};
+
+function sombrasDe(declaracion) {
+  let texto = declaracion.replace(/#[0-9a-fA-F]{3,8}/g, '');
+  for (const [nombre, valor] of Object.entries(LARGOS_DE_LA_CHAPITA)) {
+    texto = texto.split(`var(${nombre})`).join(`${valor}px`);
+  }
+  return texto
+    .replace(/(?:rgba?|hsla?|color-mix)\((?:[^()]|\([^()]*\))*\)/g, '')
+    .replace(/var\((?:[^()]|\([^()]*\))*\)/g, 'SIN-RESOLVER')
+    .split(',')
+    // Un cero se escribe `0` y no `0px`, así que la unidad es opcional. Un
+    // intento anterior pedía `px` y devolvía una sola longitud de `0 1px 0`.
+    .map((s) => (s.match(/-?[\d.]+(?:px)?/g) || []).map(parseFloat))
+    .filter((l) => l.length > 0);
+}
+
+prueba('botonera: la ficha es plana — ni degradés, ni relieve, ni un blur en reposo', () => {
+  // Un color por trazo y nada en el medio. Lo que cambió respecto de la versión
+  // con caja: ANTES acá se prohibía `box-shadow` a secas, porque el único
+  // box-shadow imaginable era un relieve. Ahora la chapita lleva uno —el píxel
+  // negro de abajo, que es lo que la despega del piso claro— así que la
+  // prohibición se corrió a lo que realmente rompe el dibujo:
+  //
+  //   NINGUNA sombra en reposo puede tener DIFUMINADO, y todos los
+  //   corrimientos tienen que ser enteros.
+  //
+  // Una sombra de difuminado cero y corrimiento entero es la misma silueta
+  // corrida un número entero de píxeles: no puede pintar un solo píxel parcial.
+  // Un blur, sí — y ahí se va la fuente pixel, los cantos duros y los íconos de
+  // 16 unidades, todos juntos.
   const bloque = CSS.slice(CSS.indexOf('#acciones button {'), CSS.indexOf('#acciones button::before'));
-  verdadero(!/gradient/.test(bloque), 'volvió un degradé a la chapa');
-  verdadero(!/box-shadow/.test(bloque), 'volvió el relieve de box-shadow');
+  verdadero(!/gradient/.test(bloque), 'volvió un degradé a la ficha');
   verdadero(!/color-mix/.test(bloque), 'volvió un tono mezclado en vez de uno de la paleta');
+
+  const sombras = [...bloque.matchAll(/(?:box|text)-shadow:\s*([^;]+);/g)].flatMap((m) => sombrasDe(m[1]));
+  verdadero(sombras.length >= 5, `el parser tiene que encontrar las sombras: encontró ${sombras.length}`);
+  for (const l of sombras) {
+    // Tres longitudes es `x y blur`; cuatro suma la expansión, que es la del
+    // filo. Menos de tres es un var que no se resolvió y hay que resolverlo,
+    // porque si no el número no se está mirando.
+    verdadero(
+      l.length === 3 || l.length === 4,
+      `una sombra con ${l.length} longitudes: ${l.join(' ')} — ¿quedó un var() sin resolver?`
+    );
+    verdadero(l[2] === 0, `una sombra en reposo difumina ${l[2]}px, y eso saca los píxeles de la grilla`);
+    verdadero(
+      l.every(Number.isInteger),
+      `una longitud fraccionaria en una sombra: ${l.join(' ')}`
+    );
+  }
 });
 
-prueba('botonera: la sombra de contacto se queda, y sigue siendo suave', () => {
-  // Punto 3.6: es lo ÚNICO que tiene que ser suave, porque una sombra real lo
-  // es. Si alguien "termina" el punto 3 sacándole el degradé a esto, la chapa
-  // vuelve a flotar.
-  const bloque = CSS.slice(
-    CSS.indexOf('#acciones button::before'),
-    CSS.indexOf('#acciones button:disabled::before')
+prueba('botonera: la ficha son dos trazos, y los dos caen en la grilla', () => {
+  // ACÁ ESTABA EL TEST DE LA SOMBRA DE CONTACTO —"se queda, y sigue siendo
+  // suave"— y se fue con ella. Lo que cuidaba era que nadie "terminara" el punto
+  // 3 sacándole el degradé a la elipse y dejando la chapa flotando. Ya no hay
+  // chapa que flote: hay una chapita arriba y un pie abajo, y lo que hay que
+  // cuidar es otra cosa.
+  //
+  // Las dos se compararon con captura antes de decidir: ver
+  // verificacion/botonera-chapita.html, punto c.
+  const chapita = CSS.slice(CSS.indexOf('#acciones button::after {'), CSS.indexOf('#acciones button::before'));
+  const pie = CSS.slice(CSS.indexOf('#acciones button::before {'), CSS.indexOf('#acciones button svg'));
+
+  verdadero(/height:\s*var\(--boton-chapita-alto\)/.test(chapita), 'el alto de la chapita sale de config');
+
+  // ARRIBA Y NO ABAJO: es una etiqueta, no un subrayado. Y no se prueba con
+  // `top: 0` porque ya no vale cero — vale el filo, por lo de acá abajo.
+  verdadero(/top:\s*var\(--boton-chapita-filo\)/.test(chapita), 'la chapita va ARRIBA');
+  verdadero(!/bottom:/.test(chapita), 'si se ancla abajo vuelve a ser el canto de una caja');
+
+  // EL FILO CRECE HACIA ADENTRO, Y ESTO ES LO QUE LO FIJA. El anillo de
+  // `box-shadow` pinta 1 px por fuera de la caja del pseudo. Para que la silueta
+  // exterior de la ficha no se mueva, la chapita arranca corrida ese mismo píxel
+  // —`top: filo`— y su aire lateral lo lleva sumado —`inset + filo`—. Si alguien
+  // devuelve el `top: 0`, la ficha empieza a pintar arriba del botón sin que
+  // ningún test de área táctil se entere: el box-shadow no toca el layout.
+  verdadero(
+    /left:\s*calc\(var\(--boton-chapita-inset\) \+ var\(--boton-chapita-filo\)\)/.test(chapita),
+    'el aire lateral tiene que llevar el filo sumado, o el anillo se sale para afuera'
   );
-  verdadero(/radial-gradient/.test(bloque), 'la sombra necesita su degradé');
-  verdadero(/blur/.test(bloque), 'y su difuminado');
+  verdadero(
+    /box-shadow:\s*0 0 0 var\(--boton-chapita-filo\)/.test(chapita),
+    'el filo va como EXPANSIÓN —0 0 0 N— que es lo único que da un píxel exacto en los cuatro lados'
+  );
+  verdadero(/bottom:\s*var\(--boton-pie-abajo\)/.test(pie), 'el pie va abajo, con su separación de config');
+  verdadero(/left:\s*var\(--boton-pie-inset\)/.test(pie), 'y su aire lateral');
+  verdadero(!/gradient|blur/.test(pie), 'el pie es una línea llena, no una mancha difusa');
+
+  // TODO EN ENTEROS. Un pie de 1,5 px de alto son dos filas a medio pintar.
+  const enteros = [
+    ['chapita.alto', BOTONERA.chapita.alto],
+    ['chapita.inset', BOTONERA.chapita.inset],
+    ['chapita.filo', BOTONERA.chapita.filo],
+    ['chapita.halo', BOTONERA.chapita.halo],
+    ['pie.alto', BOTONERA.pie.alto],
+    ['pie.inset', BOTONERA.pie.inset],
+    ['pie.abajo', BOTONERA.pie.abajo]
+  ];
+  for (const [nombre, valor] of enteros) {
+    verdadero(Number.isInteger(valor), `${nombre} vale ${valor} y tiene que ser un entero de píxeles`);
+  }
+
+  // Y EL PIE ES MÁS CORTO QUE LA CHAPITA. No es gusto: es lo que hace que la
+  // pieza se lea apoyada en vez de simétrica. Si alguien iguala los dos insets,
+  // quedan dos subrayados y se pierde el arriba y el abajo.
+  verdadero(
+    BOTONERA.pie.inset > BOTONERA.chapita.inset,
+    `el pie tiene que ser más corto que la chapita: ${BOTONERA.pie.inset} contra ${BOTONERA.chapita.inset}`
+  );
+});
+
+prueba('botonera: el área táctil no la paga la propuesta', () => {
+  // ES LO ÚNICO QUE HOY FUNCIONA BIEN. Medido en el navegador antes y después,
+  // a 390x844, los tres botones dan 114x48 en (16, 780), (138, 780) y (260, 780)
+  // — idénticos al píxel. Ver verificacion/botonera-chapita.html, punto a.
+  //
+  // Lo que este test cuida es lo que hizo que siguieran iguales: que la caja
+  // siga siendo `border-box` con el mismo ancho y alto declarados, y que ninguna
+  // regla de estado le toque la geometría. Sacar el borde de 1 px NO mueve nada
+  // con border-box; agregarle un padding, sí.
+  const bloque = CSS.slice(CSS.indexOf('#acciones button {'), CSS.indexOf('#acciones button::after'));
+  verdadero(/box-sizing:\s*border-box/.test(bloque), 'sin border-box, sacar el borde encoge la caja');
+  verdadero(/width:\s*var\(--boton-ancho\)/.test(bloque), 'el ancho lo sigue midiendo ui.js');
+  verdadero(/height:\s*var\(--boton-alto\)/.test(bloque), 'y el alto sale del módulo de 8');
+
+  // Ninguna regla de estado puede cambiar la caja: el botón apagado y el
+  // apretado ocupan exactamente el mismo lugar. El viaje de 2 px del apretado va
+  // por `transform`, que no reflowea.
+  // EL LÍMITE VA A UN SELECTOR Y NO A UN COMENTARIO, y el primer intento usaba
+  // un comentario: `CSS` acá viene con los comentarios YA SACADOS, así que el
+  // indexOf daba −1, el slice se comía la hoja entera y el test denunciaba un
+  // `width` que estaba a tres mil líneas de la botonera.
+  const finDeLaBotonera = CSS.indexOf('}', CSS.indexOf('#acciones button:disabled svg')) + 1;
+  const desdeEstados = CSS.slice(CSS.indexOf('#acciones button:active'), finDeLaBotonera);
+  verdadero(desdeEstados.length > 200 && desdeEstados.length < 2000,
+    `el slice de los estados mide ${desdeEstados.length} y eso no es la botonera`);
+  for (const prohibida of ['width', 'height', 'padding', 'margin', 'inset']) {
+    const re = new RegExp(`(^|[;{\\s])${prohibida}:`, 'm');
+    verdadero(
+      !re.test(desdeEstados),
+      `una regla de estado declara ${prohibida} y eso mueve la caja del botón`
+    );
+  }
+
+  // El alto sale de 6 unidades de 8, que son 48: arriba de los 44 del mínimo
+  // táctil, y entero.
+  const alto = BOTONERA.unidad * BOTONERA.altoEnUnidades;
+  verdadero(alto >= 44, `el botón mide ${alto} px de alto y el mínimo táctil es 44`);
 });
 
 prueba('botonera: los íconos son píxeles y no trazos', () => {

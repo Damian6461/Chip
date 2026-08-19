@@ -2746,6 +2746,16 @@ export const SECCIONES_MENU = ['coleccion', 'ajustes', 'acerca'];
 
 // La chapa del panel de mantenimiento que hace de botón. Mismo vocabulario que
 // la toma de corriente: es mobiliario del galpón, no un ícono de interfaz.
+//
+// LOS CUATRO SIGUEN VIVOS, Y CASI SE VAN TRES. Cuando la botonera perdió la caja
+// —ver COLORES_BOTON_CHAPITA— `chapa`, `filo` y `hueco` se quedaron sin un solo
+// lector EN style.css, y por un momento parecieron muertos. No lo están: los lee
+// `formas.js`, en el SVG del panel de mantenimiento, que es el dueño original de
+// esta tabla y la razón del nombre. La botonera era el inquilino.
+//
+// Queda anotado porque el error estuvo escrito: un grep sobre la hoja no ve a
+// formas.js, y formas.js también escribe var(). El guardián del puente sí mira
+// los dos, y por eso lo agarró.
 export const COLORES_PANEL = {
   chapa: '#2b313c',
   filo: '#0b0e13',
@@ -2915,15 +2925,85 @@ export const BOTONERA = {
   // único que apoya la chapa en el piso. Cambiar una esquina por la sombra es
   // mal negocio. El canto duro alcanza.
 
-  // La elipse del piso. `ancho` en % de la chapa: más angosta que la pieza,
-  // porque una sombra de contacto no se derrama hasta el borde — nace donde el
-  // material toca. `alto` en px, y bajo: es una elipse en escorzo vista casi de
-  // canto, igual que los aros de las orugas.
+  // ---- LA CHAPITA, QUE ES TODA LA SILUETA QUE QUEDA ----
   //
-  // ES LO ÚNICO SUAVE QUE QUEDA, y a propósito: una sombra real es suave. El
-  // punto 3.6 la deja explícitamente afuera del tratamiento de cantos duros.
-  sombra: { ancho: 76, alto: 7, alfa: 0.5, difuminado: 5 }
+  // Y ACÁ ESTÁ EL DIAGNÓSTICO QUE FALTABA. Las tres variantes anteriores —la
+  // maciza, la hueca al 0,72 y la del medio al 0,90— se probaron y se
+  // rechazaron las tres por la misma razón, que ninguna de las tres tocaba:
+  // COMPARTÍAN LA SILUETA RECTANGULAR. Lo que se estuvo cambiando fue el
+  // relleno, y el relleno nunca fue el problema.
+  //
+  // La medición de verificacion/botonera-hueca.html lo decía y no se leyó así:
+  // el piso de las cuatro franjas va de 23 a 97 de luminancia, o sea que NINGÚN
+  // relleno saca más de 2,59 de contraste en las cuatro. El naranja sí: 8,07 a
+  // 9,72. El único elemento que aguanta las cuatro franjas ya estaba en la
+  // pieza, y era la franja de pintura — no el fondo sobre el que se apoyaba.
+  //
+  // Así que el botón deja de tener caja. La silueta la lleva una chapita
+  // pintada arriba del texto, como la etiqueta grabada de un tablero de galpón:
+  // el tablero no dibuja un rectángulo alrededor de cada perilla, le pone una
+  // plaquita arriba con el nombre.
+  //
+  //   alto   3 px. Con 2 —el alto de la franja del canto que reemplaza— se
+  //          lee como un subrayado desprendido; con 3 se lee como una pieza.
+  //   inset  8 px de aire a cada lado, que es la UNIDAD del módulo. Es lo que
+  //          hace que la chapita sea más angosta que el botón y por lo tanto
+  //          se lea como algo APOYADO encima y no como el borde de arriba de
+  //          una caja invisible.
+  //   filo   1 px de negro RODEÁNDOLA, y el primer intento lo puso sólo abajo.
+  //          Ver abajo, porque es la corrección que más importa de todas.
+  //   halo   sólo al apretar. Ver COLORES_BOTON_CHAPITA.
+  //
+  // EL FILO VA EN LOS CUATRO LADOS, Y ESTUVO EN UNO SOLO. El pedido original era
+  // "sumale box-shadow: 0 1px 0 #000 para que despegue del piso claro". Hace
+  // exactamente eso, y por eso el error se ve recién cuando se mide lado por
+  // lado: el naranja y el negro SE TURNAN según la hora.
+  //
+  //                        amanecer  mediodía  atardecer  noche
+  //   naranja / piso          5,91      3,32       5,78    8,81
+  //   filo negro / piso       1,78      3,16       1,82    1,19
+  //
+  // Sobre piso oscuro manda el naranja y el filo no se ve; sobre piso claro se
+  // da vuelta. Con el filo abajo nomás, el mediodía dejaba ARRIBA Y LOS DOS
+  // COSTADOS con 2,56 en el peor píxel — o sea la pieza a merced de la hora en
+  // tres de sus cuatro bordes. Rodeándola, en cada franja y en cada lado hay
+  // siempre uno de los dos trabajando.
+  //
+  // Y CRECE HACIA ADENTRO, NO HACIA AFUERA. El `box-shadow` no ocupa lugar en el
+  // layout, pero sí PINTA: un anillo de 1 px alrededor de una chapita puesta en
+  // `top: 0` la haría empezar un píxel más arriba del botón. Así que la chapita
+  // se corre 1 px hacia adentro y el inset sube 1 —de 8 a 9— y el anillo cae
+  // justo donde antes terminaba el naranja. La silueta exterior de la ficha es
+  // EXACTAMENTE la de antes; lo único que cambió está adentro.
+  chapita: { alto: 3, inset: 8, filo: 1, halo: 4 },
+
+  // ---- EL PIE ----
+  //
+  // Una línea fina abajo, más corta que la chapita, para que la ficha se lea
+  // apoyada y no flotando. Es lo que hacía la elipse de contacto, con la
+  // diferencia de que la elipse suponía una chapa entera apoyando su base y ya
+  // no hay chapa: lo que apoya es una ficha de dos trazos.
+  //
+  // `alfa` no es cosmética: a plena opacidad son dos naranjas iguales arriba y
+  // abajo y la pieza se lee simétrica, que es justamente lo que una etiqueta
+  // apoyada no es. Al 55% la chapita manda y el pie acompaña.
+  pie: { alto: 1, inset: 22, abajo: 2, alfa: 0.55 }
 };
+
+// ---- ACÁ ESTABA BOTONERA.sombra, LA ELIPSE DE CONTACTO ----
+//
+// Era `{ ancho: 76, alto: 7, alfa: 0.5, difuminado: 5 }` y con ella se van sus
+// cuatro variables. Estaba descrita como "lo único suave que queda, y a
+// propósito", y eso seguía siendo cierto: una sombra real es suave.
+//
+// Lo que dejó de ser cierto es lo que la sombra sostenía. Una sombra de
+// contacto dice dónde APOYA UNA SUPERFICIE, y su ancho iba en % de la chapa
+// —76— porque suponía una chapa. Sin caja no hay superficie que apoye: hay dos
+// trazos de pintura y un texto. Una elipse difusa debajo de eso no dice
+// "apoyado", dice "hay algo acá que no se ve".
+//
+// Se probaron las dos, con captura, antes de sacarla: ver
+// verificacion/botonera-chapita.html.
 
 // `unidad` NO viaja por el puente: no la lee el CSS, sólo sirve para derivar el
 // alto, la separación y el margen acá al lado. Una variable escrita sin lector
@@ -2934,10 +3014,14 @@ export const VARS_BOTONERA = {
   margen: '--boton-margen',
   fuente: '--boton-fuente',
   icono: '--boton-icono',
-  sombraAncho: '--boton-sombra-ancho',
-  sombraAlto: '--boton-sombra-alto',
-  sombraAlfa: '--boton-sombra-alfa',
-  sombraDifuminado: '--boton-sombra-difuminado',
+  chapitaAlto: '--boton-chapita-alto',
+  chapitaInset: '--boton-chapita-inset',
+  chapitaFilo: '--boton-chapita-filo',
+  chapitaHalo: '--boton-chapita-halo',
+  pieAlto: '--boton-pie-alto',
+  pieInset: '--boton-pie-inset',
+  pieAbajo: '--boton-pie-abajo',
+  pieAlfa: '--boton-pie-alfa',
   // El ancho de cada chapa NO sale de acá: lo mide ui.js y lo escribe en píxeles
   // enteros, porque depende del ancho de la escena. Ver medirBotonera.
   ancho: '--boton-ancho'
@@ -3645,6 +3729,36 @@ export const COLORES_TOMA = {
   naranja: '#c8781f',
   'naranja-alto': '#e8a24a',
   sombra: '#0c0f13'
+};
+
+// ---- LOS DOS TONOS DE LA CHAPITA QUE NO SON EL NARANJA BASE ----
+//
+// VIVEN ACÁ ABAJO Y NO ADENTRO DE COLORES_BOTON POR UNA RAZÓN DE ORDEN DE
+// EVALUACIÓN, no de diseño: los dos SE REFERENCIAN, no se copian, y las dos
+// fuentes están declaradas más abajo que COLORES_BOTON. Un módulo ES se evalúa
+// de arriba abajo, así que ponerlos allá arriba sería un ReferenceError al
+// cargar. Se probó.
+//
+// Viajan con el mismo prefijo `boton` que COLORES_BOTON —tema.js hace dos
+// `tonos('boton', ...)` sobre el mismo espacio de nombres— así que del lado del
+// CSS son `--boton-naranja-claro` y `--boton-naranja-apagado`, al lado del
+// `--boton-naranja` de siempre. Que estén en dos tablas es un detalle de este
+// archivo y no una división que el CSS tenga que conocer.
+//
+// NINGUNO DE LOS DOS ES UN HEX NUEVO, y eso era el pedido:
+//
+//   claro     #fff3d6, el núcleo del bulbo de `cargando`. Es el crema caliente
+//             que el juego ya usa para decir "esto está encendido". Que la
+//             chapita apretada use el mismo blanco cálido que la antena
+//             cargando no es una coincidencia agradable: es que las dos cosas
+//             dicen lo mismo.
+//   apagado   #c8781f, el naranja gastado de la caja de conexión. Es el mismo
+//             naranja del juego bajado en luminancia por el ilustrador, no por
+//             una cuenta: ya existe pintado en la escena, sobre la caja que
+//             está a un metro de la botonera.
+export const COLORES_BOTON_CHAPITA = {
+  'naranja-claro': COLORES_BULBO.cargando.nucleo,
+  'naranja-apagado': COLORES_TOMA.naranja
 };
 
 

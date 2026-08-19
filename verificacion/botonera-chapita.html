@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>La botonera sin caja: la chapita, medida</title>
+<!-- La hoja del juego, sin copiar nada: las reglas que se ven acá son las que
+     están en style.css. Si alguien las cambia, esta página cambia sola. -->
+<link rel="stylesheet" href="../style.css">
+<style>
+  body {
+    background: #14161c; color: #e6e6e6; margin: 0; padding: 24px;
+    font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 14px; color: #ffb060; margin: 26px 0 8px; font-weight: normal; }
+  h3 { font-size: 13px; color: #c9ced7; margin: 0 0 6px; font-weight: normal; }
+  p { color: #9aa0ab; font-size: 13px; max-width: 82ch; }
+  code { color: #c9ced7; }
+  table { border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  td, th { padding: 3px 16px 3px 0; text-align: left; vertical-align: top; }
+  th { color: #9aa0ab; font-weight: normal; }
+  .bien { color: #63d68a; }
+  .justo { color: #ffd166; }
+  .flojo { color: #ff6b78; }
+  .nota {
+    border: 1px solid #2a2d38; border-left: 3px solid #ffb060;
+    padding: 10px 14px; margin: 14px 0; max-width: 84ch;
+  }
+  .nota p { margin: 0 0 6px; max-width: none; }
+  .nota p:last-child { margin: 0; }
+
+  /* El piso: la panorámica de la franja compuesta con la luz de la hora, al
+     encuadre del teléfono. La arma un canvas y se pega como imagen, así lo que
+     se MIRA y lo que se MIDE son exactamente los mismos píxeles. */
+  .piso { width: 390px; height: 96px; position: relative; overflow: hidden; }
+  .piso #acciones { position: absolute; left: 0; right: 0; bottom: 0; }
+  .ampliada { zoom: 4; image-rendering: pixelated; }
+  .lado { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; }
+  .columna { min-width: 390px; }
+  canvas { image-rendering: pixelated; display: block; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================================
+     CÓMO ABRIR ESTA PÁGINA — leer antes de concluir que no muestra nada.
+
+     Va INLINE y en un script CLÁSICO, no en un módulo, y las dos cosas son a
+     propósito: es el único código de la página que tiene que correr aunque todo
+     lo demás esté bloqueado.
+
+     El bloque está REPETIDO en TODAS las páginas de verificacion/, y eso
+     también es deliberado. Un archivo compartido es una cosa más que puede no
+     cargar, y el caso que este bloque atiende es exactamente ése. Que las cuatro
+     copias no se separen lo hace cumplir tests/assets.test.js.
+     ============================================================================ -->
+<style>
+  #como-abrirla {
+    border: 1px solid #2a2d38; border-left: 3px solid #ffb060;
+    padding: 10px 14px; margin: 0 0 22px; max-width: 84ch;
+    font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: #9aa0ab;
+  }
+  #como-abrirla p { margin: 0 0 6px; max-width: none; font-size: 13px; color: inherit; }
+  #como-abrirla p:last-child { margin-bottom: 0; }
+  #como-abrirla a { color: #ffb060; }
+  #aviso-protocolo { color: #ff6b78; }
+  #version-sw:empty { display: none; }
+</style>
+<div id="como-abrirla">
+  <p id="aviso-protocolo" hidden>
+    <strong>ASÍ NO SE VE NADA, Y NO ES QUE NO HAYA NADA.</strong>
+    Esta página se dibuja con módulos ES, y el navegador los bloquea en
+    <code>file://</code>. El script no corre, queda sólo el texto, y el resultado
+    se parece a «no hay nada que mostrar». Hay que servirla por HTTP:
+  </p>
+  <p>
+    <strong>En el teléfono:</strong>
+    <a href="https://damian6461.github.io/Chip/verificacion/botonera-chapita.html">damian6461.github.io/Chip/verificacion/botonera-chapita.html</a>
+  </p>
+  <p>
+    <strong>En la máquina:</strong> <code>python3 -m http.server</code> en la raíz
+    del repo, y abrir <code>localhost:8000/verificacion/botonera-chapita.html</code>
+  </p>
+  <p id="version-sw"></p>
+</div>
+<script>
+  (function () {
+    if (location.protocol === 'file:') {
+      document.getElementById('aviso-protocolo').hidden = false;
+      return;
+    }
+
+    /* Y LA OTRA MITAD DE ABRIRLA BIEN: CON QUÉ VERSIÓN SE ESTÁ MIRANDO.
+
+       js/config.js y js/tema.js SÍ están en ARCHIVOS_CACHE, así que un teléfono
+       con un service worker viejo le sirve a esta página los módulos de esa
+       versión. La página anda, dibuja, no se queja — y mide una versión que ya
+       no existe. Es el mismo modo de falla que costó dos deploys, ahora del lado
+       de la herramienta que tendría que detectarlo.
+
+       Todo esto es informativo y no puede romper la página: si algo falla, el
+       renglón queda vacío y el CSS lo esconde. */
+    var linea = document.getElementById('version-sw');
+    function decir(texto, alarma) {
+      linea.textContent = texto;
+      linea.style.color = alarma ? '#ffb060' : '#6d747f';
+    }
+
+    fetch('../sw.js', { cache: 'no-store' })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var publicada = (t.match(/CACHE_VERSION\s*=\s*'([^']+)'/) || [])[1] || '?';
+
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+          decir('Sin service worker: los módulos vienen de la red. Publicado: ' + publicada + '.', false);
+          return;
+        }
+
+        var canal = new MessageChannel();
+        var reloj = setTimeout(function () {
+          decir('El service worker no contestó en 400 ms. Publicado: ' + publicada + '.', true);
+        }, 400);
+
+        canal.port1.onmessage = function (e) {
+          clearTimeout(reloj);
+          var puesta = (e.data && e.data.version) || '?';
+          decir(
+            puesta === publicada
+              ? 'Service worker ' + puesta + ', igual que lo publicado.'
+              : 'OJO: esta página se sirve con ' + puesta + ' y lo publicado es ' +
+                publicada + '. Estás mirando una versión vieja — recargá dos veces.',
+            puesta !== publicada
+          );
+        };
+
+        navigator.serviceWorker.controller.postMessage('version', [canal.port2]);
+      })
+      .catch(function () {});
+  })();
+</script>
+
+<h1>La botonera sin caja: la chapita, medida</h1>
+
+<p>
+  El botón dejó de tener relleno y borde. Toda la silueta la llevan dos trazos de
+  pintura —una <strong>chapita</strong> de 3 px arriba, rodeada por un filo negro
+  de 1 px, y un <strong>pie</strong> de 1 px abajo— y el texto y el ícono llevan
+  contorno negro de 1 px para no depender del piso. Esta página mide las cinco
+  cosas que había que medir antes de mirarla.
+</p>
+
+<div class="nota">
+  <p><strong>QUÉ ES CADA NÚMERO, porque solo no se reproduce.</strong></p>
+  <p>
+    <strong>El piso</strong> no es la panorámica cruda. Es la panorámica de la
+    franja recortada <em>al encuadre del teléfono</em> —390×844,
+    <code>background-size: auto 100%</code>— y compuesta con el charco de luz de
+    la hora, que es <code>#escena::after</code>. Se promedia la banda que ocupa la
+    botonera: los últimos 64 px del alto de la escena. Un piso medido sobre la
+    imagen cruda, o a 480 de ancho, da otro número: el recorte depende de la
+    relación de aspecto.
+  </p>
+  <p>
+    <strong>El contraste</strong> es el de WCAG 2.1 —luminancia relativa,
+    (L₁+0,05)/(L₂+0,05)— sobre colores opacos. El pie va al 55 % de opacidad, así
+    que se mide su color YA COMPUESTO contra el piso, no el naranja puro.
+  </p>
+  <p>
+    <strong>El umbral</strong>: 4,5 para la chapita y para el texto, que es lo que
+    pide AA para texto normal. Para el pie y para la chapita apagada se pide 3,
+    que es lo de AA para elementos gráficos — los dos son señales de forma, no
+    cosas que haya que leer.
+  </p>
+</div>
+
+<h2>a. El área táctil, antes y después</h2>
+<p>
+  Es lo único que hoy funciona bien, así que es lo primero que hay que probar que
+  no se rompió. La medición de «después» sale de cargar el juego entero en un
+  iframe de 390×844 —un viewport de layout de verdad, no una ventana
+  redimensionada— y pedirle <code>getBoundingClientRect</code> a los tres
+  botones. La de «antes» está tomada igual, sobre <code>b623b10</code>, antes de
+  tocar la hoja.
+</p>
+<div id="tactil"></div>
+
+<h2>b. La ficha sobre el piso real de las cuatro franjas</h2>
+<p>
+  Tres estados por franja: <strong>normal</strong>, <strong>apretado</strong> y
+  <strong>apagado</strong>. El apretado va con una clase, porque <code>:active</code>
+  necesita un dedo encima y una captura no lo tiene: la clase repite las
+  declaraciones de la regla real, así que si alguien cambia una y no la otra, la
+  diferencia canta.
+</p>
+<div id="franjas"></div>
+
+<h2>c. El pie contra la elipse — la decisión del punto 7</h2>
+<p>
+  La sombra de contacto era una elipse difuminada debajo de la chapa. Sin chapa,
+  ¿hace falta? Las dos, sobre el mismo piso, a tamaño real y ×4.
+</p>
+<div id="elipse"></div>
+
+<h2>c.bis — El contorno, lado por lado: los dieciséis mínimos</h2>
+<p>
+  <strong>El filo rodea la chapita, y estuvo un rato en un solo lado.</strong> El
+  pedido original era «sumale <code>box-shadow: 0 1px 0 #000</code> para que
+  despegue del piso claro», y hace exactamente eso — pero el naranja y el negro
+  <strong>se turnan</strong> según la hora, así que con el filo abajo nomás el
+  mediodía dejaba arriba y los dos costados con 2,56 en el peor píxel.
+</p>
+<p>
+  Lo que se publica acá es <strong>el peor de dieciséis</strong>: cuatro franjas
+  por cuatro lados, y en cada uno el peor píxel de piso que la pieza tiene pegado
+  por afuera, sobre los tres botones. No es un promedio de nada. Para cada lado
+  se mide lo mejor de los dos mecanismos —el filo contra el piso y el naranja
+  contra el piso— porque eso es lo que hace que la pieza se lea como objeto: el
+  ojo ve naranja, negro y piso, y le alcanza con que uno de los dos saltos exista.
+</p>
+<div id="contorno"></div>
+<p>
+  Y que el filo sea <strong>1 px entero en los cuatro lados</strong>, no 1 arriba
+  y 1,5 a los costados por redondeo del ancho: se mide sobre el
+  <code>box-shadow</code> computado y sobre la caja real del pseudo-elemento.
+</p>
+<div id="filo-entero"></div>
+<p>
+  La comparación que decidió esto, sobre el piso del mediodía, a tamaño real y ×4:
+</p>
+<div id="rodeada"></div>
+
+<h2>d. La grilla de píxeles</h2>
+<p>
+  El criterio de siempre: a escala 1 cada fila de la etiqueta tiene que dar dos
+  colores y no tres, porque el tercero es antialias.
+</p>
+<p>
+  <strong>Acá hubo una medición que medía otra cosa, y vale contarla.</strong> El
+  primer intento dibujaba la misma fuente al mismo tamaño con los mismos cuatro
+  corrimientos en un canvas y contaba colores: dio <strong>666</strong> píxeles
+  con valores intermedios y hasta 12 colores por fila. Rojo espectacular e
+  inservible — <code>fillText</code> de canvas antialiasa el texto SIEMPRE, sea
+  cual sea la fuente. El 666 medía al canvas, no a la botonera.
+</p>
+<p>
+  Lo que sí se puede medir desde JavaScript es la <strong>técnica</strong>, y
+  alcanza: una sombra con corrimiento entero y difuminado cero es la misma
+  silueta corrida un número entero de píxeles, así que no puede agregar un píxel
+  parcial que la silueta no tuviera. Si la letra está limpia, el contorno está
+  limpio — y que la letra esté limpia lo cuida otro test, porque la fuente se
+  dibuja a 16, que es dos veces exactas su tamaño nativo de 8. La otra mitad
+  —cómo rasteriza un teléfono de verdad— la muestran las ampliaciones ×4 de más
+  arriba, que sí salen del DOM.
+</p>
+<div id="grilla"></div>
+
+<h2>e. Movimiento reducido</h2>
+<p>
+  La chapita que se enciende no puede depender de una transición para leerse.
+</p>
+<div id="reducido"></div>
+
+<script type="module">
+import { variablesDeTema } from '../js/tema.js';
+import { FRANJAS_DIA, COLORES_BOTON, COLORES_BOTON_CHAPITA, COLORES_PANEL, BOTONERA, FUENTE_BOTONERA, CLASE_SIN_MOVIMIENTO } from '../js/config.js';
+
+for (const [nombre, valor] of Object.entries(variablesDeTema())) {
+  document.documentElement.style.setProperty(nombre, valor);
+}
+
+// `--boton-ancho` lo mide ui.js sobre la escena viva y acá no corre ui.js. Es la
+// misma cuenta, escrita al lado para que se vea: 390 de ancho, menos dos
+// márgenes de 16 y dos separaciones de 8, repartido en tres y redondeado hacia
+// abajo. Da 114, que es lo que mide en el teléfono — verificado contra el
+// getBoundingClientRect del iframe de más abajo.
+const ANCHO_ESCENA = 390;
+const MARGEN = BOTONERA.unidad * BOTONERA.margenEnUnidades;
+const SEPARACION = BOTONERA.unidad * BOTONERA.separacionEnUnidades;
+const ANCHO_BOTON = Math.floor((ANCHO_ESCENA - MARGEN * 2 - SEPARACION * 2) / 3);
+document.documentElement.style.setProperty('--boton-ancho', ANCHO_BOTON + 'px');
+
+// La fuente, con query: el navegador cachea las fuentes por URL con muchas ganas
+// y una página de verificación que muestra la de ayer no verifica nada. Ya pasó.
+const fresca = new FontFace('Chip Pixel Fresca', `url(../${FUENTE_BOTONERA.ruta}?v=${Date.now()})`);
+await fresca.load();
+document.fonts.add(fresca);
+document.documentElement.style.setProperty('--fuente-pixel', "'Chip Pixel Fresca'");
+
+const ICONOS = {
+  jugar: [[5,2,6],[3,3,2],[11,3,2],[2,4,1],[13,4,1],[2,5,1],[13,5,1],[1,6,1],[6,6,4],[14,6,1],[1,7,1],[4,7,2],[10,7,2],[14,7,1],[1,8,1],[12,8,1],[14,8,1],[2,9,1],[11,9,1],[14,9,1],[2,10,1],[5,10,6],[14,10,1],[3,11,2],[11,11,2],[5,12,6]],
+  limpiar: [[11,2,3],[10,3,3],[9,4,3],[8,5,3],[7,6,3],[6,7,3],[5,8,3],[4,9,4],[3,10,6],[2,11,8],[2,12,8],[3,13,6]],
+  cargar: [[9,2,3],[8,3,3],[7,4,3],[6,5,3],[5,6,8],[10,7,3],[9,8,3],[8,9,3],[7,10,3],[6,11,3],[5,12,3]]
+};
+const svg = (k) =>
+  `<svg viewBox="0 0 16 16" aria-hidden="true">` +
+  ICONOS[k].map(([x, y, w]) => `<rect x="${x}" y="${y}" width="${w}" height="1"/>`).join('') +
+  `</svg>`;
+
+const ESTADOS = [
+  ['jugar', 'Jugar', ''],
+  ['limpiar', 'Limpiar', ' class="fingido"'],
+  ['cargar', 'Cargar', ' aria-disabled="true"']
+];
+const fila = (extra = '') =>
+  `<div id="acciones">` +
+  ESTADOS.map(([k, t, attr]) =>
+    `<button type="button"${attr}><span class="led" aria-hidden="true"></span>${svg(k)}<span>${t}</span>${extra}</button>`
+  ).join('') +
+  `</div>`;
+
+// EL APRETADO FINGIDO. Repite las tres declaraciones de la regla real de
+// :active —el viaje, el color de la chapita y el halo— porque una captura no
+// tiene dedo. Está escrito al lado a propósito: si alguien cambia la regla del
+// juego y no ésta, la columna de apretado deja de coincidir con lo que se ve en
+// el teléfono, y eso se nota mirando.
+const est = document.createElement('style');
+est.textContent =
+  '.fingido { transform: translateY(2px); }' +
+  '.fingido::after { background: var(--boton-naranja-claro) !important;' +
+  ' box-shadow: 0 1px 0 #000, 0 0 var(--boton-chapita-halo) var(--boton-naranja-claro) !important; }' +
+  // La elipse de la variante (a) del punto 7, para poder compararla: es la que
+  // estaba en ::before antes de que ::before pasara a ser el pie. Va en un
+  // elemento propio porque los dos pseudo ya están ocupados.
+  '.elipse { position: absolute; left: 50%; bottom: 0; width: ' + BOTONERA.chapita.inset * 2 + 'px;' +
+  ' height: 7px; translate: -50% 60%; border-radius: 50%; pointer-events: none;' +
+  ' background: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.275) 55%, transparent 100%);' +
+  ' filter: blur(2.5px); z-index: -1; }';
+document.head.appendChild(est);
+
+// ---- Colorimetría ----
+
+const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+const L = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+const K = (a, b) => { const x = L(a), y = L(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const sobre = (fondo, color, alfa) => fondo.map((f, i) => Math.round(color[i] * alfa + f * (1 - alfa)));
+const marca = (v, minimo) =>
+  `<span class="${v < minimo ? 'flojo' : v < minimo * 1.25 ? 'justo' : 'bien'}">${v.toFixed(2)}</span>`;
+
+// ---- EL PISO, COMPUESTO COMO LO COMPONE EL NAVEGADOR ----
+//
+// Dos capas y en este orden, que es el que dice style.css:
+//
+//   1. la panorámica, con `background-size: auto 100%` sobre la escena del
+//      teléfono. O sea: se escala por el ALTO y se recorta por los costados.
+//      A 390x844 de una imagen de 1672x945 se ve una ventana angosta.
+//   2. el charco de luz de la hora, #escena::after, una elipse de radio
+//      `--luz-radio` en x y la mitad en y, del color de la franja y con su
+//      fuerza como alfa, que se apaga a transparente en el 72% del radio.
+//
+// EL ALTO VA ESCRITO, Y EL PRIMER INTENTO LO LEÍA DEL CSS. No se puede: en el
+// juego `--alto-escena` vale `100dvh`, o sea una unidad que sólo tiene número
+// adentro del viewport que la resuelve. Leída desde acá, `parseFloat` devuelve
+// 100 y el recorte se calcula contra una escena de 100 px de alto — que es lo
+// que pasó, y da un piso equivocado sin quejarse.
+//
+// 844 es el alto del teléfono de referencia, el mismo de todas las capturas.
+const ALTO_ESCENA = 844;
+const BANDA = 96;   // los últimos 96 px de la escena: la botonera y un poco de piso
+
+// DÓNDE CAE CADA TRAZO, EN PÍXELES DE LA ESCENA DE 390x844.
+//
+// No es decorativo tenerlo acá: el primer intento medía el piso PROMEDIANDO los
+// últimos 64 px de la escena, y con eso el número dice cuánto contrasta la
+// chapita contra un gris que no existe en ningún punto de la pantalla. El piso
+// del galpón tiene juntas, sombra y el charco de luz; un promedio los borra.
+//
+// Lo que decide si la pieza se lee es el PEOR píxel que tiene abajo, no el
+// promedio. Así que se mide el rectángulo exacto que ocupa cada trazo y se
+// reporta el mínimo, la mediana y el promedio de los tres botones juntos.
+const ALTO_BOTON = BOTONERA.unidad * BOTONERA.altoEnUnidades;
+const TOP_BOTON = ALTO_ESCENA - MARGEN - ALTO_BOTON;
+const XS = [0, 1, 2].map((i) => MARGEN + i * (ANCHO_BOTON + SEPARACION));
+
+// EL RECTÁNGULO EXTERIOR DE LA CHAPITA, filo incluido. La chapita arranca en
+// `top: filo` con `inset + filo` de aire, y el anillo de 1 px la devuelve
+// exactamente a `top: 0` con `inset` de aire — o sea que el borde de afuera del
+// filo cae donde antes caía el borde del naranja.
+const FILO = BOTONERA.chapita.filo;
+const CHAPITA_X = XS.map((x) => x + BOTONERA.chapita.inset);
+const CHAPITA_ANCHO = ANCHO_BOTON - BOTONERA.chapita.inset * 2;
+const CHAPITA_ALTO = BOTONERA.chapita.alto + FILO * 2;
+
+// Los cuatro lados, y para cada uno la franja de piso que tiene PEGADA por
+// afuera. Es lo que decide si el contorno se despega: no el promedio de la
+// banda, ni el peor de la pieza — el peor de cada lado.
+const LADOS = {
+  arriba: CHAPITA_X.map((x) => [x, TOP_BOTON - 1, CHAPITA_ANCHO, 1]),
+  abajo: CHAPITA_X.map((x) => [x, TOP_BOTON + CHAPITA_ALTO, CHAPITA_ANCHO, 1]),
+  izquierda: CHAPITA_X.map((x) => [x - 1, TOP_BOTON, 1, CHAPITA_ALTO]),
+  derecha: CHAPITA_X.map((x) => [x + CHAPITA_ANCHO, TOP_BOTON, 1, CHAPITA_ALTO])
+};
+
+const ZONAS = {
+  chapita: XS.map((x) => [x + BOTONERA.chapita.inset, TOP_BOTON,
+    ANCHO_BOTON - BOTONERA.chapita.inset * 2, BOTONERA.chapita.alto]),
+  // El píxel negro de abajo de la chapita. NO es un detalle: cuando el naranja
+  // no le saca contraste al piso —y en el mediodía no se lo saca— lo que separa
+  // la pieza del suelo es este filo. Medirlo aparte es la diferencia entre saber
+  // que la chapita se ve y suponerlo.
+  filo: XS.map((x) => [x + BOTONERA.chapita.inset, TOP_BOTON + BOTONERA.chapita.alto,
+    ANCHO_BOTON - BOTONERA.chapita.inset * 2, 1]),
+  // Y el piso que hay ARRIBA de la chapita, que hoy no tiene filo. Es la
+  // pregunta abierta: si el naranja no le gana al piso del mediodía, el borde de
+  // arriba y los costados quedan sin separación mientras el de abajo sí la
+  // tiene. Este número dice cuánto daría rodearla.
+  filoArriba: XS.map((x) => [x + BOTONERA.chapita.inset, TOP_BOTON - 1,
+    ANCHO_BOTON - BOTONERA.chapita.inset * 2, 1]),
+  pie: XS.map((x) => [x + BOTONERA.pie.inset, TOP_BOTON + ALTO_BOTON - BOTONERA.pie.abajo - BOTONERA.pie.alto,
+    ANCHO_BOTON - BOTONERA.pie.inset * 2, BOTONERA.pie.alto]),
+  // La etiqueta: ícono 16 + hueco 2 + texto 16 = 34, centrados en los 48 del
+  // botón, o sea 7 px de aire arriba. La fila del texto son los últimos 16.
+  texto: XS.map((x) => [x, TOP_BOTON + 7 + 18, ANCHO_BOTON, BOTONERA.fuente])
+};
+
+async function pisoDe(franja) {
+  const img = new Image();
+  img.src = '../' + franja.fondo;
+  await img.decode();
+
+  const c = document.createElement('canvas');
+  c.width = ANCHO_ESCENA;
+  c.height = ALTO_ESCENA;
+  const g = c.getContext('2d', { willReadFrequently: true });
+
+  // `auto 100%`: alto exacto, ancho por relación de aspecto. El corrimiento
+  // horizontal lo escribe ui.js y se mueve dentro del tramo; para un promedio de
+  // banda se usa el centro, que es lo que se ve la mayor parte del tiempo.
+  const k = ALTO_ESCENA / img.height;
+  const ancho = img.width * k;
+  g.drawImage(img, (ANCHO_ESCENA - ancho) / 2, 0, ancho, ALTO_ESCENA);
+
+  // El charco de luz.
+  if (franja.luz.fuerza > 0) {
+    const cx = (franja.luz.x / 100) * ANCHO_ESCENA;
+    const cy = (franja.luz.y / 100) * ALTO_ESCENA;
+    const rx = (franja.luz.radio / 100) * ANCHO_ESCENA;
+    const ry = ((franja.luz.radio / 2) / 100) * ALTO_ESCENA;
+    g.save();
+    g.translate(cx, cy);
+    g.scale(1, ry / rx);
+    const grad = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+    const [lr, lg, lb] = hex(franja.luz.color);
+    grad.addColorStop(0, `rgba(${lr}, ${lg}, ${lb}, ${franja.luz.fuerza})`);
+    grad.addColorStop(0.72, `rgba(${lr}, ${lg}, ${lb}, 0)`);
+    grad.addColorStop(1, `rgba(${lr}, ${lg}, ${lb}, 0)`);
+    g.fillStyle = grad;
+    g.beginPath();
+    g.arc(0, 0, rx, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+  }
+
+  // Los píxeles que hay debajo de cada trazo, de los tres botones juntos.
+  const pixelesDe = (rects) => {
+    const salida = [];
+    for (const [x, y, w, h] of rects) {
+      const d = g.getImageData(x, y, w, h).data;
+      for (let i = 0; i < d.length; i += 4) salida.push([d[i], d[i + 1], d[i + 2]]);
+    }
+    return salida;
+  };
+  const zonas = Object.fromEntries(Object.entries(ZONAS).map(([k, v]) => [k, pixelesDe(v)]));
+  const lados = Object.fromEntries(Object.entries(LADOS).map(([k, v]) => [k, pixelesDe(v)]));
+
+  // Y el promedio de la banda entera, que se sigue publicando para poder cruzar
+  // contra la medición vieja de botonera-hueca.html, que se hacía así.
+  const d = g.getImageData(0, TOP_BOTON, ANCHO_ESCENA, ALTO_BOTON).data;
+  let r = 0, gg = 0, b = 0, n = 0, lmin = 1, lmax = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    r += d[i]; gg += d[i + 1]; b += d[i + 2]; n++;
+    const l = L([d[i], d[i + 1], d[i + 2]]);
+    if (l < lmin) lmin = l;
+    if (l > lmax) lmax = l;
+  }
+  const medio = [Math.round(r / n), Math.round(gg / n), Math.round(b / n)];
+
+  // La tira que se muestra: los últimos BANDA píxeles, recortados a un canvas
+  // propio para que la imagen de fondo sea exactamente lo medido.
+  const tira = document.createElement('canvas');
+  tira.width = ANCHO_ESCENA;
+  tira.height = BANDA;
+  tira.getContext('2d').drawImage(c, 0, ALTO_ESCENA - BANDA, ANCHO_ESCENA, BANDA, 0, 0, ANCHO_ESCENA, BANDA);
+
+  return {
+    medio,
+    lum: Math.round(L(medio) * 255),
+    lumMin: Math.round(lmin * 255),
+    lumMax: Math.round(lmax * 255),
+    zonas,
+    lados,
+    url: tira.toDataURL()
+  };
+}
+
+// El peor caso y el típico, sobre el conjunto de píxeles de una zona.
+function contra(color, pixeles) {
+  const ks = pixeles.map((p) => K(color, p)).sort((a, b) => a - b);
+  return { min: ks[0], mediana: ks[Math.floor(ks.length / 2)], max: ks[ks.length - 1] };
+}
+const conMin = (r, minimo) =>
+  `${marca(r.min, minimo)} <span style="color:#5d6675">peor · ${r.mediana.toFixed(2)} mediana</span>`;
+
+// ---- b. Las cuatro franjas ----
+
+const NARANJA = hex(COLORES_BOTON.naranja);
+const CLARO = hex(COLORES_BOTON_CHAPITA['naranja-claro']);
+const APAGADO = hex(COLORES_BOTON_CHAPITA['naranja-apagado']);
+const TEXTO = hex(COLORES_BOTON.texto);
+const GRIS = hex(COLORES_PANEL.linea);
+const NEGRO = [0, 0, 0];
+
+const contenedorFranjas = document.getElementById('franjas');
+const resumen = [];
+
+for (const franja of FRANJAS_DIA) {
+  const { medio, lum, lumMin, lumMax, zonas, lados, url } = await pisoDe(franja);
+
+  // El pie va al 55 %, así que lo que se ve NO es el naranja: es el naranja
+  // compuesto contra el píxel que tiene abajo, uno por uno.
+  const piePintado = (color) => zonas.pie.map((p) => sobre(p, color, BOTONERA.pie.alfa));
+  const contraPie = (color) => {
+    const pintados = piePintado(color);
+    const ks = pintados.map((c, i) => K(c, zonas.pie[i])).sort((a, b) => a - b);
+    return { min: ks[0], mediana: ks[Math.floor(ks.length / 2)], max: ks[ks.length - 1] };
+  };
+
+  const filas = [
+    ['chapita normal contra el piso', contra(NARANJA, zonas.chapita), 4.5],
+    ['chapita apretada contra el piso', contra(CLARO, zonas.chapita), 4.5],
+    ['chapita apagada contra el piso', contra(APAGADO, zonas.chapita), 3],
+    ['EL FILO NEGRO contra el piso de abajo', contra(NEGRO, zonas.filo), 3],
+    ['si el filo rodeara: negro contra el piso de arriba', contra(NEGRO, zonas.filoArriba), 3],
+    ['la chapita contra su propio filo', { min: K(NARANJA, NEGRO), mediana: K(NARANJA, NEGRO), max: K(NARANJA, NEGRO) }, 3],
+    ['pie contra el piso, ya compuesto al 55 %', contraPie(NARANJA), 3],
+    ['pie apagado contra el piso', contraPie(APAGADO), 3],
+    ['texto contra el piso, SIN contorno', contra(TEXTO, zonas.texto), 4.5],
+    ['contorno negro contra el piso', contra(NEGRO, zonas.texto), 3]
+  ];
+
+  const chapita = contra(NARANJA, zonas.chapita);
+  resumen.push({ nombre: franja.nombre, medio, lum, lumMin, lumMax, chapita, lados });
+
+  const seccion = document.createElement('section');
+  seccion.innerHTML =
+    `<h2>${franja.nombre} — piso ${medio.join(', ')} · luminancia ${lum} (de ${lumMin} a ${lumMax})</h2>` +
+    `<div class="lado">` +
+    `<div class="columna">` +
+    `<h3>a tamaño real, 390 de ancho</h3>` +
+    `<div class="piso" style="background-image:url(${url})">${fila()}</div>` +
+    `</div>` +
+    `<div class="columna" style="min-width:0">` +
+    `<h3>los números — peor píxel de los tres botones, y mediana</h3>` +
+    `<table>` +
+    filas.map(([q, r, min]) => `<tr><th>${q}</th><td>${conMin(r, min)}</td><td style="color:#5d6675">≥ ${min}</td></tr>`).join('') +
+    `<tr><th>texto contra su contorno negro</th><td>${marca(K(TEXTO, NEGRO), 4.5)}</td><td style="color:#5d6675">≥ 4.5</td></tr>` +
+    `<tr><th>texto apagado contra su contorno</th><td>${marca(K(GRIS, NEGRO), 3)}</td><td style="color:#5d6675">≥ 3</td></tr>` +
+    `</table>` +
+    `</div>` +
+    `</div>` +
+    `<div style="width:390px;overflow:hidden;margin-top:10px">` +
+    `<h3>×4, vecino más cercano</h3>` +
+    `<div class="ampliada"><div class="piso" style="background-image:url(${url});width:390px">${fila()}</div></div>` +
+    `</div>`;
+  contenedorFranjas.appendChild(seccion);
+}
+
+// ---- c. La elipse ----
+
+const atardecer = FRANJAS_DIA.find((f) => f.nombre === 'atardecer');
+const pisoAtardecer = await pisoDe(atardecer);
+document.getElementById('elipse').innerHTML =
+  `<div class="lado">` +
+  [['(b) sin elipse — lo que quedó', ''], ['(a) con la elipse achicada al ancho de la chapita', '<i class="elipse"></i>']]
+    .map(([titulo, extra]) =>
+      `<div class="columna">` +
+      `<h3>${titulo}</h3>` +
+      `<div class="piso" style="background-image:url(${pisoAtardecer.url})">${fila(extra)}</div>` +
+      `<div style="width:390px;overflow:hidden;margin-top:8px">` +
+      `<div class="ampliada"><div class="piso" style="background-image:url(${pisoAtardecer.url});width:390px">${fila(extra)}</div></div>` +
+      `</div></div>`
+    ).join('') +
+  `</div>`;
+
+// ---- c.bis. El contorno, lado por lado ----
+{
+  const NOMBRES = Object.keys(LADOS);
+  const filas = [];
+  let peorDeTodos = { valor: Infinity };
+
+  for (const r of resumen) {
+    const celdas = NOMBRES.map((lado) => {
+      const pixeles = r.lados[lado];
+      // Lo mejor de los dos mecanismos, píxel por píxel, y de eso el peor.
+      const ks = pixeles.map((p) => Math.max(K(NEGRO, p), K(NARANJA, p))).sort((a, b) => a - b);
+      const soloFilo = pixeles.map((p) => K(NEGRO, p)).sort((a, b) => a - b)[0];
+      const valor = ks[0];
+      if (valor < peorDeTodos.valor) peorDeTodos = { valor, franja: r.nombre, lado };
+      return { lado, valor, soloFilo };
+    });
+    filas.push({ franja: r.nombre, celdas });
+  }
+
+  document.getElementById('contorno').innerHTML =
+    `<table>` +
+    `<tr><th>franja</th>${NOMBRES.map((n) => `<th>${n}</th>`).join('')}</tr>` +
+    filas.map((f) =>
+      `<tr><th>${f.franja}</th>` +
+      f.celdas.map((c) =>
+        `<td>${marca(c.valor, 3)} <span style="color:#5d6675">filo solo ${c.soloFilo.toFixed(2)}</span></td>`
+      ).join('') +
+      `</tr>`
+    ).join('') +
+    `<tr><th>EL PEOR DE LOS DIECISÉIS</th><td colspan="4">${marca(peorDeTodos.valor, 3)} — ${peorDeTodos.franja}, ${peorDeTodos.lado}</td></tr>` +
+    `</table>`;
+}
+
+// ---- c.bis. Que el filo sea un píxel entero, y en los cuatro lados ----
+//
+// Dos cosas distintas y las dos se pueden ver desde acá: que la EXPANSIÓN
+// declarada sea un entero —una sola, así que no hay forma de que sea 1 arriba y
+// 1,5 al costado— y que la caja real del pseudo-elemento caiga en enteros, que
+// es lo que podría meter medio píxel por el reparto del ancho.
+{
+  const banco = document.createElement('div');
+  banco.innerHTML = fila();
+  banco.style.cssText = 'position:absolute;left:0;top:0;width:390px';
+  document.body.appendChild(banco);
+  const botones = [...banco.querySelectorAll('button')];
+  const sombra = getComputedStyle(botones[0], '::after').boxShadow;
+  const cajas = botones.map((b) => {
+    const r = b.getBoundingClientRect();
+    const c = getComputedStyle(b, '::after');
+    return {
+      ancho: parseFloat(c.width),
+      alto: parseFloat(c.height),
+      izq: parseFloat(c.left),
+      caja: Math.round(r.width)
+    };
+  });
+  banco.remove();
+
+  const numeros = (sombra.replace(/rgba?\([^)]*\)/g, '').match(/-?[\d.]+px/g) || []).map(parseFloat);
+  const expansion = numeros[3];
+  const enterosLaCaja = cajas.every((c) => Number.isInteger(c.ancho) && Number.isInteger(c.alto) && Number.isInteger(c.izq));
+
+  document.getElementById('filo-entero').innerHTML =
+    `<table>` +
+    `<tr><th>box-shadow computado</th><td>${sombra}</td></tr>` +
+    `<tr><th>corrimiento y difuminado</th><td>${numeros.slice(0, 3).join(' · ')} — ${
+      numeros.slice(0, 3).every((n) => n === 0) ? '<span class="bien">los tres en cero, es expansión pura</span>' : '<span class="flojo">hay corrimiento</span>'
+    }</td></tr>` +
+    `<tr><th>expansión</th><td>${
+      expansion === BOTONERA.chapita.filo && Number.isInteger(expansion)
+        ? `<span class="bien">${expansion} px, entera y en los cuatro lados</span>`
+        : `<span class="flojo">${expansion} px</span>`
+    }</td></tr>` +
+    `<tr><th>la caja del pseudo, en los tres botones</th><td>${
+      cajas.map((c) => `${c.ancho}×${c.alto} @${c.izq}`).join(' · ')
+    } — ${enterosLaCaja ? '<span class="bien">todo entero</span>' : '<span class="flojo">hay un medio píxel</span>'}</td></tr>` +
+    `<tr><th>la caja táctil, sin tocar</th><td>${cajas.map((c) => c.caja).join(' · ')} px de ancho</td></tr>` +
+    `</table>`;
+}
+
+// ---- c.bis. La comparación que decidió el filo alrededor ----
+//
+// La variante VIEJA —el filo abajo nomás— es la que se declara acá, porque es la
+// que ya no está en la hoja. La otra columna es la hoja de verdad.
+{
+  const mediodia = FRANJAS_DIA.find((f) => f.nombre === 'mediodia');
+  const piso = await pisoDe(mediodia);
+
+  const est2 = document.createElement('style');
+  est2.textContent =
+    '.abajo-nomas button::after { box-shadow: 0 1px 0 #000 !important; }';
+  document.head.appendChild(est2);
+
+  document.getElementById('rodeada').innerHTML =
+    `<div class="lado">` +
+    [['antes — el filo sólo abajo', ' abajo-nomas'], ['ahora — el filo la rodea', '']]
+      .map(([titulo, clase]) =>
+        `<div class="columna">` +
+        `<h3>${titulo}</h3>` +
+        `<div class="piso${clase}" style="background-image:url(${piso.url})">${fila()}</div>` +
+        `<div style="width:390px;overflow:hidden;margin-top:8px">` +
+        `<div class="ampliada"><div class="piso${clase}" style="background-image:url(${piso.url});width:390px">${fila()}</div></div>` +
+        `</div></div>`
+      ).join('') +
+    `</div>`;
+}
+
+// ---- d. La grilla de píxeles ----
+//
+// ACÁ HUBO UNA MEDICIÓN QUE MEDÍA OTRA COSA, Y VALE CONTARLA. El primer intento
+// dibujaba la misma fuente al mismo tamaño con los mismos cuatro corrimientos en
+// un canvas y contaba los colores: dio 666 píxeles con valores intermedios y
+// hasta 12 colores por fila. Rojo espectacular y completamente inservible,
+// porque `fillText` de canvas antialiasa el texto SIEMPRE, sea cual sea la
+// fuente — el 666 medía al canvas, no a la botonera.
+//
+// Lo que se puede medir de verdad desde JavaScript es la TÉCNICA, y alcanza:
+// una sombra con corrimiento entero y difuminado cero es la misma silueta
+// corrida un número entero de píxeles, así que no puede agregar un solo píxel
+// parcial que la silueta no tuviera. Si la letra está limpia, la sombra está
+// limpia. Y que la letra esté limpia ya lo cuida otro test: la fuente se dibuja
+// a 16, que es dos veces exactas su tamaño nativo de 8.
+//
+// Lo que sí sale del DOM es la ampliación ×4 de más arriba, que es un render de
+// verdad. Los dos juntos son la respuesta: el número dice que la técnica no
+// puede ensuciar, y la captura muestra que no ensució.
+{
+  const banco = document.createElement('div');
+  banco.innerHTML = fila();
+  banco.style.cssText = 'position:absolute;left:-9999px';
+  document.body.appendChild(banco);
+  const boton = banco.querySelector('button');
+  const sombra = getComputedStyle(boton).textShadow;
+  const filtro = getComputedStyle(banco.querySelector('svg')).filter;
+  banco.remove();
+
+  // "rgb(0, 0, 0) 0px 1px 0px, ..." -> las tres longitudes de cada sombra.
+  const partes = sombra.split(/,(?![^(]*\))/).map((s) => s.trim());
+  const longitudes = partes.map((p) => (p.match(/-?[\d.]+px/g) || []).map(parseFloat));
+  const enteros = longitudes.every((l) => l.length === 3 && l.slice(0, 2).every(Number.isInteger));
+  const sinBlur = longitudes.every((l) => l[2] === 0);
+  // El paréntesis de `rgb(...)` vive ADENTRO del de `drop-shadow(...)`, así que
+  // `[^)]*` corta en el primero y no encuentra ninguna longitud. Costó un rojo.
+  const blurDelFiltro = (filtro.match(/drop-shadow\((?:[^()]|\([^()]*\))*\)/g) || [])
+    .map((d) => (d.match(/-?[\d.]+px/g) || []).map(parseFloat));
+  const filtroDuro = blurDelFiltro.length > 0 &&
+    blurDelFiltro.every((l) => l.length === 3 && l.slice(0, 2).every(Number.isInteger) && l[2] === 0);
+
+  document.getElementById('grilla').innerHTML =
+    `<table>` +
+    `<tr><th>text-shadow computado</th><td>${partes.length} sombras</td></tr>` +
+    `<tr><th>corrimientos enteros</th><td>${enteros ? '<span class="bien">sí</span>' : '<span class="flojo">NO</span>'} — ${
+      longitudes.map((l) => `(${l[0]}, ${l[1]})`).join(' ')}</td></tr>` +
+    `<tr><th>difuminado</th><td>${sinBlur ? '<span class="bien">0 en las cuatro</span>' : '<span class="flojo">alguna difumina</span>'}</td></tr>` +
+    `<tr><th>el ícono, mismo trato</th><td>${filtroDuro ? '<span class="bien">' + blurDelFiltro.length + ' drop-shadow, enteros y sin blur</span>' : '<span class="flojo">' + filtro + '</span>'}</td></tr>` +
+    `<tr><th>conclusión</th><td>${
+      enteros && sinBlur && filtroDuro
+        ? '<span class="bien">el contorno no puede agregar un píxel parcial que la letra no tuviera</span>'
+        : '<span class="flojo">hay un valor que sale de la grilla</span>'
+    }</td></tr>` +
+    `</table>`;
+}
+
+// ---- e. Movimiento reducido ----
+//
+// Se mide sobre el CSS computado del pseudo-elemento, con la clase puesta en el
+// body. Lo que importa no es que la regla exista: es que la transición de la
+// chapita quede en `none`, o sea que el encendido llegue de golpe.
+{
+  const caja = document.getElementById('reducido');
+  const banco = document.createElement('div');
+  banco.innerHTML = fila();
+  banco.style.cssText = 'position:absolute;left:-9999px';
+  document.body.appendChild(banco);
+  const boton = banco.querySelector('button');
+
+  const leer = () => {
+    const cs = getComputedStyle(boton, '::after');
+    return { duracion: cs.transitionDuration, propiedad: cs.transitionProperty };
+  };
+
+  const normal = leer();
+  document.body.classList.add(CLASE_SIN_MOVIMIENTO);
+  const reducido = leer();
+  document.body.classList.remove(CLASE_SIN_MOVIMIENTO);
+  banco.remove();
+
+  // NO se compara contra '0s', y el primer intento sí lo hacía: `body.sin-movimiento *`
+  // no pone la duración en cero, la pone en 0,001 ms —para que los eventos
+  // `transitionend` sigan disparando y nada quede esperando un evento que no
+  // llega—. El navegador lo devuelve como "1e-06s". Un umbral, no una igualdad.
+  const segundos = parseFloat(reducido.duracion);
+  const apagada = reducido.propiedad === 'none' || segundos <= 0.001;
+  caja.innerHTML =
+    `<table>` +
+    `<tr><th>chapita, normal</th><td>${normal.propiedad} · ${normal.duracion}</td></tr>` +
+    `<tr><th>chapita, con .${CLASE_SIN_MOVIMIENTO}</th><td>${reducido.propiedad} · ${reducido.duracion}</td></tr>` +
+    `<tr><th>¿cambia de golpe?</th><td>${apagada ? '<span class="bien">sí</span>' : '<span class="flojo">no — sigue interpolando</span>'}</td></tr>` +
+    `</table>`;
+}
+
+// ---- a. El área táctil ----
+//
+// Va al final porque carga el juego entero y tarda. El iframe de 390x844 es un
+// viewport de LAYOUT de verdad: redimensionar la ventana del navegador no
+// cambia el viewport en esta herramienta, y un iframe sí.
+{
+  const ANTES = [
+    { id: 'btn-jugar', x: 16, y: 780, w: 114, h: 48 },
+    { id: 'btn-limpiar', x: 138, y: 780, w: 114, h: 48 },
+    { id: 'btn-cargar', x: 260, y: 780, w: 114, h: 48 }
+  ];
+
+  const marco = document.createElement('iframe');
+  marco.width = 390; marco.height = 844;
+  marco.style.cssText = 'border:0;position:absolute;left:-9999px';
+  marco.src = '../index.html';
+  document.body.appendChild(marco);
+  await new Promise((r) => { marco.onload = r; });
+  await new Promise((r) => setTimeout(r, 2000));
+
+  const doc = marco.contentDocument;
+  const ahora = [...doc.querySelectorAll('#acciones button')].map((b) => {
+    const r = b.getBoundingClientRect();
+    return { id: b.id, x: r.x, y: r.y, w: r.width, h: r.height };
+  });
+  marco.remove();
+
+  const iguales = ANTES.every((a, i) =>
+    ahora[i] && a.id === ahora[i].id && a.x === ahora[i].x && a.y === ahora[i].y &&
+    a.w === ahora[i].w && a.h === ahora[i].h
+  );
+
+  document.getElementById('tactil').innerHTML =
+    `<table>` +
+    `<tr><th>botón</th><th>antes (b623b10)</th><th>ahora</th></tr>` +
+    ANTES.map((a, i) => {
+      const b = ahora[i] || {};
+      const f = (o) => o.x === undefined ? '—' : `${o.w}×${o.h} en (${o.x}, ${o.y})`;
+      return `<tr><th>${a.id}</th><td>${f(a)}</td><td>${f(b)}</td></tr>`;
+    }).join('') +
+    `<tr><th>¿idéntica?</th><td colspan="2">${
+      iguales ? '<span class="bien">sí, los tres, al píxel</span>' : '<span class="flojo">NO — algo se movió</span>'
+    }</td></tr>` +
+    `</table>`;
+}
+
+// ---- El resumen de arriba de todo, ahora que hay números ----
+{
+  const p = document.createElement('div');
+  p.className = 'nota';
+  p.innerHTML =
+    '<p><strong>LA CHAPITA CONTRA EL PISO, EN LAS CUATRO FRANJAS.</strong> ' +
+    'El número es el PEOR píxel que la chapita tiene abajo, no el promedio de la banda.</p>' +
+    '<table>' +
+    '<tr><th>franja</th><th>piso medio</th><th>luminancia</th><th>peor</th><th>mediana</th></tr>' +
+    resumen.map((r) =>
+      `<tr><th>${r.nombre}</th><td>${r.medio.join(', ')}</td><td>${r.lum} (de ${r.lumMin} a ${r.lumMax})</td>` +
+      `<td>${marca(r.chapita.min, 4.5)}</td><td>${r.chapita.mediana.toFixed(2)}</td></tr>`
+    ).join('') +
+    '</table>';
+  document.querySelector('h1').after(p);
+}
+</script>
+</body>
+</html>

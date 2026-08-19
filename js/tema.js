@@ -131,6 +131,7 @@ import {
   COLORES_REPISA,
   COLORES_PANEL,
   COLORES_BOTON,
+  COLORES_BOTON_CHAPITA,
   BOTONERA,
   VARS_BOTONERA,
   VARS_FUENTE,
@@ -343,7 +344,12 @@ export function variablesDeTema() {
 
     // El botón del menú
     ...tonos('panel', COLORES_PANEL),
+    // Las dos tablas caen en el MISMO espacio de nombres `--boton-*`, y es a
+    // propósito: están separadas por el orden de evaluación de config.js —los
+    // dos tonos de la chapita referencian constantes declaradas más abajo— y no
+    // por ser cosas distintas. Ver COLORES_BOTON_CHAPITA.
     ...tonos('boton', COLORES_BOTON),
+    ...tonos('boton', COLORES_BOTON_CHAPITA),
 
     // Las tres chapas apoyadas en el piso. Todo en unidades enteras: la fuga y
     // la inclinación se fueron con el punto 3, y lo que queda es un módulo de
@@ -372,10 +378,18 @@ export function variablesDeTema() {
     // En % de la capa, que mide el lienzo entero: 3 px de 256.
     [VARS_MIRADA.ojos]: pct(+((MIRADA.ojosPx / MIRADA.lienzo) * 100).toFixed(3)),
 
-    [VARS_BOTONERA.sombraAncho]: pct(BOTONERA.sombra.ancho),
-    [VARS_BOTONERA.sombraAlto]: px(BOTONERA.sombra.alto),
-    [VARS_BOTONERA.sombraAlfa]: String(BOTONERA.sombra.alfa),
-    [VARS_BOTONERA.sombraDifuminado]: px(BOTONERA.sombra.difuminado),
+    // La chapita y el pie: los dos trazos que quedaron cuando el botón perdió la
+    // caja. Todo en píxeles enteros —3, 8, 1, 22, 2— porque los dos son piezas
+    // de un píxel de alto o de tres, y medio píxel ahí no es un matiz: es la
+    // diferencia entre una línea y una línea borrosa.
+    [VARS_BOTONERA.chapitaAlto]: px(BOTONERA.chapita.alto),
+    [VARS_BOTONERA.chapitaInset]: px(BOTONERA.chapita.inset),
+    [VARS_BOTONERA.chapitaFilo]: px(BOTONERA.chapita.filo),
+    [VARS_BOTONERA.chapitaHalo]: px(BOTONERA.chapita.halo),
+    [VARS_BOTONERA.pieAlto]: px(BOTONERA.pie.alto),
+    [VARS_BOTONERA.pieInset]: px(BOTONERA.pie.inset),
+    [VARS_BOTONERA.pieAbajo]: px(BOTONERA.pie.abajo),
+    [VARS_BOTONERA.pieAlfa]: String(BOTONERA.pie.alfa),
 
     // LA LUZ DE LA CABEZA. El juego base es el de reposo; cada estado suma el
     // suyo con el nombre sufijado y una regla de style.css lo levanta por clase,

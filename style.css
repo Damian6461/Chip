@@ -3812,11 +3812,26 @@ body.es-noche #piso {
   justify-content: center;
   gap: 2px;
 
-  /* PLANO: un relleno y un filo. Nada en el medio. */
-  background: var(--panel-chapa);
-  border: 1px solid var(--panel-filo);
+  /* EL BOTÓN NO TIENE CAJA, Y ESO ES TODO EL CAMBIO.
+
+     Acá había `background: var(--panel-chapa)` y `border: 1px solid
+     var(--panel-filo)`. Se rechazaron tres variantes seguidas cambiando ese
+     relleno —maciza, hueca al 0,72, al 0,90— y las tres se veían iguales
+     porque las tres COMPARTÍAN LA SILUETA RECTANGULAR. El relleno nunca fue el
+     problema. Ver BOTONERA.chapita en config.js para la medición que lo dice.
+
+     LA CAJA SE VA, LA CAJA TÁCTIL SE QUEDA: `width`, `height` y `box-sizing:
+     border-box` no se tocan, así que los tres botones miden exactamente lo
+     mismo que antes y en el mismo lugar. Lo cuida un test. Sacar el borde de
+     1 px con border-box tampoco mueve el contenido: la caja de contenido crece
+     2 px en cada eje pero sigue centrada, y el bloque de ícono + texto pasa de
+     estar a 6 px del borde a estar a 7 — los dos enteros. */
+  background: transparent;
+  border: 0;
   /* Punto 3.2. Cero, no "poco": 3px de radio son tres píxeles interpolados en
-     cada esquina. */
+     cada esquina. Sin relleno ni borde no recorta nada hoy; se queda porque la
+     decisión sigue en pie y el día que algo vuelva a pintar esta caja tiene que
+     encontrarla en cero, no descubrirlo. */
   border-radius: 0;
 
   color: var(--boton-texto);
@@ -3830,69 +3845,113 @@ body.es-noche #piso {
   line-height: 1;
   cursor: pointer;
 
-  /* SOLTAR ES MÁS LENTO QUE APRETAR. El dedo baja de golpe y el material vuelve
-     solo. La transición de reposo usa el tiempo LARGO —el de volver— y la de
-     :active lo pisa con el corto. Sólo el color: el movimiento es de 2 px
-     enteros y no necesita interpolarse. */
-  transition: background-color var(--presion-sube) ease-out;
+  /* EL CONTORNO DEL TEXTO, QUE ES LO QUE REEMPLAZA AL RELLENO.
+
+     Sin caja, la etiqueta ya no se lee contra un tono conocido: se lee contra el
+     piso del galpón, que cambia cuatro veces por día y va de 23 a 97 de
+     luminancia. Un contorno negro de 1 px la vuelve independiente del piso.
+
+     ES text-shadow Y NO ES SUAVE, y vale decirlo porque el nombre engaña: los
+     cuatro desplazamientos son de un píxel ENTERO y el difuminado es CERO, así
+     que cada sombra es la misma letra corrida un píxel, llena. No hay un solo
+     píxel a medio pintar. Un `blur` distinto de 0 acá deshace la fuente pixel
+     entera.
+
+     Cuatro y no ocho: arriba, abajo y los dos costados. Las diagonales las
+     completa el solapamiento de esas cuatro en cada esquina. */
+  text-shadow:
+    0 1px 0 #000,
+    1px 0 0 #000,
+    -1px 0 0 #000,
+    0 -1px 0 #000;
 }
 
-/* LA FRANJA NARANJA DEL CANTO. Es el acento del juego usado como lo usa el
-   mundo: pintura sobre el canto de la chapa, igual que la banda de la caja de
-   conexión y los aros de las orugas. NO es un contorno encendido alrededor de
-   la tecla — eso la devolvería a ser un ícono.
+/* LA CHAPITA. Es la misma pintura naranja de siempre —el acento del juego usado
+   como lo usa el mundo, igual que la banda de la caja de conexión y los aros de
+   las orugas— pero ahora es LA PIEZA y no el canto de otra.
 
-   Plana. Antes era un degradé de tres paradas con un color-mix a negro para
-   simular el desgaste; el desgaste pintado a mano en un degradé es exactamente
-   el tipo de rasgo que el punto 3 saca. */
+   ERA LA FRANJA DE ABAJO: `bottom: 0`, `height: 2px`, de borde a borde. Los tres
+   números cambian y cada uno por su motivo:
+
+     abajo -> arriba   una franja al pie de una caja invisible es un subrayado
+                       suelto. Arriba del texto es una etiqueta grabada, que es
+                       lo que hay atornillado en un tablero de galpón.
+     2 -> 3 px         un trazo de 2 px sin caja que lo sostenga se lee como una
+                       raya; 3 se lee como una plaquita.
+     0 -> 8 px de aire lo que la hace más angosta que el botón. Sin ese aire
+                       vuelve a leerse como el borde de arriba de un rectángulo,
+                       que es exactamente lo que estamos sacando.
+
+   EL FILO NEGRO LA RODEA, y estuvo un rato en un solo lado. No es una sombra:
+   es difuminado CERO y un píxel de expansión, o sea un anillo lleno. Está
+   porque el naranja y el negro SE TURNAN según la hora — sobre el piso del
+   mediodía el naranja saca 3,32 y el filo 3,16; sobre el de la noche, 8,81 y
+   1,19—. Con el filo abajo nomás, el mediodía dejaba arriba y los dos costados
+   sin defensa. Ver BOTONERA.chapita en config.js para la tabla.
+
+   Y ESTÁ CORRIDA UN PÍXEL HACIA ADENTRO A PROPÓSITO. El `box-shadow` no ocupa
+   lugar en el layout —el área táctil no se mueve ni con esto ni sin esto— pero
+   PINTA: con la chapita en `top: 0` el anillo caería un píxel ARRIBA del botón.
+   Así que la chapita arranca en el filo y el inset lleva el filo sumado, y el
+   anillo termina justo donde antes terminaba el naranja. Lo que se ve tiene la
+   misma silueta exterior que antes; lo que cambió está adentro.
+
+   Plana, sin degradé: el desgaste pintado a mano en un degradé es el tipo de
+   rasgo que el punto 3 saca. */
 #acciones button::after {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
+  top: var(--boton-chapita-filo);
+  left: calc(var(--boton-chapita-inset) + var(--boton-chapita-filo));
+  right: calc(var(--boton-chapita-inset) + var(--boton-chapita-filo));
+  height: var(--boton-chapita-alto);
   background: var(--boton-naranja);
+  /* Expansión y no corrimiento: `0 0 0 1px` da UN PÍXEL EXACTO en los cuatro
+     lados. Cuatro sombras corridas —una por lado— habrían dado lo mismo en el
+     papel y habrían dejado las esquinas dependiendo de que las cuatro se
+     solapen; y sobre todo, la expansión no se puede escribir 1 arriba y 1,5 a
+     los costados sin que se note en el código. */
+  box-shadow: 0 0 0 var(--boton-chapita-filo) #000;
   pointer-events: none;
+
+  /* SOLTAR ES MÁS LENTO QUE APRETAR. El dedo baja de golpe y el material vuelve
+     solo: la transición de reposo usa el tiempo LARGO —el de volver— y la de
+     :active lo pisa con el corto.
+
+     ESTABA EN EL BOTÓN Y AHORA ESTÁ ACÁ, y no es una mudanza cosmética: lo que
+     cambiaba de color al apretar era el relleno del botón, y el botón ya no
+     tiene relleno. La transición se habría quedado interpolando `transparent`
+     contra `transparent` — una declaración que siempre da lo mismo y se lee como
+     una decisión. Lo que cambia de color ahora es la chapita. */
+  transition: background-color var(--presion-sube) ease-out;
 }
 
-/* LA SOMBRA DE CONTACTO, y es lo único suave que queda. El punto 3.6 la deja
-   afuera del tratamiento de cantos duros a propósito: una sombra real es suave,
-   y es lo que mete la chapa en el espacio en vez de dejarla flotando.
+/* EL PIE. Una línea fina abajo, más corta que la chapita, para que la ficha se
+   lea apoyada y no flotando.
 
-   Es el mismo recurso que ya usan la caja de conexión y las piezas de la
-   repisa. Por qué una elipse y no un box-shadow: un box-shadow sigue la forma de
-   la caja, o sea que da un rectángulo borroso. Lo que apoya en el piso no
-   proyecta un rectángulo, proyecta una mancha — y vista casi de canto, esa
-   mancha es una elipse baja.
+   ACÁ ESTABA LA SOMBRA DE CONTACTO —una elipse difuminada, "lo único suave que
+   queda"— y se fue con la caja. El argumento de la elipse sigue siendo bueno
+   para lo que describía: una superficie que apoya proyecta una mancha, no un
+   rectángulo. El problema es que ya no hay superficie. Lo que queda son dos
+   trazos de pintura y un texto, y una mancha difusa debajo de eso no dice
+   "apoyado", dice que hay algo ahí que no se ve. Se compararon las dos con
+   captura antes de sacarla: ver verificacion/botonera-chapita.html.
 
-   Ya no hace falta cancelarle ninguna rotación: no hay ninguna. */
+   MÁS CORTA QUE LA CHAPITA —22 px de aire contra 8— y eso es lo que la hace
+   leer como perspectiva y no como un segundo subrayado: lo que está más lejos
+   del ojo se ve más chico. Al 55% para que la chapita mande; a plena opacidad
+   son dos naranjas iguales arriba y abajo y la pieza se lee simétrica, que es
+   justo lo que una etiqueta apoyada no es. */
 #acciones button::before {
   content: '';
   position: absolute;
-  left: 50%;
-  bottom: 0;
-  width: var(--boton-sombra-ancho);
-  height: var(--boton-sombra-alto);
-  translate: -50% 60%;
-  border-radius: 50%;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(0, 0, 0, var(--boton-sombra-alfa)) 0%,
-    rgba(0, 0, 0, calc(var(--boton-sombra-alfa) * 0.55)) 55%,
-    transparent 100%
-  );
-  filter: blur(calc(var(--boton-sombra-difuminado) / 2));
-  z-index: -1;
+  left: var(--boton-pie-inset);
+  right: var(--boton-pie-inset);
+  bottom: var(--boton-pie-abajo);
+  height: var(--boton-pie-alto);
+  background: var(--boton-naranja);
+  opacity: var(--boton-pie-alfa);
   pointer-events: none;
-}
-
-/* La chapa apagada también apoya: lo que se apagó es la luz que le pegaba, no el
-   hecho de estar en el piso. Pero proyecta menos, porque la sombra de contacto
-   la arma la misma luz. */
-#acciones button:disabled::before,
-#acciones button[aria-disabled='true']::before {
-  opacity: 0.55;
 }
 
 /* LOS ÍCONOS, COMO PÍXELES Y NO COMO TRAZOS. Punto 3.4.
@@ -3912,6 +3971,23 @@ body.es-noche #piso {
   fill: var(--boton-texto);
   stroke: none;
   shape-rendering: crispEdges;
+
+  /* EL MISMO CONTORNO QUE EL TEXTO, y por la misma razón: sin caja, el ícono se
+     apoya en el piso del galpón y no en un relleno conocido. Si sólo lo llevara
+     el texto, la etiqueta se leería en las cuatro franjas y el ícono no — y el
+     ícono es la mitad de arriba de la ficha.
+
+     CUATRO drop-shadow ENCADENADOS Y NO UN filter CON BLUR. Cada uno corre la
+     silueta un píxel entero y la pinta de negro, con difuminado cero; el
+     segundo trabaja sobre el resultado del primero, así que las esquinas se
+     completan solas. Es el equivalente exacto del text-shadow de la etiqueta,
+     que en un SVG no existe.
+
+     Y NO es el drop-shadow que había antes: aquel era UNO, difuminado, y estaba
+     ahí para fingir un grabado en metal. Éste es opaco y su único trabajo es
+     separar el ícono del piso. */
+  filter: drop-shadow(0 1px 0 #000) drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000)
+    drop-shadow(0 -1px 0 #000);
 }
 
 /* EL LED. Es una luz, no una superficie: se queda, porque es lo que convierte
@@ -3939,12 +4015,34 @@ body.es-noche #piso {
   100% { opacity: 0.35; }
 }
 
-/* APRETADO: la chapa se hunde en el hueco. Baja 2 px enteros —no 1,5— y cambia
-   de relleno al tono del hueco del panel, que es el que ya usa la escena para
-   lo que está por debajo de la superficie. Sin biseles internos ni sombras. */
+/* APRETADO: la ficha baja 2 px enteros —no 1,5— y la chapita se ENCIENDE.
+
+   ACÁ ESTABA `background: var(--panel-hueco)`, el relleno del hueco del panel.
+   Se va con la caja, y no por descuido: si el reposo no tiene relleno y el
+   apretado sí, el rectángulo vuelve a aparecer justo en el cuadro en el que el
+   dedo lo tapa. La respuesta al toque tiene que darla la pieza que se ve.
+
+   El viaje de 2 px lo hace el botón entero, así que la chapita y el pie bajan
+   con él: son sus pseudo-elementos. */
 #acciones button:active:not(:disabled):not([aria-disabled='true']) {
   transform: translateY(2px);
-  background: var(--panel-hueco);
+}
+
+/* La chapita pasa al crema caliente del bulbo de `cargando` —el mismo blanco
+   cálido con el que el juego dice "esto está encendido"— y suma un halo corto.
+
+   EL HALO ES LO ÚNICO SUAVE DE LA PIEZA, y ocupa el lugar que dejó la elipse de
+   contacto. La diferencia es qué representan: la elipse fingía una superficie
+   apoyada, esto es luz, y la luz del juego sí es difusa —el bulbo de la antena,
+   el charco del piso—. El filo se repite en el mismo box-shadow y va PRIMERO,
+   que es lo que lo deja arriba: si se escribiera solo el halo, el anillo negro
+   desaparecería justo al apretar, que es el cuadro en el que el dedo tapa media
+   ficha y menos se puede perder el contorno. */
+#acciones button:active:not(:disabled):not([aria-disabled='true'])::after {
+  background: var(--boton-naranja-claro);
+  box-shadow:
+    0 0 0 var(--boton-chapita-filo) #000,
+    0 0 var(--boton-chapita-halo) var(--boton-naranja-claro);
   transition: background-color var(--presion-baja) ease-in;
 }
 
@@ -3954,10 +4052,13 @@ body.es-noche #piso {
   fill: var(--color-bateria);
 }
 
-/* DESHABILITADO: el mismo relleno y el texto en `--panel-linea`, que es lo que
-   pide el punto 3.3. Contra la chapa da 2,25 a 1 — poco para texto normal, y
-   exactamente lo que se quiere para texto apagado, porque "apagado" tiene que
-   leerse como apagado.
+/* DESHABILITADO: el texto en `--panel-linea`, que es lo que pide el punto 3.3.
+   Es el mismo gris de antes y sigue leyéndose como apagado, ahora contra el
+   contorno negro en vez de contra un relleno.
+
+   NO CAMBIA DE FORMA NI DE POSICIÓN. La chapita ocupa exactamente el mismo
+   lugar y el mismo tamaño: lo que se apaga es el color, no la pieza. Un botón
+   apagado que además se encoge obliga a leer dos veces la misma fila.
 
    El mismo tratamiento para los dos motivos: al jugador no le importa la
    diferencia entre "no hace falta" y "no puedo" mirando la tecla — esa
@@ -3968,12 +4069,20 @@ body.es-noche #piso {
   cursor: not-allowed;
 }
 
-/* Y la pintura del canto se apaga con el resto: una consola sin corriente no
-   tiene la franja encendida. Se cambia el color, no se le pone un filtro: un
-   `saturate()` sobre un color plano es una forma cara de escribir otro color. */
+/* Y la pintura se apaga con el resto: una consola sin corriente no tiene la
+   chapita encendida. Se cambia el color, no se le pone un filtro: un
+   `saturate()` sobre un color plano es una forma cara de escribir otro color.
+
+   EL MARRÓN NO ES UN HEX NUEVO: es el naranja gastado de la caja de conexión,
+   que está pintada a un metro de la botonera en la misma escena. Ver
+   COLORES_BOTON_CHAPITA. Antes acá iba `--panel-linea`, el gris del texto
+   apagado, y eso funcionaba mientras la franja estuviera sobre un relleno
+   oscuro conocido; sobre el piso del atardecer un gris medio desaparece. */
 #acciones button:disabled::after,
-#acciones button[aria-disabled='true']::after {
-  background: var(--panel-linea);
+#acciones button[aria-disabled='true']::after,
+#acciones button:disabled::before,
+#acciones button[aria-disabled='true']::before {
+  background: var(--boton-naranja-apagado);
 }
 
 #acciones button:disabled .led,
@@ -4251,9 +4360,14 @@ body.es-noche #piso {
     transition: none;
   }
 
-  /* El botón sigue avisando que está apretado —el canto se achica igual, es
-     cambio de estado, no movimiento— pero sin viaje ni transición. */
-  #acciones button {
+  /* El botón sigue avisando que está apretado —la chapita se enciende igual, es
+     cambio de estado, no movimiento— pero de golpe y sin viaje.
+
+     LA REGLA ES SOBRE ::after Y NO SOBRE EL BOTÓN, porque la transición se mudó
+     ahí cuando el relleno del botón dejó de existir. Apuntarla al botón habría
+     quedado verde y no habría apagado nada: la chapita seguiría encendiéndose
+     con una interpolación de 140 ms, que es justo lo que este bloque saca. */
+  #acciones button::after {
     transition: none;
   }
 

@@ -350,6 +350,53 @@ El caso del `transform` fue el más traicionero de los cuatro porque el error er
 las otras tres venían infladas cada una por su propio ángulo. Un resultado
 mezclado se parece mucho a un bug real.
 
+### Un número correcto con la etiqueta equivocada es peor que un número equivocado
+
+El equivocado se cae al reproducirlo. **El mal etiquetado sobrevive a la
+revisión**, porque el que revisa comprueba el número y no el nombre.
+
+Pasó con el piso del galpón. La medición decía «el atardecer tiene 112 de
+luminancia media, y es donde se murieron las tres botoneras anteriores». El 112
+era correcto y el atardecer no: el script mapeaba la etiqueta `atardecer` al
+archivo `fondo-mediodia.webp`. Reproducido después, archivo por archivo:
+
+```
+fondo-amanecer    66,1
+fondo-dia         58,9      <- éste es el atardecer
+fondo-mediodia   112,0      <- de acá salía el 112
+fondo-noche       25,3
+```
+
+Sobrevivió porque las dos mitades eran verdaderas por separado: existe una franja
+con 112 y existe una franja llamada atardecer. Sólo se cayó cuando alguien midió
+las cuatro **desde el archivo** y no desde la tabla.
+
+Y no es una trampa de una sola vez: `fondo-dia.webp` **es** el atardecer, con el
+nombre viejo mantenido para no romper referencias. O sea que el proyecto ya tenía
+un archivo cuyo nombre miente, y este error es lo que pasa cuando esa mentira se
+propaga a un script.
+
+**Se detecta cruzando la etiqueta contra el ARCHIVO, no contra la tabla.** Toda
+medición que agrupe por nombre tiene que imprimir al lado de qué archivo salió
+cada fila.
+
+### Una constante no está huérfana porque la hoja no la lea
+
+`--panel-chapa`, `--panel-filo` y `--panel-hueco` quedaron sin un solo lector en
+`style.css` cuando la botonera perdió la caja, y estuvieron a un commit de
+borrarse. **Los lee `formas.js`**, en el SVG del panel de mantenimiento — que es
+el dueño original de la tabla y la razón del nombre. La botonera era el inquilino.
+
+El JS que genera SVG también lee tokens: `fill="var(--panel-chapa)"` es un lector
+tan real como una regla de CSS. Un `grep` sobre `style.css` no alcanza para
+declarar muerta una constante, y **el nombre de la variable dice quién fue el
+dueño original, no quién es el único**.
+
+El barrido tiene que mirar los dos, y de hecho lo hace: el guardián del puente
+—`tests/tema.test.js`— cruza `style.css` **y** `formas.js`, y fue el que lo
+agarró. La regla queda escrita porque el error se cometió igual: alcanzó con
+mirar una sola fuente y creerle.
+
 ---
 
 ## Cadena de estados visuales
