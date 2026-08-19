@@ -3990,30 +3990,32 @@ body.es-noche #piso {
     drop-shadow(0 -1px 0 #000);
 }
 
-/* EL LED. Es una luz, no una superficie: se queda, porque es lo que convierte
-   una chapa en un aparato encendido.
-
-   Cuadrado de 2 px y no un círculo de 4: un `border-radius: 50%` sobre cuatro
-   píxeles son cuatro esquinas interpoladas. Un píxel encendido es un cuadrado.
-   Y sin el halo de box-shadow, que era un degradé. */
-.led {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 2px;
-  height: 2px;
-  background: var(--color-bateria);
-  animation: latir-led var(--ciclo-led) steps(1, end) infinite;
-}
-
-/* `steps` y no `ease-in-out`: la opacidad interpolada de un LED de 2x2 px son
-   dos píxeles a medio encender. Prendido o apagado, como una lámpara. */
-@keyframes latir-led {
-  0%,
-  49% { opacity: 1; }
-  50%,
-  100% { opacity: 0.35; }
-}
+/* ---- ACÁ ESTABA EL LED, Y SE FUE CON LA CAJA ----
+ *
+ * Era un cuadrado de 2x2 px en la esquina de arriba a la derecha, del cian de la
+ * batería, latiendo con `steps(1, end)`. Con él se van `@keyframes latir-led`,
+ * la regla que lo escondía en el botón apagado, las dos del bloque de movimiento
+ * reducido, los tres `<span class="led">` del index y la constante
+ * `CICLO_LED_MS`.
+ *
+ * POR QUÉ TENÍA SENTIDO Y POR QUÉ DEJÓ DE TENERLO. El comentario decía "es una
+ * luz, no una superficie: se queda, porque es lo que convierte una chapa en un
+ * aparato encendido", y era cierto MIENTRAS HUBO CHAPA. El LED estaba puesto
+ * sobre un rectángulo relleno, en su esquina, y ahí leía como el piloto de una
+ * tecla. Sin caja no hay esquina: queda un punto cian flotando arriba a la
+ * derecha de un texto, a 8 px de la chapita, sin nada que lo contenga.
+ *
+ * NO SE PIERDE ACCESIBILIDAD: iba `aria-hidden`, así que nunca dijo nada a un
+ * lector de pantalla. Y el estado sigue teniendo con qué avisar —el color del
+ * texto, el del ícono, el de la chapita y el del pie, los cuatro cambian entre
+ * disponible y apagado—, así que lo que se va es una quinta señal redundante y
+ * no la única.
+ *
+ * NINGÚN TEST CONTABA EL LED COMO SEÑAL. Se buscó antes de sacarlo: la única
+ * mención en tests/ era un `.led {` usado como límite de un slice de la hoja, y
+ * ése sí hubo que corregirlo. `--color-bateria` se queda: lo leen once reglas
+ * más y el SVG del tilde en formas.js. El que quedó huérfano fue `--ciclo-led`.
+ */
 
 /* APRETADO: la ficha baja 2 px enteros —no 1,5— y la chapita se ENCIENDE.
 
@@ -4083,11 +4085,6 @@ body.es-noche #piso {
 #acciones button:disabled::before,
 #acciones button[aria-disabled='true']::before {
   background: var(--boton-naranja-apagado);
-}
-
-#acciones button:disabled .led,
-#acciones button[aria-disabled='true'] .led {
-  display: none;
 }
 
 #acciones button:disabled svg,
@@ -4371,16 +4368,8 @@ body.es-noche #piso {
     transition: none;
   }
 
-  /* El LED se queda prendido y quieto: sigue diciendo que la acción está
-     disponible, que es su trabajo. Lo que se va es el latido. */
-  .led {
-    animation: none;
-    opacity: 1;
-  }
-
-  #acciones button:active:not(:disabled) .led {
-    animation: none;
-  }
+  /* Acá había dos reglas para el LED —dejarlo prendido y quieto, y no animarlo
+     al apretar—. Se fueron con él. */
 
   /* El viaje de 2 px al apretar se va; el cambio de relleno se queda, porque no
      es movimiento sino la respuesta de que el toque llegó. Antes acá había que

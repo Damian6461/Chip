@@ -31,7 +31,6 @@ import {
   TRANSICION_PANEL_MS,
   DURACION_LLEGADA_MS,
   DURACION_SQUASH_MS,
-  CICLO_LED_MS,
   VARS_ANIMACION,
   VARS_CAMBIO,
   VARS_APERTURA,
@@ -217,7 +216,6 @@ export function variablesDeTema() {
     [VARS_ANIMACION.transicionPanel]: ms(TRANSICION_PANEL_MS),
     [VARS_ANIMACION.duracionLlegada]: ms(DURACION_LLEGADA_MS),
     [VARS_CAMBIO.duracionSquash]: ms(DURACION_SQUASH_MS),
-    '--ciclo-led': ms(CICLO_LED_MS),
 
     // La apertura
     [VARS_APERTURA.color]: COLOR_APERTURA,

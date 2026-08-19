@@ -229,6 +229,36 @@
 </p>
 <div id="rodeada"></div>
 
+<h2>c.ter — El desgaste: dos variantes, sin elegir</h2>
+<p>
+  Ninguna de las dos está en <code>style.css</code>: se declaran acá, que es donde
+  va una propuesta que todavía no se decidió. El resto de la ficha es la hoja de
+  verdad.
+</p>
+<div class="nota">
+  <p>
+    <strong>A — por filas.</strong> La chapita deja de ser un bloque de un color:
+    1 px claro arriba, <code>--boton-naranja</code> pleno en el medio, 1 px
+    oscuro abajo. Más cuatro píxeles saltados en <strong>posiciones fijas</strong>,
+    idénticas en los tres botones — una pintura gastada no es ruido aleatorio,
+    y si cada botón tiene su propio patrón la fila se lee sucia en vez de usada.
+  </p>
+  <p>
+    <strong>B — por las puntas.</strong> El cuerpo queda pleno y se comen 3 px en
+    cada extremo, escalonados. Es el desgaste de una etiqueta atornillada: se
+    despinta por donde la agarran, no por el medio.
+  </p>
+</div>
+<p>
+  <strong>La restricción manda sobre todo:</strong> el peor de los dieciséis
+  mínimos está hoy en 3,26. Se vuelve a medir lado por lado para cada variante y
+  el número que se publica es <strong>el peor</strong>, no el promedio. Si una
+  variante lo baja, esa variante se cae — sin discusión y sin captura.
+</p>
+<div id="desgaste-numeros"></div>
+<p>Y las dos, en las cuatro franjas, con los tres estados:</p>
+<div id="desgaste"></div>
+
 <h2>d. La grilla de píxeles</h2>
 <p>
   El criterio de siempre: a escala 1 cada fila de la etiqueta tiene que dar dos
@@ -262,7 +292,7 @@
 
 <script type="module">
 import { variablesDeTema } from '../js/tema.js';
-import { FRANJAS_DIA, COLORES_BOTON, COLORES_BOTON_CHAPITA, COLORES_PANEL, BOTONERA, FUENTE_BOTONERA, CLASE_SIN_MOVIMIENTO } from '../js/config.js';
+import { FRANJAS_DIA, COLORES_BOTON, COLORES_BOTON_CHAPITA, COLORES_PANEL, COLORES_TOMA, BOTONERA, FUENTE_BOTONERA, CLASE_SIN_MOVIMIENTO } from '../js/config.js';
 
 for (const [nombre, valor] of Object.entries(variablesDeTema())) {
   document.documentElement.style.setProperty(nombre, valor);
@@ -687,6 +717,138 @@ document.getElementById('elipse').innerHTML =
         `</div></div>`
       ).join('') +
     `</div>`;
+}
+
+// ---- c.ter. Las dos variantes de desgaste ----
+//
+// NINGUNA ESTÁ EN style.css. Se declaran acá porque son propuestas, y el resto
+// de la ficha es la hoja de verdad.
+//
+// LOS DOS TONOS NUEVOS NO SON HEX NUEVOS, igual que los de la chapita:
+//   claro    #e8a24a, el `naranja-alto` de la caja de conexión — que es
+//            literalmente el brillo de esa misma pintura naranja.
+//   oscuro   #c8781f, el `naranja` gastado de la misma caja, el que ya usa la
+//            chapita apagada.
+//
+// LAS DOS TÉCNICAS SON DISTINTAS Y CADA UNA ES LA QUE CORRESPONDE:
+//
+//   A, por filas, va en CAPAS DE FONDO. Tres franjas de 1 px de alto, y la del
+//      medio partida en cinco segmentos para dejar cuatro píxeles sin pintar.
+//      Un píxel sin capa queda TRANSPARENTE y se ve el piso, que es lo que
+//      significa "saltado". Todas las medidas son enteras y ninguna capa se
+//      superpone, así que no hay un solo píxel mezclado.
+//
+//   B, por las puntas, va en clip-path. Tiene que ser clip y no fondo porque lo
+//      que se come es la pieza ENTERA, filo incluido: una punta despintada con
+//      el anillo negro todavía dibujado se leería como un marco vacío. El
+//      polígono va en píxeles y se extiende 1 px afuera de la caja para no
+//      recortar el filo donde sí tiene que estar.
+{
+  const ANCHO_CHAPITA = ANCHO_BOTON - (BOTONERA.chapita.inset + BOTONERA.chapita.filo) * 2;
+  const CLARO = COLORES_TOMA['naranja-alto'];
+  const OSCURO = COLORES_TOMA.naranja;
+
+  // Los cuatro huecos, en posiciones FIJAS e iguales en los tres botones: una
+  // pintura gastada no es ruido aleatorio. Con un patrón por botón la fila se
+  // lee sucia; con el mismo patrón se lee usada.
+  const HUECOS = [11, 34, 57, 80];
+  const segmentos = [];
+  let x = 0;
+  for (const h of HUECOS) {
+    if (h > x) segmentos.push([x, h - x]);
+    x = h + 1;
+  }
+  if (x < ANCHO_CHAPITA) segmentos.push([x, ANCHO_CHAPITA - x]);
+
+  const capa = (color) => `linear-gradient(${color} 0 0)`;
+  const filaA =
+    `background-color: transparent;` +
+    `background-repeat: no-repeat;` +
+    `background-image: ${[capa(CLARO), capa(OSCURO), ...segmentos.map(() => capa(COLORES_BOTON.naranja))].join(', ')};` +
+    `background-size: ${ANCHO_CHAPITA}px 1px, ${ANCHO_CHAPITA}px 1px, ${segmentos.map(([, w]) => `${w}px 1px`).join(', ')};` +
+    `background-position: 0 0, 0 2px, ${segmentos.map(([sx]) => `${sx}px 1px`).join(', ')};`;
+
+  // La punta comida: la fila de arriba y su filo arrancan 3 px adentro.
+  const COMIDO = 3;
+  const F = BOTONERA.chapita.filo;
+  const puntaB =
+    `clip-path: polygon(` +
+    `${COMIDO}px ${-F}px, ${ANCHO_CHAPITA - COMIDO}px ${-F}px, ` +
+    `${ANCHO_CHAPITA - COMIDO}px 1px, ${ANCHO_CHAPITA + F}px 1px, ` +
+    `${ANCHO_CHAPITA + F}px ${BOTONERA.chapita.alto + F}px, ${-F}px ${BOTONERA.chapita.alto + F}px, ` +
+    `${-F}px 1px, ${COMIDO}px 1px);`;
+
+  // EL SELECTOR LLEVA EL #acciones ADENTRO, y el primer intento no. La regla del
+  // juego es `#acciones button::after` —un id— y `.desgaste-a button::after` es
+  // sólo una clase: pierde por especificidad y el `background` del shorthand
+  // seguía ganando. La variante A se veía exactamente igual que sin desgaste, o
+  // sea que la página mostraba una propuesta que no estaba aplicada. B sí se
+  // aplicaba, porque `clip-path` no lo declara ninguna otra regla — y ese medio
+  // funcionamiento es lo que lo hacía difícil de ver.
+  const est3 = document.createElement('style');
+  est3.textContent =
+    `.desgaste-a #acciones button::after { ${filaA} }` +
+    `.desgaste-b #acciones button::after { ${puntaB} }`;
+  document.head.appendChild(est3);
+
+  // ---- Los números ----
+  //
+  // LO QUE ESTO MIDE Y LO QUE NO. El contorno de la pieza sigue siendo NEGRO en
+  // las dos variantes, porque el filo no se toca: A pinta adentro del anillo y B
+  // se come el anillo junto con la pieza. Así que el peor de los dieciséis no
+  // puede bajar por el desgaste — y eso hay que decirlo, no dejar que el verde
+  // lo insinúe.
+  //
+  // Lo que sí cambia es qué tono queda pegado al filo por dentro, y eso importa
+  // el día que alguien saque el filo. Va medido igual, contra el peor píxel de
+  // piso de cada lado.
+  const tonos = { 'claro (fila de arriba)': CLARO, 'oscuro (fila de abajo)': OSCURO };
+  const filas = resumen.map((r) => {
+    const todos = Object.values(r.lados).flat();
+    const contorno = todos.map((p) => Math.max(K(NEGRO, p), K(NARANJA, p))).sort((a, b) => a - b)[0];
+    const porTono = Object.fromEntries(
+      Object.entries(tonos).map(([n, hx]) => [n, contra(hex(hx), todos).min])
+    );
+    return { franja: r.nombre, contorno, porTono };
+  });
+  const peor = Math.min(...filas.map((f) => f.contorno));
+
+  document.getElementById('desgaste-numeros').innerHTML =
+    `<table>` +
+    `<tr><th>franja</th><th>el contorno (filo o naranja)</th>` +
+    Object.keys(tonos).map((n) => `<th>${n} contra el piso</th>`).join('') + `</tr>` +
+    filas.map((f) =>
+      `<tr><th>${f.franja}</th><td>${marca(f.contorno, 3)}</td>` +
+      Object.keys(tonos).map((n) => `<td>${marca(f.porTono[n], 3)}</td>`).join('') + `</tr>`
+    ).join('') +
+    `<tr><th>EL PEOR DE LOS DIECISÉIS</th><td colspan="3">${marca(peor, 3)} — <strong>el mismo que sin desgaste</strong>, ` +
+    `porque ninguna de las dos variantes toca el filo: A pinta adentro del anillo y B se come el anillo con la pieza. ` +
+    `Ninguna baja el 3,26, y no es que hayan pasado la prueba: es que el desgaste no puede tocar ese número.</td></tr>` +
+    `<tr><th>lo que sí paga B</th><td colspan="3">` +
+    `${COMIDO * 2} px de contorno menos por chapita en la fila de arriba, ${COMIDO * 2 * 3} px en la fila de tres botones. ` +
+    `El resto del contorno queda igual.</td></tr>` +
+    `</table>`;
+
+  // ---- Y las dos, en las cuatro franjas ----
+  const caja = document.getElementById('desgaste');
+  for (const r of resumen) {
+    const piso = await pisoDe(FRANJAS_DIA.find((f) => f.nombre === r.nombre));
+    const seccion = document.createElement('section');
+    seccion.innerHTML =
+      `<h2 style="color:#c9ced7">${r.nombre}</h2>` +
+      `<div class="lado">` +
+      [['A — por filas', 'desgaste-a'], ['B — por las puntas', 'desgaste-b']]
+        .map(([titulo, clase]) =>
+          `<div class="columna">` +
+          `<h3>${titulo}</h3>` +
+          `<div class="piso ${clase}" style="background-image:url(${piso.url})">${fila()}</div>` +
+          `<div style="width:390px;overflow:hidden;margin-top:8px">` +
+          `<div class="ampliada"><div class="piso ${clase}" style="background-image:url(${piso.url});width:390px">${fila()}</div></div>` +
+          `</div></div>`
+        ).join('') +
+      `</div>`;
+    caja.appendChild(seccion);
+  }
 }
 
 // ---- d. La grilla de píxeles ----

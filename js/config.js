@@ -1053,10 +1053,17 @@ export const VARS_ANIMACION = {
 };
 
 // Clase que dispara el salto. La declara style.css, la pone y la saca ui.js.
-// El LED de las teclas disponibles. Va fuera de fase con la antena y con el
-// rayo del pecho: tres latidos del mismo largo se sincronizan y el aparato
-// entero se vuelve un metrónomo.
-export const CICLO_LED_MS = 2400;
+// ---- ACÁ ESTABA CICLO_LED_MS, Y SE FUE CON EL LED ----
+//
+// Valía 2400, y lo que decía la nota sigue siendo buen criterio para lo que
+// venga: iba FUERA DE FASE con la antena y con el rayo del pecho, porque tres
+// latidos del mismo largo se sincronizan y el aparato entero se vuelve un
+// metrónomo. Si algún día vuelve una luz a la botonera, ese es el número a
+// respetar y no el 2400.
+//
+// El LED en sí se fue cuando el botón perdió la caja: era un cuadrado de 2x2 en
+// la esquina de un rectángulo, y sin rectángulo no hay esquina. Ver style.css,
+// donde estaba la regla.
 
 export const CLASE_SALTO = 'saltando';
 

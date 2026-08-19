@@ -737,7 +737,17 @@ prueba('botonera: los íconos son píxeles y no trazos', () => {
     verdadero(/<rect /.test(b), 'y tiene que tener rectángulos');
   }
 
-  const bloque = CSS.slice(CSS.indexOf('#acciones button svg'), CSS.indexOf('.led {'));
+  // EL LÍMITE ERA `.led {` Y EL LED YA NO EXISTE. Con la regla borrada el
+  // indexOf daba −1, el slice se comía la hoja entera y el test pasaba porque
+  // encontraba un `crispEdges` de otra pieza. Es la segunda vez que un corte
+  // apunta a algo que se puede borrar; el límite ahora es el selector de la
+  // regla siguiente, que si desaparece se lleva puesto el test en vez de
+  // ablandarlo.
+  const desde = CSS.indexOf('#acciones button svg');
+  const hasta = CSS.indexOf('#acciones button:active', desde);
+  verdadero(desde >= 0 && hasta > desde, 'el slice del ícono no encontró sus límites');
+  const bloque = CSS.slice(desde, hasta);
+  verdadero(bloque.length < 2000, `el slice del ícono mide ${bloque.length} y eso no es una regla`);
   verdadero(/crispEdges/.test(bloque), 'el ícono necesita shape-rendering: crispEdges');
   igual(BOTONERA.icono % 16, 0, 'el tamaño en pantalla es un múltiplo entero de la grilla');
 });

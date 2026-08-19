@@ -28,8 +28,11 @@
 //
 // Lo que esto verifica es que los NOMBRES coincidan de los dos lados, que es el
 // modo de falla que pasa de verdad: alguien renombra en un archivo y no en el
-// otro. Verificado que agarra las dos direcciones — con `--ciclo-led` renombrado
-// en tema.js, fallan las dos pruebas del cruce y las dos dicen cuál es.
+// otro. Verificado que agarra las dos direcciones — con `--boton-chapita-filo`
+// renombrado en tema.js, fallan las dos pruebas del cruce y las dos dicen cuál
+// es. (Antes esta nota nombraba `--ciclo-led`, que se fue con el LED de la
+// botonera: una nota que cita una variable inexistente no se puede volver a
+// correr, que es justo lo que una nota de verificación tiene que permitir.)
 //
 // Lo que NO verifica, dicho en voz alta: que cada nombre declarado en una tabla
 // VARS_* se escriba efectivamente en algún momento. Las de render se escriben
