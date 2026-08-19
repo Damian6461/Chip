@@ -120,6 +120,7 @@ import {
   DESTELLO_BULBO,
   VARS_CABLE,
   CABLE,
+  GRIS_CHAPA_CABEZA,
   PULSOS_CABLE,
   TOMA_PARED,
   COLORES_TOMA,
@@ -323,7 +324,17 @@ export function variablesDeTema() {
     [VARS_CABLE.energia]: CABLE.energia,
     [VARS_CABLE.halo]: CABLE.halo,
     [VARS_CABLE.sombraPuerto]: CABLE.sombraPuerto,
-    [VARS_CABLE.ficha]: CABLE.ficha,
+    // EL CONECTOR SE PINTA CON EL METAL DE CHIP Y NO CON EL DEL CABLE, porque es
+    // una pieza de Chip: una toma en su pecho. Con los tonos del cable, a 8 px
+    // engordaba el cable en vez de separarse de él.
+    //
+    // Y EL TOKEN QUE HAY ES EL DE LA CABEZA, no el del pecho. Es el único gris de
+    // Chip medido sobre el arte, y por eso se usa éste y no un hex nuevo. Queda
+    // dicho que no son la misma chapa: medida la que rodea al puerto sobre
+    // sprites/cargando.webp, el tono dominante es #c0a090 —un tostado cálido— y
+    // éste es #676c77. La pieza se lee como metal de Chip y más oscura que su
+    // alrededor; si hace falta el tono del pecho, hay que medirlo y declararlo.
+    [VARS_CABLE.conectorCuerpo]: GRIS_CHAPA_CABEZA,
     [VARS_LLUVIA.angulo]: LLUVIA.angulo + 'deg',
     [VARS_LLUVIA.cuerpo]: LLUVIA.cuerpo,
     [VARS_LLUVIA.brillo]: LLUVIA.brillo,

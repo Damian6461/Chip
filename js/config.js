@@ -3427,7 +3427,12 @@ export const CABLE = {
   // La ficha: un gris de plástico, más claro que el cable. Tiene que leerse como
   // OTRA pieza, no como el cable engordado — si comparte color con el cable, la
   // unión vuelve a ser un extremo y no un enchufe.
-  ficha: '#4a525a',
+  // ACÁ ESTABA `ficha: '#4a525a'`, y la nota de arriba sigue describiendo bien lo
+  // que se buscaba: una pieza que se lea como OTRA y no como el cable engordado.
+  // El tono no lo lograba, y el motivo no era el gris sino de qué familia era.
+  // El conector es una pieza de CHIP —una toma en su pecho— así que se pinta con
+  // el metal de Chip y no con uno de la familia del cable. Ver
+  // VARS_CABLE.conectorCuerpo.
   // CUÁNTO CABLE QUEDA DETRÁS DEL SPRITE. Es el tramo que entra al puerto y
   // desaparece adentro de Chip. Un cable que termina CONTRA el borde del
   // conector se ve apoyado; uno que desaparece adentro se ve enchufado.
@@ -3722,7 +3727,9 @@ export const VARS_CABLE = {
   energia: '--cable-energia',
   halo: '--cable-halo',
   sombraPuerto: '--cable-sombra-puerto',
-  ficha: '--cable-ficha',
+  // EL CUERPO DEL CONECTOR, y ojo con el nombre del token que lo alimenta: es
+  // GRIS_CHAPA_CABEZA, o sea la chapa de LA CABEZA. Ver tema.js.
+  conectorCuerpo: '--conector-cuerpo',
   // Acá estaban las cinco de la caja del toma —tomaX, tomaY, tomaAncho,
   // tomaBrillo y tomaSaturacion—. Se fueron con el nodo #toma: ver el comentario
   // en index.html. Las leía una sola regla de style.css y esa regla ya no

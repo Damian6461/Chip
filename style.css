@@ -4660,7 +4660,7 @@ body.sin-movimiento *::after {
    Los tres tonos son los del tubo más el negro del puerto, así que el conector y
    el cable se leen como el mismo material. Todo a opacidad 1. */
 .cable-conector-cuerpo {
-  fill: var(--cable-ficha);
+  fill: var(--conector-cuerpo);
   shape-rendering: crispEdges;
 }
 
