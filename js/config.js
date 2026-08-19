@@ -3527,7 +3527,16 @@ export const RECORRIDO_CABLE = [
 // Las primeras dos son 1 porque el primer quinto del recorrido es la caída
 // desde el pecho, que está toda a la misma profundidad.
 export const PULSOS_CABLE = {
-  cuantos: 5,
+  // TRES Y NO CINCO. Cinco pulsos sobre este recorrido se leen como línea
+  // punteada y no como energía en tránsito; fue la mitad del defecto que se
+  // reportó como "los puntitos se ven como suciedad" —la otra mitad era el halo
+  // gaussiano, ver `anillo` abajo—. Dos deja el cable muerto. Medido con las
+  // tres, a 390x844, congeladas y con las demoras repartidas parejo.
+  //
+  // Y las demoras se reparten sobre este número, no sobre uno escrito aparte:
+  // ver el bucle que arma los pulsos en ui.js. Cambiarlo acá los vuelve a
+  // espaciar solo.
+  cuantos: 3,
   ciclo: 3200,
 
   // EL RADIO SALE DEL GROSOR DEL CABLE Y NO DE UN NÚMERO SUELTO. Era 4,2 px
