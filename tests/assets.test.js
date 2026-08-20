@@ -43,7 +43,8 @@ import {
   ANGULO_BRAZO_SIN_CUERPO,
   VOZ,
   VOCES,
-  VOCES_LARGAS
+  VOCES_LARGAS,
+  VOZ_DE
 } from '../js/config.js';
 import {
   LIMITES_PESO,
@@ -798,4 +799,31 @@ prueba('voz: las veinte están en ARCHIVOS_CACHE', () => {
   // tienen que estar al instante. Una voz que llega tarde no es una voz.
   const faltan = Object.values(VOCES).filter((r) => !SW.includes(r));
   igual(faltan.join(' | '), '', 'voces que no se instalan con la PWA');
+});
+
+// ---- Y LA TERCERA DIRECCIÓN: DEL MAPA A LA LLAMADA ----
+//
+// Las dos de arriba cruzan archivo contra mapa. Falta la que atrapa el estado del
+// que venimos: veinte archivos mapeados y cinco llamados. Un id mapeado y sin un
+// solo `hablar()` que lo pida es exactamente una voz muda — el mapeo lo hace
+// parecer cableado y no lo está, y ningún test lo veía.
+//
+// Se buscan las CLAVES de VOZ_DE, que son las situaciones, no los nombres de
+// archivo: `hablar('standby')` es la llamada, `12_sleepy` es lo que suena.
+const FUENTES_QUE_HABLAN = ['js/main.js', 'js/ui.js', 'js/sesion.js']
+  .map((r) => readFileSync(RAIZ + r, 'utf8'))
+  .join('\n');
+
+prueba('voz: toda situación mapeada tiene al menos un punto de llamada', () => {
+  const mudas = Object.keys(VOZ_DE).filter(
+    (situacion) => !new RegExp(`hablar\\(\\s*['"]${situacion}['"]`).test(FUENTES_QUE_HABLAN)
+  );
+  igual(mudas.join(' | '), '', 'situaciones mapeadas que nadie llama: la voz existe y no se usa');
+});
+
+prueba('voz: el parser de llamadas encuentra algo', () => {
+  // La red de la de arriba: si el regex dejara de encontrar `hablar(`, la lista
+  // de mudas daría vacía y el test pasaría sin haber mirado nada.
+  const llamadas = FUENTES_QUE_HABLAN.match(/hablar\(\s*['"]/g) || [];
+  verdadero(llamadas.length >= 8, `sólo se encontraron ${llamadas.length} llamadas a hablar()`);
 });

@@ -146,6 +146,7 @@ import {
 import { aplica, puedeJugar } from './acciones.js';
 import { obtenerSprite, obtenerCuerpo, cajaDeContenidoPantalla } from './sprites.js';
 import { objetosConEstado } from './coleccion.js';
+import { hablar } from './sonido.js';
 import { gigantesConEstado } from './gigantes.js';
 import {
   svgDeObjeto,
@@ -1093,6 +1094,16 @@ function distraerse() {
   // o limpiando Chip está haciendo algo, y además no habría con qué taparlo.
   if (!grupoCabeza || capaCabeza?.hidden) return;
   grupoCabeza.classList.add(CLASE_DISTRAIDA);
+
+  // Y PREGUNTA EN VOZ BAJA. De día una pregunta despierta, de noche la
+  // adormilada: es la misma situación con dos versiones, y cuál va lo dice la
+  // clase que ya está puesta en el body. No se agrega un dato nuevo para esto.
+  // Las dos van escritas por separado y no con un ternario adentro de la
+  // llamada: el test que cruza el mapa contra las llamadas busca por id, y un
+  // `hablar(cond ? a : b)` lo deja ciego. Un guardián que no puede ver una
+  // llamada la reporta como muda, y tiene razón: tampoco la ve quien greppea.
+  if (document.body.classList.contains(CLASE_NOCHE)) hablar('distraidaNoche');
+  else hablar('distraida');
 }
 
 // Y VUELVE CON CUALQUIER TOQUE. No hace falta ninguna regla nueva: sacar la
@@ -2112,6 +2123,12 @@ function pintarGigantes(gigantes) {
 
 function mostrarDetalleGigante(gigante) {
   detalleGigantes.replaceChildren();
+
+  // MIRAR UN GIGANTE. Es el momento en el que el jugador se detiene en una de
+  // las cosas grandes que pasan lejos, y `15_distant_feeling` es exactamente eso:
+  // no una reacción a algo que Chip hizo, sino a algo que está afuera. Va acá y
+  // no en mostrarGigantes, que corre en el arranque para pintar la grilla entera.
+  hablar('gigantes');
 
   const nombre = document.createElement('strong');
   nombre.textContent = gigante.nombre ?? 'Algo grande, todavía sin nombre';

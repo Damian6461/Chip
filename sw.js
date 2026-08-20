@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v109';
+const CACHE_VERSION = 'chip-cache-v110';
 
 // LA HUELLA DEL CONTENIDO DE ARCHIVOS_CACHE. No la lee nadie en runtime: existe
 // para que un test pueda contestar la única pregunta que importa acá, que es si
@@ -51,7 +51,7 @@ const CACHE_VERSION = 'chip-cache-v109';
 //
 // Se escribe sola: `node tests/sellar-cache.mjs` sube la versión y la recalcula.
 // No se edita a mano.
-const HUELLA_CACHE = '94b3d20c1fca1c57';
+const HUELLA_CACHE = 'c7e5e8aa5ca20588';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.

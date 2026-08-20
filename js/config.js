@@ -4543,6 +4543,62 @@ export const VOCES = Object.fromEntries(
     .map((id) => [id, `${VOZ.carpeta}${id}${VOZ.extension}`])
 );
 
+// ---- CUÁNTO HABLA, QUE ES LO QUE DECIDE SI LA VOZ SUMA O CANSA ----
+//
+// NO HABLA EN CADA CAMBIO. Un robot que comenta todo cansa en dos minutos, y el
+// error es difícil de ver desde adentro: probando la app se toca cinco veces
+// seguidas y parece poco; jugando de verdad, entrar y salir de un estado pasa
+// todo el tiempo.
+//
+// Así que la probabilidad va POR ESTADO y arranca conservadora a propósito: la
+// consigna es que hable MENOS de lo que a uno le parece bien. Subirla después es
+// una línea; darse cuenta de que cansa cuesta una semana de uso.
+//
+// Los números NO son iguales entre sí y la diferencia es de sentido:
+//
+//   standby, critico   altos. Son estados en los que Chip está avisando algo, y
+//                      se entra a ellos pocas veces por sesión.
+//   jugando            medio. Es una acción que el jugador pidió, así que una
+//                      respuesta se espera — pero se juega seguido.
+//   feliz              bajo. Se entra y se sale mucho, y ya tiene su propia
+//                      señal visual.
+//   hecho              bajo por lo mismo: cada acción termina.
+//
+// El piso de 4 segundos de VOZ.cooldownMs manda igual sobre todos: esto decide
+// si se INTENTA, no si suena.
+export const PROBABILIDAD_VOZ = {
+  standby: 0.7,
+  critico: 0.7,
+  jugando: 0.35,
+  feliz: 0.15,
+  hecho: 0.2,
+  evento: 0.5,
+  saludo: 1
+};
+
+// ---- EL IDLE TIENE SU PROPIO RELOJ ----
+//
+// Y no puede colgarse del cambio de estado, porque el idle es justamente el
+// estado en el que no cambia nada. Va con un temporizador propio.
+//
+// Los tres escalones son de frecuencia y de peso, y por eso son tres números y
+// no uno: el murmullo corto acompaña, los cuatro largos son un gesto, y la firma
+// es de las que se cuentan.
+export const VOZ_IDLE = {
+  // Cada cuánto se pregunta si dice algo. No es cada cuánto habla: la mayoría de
+  // las veces la respuesta es que no.
+  cadaMs: 45000,
+  // Y la probabilidad de que ese intento salga. 45 s por 0,18 da un murmullo
+  // cada cuatro minutos y medio de idle, en promedio.
+  murmullo: 0.18,
+  // Los cuatro largos, encima del murmullo y mucho más raros. Con su propio
+  // cooldown de cuatro minutos de VOZ.cooldownLargasMs por si acaso.
+  profundo: 0.04,
+  // La firma. 45 s por 0,004 es una vez cada cuatro horas de idle: en la práctica
+  // una vez cada muchas sesiones, que es lo que se pidió.
+  firma: 0.004
+};
+
 export const PARAM_DEBUG = 'debug';
 
 // CÓMO SE ABRE EL PANEL EN LA APP INSTALADA.

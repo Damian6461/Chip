@@ -423,6 +423,30 @@ haber sido probado. Lo delató que el rojo que sí apareció era el del ícono.
 aparezca **una sola vez** en el archivo antes de reemplazarlo, y si no, alargalo
 hasta que lo sea.
 
+### Un argumento plausible escrito al lado de un valor se lee como su justificación, y puede no serlo
+
+Un comentario que **explica** un número no **prueba** el número.
+
+El anillo del pulso del cable se puso en un cian casi blanco con esta razón
+escrita al lado: *«va más claro que la energía porque en pixel art una luz chica
+revienta en el borde, no se apaga»*. Es razonable, es consistente con el resto
+del proyecto, y quien lo leyera después lo tomaría por medido. **No lo estaba**:
+nunca se cruzó contra las otras luces de la pantalla.
+
+Medido, en luminancia sobre 255: el anillo daba **235,9** — lo más brillante de
+todo el juego —, el LED del pecho **200,8** y el núcleo del pulso **168,9**. O
+sea que el pulso le ganaba la atención al LED, y el culpable era la pieza que
+llevaba el argumento bonito al lado, no la que se sospechaba.
+
+Y hay una segunda mitad: la consigna para arreglarlo decía «bajá el núcleo un
+escalón», que salía de **suponer** cuál brillaba. El núcleo ya estaba treinta y
+dos puntos por debajo. Bajarlo no habría movido el techo.
+
+**Un comentario es una hipótesis hasta que trae su medición.** Los que la traen
+se reconocen porque tienen el número adentro; los que no, se reconocen porque
+suenan bien. Ante un valor con una razón sin número al lado, la pregunta no es si
+la razón convence: es contra qué se comprobó.
+
 ### Cuando un defecto tiene grados, el peor punto suele ser el que explica la causa
 
 El cable se midió cortándolo en tres puntos y contando colores: dieron **6, 7 y

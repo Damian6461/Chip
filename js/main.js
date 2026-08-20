@@ -12,7 +12,7 @@
 // el reloj de pared, los timers de verdad, el service worker y el panel de
 // debug. Y el estado vivo ya no vive acá: lo tiene la sesión.
 
-import { MS_POR_HORA, FRANJAS_DIA, DURACION_CRUCE_APERTURA_MS, DURACION_CRUCE_FONDO_MS, TICK_VISUAL_MS, ESTADOS_VISUALES as E, PARAM_DEBUG, RUTA_SW, ZONA_PISO, CLIMAS } from './config.js';
+import { MS_POR_HORA, FRANJAS_DIA, DURACION_CRUCE_APERTURA_MS, DURACION_CRUCE_FONDO_MS, TICK_VISUAL_MS, ESTADOS_VISUALES as E, PARAM_DEBUG, RUTA_SW, ZONA_PISO, CLIMAS, PROBABILIDAD_VOZ, VOZ_IDLE } from './config.js';
 import { crearEstadoNuevo, cargarEstado, guardarEstado } from './estado.js';
 import { aplicarDecay } from './decay.js';
 import { cargar, jugar, limpiar } from './acciones.js';
@@ -98,6 +98,10 @@ const sesion = crearSesion({
       // render y no de un reloj propio. ambientar() ignora los repetidos, así
       // que llamarlo en cada pintada no cuesta nada.
       ambientar(args[5]?.nombre);
+      // Y LA VOZ SE ENGANCHA ACÁ, que es donde ya pasan el estado visual y la
+      // noche. Adentro compara contra el anterior, así que habla al ENTRAR a un
+      // estado y no en cada pintada. Ver vozAlEntrar.
+      vozAlEntrar(args[1], args[2]);
       if (refrescarDebug) refrescarDebug();
     },
     sembrarFondo,
@@ -402,6 +406,10 @@ const apiDebug = {
 
     const evento = eventoDeHito(pendiente);
     mostrarEventos([evento]);
+    // El gigante que pasa es un evento de la escena: Chip lo nota. Va acá y no en
+    // el arranque porque en el arranque los eventos se muestran de una y el
+    // navegador todavía no tuvo su gesto para el audio.
+    if (seAnima('evento')) hablar('evento');
     // El mismo par que en el arranque. Si acá faltara, el hito de la grúa —que
     // es de la categoría `grandes`— saldría por debug sin la pose, y el panel
     // estaría probando un camino que no es el del juego.
@@ -523,3 +531,89 @@ if (new URLSearchParams(location.search).has(PARAM_DEBUG)) abrirPanelDebug();
 // Y la puerta de servicio, para la app instalada: cinco toques rápidos en la
 // esquina de arriba a la izquierda. Ver conectarDebugOculto en ui.js.
 conectarDebugOculto(abrirPanelDebug);
+
+// ============================================================================
+// LA VOZ, ENGANCHADA AL ESTADO
+// ============================================================================
+//
+// POR QUÉ ACÁ Y NO EN sesion.js. Qué SUENA es presentación, con el mismo
+// criterio que separa a ui.js del modelo. La sesión ya dice cuándo cambió el
+// estado —el render llega con `estadoVisual` adentro— y este módulo decide si
+// eso merece una voz. Meterlo en la sesión habría puesto una decisión de
+// presentación adentro del modelo, que es lo que el proyecto viene evitando.
+//
+// Y COMPARA CONTRA EL ANTERIOR, así que habla AL ENTRAR a un estado y no en cada
+// pintada. El render corre muchas veces por segundo cuando algo se anima; los
+// cambios de estado son unos pocos por minuto.
+
+let vozEstadoAnterior = null;
+
+// UNA TIRADA POR ENTRADA, y el piso de 4 segundos de VOZ.cooldownMs manda igual
+// sobre el resultado. O sea que hay dos filtros en serie: éste decide si se
+// INTENTA y `hablar` decide si suena.
+const seAnima = (clave) => Math.random() < (PROBABILIDAD_VOZ[clave] ?? 0);
+
+function vozAlEntrar(estadoVisual, esNoche) {
+  const antes = vozEstadoAnterior;
+  if (estadoVisual === antes) return;
+  vozEstadoAnterior = estadoVisual;
+
+  // La primera pintada no es una entrada: es que la app arrancó. Si contara,
+  // Chip diría algo de su estado antes de saludar.
+  if (antes === null) return;
+
+  // ACCIÓN TERMINADA. Se detecta por la SALIDA de jugando o limpiando y no por
+  // la entrada a idle: se entra a idle desde muchos lados, y sólo desde estos
+  // dos hay algo que terminó.
+  if ((antes === E.jugando || antes === E.limpiando) && estadoVisual !== antes) {
+    if (seAnima('hecho') && hablar('hecho')) return;
+  }
+
+  if (estadoVisual === E.standby && seAnima('standby')) return void hablar('standby');
+  if (estadoVisual === E.critico && seAnima('critico')) return void hablar('critico');
+  if (estadoVisual === E.jugando && seAnima('jugando')) return void hablar('jugando');
+  // FELIZ SUENA CON `cariciaLarga`, que es la misma risita: el mapeo dice que
+  // 14_robot_chuckle cubre las dos cosas. Acá decía `hablar('feliz')`, que NO es
+  // una clave del mapa, así que devolvía null en silencio y el estado feliz nunca
+  // sonaba. Lo agarró el test de mapa contra llamada, que existe para esto.
+  if (estadoVisual === E.feliz && seAnima('feliz')) return void hablar('cariciaLarga');
+}
+
+// ---- EL IDLE TIENE SU PROPIO RELOJ ----
+//
+// No se puede colgar del cambio de estado porque el idle es justamente el estado
+// donde no cambia nada. Y tampoco puede ser un timer que dispare: es un timer que
+// PREGUNTA, y casi siempre la respuesta es que no.
+//
+// Los tres escalones van de menos a más raro y se prueban en ese orden, así que
+// una firma no compite con un murmullo: si sale la firma, sale sola.
+setInterval(() => {
+  if (vozEstadoAnterior !== E.idle) return;
+  if (document.visibilityState !== 'visible') return;
+
+  const tirada = Math.random();
+  if (tirada < VOZ_IDLE.firma) hablar('firma');
+  else if (tirada < VOZ_IDLE.firma + VOZ_IDLE.profundo) hablar('idleProfundo');
+  else if (tirada < VOZ_IDLE.firma + VOZ_IDLE.profundo + VOZ_IDLE.murmullo) hablar('idle');
+}, VOZ_IDLE.cadaMs);
+
+// ---- EL SALUDO DE LA PRIMERA VISITA DEL DÍA ----
+//
+// `horasFuera` ya lo calcula abrirVisita y es la misma cuenta que decide los
+// eventos: no hace falta un dato nuevo. Doce horas es lo que separa "volviste
+// después de un rato" de "es otro día".
+//
+// NO SUENA EN EL ARRANQUE, y no por decisión: el navegador exige un gesto para
+// reproducir audio, y abrir la app no lo es. Queda armado y sale con el primer
+// toque, que es el mismo gesto que rescata el ambiente. Si el jugador no toca
+// nada, no hay saludo — y es preferible a un saludo que no suena y nadie sabe
+// por qué.
+if (visita.horasFuera >= 12) {
+  document.addEventListener(
+    'pointerdown',
+    () => {
+      if (seAnima('saludo')) hablar('saludo');
+    },
+    { capture: true, once: true }
+  );
+}
