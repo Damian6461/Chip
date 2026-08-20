@@ -3426,7 +3426,60 @@ export const VARS_PANTALLA = {
 // 2,2 % de la caja da 8 px a 390x844, adentro de los 6 a 10 pedidos. El número
 // se redondea a un ENTERO PAR al dibujar, para que la mitad también sea entera y
 // la pieza quede centrada sobre el eje del cable sin medio píxel.
-export const CONECTOR_PECHO = { x: 52.7, y: 83, lado: 2.2 };
+// ---- Y LA PIEZA DEJA DE SER UN CUADRADO ----
+//
+// Era un rectángulo de 6x8 px con dos filos y una boca. La queja, textual: "el
+// conector es un cuadrado que no cubre la zona". Tenía razón — un rectángulo
+// solo no se lee como unión, se lee como parche.
+//
+// LO QUE HACE QUE UNA UNIÓN SE LEA SON TRES ANCHOS DISTINTOS EN FILA. Es la
+// forma de cualquier prensaestopa, conector de panel o pasamuros:
+//
+//   BRIDA    pegada al pecho, la más ancha. Es la que tapa la zona del puerto.
+//   CUERPO   corto y más angosto que la brida.
+//   BOCA     por donde sale el cable, apenas más ancha que el cable.
+//
+// Las tres van en % de la CAJA DE CHIP, igual que el punto: lo que está pegado
+// a un sprite escala con el sprite.
+//
+// ---- LOS NÚMEROS, Y DE DÓNDE SALEN ----
+//
+// Medido sobre el render a 390x844 con verificacion/cable-union.mjs:
+//
+//   cable                6 px
+//   conector viejo       6 x 8 px
+//   módulo cian          35 x 43 px
+//
+// El módulo cian es el brillo dibujado al que el cable se enchufa, y el salto de
+// 35 px de brillo a 6 px de cable sin nada en el medio es exactamente lo que se
+// lee como "no conecta".
+//
+// LA BRIDA NO MIDE 35, Y ES UNA DECISIÓN. Una brida del ancho del módulo lo
+// TAPARÍA entero, y ese módulo lo dibujó el ilustrador: taparlo para arreglar
+// una unión es cambiar el dibujo para acomodar la pieza. 18 px son tres veces el
+// cable y la mitad del módulo — bastante para que el salto tenga un escalón
+// intermedio, poco para que el brillo siga estando. Si Damián lo quiere del
+// ancho del módulo, es este número y nada más.
+//
+// Todo entero y todo PAR en los anchos, para que la mitad también sea entera:
+// una pieza de ancho impar centrada sobre el eje del cable cae medio píxel
+// corrida y se ve borrosa de un lado.
+export const CONECTOR_PECHO = {
+  x: 52.7,
+  y: 83,
+
+  // Perpendicular al cable. 18, 12 y 10 px a 390x844.
+  brida: { ancho: 4.85, largo: 1.08 },
+  cuerpo: { ancho: 3.23, largo: 1.62 },
+  // La boca es apenas más ancha que el cable: 10 contra 8. Si midiera lo mismo
+  // que el cuerpo no sería una boca, sería el canto.
+  boca: { ancho: 2.7, largo: 0.81 },
+
+  // Cuánto se hunde la brida en el pecho. Lo que entra no se ve, y por eso mismo
+  // tiene que entrar: una pieza que apoya justo sobre la chapa deja una línea de
+  // contacto, y una línea de contacto se lee como pegada encima.
+  dentro: 0.81
+};
 
 // EL CABLE, dibujado y animado por código.
 //
@@ -3468,7 +3521,26 @@ export const CABLE = {
   //
   // Antes de eso: en la escena de 480x944 el eje medía 240 px y el 2,98 daba 7,2,
   // contra los 5,3 que daba el 1,1% del ancho.
-  grosor: 2.58,
+  // Y SUBE A 3,61, QUE ES +40%. La queja era "el cable es angosto", y un cable
+  // de alimentación es grueso.
+  //
+  // El cable medía 7,63 px a 390x844 y pasa a 10,7. Se probaron los dos
+  // escalones pedidos: +40% da 10,7 y +70% da 13. Va el de 40 por la regla de
+  // elegir conservador cuando hay duda, y el de 70 está a un número de
+  // distancia: 4,39. Las dos capturas están en verificacion/capturas/.
+  //
+  // EL ENGORDE VA APARTE Y NO ADENTRO DEL 3,61, y no es prolijidad: el 2,58
+  // sale de una CADENA —25,3 px de cable sobre un eje de 849,6 en la referencia,
+  // re-escalado porque el toma se fue de cuadro— y hay un guardián que rehace
+  // esa cadena y la compara. Si el pedido de Damián se hubiera sumado al número,
+  // el guardián se pondría rojo contra una decisión, y la salida fácil sería
+  // aflojarlo: adiós a la cadena entera.
+  //
+  // Con el factor declarado aparte, el guardián sigue verificando que el 2,58
+  // salga de la referencia Y que el grosor final sea ése por el factor. La
+  // decisión queda visible y la medición sigue viva.
+  engorde: 1.4,
+  grosor: 3.61,
 
   // EL RADIO MÍNIMO VA EN SEMIANCHOS Y NO EN PÍXELES, y el número absoluto que
   // había casi borra el quiebre en S.

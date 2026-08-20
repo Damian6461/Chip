@@ -1300,13 +1300,20 @@ function puntoDelConector(escena) {
   const chip = cajaChip.getBoundingClientRect();
   if (!chip.width) return null;
 
+  // LAS MEDIDAS DE LAS TRES PIEZAS, en la MISMA unidad y desde la MISMA caja.
+  // Salen de acá y no de un cálculo aparte en el que dibuja: dos cuentas sobre
+  // la misma caja son dos lugares donde se pueden separar.
+  const enPx = (v) => (v / 100) * chip.width;
+
   return {
     x: chip.x - escena.x + (CONECTOR_PECHO.x / 100) * chip.width,
     y: chip.y - escena.y + (CONECTOR_PECHO.y / 100) * chip.height,
-    // El lado del conector, en la MISMA unidad y desde la MISMA caja. Sale de
-    // acá y no de un cálculo aparte en el que dibuja: dos cuentas sobre la misma
-    // caja son dos lugares donde se pueden separar.
-    lado: (CONECTOR_PECHO.lado / 100) * chip.width
+    piezas: {
+      brida: { ancho: enPx(CONECTOR_PECHO.brida.ancho), largo: enPx(CONECTOR_PECHO.brida.largo) },
+      cuerpo: { ancho: enPx(CONECTOR_PECHO.cuerpo.ancho), largo: enPx(CONECTOR_PECHO.cuerpo.largo) },
+      boca: { ancho: enPx(CONECTOR_PECHO.boca.ancho), largo: enPx(CONECTOR_PECHO.boca.largo) },
+      dentro: enPx(CONECTOR_PECHO.dentro)
+    }
   };
 }
 
@@ -1368,7 +1375,7 @@ export function dibujarCable() {
   // cable salía recto hacia abajo, y una ficha que apunta para otro lado que su
   // propio cable deshace toda la unión.
   const salida = { x: linea[1].x - linea[0].x, y: linea[1].y - linea[0].y };
-  const conector = conectorDelPecho(desde, salida, desde.lado, grosor);
+  const conector = conectorDelPecho(desde, salida, desde.piezas, grosor);
 
   // ---- LA FICHA DE LA OTRA PUNTA, SACADA A PROPÓSITO ----
   //
@@ -1446,7 +1453,7 @@ export function dibujarCable() {
   const eje = `translate(${desde.x} ${desde.y}) rotate(${conector.giro.toFixed(1)})`;
 
   nodoCable.innerHTML =
-    `<ellipse class="cable-sombra-puerto" transform="${eje}" rx="${(conector.ancho * 1.1).toFixed(1)}" ry="${(conector.ancho * 0.85).toFixed(1)}"/>` +
+    `<ellipse class="cable-sombra-puerto" transform="${eje}" rx="${(conector.largoTotal * 1.1).toFixed(1)}" ry="${(conector.anchoMayor * 0.85).toFixed(1)}"/>` +
     `<path class="cable-cuerpo" d="${adelante}"/>` +
     // LAS DOS ARISTAS DEL TUBO. La de abajo primero: si el filo claro quedara
     // debajo del oscuro en un cruce del quiebre en S, el cable se vería
@@ -1454,22 +1461,34 @@ export function dibujarCable() {
     `<path class="cable-filo-abajo" d="${filoAbajo}" style="stroke-width:${grosorFilo}px"/>` +
     `<path class="cable-filo-arriba" d="${filoArriba}" style="stroke-width:${grosorFilo}px"/>` +
     pulsos +
-    // EL CONECTOR, ÚLTIMO Y ENCIMA DE TODO. Cuatro rectángulos, ningún radio,
-    // todas las medidas enteras:
+    // EL CONECTOR, ÚLTIMO Y ENCIMA DE TODO, tapándole la punta al cable.
     //
-    //   cuerpo   la pieza, en el gris de plástico que ya estaba declarado para
-    //            esto. Más claro que el cable a propósito: tiene que leerse como
-    //            OTRA pieza y no como el cable engordado.
-    //   filo     una fila de 1 px arriba y otra abajo, con los dos tonos del
-    //            tubo. Es el mismo par que hace redondo al cable, y usarlo acá
-    //            es lo que hace que las dos piezas sean del mismo material.
-    //   boca     la abertura, del alto DEL CABLE y no del conector, en el negro
-    //            del puerto. Un cable sale de la abertura, no del canto.
+    // TRES ANCHOS EN FILA, que es lo que hace que una unión se lea como pieza
+    // mecánica y no como parche. De adentro para afuera:
+    //
+    //   brida    la más ancha, hundida en el pecho. Es la que tapa la zona del
+    //            puerto y la que le da un escalón al salto entre el módulo cian
+    //            —35 px de brillo— y el cable, que son 8.
+    //   cuerpo   más angosto, corto.
+    //   boca     apenas más ancha que el cable, y el cable sale de ADENTRO: su
+    //            punta llega hasta la mitad de la brida.
+    //
+    // Cada tramo lleva su fila de 1 px arriba y abajo con los dos tonos del
+    // tubo, que es el mismo par que hace redondo al cable — y usarlo acá es lo
+    // que hace que las dos piezas sean del mismo material. Sin ese par, tres
+    // rectángulos planos se leen como tres rectángulos.
+    //
+    // Ningún radio, ninguna diagonal, todas las medidas enteras.
     `<g class="cable-conector" transform="${eje}">` +
-    `<rect class="cable-conector-cuerpo" x="${-conector.dentro}" y="${-conector.mitad}" width="${conector.ancho}" height="${conector.lado}"/>` +
-    `<rect class="cable-conector-filo-arriba" x="${-conector.dentro}" y="${-conector.mitad}" width="${conector.ancho}" height="1"/>` +
-    `<rect class="cable-conector-filo-abajo" x="${-conector.dentro}" y="${conector.mitad - 1}" width="${conector.ancho}" height="1"/>` +
-    `<rect class="cable-conector-boca" x="${conector.afuera - 1}" y="${conector.bocaY}" width="1" height="${conector.boca}"/>` +
+    [conector.brida, conector.cuerpo, conector.boca]
+      .map(
+        (t, i) =>
+          `<rect class="${i === 2 ? 'cable-conector-boca' : 'cable-conector-cuerpo'}" ` +
+          `x="${t.x}" y="${t.y}" width="${t.ancho}" height="${t.alto}"/>` +
+          `<rect class="cable-conector-filo-arriba" x="${t.x}" y="${t.y}" width="${t.ancho}" height="1"/>` +
+          `<rect class="cable-conector-filo-abajo" x="${t.x}" y="${t.y + t.alto - 1}" width="${t.ancho}" height="1"/>`
+      )
+      .join('') +
     `</g>`;
 }
 

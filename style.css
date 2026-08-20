@@ -4893,8 +4893,18 @@ body.sin-movimiento *::after {
   shape-rendering: crispEdges;
 }
 
-/* La boca. Va del alto DEL CABLE y no del conector: si midiera lo mismo que la
-   pieza no sería una abertura, sería el canto. */
+/* LA BOCA. Es el tramo de afuera, apenas más ancho que el cable, y va en el
+   negro del puerto: es una abertura, no una tapa. El cable sale de ADENTRO —su
+   punta llega hasta la mitad de la brida— así que lo que se ve en la boca es la
+   sombra alrededor del cable, que es exactamente lo que se ve en un conector de
+   verdad.
+
+   Acá decía "va del alto DEL CABLE y no del conector". Sigue siendo el
+   criterio, con una corrección medida: no puede ser MÁS ANGOSTA que el cable, y
+   podía serlo. El grosor del cable sale de un % del eje pecho->toma y la boca de
+   un % de la caja de Chip; son dos unidades distintas, así que un día se cruzan
+   y el cable sale de una abertura más chica que él. Ahora el máximo de las dos
+   manda — ver conectorDelPecho. */
 .cable-conector-boca {
   fill: var(--cable-sombra-puerto);
   shape-rendering: crispEdges;

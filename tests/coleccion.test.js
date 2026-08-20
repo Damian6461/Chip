@@ -648,19 +648,52 @@ prueba('cable: el grosor va en % del EJE y no del ancho de la escena', () => {
   const medido = (25.3 / 849.6) * 100;
   const esperado = medido * (ejeCon(DONDE_ESTABA_EL_TOMA) / ejeCon(TOMA_PARED.x));
 
+  // Y ACÁ ENTRA EL ENGORDE, que es una DECISIÓN y no una medición: Damián pidió
+  // un cable más grueso —"el cable es angosto"— y el factor vive declarado en
+  // CABLE.engorde en vez de estar sumado adentro del número.
+  //
+  // Es lo que mantiene viva la cadena: sin el factor aparte, este guardián se
+  // pondría rojo contra la decisión y la salida fácil sería aflojarlo. Así
+  // sigue verificando las dos cosas por separado — que el porcentaje base salga
+  // de la referencia, y que el grosor final sea ése por el factor pedido.
+  const conEngorde = esperado * CABLE.engorde;
   verdadero(
-    Math.abs(CABLE.grosor - esperado) < 0.05,
-    `${CABLE.grosor}% contra el ${esperado.toFixed(2)}% que sale de la referencia ` +
-      `re-escalada por el eje (${medido.toFixed(2)}% cuando el toma estaba en el 90%)`
+    Math.abs(CABLE.grosor - conEngorde) < 0.05,
+    `${CABLE.grosor}% contra el ${conEngorde.toFixed(2)}% que sale de la referencia ` +
+      `re-escalada por el eje (${medido.toFixed(2)}% cuando el toma estaba en el 90%, ` +
+      `${esperado.toFixed(2)}% hoy) por el engorde de ${CABLE.engorde}`
+  );
+  verdadero(
+    CABLE.engorde >= 1,
+    `el engorde vale ${CABLE.engorde}: un factor menor que 1 adelgaza el cable, ` +
+      'que es lo contrario de lo que se pidió'
   );
 
-  // Y EL GROSOR DIBUJADO, que es lo que de verdad se conserva: 7,6 px en el
-  // teléfono, los mismos que había antes de mover el toma.
+  // Y EL GROSOR DIBUJADO. Eran 7,63 px cuando el número sólo salía de la
+  // referencia; con el engorde son 7,63 × 1,4. Se comprueba contra ESA cuenta y
+  // no contra un número escrito a mano, para que el día que el factor cambie
+  // haya un solo lugar donde tocarlo.
   const px = grosorDelCable(ejeCon(TOMA_PARED.x), CABLE);
   verdadero(
-    Math.abs(px - 7.63) < 0.3,
-    `el cable dibujado mide ${px.toFixed(2)} px y antes medía 7,63`
+    Math.abs(px - 7.63 * CABLE.engorde) < 0.4,
+    `el cable dibujado mide ${px.toFixed(2)} px y tendría que medir ` +
+      `${(7.63 * CABLE.engorde).toFixed(2)} (7,63 por el engorde de ${CABLE.engorde})`
   );
+
+  // ACÁ PUSE UNA ASERCIÓN DE PARIDAD Y LA SAQUÉ, porque era una regla inventada.
+  //
+  // El razonamiento parecía bueno: la cinta se centra sobre el eje, así que un
+  // grosor impar deja los dos bordes a medio píxel. Es exactamente lo que vale
+  // para el CONECTOR, que son rectángulos rectos.
+  //
+  // Pero la cinta del cable no es un rectángulo: es un path que sigue una curva,
+  // y sus dos bordes son curvas desplazadas. Con grosor par o impar, esos bordes
+  // no caen en enteros de todos modos — el que decide dónde cae cada píxel es el
+  // recorrido, no el grosor. `grosorDelCable` devuelve un flotante a propósito.
+  //
+  // Un guardián que exige una propiedad que el código no tiene ni necesita se
+  // pone rojo contra un cambio correcto, y la salida fácil es aflojar el número
+  // hasta que pase. Queda anotado y no puesto.
 });
 
 // ---- LA FORMA DEL CABLE, Y LOS DOS TESTS QUE REEMPLAZA ----

@@ -1376,36 +1376,63 @@ export function cintaDelCable(
 //
 // EL LADO VIENE EN PÍXELES YA RESUELTO desde ui.js, en % de la caja de Chip: es
 // la unidad de lo que está pegado a un sprite. Ver CONECTOR_PECHO.lado.
-export function conectorDelPecho(conector, direccion, lado, grosor) {
+// EL CONECTOR DEL PECHO: TRES PIEZAS EN FILA, NO UN CUADRADO.
+//
+// Recibe las tres medidas YA EN PÍXELES —quien las convierte de % de la caja de
+// Chip es ui.js— y devuelve la geometría entera de cada tramo. Este archivo no
+// importa config: recibe números y devuelve formas.
+//
+// El eje x local va HACIA AFUERA del pecho, en la dirección del cable. Así que
+// los tramos se apilan de adentro para afuera:
+//
+//        pecho |  brida   |  cuerpo  | boca |   cable ->
+//              |==========|          |      |
+//              |==========|==========|      |
+//              |==========|==========|======|====
+//
+// Cada uno arranca donde termina el anterior, y todos los cortes caen en enteros.
+export function conectorDelPecho(conector, direccion, piezas, grosor) {
   const largo = Math.hypot(direccion.x, direccion.y) || 1;
   const ux = direccion.x / largo;
   const uy = direccion.y / largo;
 
-  // PAR, para que la mitad también sea entera: una pieza de lado impar centrada
+  // PAR, para que la mitad también sea entera: una pieza de ancho impar centrada
   // sobre el eje del cable cae medio píxel corrida y se ve borrosa de un lado.
-  const L = Math.max(6, Math.round(lado / 2) * 2);
-  const mitad = L / 2;
+  const par = (v, minimo) => Math.max(minimo, Math.round(v / 2) * 2);
+  const entero = (v, minimo) => Math.max(minimo, Math.round(v));
 
-  // Cuánto entra al pecho y cuánto sobresale. El cuerpo es más ancho que largo:
-  // un puerto visto de costado es una pieza chata contra la chapa, no un tubo.
-  const dentro = Math.max(1, Math.round(L * 0.25));
-  const afuera = Math.max(2, Math.round(L * 0.5));
+  const brida = { ancho: par(piezas.brida.ancho, 8), largo: entero(piezas.brida.largo, 2) };
+  const cuerpo = { ancho: par(piezas.cuerpo.ancho, 6), largo: entero(piezas.cuerpo.largo, 2) };
 
-  // La boca: la abertura por la que sale el cable, del alto del cable y no del
-  // conector. Si midiera lo mismo que la pieza no sería una boca, sería el canto.
-  const boca = Math.max(2, Math.round(grosor));
+  // LA BOCA NO PUEDE SER MÁS ANGOSTA QUE EL CABLE, y esto no es una precaución
+  // teórica: el grosor del cable sale de un % del eje pecho->toma y la boca de
+  // un % de la caja de Chip. Son dos unidades distintas, así que un día se
+  // cruzan — y ese día el cable saldría de una abertura más chica que él, que se
+  // ve exactamente como un cable pasando por encima de la pieza.
+  const bocaAncho = Math.max(par(piezas.boca.ancho, 4), par(grosor + 2, 4));
+  const boca = { ancho: bocaAncho, largo: entero(piezas.boca.largo, 1) };
+
+  const dentro = entero(piezas.dentro, 1);
+
+  // Los tres cortes sobre el eje, contando desde el punto de enchufe.
+  const x0 = -dentro; // la brida arranca adentro del pecho
+  const x1 = x0 + dentro + brida.largo; // fin de la brida
+  const x2 = x1 + cuerpo.largo; // fin del cuerpo
+  const x3 = x2 + boca.largo; // fin de la boca, de donde sale el cable
 
   return {
-    // Hasta dónde llega la punta del cable: bien adentro, para que el conector la
-    // tape entera aunque el balanceo la mueva un píxel.
-    punta: { x: conector.x + ux * L * 0.7, y: conector.y + uy * L * 0.7 },
-    lado: L,
-    mitad,
-    dentro,
-    afuera,
-    ancho: dentro + afuera,
-    boca,
-    bocaY: -Math.round(boca / 2),
+    // Hasta dónde llega la punta del cable: adentro del cuerpo, no adentro de la
+    // boca. El cable tiene que salir DE ADENTRO de la pieza — si terminara en la
+    // boca se vería apoyado contra ella.
+    punta: { x: conector.x + ux * (x1 - x0) * 0.5, y: conector.y + uy * (x1 - x0) * 0.5 },
+    brida: { x: x0, ancho: dentro + brida.largo, alto: brida.ancho, y: -brida.ancho / 2 },
+    cuerpo: { x: x1, ancho: cuerpo.largo, alto: cuerpo.ancho, y: -cuerpo.ancho / 2 },
+    boca: { x: x2, ancho: boca.largo, alto: boca.ancho, y: -boca.ancho / 2 },
+    // El borde de afuera de todo, que es donde arranca el cable a la vista.
+    afuera: x3,
+    // La sombra de contacto se dimensiona con la pieza entera.
+    largoTotal: x3 - x0,
+    anchoMayor: brida.ancho,
     // El ángulo sale de la dirección real del cable, no de un número escrito.
     giro: (Math.atan2(uy, ux) * 180) / Math.PI
   };

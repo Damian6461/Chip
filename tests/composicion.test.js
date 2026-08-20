@@ -28,12 +28,13 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { prueba, igual, verdadero } from './runner.js';
-import { svgDeRepisa } from '../js/formas.js';
+import { svgDeRepisa, conectorDelPecho, grosorDelCable } from '../js/formas.js';
 import {
   INHALACION,
   INCLINACION_CABEZA,
   CABLE,
   CONECTOR_PECHO,
+  TOMA_PARED,
   PULSOS_CABLE,
   TAMANO_OBJETO,
   OBJETO_PISO,
@@ -678,13 +679,97 @@ prueba('cable: el conector del pecho es una pieza de píxeles, no una ficha vect
   verdadero(!/rx=/.test(dibujo), 'volvió una esquina redondeada al conector');
   verdadero(!/toFixed/.test(dibujo), 'una medida con decimales: al DOM tienen que llegar enteras');
 
-  // EL LADO VA EN % DE LA CAJA DE CHIP y no en píxeles fijos: lo que está pegado
-  // a un sprite escala con el sprite. Los objetos de la colección van al revés
-  // —píxeles fijos— porque están en el mundo y no sobre Chip.
+  // LAS MEDIDAS VAN EN % DE LA CAJA DE CHIP y no en píxeles fijos: lo que está
+  // pegado a un sprite escala con el sprite. Los objetos de la colección van al
+  // revés —píxeles fijos— porque están en el mundo y no sobre Chip.
+  //
+  // Antes acá había un solo `lado`, porque el conector era un cuadrado. Ahora son
+  // tres tramos, y lo que hay que cuidar es que sigan siendo porcentajes: un 18
+  // suelto en esta tabla sería 18 px y la pieza dejaría de escalar con Chip.
+  for (const tramo of ['brida', 'cuerpo', 'boca']) {
+    for (const cual of ['ancho', 'largo']) {
+      const v = CONECTOR_PECHO[tramo]?.[cual];
+      verdadero(
+        typeof v === 'number' && v > 0 && v < 15,
+        `CONECTOR_PECHO.${tramo}.${cual} vale ${v} y tiene que ser un % de la caja, no píxeles`
+      );
+    }
+  }
+
+  // Y LOS TRES ANCHOS TIENEN QUE IR EN BAJADA, que es la forma entera de la
+  // pieza: brida más ancha que el cuerpo, cuerpo más ancho que la boca. Tres
+  // anchos iguales son un rectángulo con dos líneas, o sea de donde venimos.
   verdadero(
-    typeof CONECTOR_PECHO.lado === 'number' && CONECTOR_PECHO.lado < 10,
-    `CONECTOR_PECHO.lado vale ${CONECTOR_PECHO.lado} y tiene que ser un % de la caja, no píxeles`
+    CONECTOR_PECHO.brida.ancho > CONECTOR_PECHO.cuerpo.ancho &&
+      CONECTOR_PECHO.cuerpo.ancho > CONECTOR_PECHO.boca.ancho,
+    `los anchos son ${CONECTOR_PECHO.brida.ancho} / ${CONECTOR_PECHO.cuerpo.ancho} / ` +
+      `${CONECTOR_PECHO.boca.ancho} y tienen que ir de mayor a menor`
   );
+});
+
+// LA BOCA NO PUEDE SER MÁS ANGOSTA QUE EL CABLE.
+//
+// No es una precaución teórica: el grosor del cable sale de un % del eje
+// pecho->toma y la boca de un % de la caja de Chip. Son dos unidades distintas
+// sobre dos cajas distintas, así que un día se cruzan — y ese día el cable sale
+// de una abertura más chica que él, que se ve como un cable pasando POR ENCIMA
+// de la pieza en vez de salir de adentro.
+//
+// Se prueba con la función de verdad y con un cable absurdo, que es la única
+// forma de saber que el máximo está puesto y no sólo escrito en un comentario.
+prueba('cable: la boca del conector nunca queda más angosta que el cable', () => {
+  const piezas = {
+    brida: { ancho: 18, largo: 4 },
+    cuerpo: { ancho: 12, largo: 6 },
+    boca: { ancho: 10, largo: 3 },
+    dentro: 3
+  };
+  const direccion = { x: 0, y: 1 };
+  const origen = { x: 0, y: 0 };
+
+  const normal = conectorDelPecho(origen, direccion, piezas, 8);
+  verdadero(
+    normal.boca.alto >= 8,
+    `con un cable de 8 la boca mide ${normal.boca.alto}`
+  );
+
+  // Y con un cable más grueso que la boca declarada, que es el caso que importa.
+  const gordo = conectorDelPecho(origen, direccion, piezas, 20);
+  verdadero(
+    gordo.boca.alto >= 20,
+    `con un cable de 20 la boca mide ${gordo.boca.alto}: el cable saldría por afuera`
+  );
+
+  // Todas las medidas enteras, que es la regla de la pieza.
+  for (const tramo of ['brida', 'cuerpo', 'boca']) {
+    for (const v of Object.values(normal[tramo])) {
+      verdadero(Number.isInteger(v * 2), `${tramo} tiene una medida de ${v}`);
+    }
+  }
+
+  // EL CABLE TIENE QUE SER MÁS ANGOSTO QUE EL CUERPO, y esto salió de mirar la
+  // captura del escalón de +70%: con el cable en 13 px y el cuerpo en 12, la
+  // pieza deja de leerse como conector y el cable parece habérsela tragado.
+  //
+  // Es la condición de que haya TRES ANCHOS EN BAJADA de verdad: si el cable —el
+  // cuarto ancho de la fila— es más gordo que el tramo anterior, la progresión
+  // se rompe en el último escalón, que es justo donde se mira.
+  const ejeCon106 = Math.hypot(
+    ((TOMA_PARED.x - CONECTOR_PECHO.x) / 100) * 390,
+    ((TOMA_PARED.y - CONECTOR_PECHO.y) / 100) * 844
+  );
+  const grosorReal = grosorDelCable(ejeCon106, CABLE);
+  const cuerpoReal = (CONECTOR_PECHO.cuerpo.ancho / 100) * 371.36; // la caja de Chip a 390x844
+  verdadero(
+    grosorReal < cuerpoReal,
+    `el cable mide ${grosorReal.toFixed(1)} px y el cuerpo del conector ${cuerpoReal.toFixed(1)}: ` +
+      'el cable se traga la pieza y la unión deja de leerse'
+  );
+
+  // Y los anchos, pares: la pieza se centra sobre el eje del cable.
+  for (const tramo of ['brida', 'cuerpo', 'boca']) {
+    igual(normal[tramo].alto % 2, 0, `el ancho de ${tramo} es ${normal[tramo].alto}, impar`);
+  }
 });
 
 prueba('cable: el resplandor del pulso se dibuja, no se difumina', () => {
