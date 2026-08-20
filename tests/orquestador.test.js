@@ -34,6 +34,7 @@ import {
   PROBABILIDAD_OBJETO_PISO,
   ZONA_PISO,
   OBJETO_PISO,
+  TAMANO_OBJETO,
   SILUETA_CHIP,
   DURACION_FASTIDIO_MS,
   CLIMAS,
@@ -1021,9 +1022,20 @@ prueba('piso: la pieza respeta el mínimo táctil y el dibujo entra adentro', ()
     OBJETO_PISO.lado <= OBJETO_PISO.toque,
     'el dibujo entra en la caja: si fuera más grande, el padding sería negativo'
   );
+  // EL PISO DIBUJA LA PIEZA EN EL MUNDO, Y EL MUNDO ES EL MAESTRO.
+  //
+  // Acá decía `>= 34`, con el motivo "se pidió 34-38 para que se descubra". El
+  // rango era honesto y la unidad estaba mal: 36 no divide a un maestro de 32,
+  // así que la pieza más grande del juego era justo la que salía remuestreada.
+  //
+  // El piso ya no elige su tamaño: usa el del mundo, y quien decide cuánto mide
+  // el mundo es TAMANO_OBJETO. Lo que queda para verificar acá es lo único que
+  // esta prueba sabe y aquella no: que no volvimos a los 25 px que se midieron
+  // como imposibles de descubrir.
+  igual(OBJETO_PISO.lado, TAMANO_OBJETO.mundo, 'la pieza del piso es la pieza del mundo');
   verdadero(
-    OBJETO_PISO.lado >= 34,
-    `el dibujo mide ${OBJETO_PISO.lado} y se pidió 34-38 para que se descubra`
+    OBJETO_PISO.lado > 25,
+    `el dibujo mide ${OBJETO_PISO.lado} y a 25 se midió que no se descubría`
   );
 
   // Y el CSS tiene que estar usando las dos, no una sola: con la caja sin el

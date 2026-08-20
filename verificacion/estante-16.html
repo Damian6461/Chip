@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>El estante a 16 — 1, 3 y 5 piezas, en 360x800 y 390x844</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #14171c;
+        color: #cfd6e0;
+        font: 12px/1.5 ui-monospace, monospace;
+      }
+      h1 {
+        font-size: 14px;
+        font-weight: 400;
+        margin: 0 0 4px;
+      }
+      p.nota {
+        max-width: 900px;
+        color: #8b93a0;
+        margin: 0 0 16px;
+      }
+      .fila {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+      }
+      .caso {
+        border: 1px solid #2a303a;
+        background: #0e1116;
+      }
+      .caso h2 {
+        font-size: 11px;
+        font-weight: 400;
+        margin: 0;
+        padding: 4px 6px;
+        color: #9aa3b2;
+        border-bottom: 1px solid #2a303a;
+      }
+      /* Cada caso corre en su propio viewport de verdad: un iframe de 390x844
+         resuelve dvh contra SUS 844 y no contra la ventana de escritorio. Medir
+         el juego adentro de la ventana grande y multiplicar sería medir otra
+         cosa: --alto-escena es 100dvh y desde afuera devuelve 100. */
+      iframe {
+        display: block;
+        border: 0;
+      }
+      table {
+        border-collapse: collapse;
+        margin-top: 16px;
+        font-size: 11px;
+      }
+      th,
+      td {
+        border: 1px solid #2a303a;
+        padding: 3px 8px;
+        text-align: right;
+      }
+      th {
+        color: #9aa3b2;
+        font-weight: 400;
+        text-align: left;
+      }
+      td.txt {
+        text-align: left;
+      }
+      .mal {
+        color: #ff8b7a;
+      }
+      .bien {
+        color: #8fd6a0;
+      }
+      #zoom {
+        margin-top: 16px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      #zoom canvas {
+        image-rendering: pixelated;
+        border: 1px solid #2a303a;
+      }
+      #como-abrirla {
+    border: 1px solid #2a2d38; border-left: 3px solid #ffb060;
+    padding: 10px 14px; margin: 0 0 22px; max-width: 84ch;
+    font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: #9aa0ab;
+  }
+  #como-abrirla p { margin: 0 0 6px; max-width: none; font-size: 13px; color: inherit; }
+  #como-abrirla p:last-child { margin-bottom: 0; }
+  #como-abrirla a { color: #ffb060; }
+  #aviso-protocolo { color: #ff6b78; }
+  #version-sw:empty { display: none; }
+    </style>
+  </head>
+  <body>
+<div id="como-abrirla">
+  <p id="aviso-protocolo" hidden>
+    <strong>ASÍ NO SE VE NADA, Y NO ES QUE NO HAYA NADA.</strong>
+    Esta página se dibuja con módulos ES, y el navegador los bloquea en
+    <code>file://</code>. El script no corre, queda sólo el texto, y el resultado
+    se parece a «no hay nada que mostrar». Hay que servirla por HTTP:
+  </p>
+  <p>
+    <strong>En el teléfono:</strong>
+    <a href="https://damian6461.github.io/Chip/verificacion/estante-16.html">damian6461.github.io/Chip/verificacion/estante-16.html</a>
+  </p>
+  <p>
+    <strong>En la máquina:</strong> <code>node tools/servir.mjs</code> en la raíz
+    del repo, y abrir <code>localhost:8123/verificacion/estante-16.html</code>
+  </p>
+  <p id="version-sw"></p>
+</div>
+<script>
+  (function () {
+    if (location.protocol === 'file:') {
+      document.getElementById('aviso-protocolo').hidden = false;
+      return;
+    }
+
+    /* Y LA OTRA MITAD DE ABRIRLA BIEN: CON QUÉ VERSIÓN SE ESTÁ MIRANDO.
+
+       js/config.js y js/tema.js SÍ están en ARCHIVOS_CACHE, así que un teléfono
+       con un service worker viejo le sirve a esta página los módulos de esa
+       versión. La página anda, dibuja, no se queja — y mide una versión que ya
+       no existe. Es el mismo modo de falla que costó dos deploys, ahora del lado
+       de la herramienta que tendría que detectarlo.
+
+       Todo esto es informativo y no puede romper la página: si algo falla, el
+       renglón queda vacío y el CSS lo esconde. */
+    var linea = document.getElementById('version-sw');
+    function decir(texto, alarma) {
+      linea.textContent = texto;
+      linea.style.color = alarma ? '#ffb060' : '#6d747f';
+    }
+
+    fetch('../sw.js', { cache: 'no-store' })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var publicada = (t.match(/CACHE_VERSION\s*=\s*'([^']+)'/) || [])[1] || '?';
+
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+          decir('Sin service worker: los módulos vienen de la red. Publicado: ' + publicada + '.', false);
+          return;
+        }
+
+        var canal = new MessageChannel();
+        var reloj = setTimeout(function () {
+          decir('El service worker no contestó en 400 ms. Publicado: ' + publicada + '.', true);
+        }, 400);
+
+        canal.port1.onmessage = function (e) {
+          clearTimeout(reloj);
+          var puesta = (e.data && e.data.version) || '?';
+          decir(
+            puesta === publicada
+              ? 'Service worker ' + puesta + ', igual que lo publicado.'
+              : 'OJO: esta página se sirve con ' + puesta + ' y lo publicado es ' +
+                publicada + '. Estás mirando una versión vieja — recargá dos veces.',
+            puesta !== publicada
+          );
+        };
+
+        navigator.serviceWorker.controller.postMessage('version', [canal.port2]);
+      })
+      .catch(function () {});
+  })();
+</script>
+    <h1>El estante a 16 px</h1>
+    <p class="nota">
+      Seis corridas del juego DE VERDAD —no una réplica del marcado— cada una en su propio viewport.
+      Se siembra la colección en localStorage, se carga index.html, y se mide lo que el layout dejó:
+      el lado de cada pieza, el hueco entre vecinas y si la fila se sale de la tabla. La pregunta que
+      no puede contestar una medición está abajo del todo, ampliada: si a 16 las piezas se distinguen
+      entre sí.
+    </p>
+
+    <div class="fila" id="casos"></div>
+    <div id="tabla"></div>
+    <div id="zoom"></div>
+
+    <script type="module">
+      import { TAMANO_OBJETO, SAVE_KEY, PIEZAS_POR_ESTANTE } from '../js/config.js';
+
+      // Ocho ids del catálogo, en el orden en que se van a apoyar. Las cinco
+      // primeras son las del caso de cinco: cuatro arriba y una abajo, que es
+      // el reparto que hace pintarEstante.
+      const IDS = [
+        'tuerca-cabeza',
+        'arandela-dorada',
+        'resorte',
+        'cosa-sin-nombre',
+        'llave-once',
+        'engranaje-dorado',
+        'chapa-pez',
+        'rodamiento'
+      ];
+
+      const VIEWPORTS = [
+        { w: 360, h: 800 },
+        { w: 390, h: 844 }
+      ];
+      const CUANTOS = [1, 3, 5];
+
+      const casos = document.getElementById('casos');
+      const filas = [];
+
+      // EL SERVICE WORKER SE VA ANTES DE MEDIR NADA, y no es paranoia: pasó en
+      // esta misma tanda. La grilla del menú se midió con celdas de 94 px
+      // después de haberlas cambiado a 48, porque el service worker le estaba
+      // sirviendo a la página el style.css de la versión anterior. La medición
+      // era correcta y el sujeto era viejo.
+      //
+      // Es el modo de falla que la cabecera de estas páginas ya denuncia, un
+      // escalón más adentro: ahí avisa que la VERSIÓN no coincide; acá los que
+      // miden son los iframes, y hay que sacarlo antes de que los cargue.
+      if ('serviceWorker' in navigator) {
+        for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+        for (const k of await caches.keys()) await caches.delete(k);
+      }
+
+      // El estado sembrado. Sale de leer lo que haya y pisarle la colección, así
+      // el resto de los campos son los que el juego espera y no una invención.
+      function sembrar(cuantos) {
+        const base = JSON.parse(localStorage.getItem(SAVE_KEY) ?? '{}');
+        localStorage.setItem(
+          SAVE_KEY,
+          JSON.stringify({
+            ...base,
+            coleccion: IDS.slice(0, cuantos),
+            objetoEnPiso: null,
+            // Con la franja fija no hay que adivinar de qué color va a salir la
+            // captura, y las seis salen comparables entre sí.
+            ajustes: { ...(base.ajustes ?? {}), movimientoReducido: true, sonido: false }
+          })
+        );
+      }
+
+      function esperar(ms) {
+        return new Promise((r) => setTimeout(r, ms));
+      }
+
+      for (const vp of VIEWPORTS) {
+        for (const cuantos of CUANTOS) {
+          const caja = document.createElement('div');
+          caja.className = 'caso';
+          const titulo = document.createElement('h2');
+          titulo.textContent = `${vp.w}x${vp.h} — ${cuantos} pieza${cuantos > 1 ? 's' : ''}`;
+          const marco = document.createElement('iframe');
+          marco.width = vp.w;
+          marco.height = vp.h;
+          caja.append(titulo, marco);
+          casos.append(caja);
+
+          // Uno por vez y en orden: los seis comparten el localStorage del
+          // origen, así que sembrar los seis de una dejaría a los seis con la
+          // última colección. El juego lee el save UNA vez al arrancar y no
+          // vuelve a mirarlo, así que una vez pintado se queda con lo suyo.
+          sembrar(cuantos);
+          await new Promise((listo) => {
+            marco.addEventListener('load', listo, { once: true });
+            marco.src = '../index.html';
+          });
+          await esperar(700);
+
+          filas.push({ vp, cuantos, marco });
+        }
+      }
+
+      // ---- La medición ----
+      const medidas = [];
+
+      for (const { vp, cuantos, marco } of filas) {
+        const doc = marco.contentDocument;
+        const escena = doc.getElementById('escena') ?? doc.body;
+        const anchoEscena = escena.getBoundingClientRect().width;
+
+        for (const fila of doc.querySelectorAll('.estante')) {
+          const piezas = [...fila.querySelectorAll('.objeto')];
+          if (piezas.length === 0) continue;
+
+          const cajaFila = fila.getBoundingClientRect();
+          const cajas = piezas.map((p) => p.getBoundingClientRect());
+
+          // EL LADO ES offsetWidth, NO EL BOUNDING RECT, y la diferencia no es
+          // una sutileza de API: getBoundingClientRect devuelve la caja EJE-
+          // ALINEADA de la pieza YA TRANSFORMADA, así que una pieza de 16
+          // rotada 5 grados mide 17,33 ahí — 16·(cos5 + sen5)— sin haber
+          // cambiado de tamaño. La primera corrida de esta página informó
+          // exactamente ese 17,33 como "lado máximo" y parecía que alguna regla
+          // seguía escalando.
+          //
+          // offsetWidth es el ancho de layout, antes de transformar: es el
+          // número que tiene que dar 16 clavado. El bounding rect se sigue
+          // usando para los huecos y el desborde, que es donde SÍ importa el
+          // espacio que la pieza ocupa una vez torcida.
+          const lados = piezas.map((p) => p.offsetWidth);
+          const anchosPintados = cajas.map((c) => c.width);
+
+          // El hueco entre vecinas, borde a borde. Cero o negativo quiere decir
+          // que se tocan o se solapan.
+          const huecos = [];
+          for (let i = 1; i < cajas.length; i++) huecos.push(cajas[i].left - cajas[i - 1].right);
+
+          medidas.push({
+            caso: `${vp.w}x${vp.h} / ${cuantos}`,
+            tabla: fila.id || 'estante',
+            piezas: piezas.length,
+            anchoFila: cajaFila.width,
+            anchoEscena,
+            lado: Math.min(...lados),
+            ladoMax: Math.max(...lados),
+            pintadoMax: Math.max(...anchosPintados),
+            hueco: huecos.length ? Math.min(...huecos) : null,
+            desborde: Math.max(0, Math.max(...cajas.map((c) => c.right)) - cajaFila.right)
+          });
+        }
+      }
+
+      const n = (v, d = 2) => (v === null ? '—' : v.toFixed(d));
+      const marca = (ok, texto) => `<span class="${ok ? 'bien' : 'mal'}">${texto}</span>`;
+
+      document.getElementById('tabla').innerHTML = `
+        <table>
+          <tr>
+            <th>caso</th><th>tabla</th><th>piezas</th><th>ancho fila</th>
+            <th>lado min</th><th>lado max</th><th>huella max</th><th>hueco min</th><th>desborde</th>
+          </tr>
+          ${medidas
+            .map(
+              (m) => `<tr>
+                <td class="txt">${m.caso}</td>
+                <td class="txt">${m.tabla}</td>
+                <td>${m.piezas}</td>
+                <td>${n(m.anchoFila, 1)}</td>
+                <td>${marca(m.lado === TAMANO_OBJETO.grilla, n(m.lado))}</td>
+                <td>${marca(m.ladoMax === TAMANO_OBJETO.grilla, n(m.ladoMax))}</td>
+                <td>${n(m.pintadoMax)}</td>
+                <td>${marca(m.hueco === null || m.hueco >= 1, n(m.hueco, 1))}</td>
+                <td>${marca(m.desborde === 0, n(m.desborde, 1))}</td>
+              </tr>`
+            )
+            .join('')}
+        </table>
+        <p class="nota">
+          <b>lado</b> es offsetWidth: el ancho de layout, antes de transformar. Tiene que dar
+          ${TAMANO_OBJETO.grilla},00 exacto en las dos columnas — si el mínimo y el máximo no
+          coinciden, alguna regla sigue escalando. <b>huella</b> es el bounding rect, o sea la caja
+          eje-alineada de la pieza YA ROTADA: 17,33 en las de −5° y 17,08 en las de 4°, que es
+          16·(cos+sen) y no un tamaño distinto. Las dos columnas están porque confundirlas fue el
+          primer resultado de esta página. El desborde tiene que dar 0: la fila ya no puede encoger
+          las piezas para que entren, así que si no entran, se salen.
+          PIEZAS_POR_ESTANTE = ${PIEZAS_POR_ESTANTE}.
+        </p>`;
+
+      // ---- La pregunta que no se contesta con un número ----
+      //
+      // Un recorte de la fila de piezas, ampliado sin suavizado, para mirar si a
+      // 16 px se distinguen entre sí. La ampliación es entera para no agregar un
+      // problema de remuestreo encima del que se está mirando.
+      const zoom = document.getElementById('zoom');
+      for (const { vp, cuantos, marco } of filas) {
+        if (cuantos !== 5) continue;
+        const doc = marco.contentDocument;
+        for (const fila of doc.querySelectorAll('.estante')) {
+          const piezas = [...fila.querySelectorAll('.objeto')];
+          if (piezas.length === 0) continue;
+          const caja = fila.getBoundingClientRect();
+          const rot = document.createElement('div');
+          rot.textContent = `${vp.w}x${vp.h} · ${fila.id || 'estante'} · x6`;
+          const marcoZoom = document.createElement('iframe');
+          marcoZoom.width = Math.ceil(caja.width) * 6;
+          marcoZoom.height = Math.ceil(caja.height + 8) * 6;
+          marcoZoom.style.pointerEvents = 'none';
+          const env = document.createElement('div');
+          env.append(rot, marcoZoom);
+          zoom.append(env);
+          // Se amplía el propio iframe con transform: es el mismo render, no una
+          // copia a canvas. Copiar a canvas fue justamente lo que dio un número
+          // falso la última vez.
+          marcoZoom.src = marco.src;
+          marcoZoom.addEventListener(
+            'load',
+            () => {
+              const d = marcoZoom.contentDocument;
+              const f = d.getElementById(fila.id) ?? d.querySelector('.estante');
+              const c = f.getBoundingClientRect();
+              d.documentElement.style.transformOrigin = '0 0';
+              d.documentElement.style.transform = `scale(6) translate(${-c.left + 2}px, ${-c.top + 4}px)`;
+              d.documentElement.style.imageRendering = 'pixelated';
+            },
+            { once: true }
+          );
+        }
+      }
+
+      window.MEDIDAS = medidas;
+      console.log('[estante-16]', JSON.stringify(medidas));
+    </script>
+  </body>
+</html>

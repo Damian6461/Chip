@@ -44,8 +44,13 @@ import {
   VOZ,
   VOCES,
   VOCES_LARGAS,
-  VOZ_DE
+  VOZ_DE,
+  SPRITE_OBJETO,
+  SPRITES_OBJETO,
+  OBJETOS_SIN_SPRITE,
+  TAMANO_OBJETO
 } from '../js/config.js';
+import { OBJETOS } from '../js/datos-objetos.js';
 import {
   LIMITES_PESO,
   PRESUPUESTO_TOTAL_KB,
@@ -56,7 +61,10 @@ import {
 
 const SW = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 const RAIZ = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
-const CARPETAS = ['sprites', 'icons'];
+// `sprites/objetos` va explícito y no por recorrido recursivo: el presupuesto de
+// peso y el inventario de caché son POR CARPETA, y una carpeta que entra sola
+// entra sin límite asignado. Agregarla a mano obliga a decidir su límite.
+const CARPETAS = ['sprites', 'sprites/objetos', 'icons'];
 
 const listar = (carpeta) =>
   readdirSync(join(RAIZ, carpeta))
@@ -696,7 +704,17 @@ function cabeceraDe(html, pagina) {
   const desde = html.indexOf('<div id="como-abrirla">');
   const hasta = html.indexOf('</script>', desde);
   if (desde < 0 || hasta < 0) return null;
-  return html.slice(desde, hasta).split(pagina).join('%%PAGINA%%');
+  // Los finales de línea se normalizan antes de comparar. En un checkout de
+  // Windows con autocrlf, un archivo recién escrito y otro que pasó por git
+  // pueden diferir en CRLF contra LF sin que el TEXTO cambie en nada — y este
+  // guardián existe para atrapar cabeceras que se separaron, no checkouts. Un
+  // rojo por finales de línea es un rojo que alguien apaga, y cuando lo apaga se
+  // lleva puesta la verificación de verdad.
+  return html
+    .slice(desde, hasta)
+    .replace(/\r\n/g, '\n')
+    .split(pagina)
+    .join('%%PAGINA%%');
 }
 
 prueba('verificacion/: cada página avisa si la abrieron por file://', () => {
@@ -826,4 +844,75 @@ prueba('voz: el parser de llamadas encuentra algo', () => {
   // de mudas daría vacía y el test pasaría sin haber mirado nada.
   const llamadas = FUENTES_QUE_HABLAN.match(/hablar\(\s*['"]/g) || [];
   verdadero(llamadas.length >= 8, `sólo se encontraron ${llamadas.length} llamadas a hablar()`);
+});
+
+// ============================================================================
+// LOS SPRITES DE LOS OBJETOS, EN LAS MISMAS TRES DIRECCIONES QUE LA VOZ
+// ============================================================================
+//
+// El mapa SPRITES_OBJETO arranca vacío y se llena con tools/sellar-sprites.mjs,
+// que lee la carpeta. Mientras esté vacío estos guardianes pasan sin decir nada,
+// y eso es correcto: no hay nada mapeado, no hay nada que contradecir.
+//
+// Los modos de falla que cubren, que son los tres de la voz trasladados:
+//
+//   mapa -> disco    una entrada que apunta a un archivo que no está deja una
+//                    pieza rota en el estante, no una silueta.
+//   disco -> mapa    un PNG dibujado que nadie cableó es trabajo hecho e
+//                    invisible. Es lo que pasó con los veinte archivos de voz.
+//   mapa -> catálogo un id que no es de ningún objeto: el archivo se llamó mal
+//                    y el mapa lo tomó igual.
+
+const CARPETA_SPRITES = RAIZ + SPRITE_OBJETO.carpeta;
+const SPRITES_EN_DISCO = existsSync(CARPETA_SPRITES)
+  ? readdirSync(CARPETA_SPRITES)
+      .filter((n) => n.endsWith(SPRITE_OBJETO.extension))
+      .map((n) => SPRITE_OBJETO.carpeta + n)
+  : [];
+
+prueba('sprites: todo objeto mapeado apunta a un archivo que existe', () => {
+  const fantasmas = Object.values(SPRITES_OBJETO).filter((r) => !SPRITES_EN_DISCO.includes(r));
+  igual(fantasmas.join(' | '), '', 'sprites mapeados que no están en el disco');
+});
+
+prueba('sprites: todo PNG dibujado está cableado', () => {
+  const mapeados = Object.values(SPRITES_OBJETO);
+  const sinCablear = SPRITES_EN_DISCO.filter((r) => !mapeados.includes(r));
+  igual(
+    sinCablear.join(' | '),
+    '',
+    'PNG en la carpeta que nadie dibuja: corré `node tools/sellar-sprites.mjs`'
+  );
+});
+
+prueba('sprites: todo id mapeado es un objeto del catálogo', () => {
+  const ids = new Set(OBJETOS.map((o) => o.id));
+  const inventados = Object.keys(SPRITES_OBJETO).filter((id) => !ids.has(id));
+  igual(inventados.join(' | '), '', 'sprites con un id que no es de ningún objeto');
+});
+
+prueba('sprites: el que no lleva sprite no lo tiene', () => {
+  // OBJETOS_SIN_SPRITE es una lista corta y con motivo escrito. Si algún día
+  // aparece marca-derrape.png, hay que decidir —y no descubrirlo mirando el
+  // piso, donde la marca de derrape pasaría a ser una cosa levantable.
+  const colados = OBJETOS_SIN_SPRITE.filter((id) => id in SPRITES_OBJETO);
+  igual(colados.join(' | '), '', 'objetos declarados sin sprite que sin embargo tienen uno');
+});
+
+prueba('sprites: el maestro es el mismo número en los dos lados', () => {
+  igual(
+    SPRITE_OBJETO.maestro,
+    TAMANO_OBJETO.maestro,
+    'SPRITE_OBJETO.maestro y TAMANO_OBJETO.maestro se separaron: el arte y el layout ' +
+      'estarían dibujando a escalas distintas'
+  );
+});
+
+prueba('sprites: todo sprite cableado está en ARCHIVOS_CACHE', () => {
+  const fuera = Object.values(SPRITES_OBJETO).filter((r) => !SW.includes(`'${r}'`));
+  igual(
+    fuera.join(' | '),
+    '',
+    'sprites que el juego dibuja y el service worker no guarda: sin conexión salen rotos'
+  );
 });

@@ -207,6 +207,12 @@ const RUTAS_LECTORAS = [
   ...readdirSync(RAIZ + 'js').filter((n) => n.endsWith('.js') && n !== 'config.js').map((n) => 'js/' + n),
   ...readdirSync(RAIZ + 'tests').filter((n) => n.endsWith('.js') || n.endsWith('.mjs')).map((n) => 'tests/' + n),
   ...readdirSync(RAIZ + 'icons').filter((n) => n.endsWith('.html')).map((n) => 'icons/' + n),
+  // tools/ FALTABA, y el comentario de arriba ya decía que una herramienta del
+  // repo cuenta como lector: `icons/generador.html` estaba contemplado y las
+  // tres herramientas de tools/ no. El agujero es el de siempre pero al revés —
+  // una constante que SÓLO lee una herramienta se denunciaba como muerta, y la
+  // salida fácil para callar eso es borrarla.
+  ...readdirSync(RAIZ + 'tools').filter((n) => n.endsWith('.mjs')).map((n) => 'tools/' + n),
   'sw.js',
   'index.html',
   'style.css'

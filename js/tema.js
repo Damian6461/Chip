@@ -127,7 +127,8 @@ import {
   VARS_REPISA,
   REPISA,
   SEPARACION_ESTANTES,
-  ACHATADO_REPISA,
+  TAMANO_OBJETO,
+  VARS_OBJETO,
   COLORES_REPISA,
   COLORES_PANEL,
   COLORES_BOTON,
@@ -348,8 +349,13 @@ export function variablesDeTema() {
     [VARS_REPISA.y]: pct(REPISA.y),
     [VARS_REPISA.ancho]: pct(REPISA.ancho),
     [VARS_REPISA.alto]: pct(REPISA.alto),
-    [VARS_REPISA.achatado]: String(ACHATADO_REPISA),
     [VARS_REPISA.separacion]: pct(SEPARACION_ESTANTES),
+
+    // EL LADO DE LA PIEZA EN CUALQUIER GRILLA: el estante y el menú. Uno solo
+    // para los dos, que es la mitad del asunto — cuando eran dos números
+    // distintos, la misma pieza tenía dos tamaños y ninguno era el maestro
+    // dividido por un entero. Ver TAMANO_OBJETO.
+    [VARS_OBJETO.grilla]: px(TAMANO_OBJETO.grilla),
     ...tonos('repisa', COLORES_REPISA),
 
     // El botón del menú

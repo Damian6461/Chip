@@ -35,6 +35,11 @@ import {
   CABLE,
   CONECTOR_PECHO,
   PULSOS_CABLE,
+  TAMANO_OBJETO,
+  OBJETO_PISO,
+  REPISA,
+  PIEZAS_POR_ESTANTE,
+  ANCHO_MINIMO_SOPORTADO,
   COLORES_BOTON,
   COLORES_BOTON_CHAPITA,
   COLORES_BULBO,
@@ -1963,6 +1968,169 @@ prueba('guardián: se lo ve rojo con el defecto real, y no ladra donde no debe',
   verdadero(
     crucesPeligrosos(alRevés).length === 0,
     'el shorthand menos específico no le gana al longhand más específico'
+  );
+});
+
+// ============================================================================
+// EL TAMAÑO DE UNA PIEZA: DOS NÚMEROS, Y LOS DOS DIVIDEN AL MAESTRO
+// ============================================================================
+//
+// El defecto que este guardián persigue no se ve mirando la pantalla: se ve
+// mirando el archivo, y sólo si uno va a buscarlo. Había CINCO tamaños para la
+// misma pieza —0,026 y 0,034 y 0,030 del alto de la escena, 36 px fijos, y el
+// 100% de una celda de grilla— en tres unidades distintas. Ninguno era el
+// maestro dividido por un entero.
+//
+// Con SVG eso no se notaba, y ahí está la trampa: un vector se redibuja a
+// cualquier tamaño sin perder nada, así que la hoja podía acumular tamaños a ojo
+// durante meses sin una sola consecuencia visible. La consecuencia aparece toda
+// junta el día que el arte pasa a ser PNG a maestro fijo, y entonces hay que
+// encontrar los cinco a mano.
+//
+// Lo que se verifica es en dos partes, y las dos hacen falta:
+//
+//   1. LA ARITMÉTICA: que maestro/mundo y maestro/grilla sean enteros. Barato y
+//      no alcanza solo — no dice nada de lo que la hoja hace con esos números.
+//   2. LA HOJA: que ninguna regla que apunte a una pieza le ponga un `width`,
+//      un `height` o un `scale` que no sea uno de los tokens permitidos. Ese es
+//      el que atrapa el 0,034 escrito a mano.
+//
+// Los pseudo-elementos quedan afuera a propósito. `::after` es OTRA CAJA —la
+// sombra de contacto, que no es la pieza— y ya hay una regla escrita en este
+// mismo archivo diciendo que no comparte cascada con su elemento. Medirle el
+// tamaño a la sombra como si fuera el del objeto sería el error de siempre: un
+// número correcto con la etiqueta equivocada.
+const TAMANOS_DE_PIEZA_PERMITIDOS = new Set([
+  // Los dos tamaños del juego.
+  'var(--objeto-grilla-lado)',
+  'var(--objeto-piso-lado)',
+  // La caja del dedo, que no es el dibujo: el reparto de #piso y del botón del
+  // menú. Es la caja la que puede ser cualquier cosa; la pieza de adentro no.
+  'var(--objeto-piso-toque)',
+  '100%',
+  'auto'
+]);
+
+function tamanosSospechosos(texto) {
+  const sospechosos = [];
+
+  for (const { selector, cuerpo } of reglasDePrimerNivel(texto)) {
+    if (!selector) continue;
+    if (!/\.objeto\b|#piso\b/.test(selector)) continue;
+    if (selector.includes('::')) continue;
+
+    for (const m of cuerpo.matchAll(/(?:^|;)\s*(width|height)\s*:\s*([^;}]+)/g)) {
+      const valor = m[2].trim().replace(/\s+/g, ' ');
+      if (!TAMANOS_DE_PIEZA_PERMITIDOS.has(valor)) {
+        sospechosos.push(`${selector} { ${m[1]}: ${valor} }`);
+      }
+    }
+
+    // Un scale fraccionario es un tamaño escrito de otra manera: 0,92 sobre 16
+    // da 14,72, que no es entero ni divide a nada. El único scale admitido es
+    // el que no escala.
+    for (const m of cuerpo.matchAll(/(?:^|;)\s*scale\s*:\s*([^;}]+)/g)) {
+      const factores = m[1].trim().split(/\s+/);
+      if (factores.some((f) => f !== '1')) {
+        sospechosos.push(`${selector} { scale: ${m[1].trim()} }`);
+      }
+    }
+  }
+
+  return sospechosos;
+}
+
+prueba('objetos: los dos tamaños del juego dividen al maestro por un entero', () => {
+  const { maestro, mundo, grilla } = TAMANO_OBJETO;
+
+  verdadero(
+    Number.isInteger(maestro / mundo),
+    `el tamaño de mundo tiene que dividir al maestro: ${maestro}/${mundo} = ${maestro / mundo}`
+  );
+  verdadero(
+    Number.isInteger(maestro / grilla),
+    `el tamaño de grilla tiene que dividir al maestro: ${maestro}/${grilla} = ${maestro / grilla}`
+  );
+  igual(OBJETO_PISO.lado, mundo, 'la pieza del piso es la pieza en el mundo, y mide lo mismo');
+});
+
+prueba('objetos: ninguna regla le inventa un tamaño a una pieza', () => {
+  const sospechosos = tamanosSospechosos(CSS);
+  igual(
+    sospechosos.join(' | '),
+    '',
+    'tamaños de pieza que no son ninguno de los dos del juego'
+  );
+});
+
+prueba('objetos: se lo ve rojo con los cinco tamaños que había', () => {
+  // Los cinco de verdad, tal como estaban escritos en la hoja antes de esto.
+  const comoEstaba = `
+    .objeto { width: calc(var(--alto-escena) * 0.026); height: calc(var(--alto-escena) * 0.026); }
+    .estante .objeto { width: min(calc(var(--alto-escena) * 0.034), 100%); }
+    .estante:has(.objeto:nth-child(5)) .objeto { width: calc(var(--alto-escena) * 0.030); }
+    .estante .objeto:nth-child(3n) { scale: 0.92 calc(var(--repisa-achatado) * 0.92); }
+    .objeto.en-piso { width: 36px; height: 36px; }`;
+
+  const encontrados = tamanosSospechosos(comoEstaba);
+  verdadero(
+    encontrados.length >= 5,
+    `con la hoja vieja tiene que ladrar cinco veces y ladró ${encontrados.length}: ${encontrados.join(' | ')}`
+  );
+  verdadero(
+    encontrados.some((s) => /0\.034/.test(s)),
+    'el 0,034 del estante es el que más costaba ver: tiene que estar nombrado'
+  );
+  verdadero(
+    encontrados.some((s) => /scale/.test(s)),
+    'el scale fraccionario es un tamaño y tiene que contar como tal'
+  );
+
+  // Y NO LADRA DONDE NO DEBE: la caja del dedo y la sombra de contacto son
+  // otras cajas y pueden medir lo que quieran.
+  const legitimo = `
+    #piso { width: var(--objeto-piso-toque); height: var(--objeto-piso-toque); }
+    .objeto.en-piso { width: var(--objeto-piso-lado); height: var(--objeto-piso-lado); }
+    .estante .objeto::after { height: 5px; }
+    #coleccion-grilla .objeto { width: 100%; height: auto; }`;
+  igual(
+    tamanosSospechosos(legitimo).join(' | '),
+    '',
+    'la caja táctil y el pseudo-elemento no son la pieza'
+  );
+});
+
+// LA FILA ENTRA, Y ES UNA CUENTA, NO UNA ESPERANZA.
+//
+// Mientras la pieza podía encoger —el `min(..., 100%)` que estaba en
+// `.estante .objeto`— que la fila entrara era automático y no había nada que
+// verificar: la grilla achicaba las piezas hasta que entraran. Ese era
+// justamente el problema. Con el lado fijo, si no entra, se desborda.
+//
+// Así que la cuenta pasa a ser explícita, y se hace con el ancho REAL de la
+// tabla leído de la hoja —el multiplicador vive ahí, no en config— para que el
+// día que alguien lo cambie el guardián lo vea.
+prueba('estante: cuatro piezas de 16 entran en la tabla más angosta que se soporta', () => {
+  const fila = bloqueEntre(CSS, '.estante {', '}');
+  const m = fila.match(/width:\s*calc\(\s*var\(--repisa-ancho\)\s*\*\s*([\d.]+)\s*\)/);
+  verdadero(m !== null, `la fila tiene que declarar su ancho como fracción de la tabla: ${fila}`);
+
+  const util = (REPISA.ancho / 100) * Number(m[1]) * ANCHO_MINIMO_SOPORTADO;
+  const ocupado = PIEZAS_POR_ESTANTE * TAMANO_OBJETO.grilla;
+
+  verdadero(
+    ocupado <= util,
+    `en ${ANCHO_MINIMO_SOPORTADO} px de ancho la fila mide ${util.toFixed(1)} px y ` +
+      `${PIEZAS_POR_ESTANTE} piezas de ${TAMANO_OBJETO.grilla} ocupan ${ocupado}`
+  );
+
+  // Y que quede AIRE, no que raspe: cuatro piezas pegadas una contra otra se
+  // leen como un bloque, no como cuatro cosas apoyadas. Un píxel entre piezas
+  // es el mínimo para que se separen.
+  const huecos = PIEZAS_POR_ESTANTE - 1;
+  verdadero(
+    util - ocupado >= huecos,
+    `sobran ${(util - ocupado).toFixed(1)} px para ${huecos} huecos: las piezas se tocan`
   );
 });
 

@@ -9,8 +9,35 @@
 // Presentación pura: acá no hay contenido editorial. Qué objetos hay y de dónde
 // salen es datos-objetos.js; esto es sólo cómo se ven.
 
+// ESTA TABLA SE VA, Y NO ESTÁ COMENTADA TODAVÍA. LA RAZÓN, ACÁ:
+//
+// Las treinta y seis siluetas de abajo son provisorias desde el primer día — lo
+// dice el comentario de arriba: "mientras el arte ilustrado no exista". Ese arte
+// existe: son treinta y seis PNG a maestro 32, con el id de datos-objetos.js
+// como nombre de archivo, y en cuanto estén en el repo estas formas dejan de
+// dibujarse.
+//
+// SE VAN TREINTA Y CINCO, NO TREINTA Y SEIS. `marca-derrape` se queda: no es un
+// objeto que Chip levantó, es una marca del piso —dos huellas de oruga frenando—
+// y no tiene sprite ni lo va a tener. Sigue saliendo de acá.
+//
+// POR QUÉ NO ESTÁN COMENTADAS YA. Porque los PNG todavía no llegaron. Comentar
+// la tabla hoy no deja el estante listo para el arte: lo deja VACÍO, con
+// `FORMA_POR_DEFECTO` —un cuadrado gris— en las treinta y cinco. Un archivo
+// preparado para algo que no está es un archivo roto con una explicación al
+// lado, y la explicación no se ve en el teléfono.
+//
+// Cuando lleguen, el cambio es de tres líneas y está descrito en SPRITES_OBJETO
+// (config.js): el mapa id -> archivo pasa a tener entradas, `svgDeObjeto` deja
+// de consultarse para los que la tengan, y estas formas quedan como estaba
+// previsto — comentadas, con la fecha y el motivo, y no borradas, porque quien
+// venga a preguntar por qué el estante dibujaba cuadrados grises en 2026 tiene
+// que encontrar la respuesta y no el hueco.
+//
 // El viewBox es 24x24 para todas, así el tamaño lo decide el CSS y las formas
-// quedan a la misma escala entre sí.
+// quedan a la misma escala entre sí. Ojo con eso al reemplazarlas: 24 no divide
+// a un maestro de 32, y es exactamente el motivo por el que estas siluetas
+// aguantaban cualquier tamaño y los PNG no. Ver TAMANO_OBJETO.
 const FORMAS = {
   'tuerca-cabeza': `
     <path d="M7 4h10l5 8-5 8H7l-5-8z" fill="var(--metal)" stroke="var(--filo)"/>
@@ -323,6 +350,9 @@ const INCOGNITA = `
     stroke="var(--sombra)" stroke-width="1.8" stroke-linecap="round"/>
   <circle cx="12.1" cy="17.4" r="1.1" fill="var(--sombra)"/>`;
 
+// LA SILUETA PROVISORIA. El que decide entre esto y el PNG es `nodoDeObjeto` en
+// ui.js, y está allá y no acá por la regla del archivo: formas.js no importa
+// config.js. Recibe números y devuelve formas; no sabe qué archivos hay.
 export function svgDeObjeto(id) {
   const forma = FORMAS[id] ?? FORMA_POR_DEFECTO;
   return `<svg viewBox="0 0 24 24" aria-hidden="true">${forma}</svg>`;

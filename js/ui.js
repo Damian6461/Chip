@@ -119,6 +119,8 @@ import {
   BASES_OBJETO,
   LIENZO_OBJETO,
   VARS_OBJETO,
+  SPRITES_OBJETO,
+  SPRITE_OBJETO,
   VARS_LUZ,
   PREFIJO_CLASE_ESTADO,
   CLASE_DESTELLO_BULBO,
@@ -2311,12 +2313,31 @@ nodoPiso.addEventListener('keydown', (evento) => {
 // panorámica, que está en el extremo derecho de la imagen y nunca entró en
 // cuadro — ver el README para la medición.
 
+// LA ÚNICA PUERTA POR LA QUE SE DIBUJA UN OBJETO, y por eso el sprite se decide
+// acá: la usan los cuatro lugares donde una pieza aparece —el estante, la grilla
+// del menú, la que quedó tirada en el piso y la que vuela de una a la otra—, así
+// que la elección entre el PNG y la silueta se escribe una vez.
+//
+// Mientras SPRITES_OBJETO esté vacío esto dibuja exactamente lo que dibujaba
+// antes. Cuando los PNG entren, entran de a uno y sin un estado intermedio roto:
+// el que tiene archivo sale con su arte y el que no, con su silueta.
+//
+// El `<img>` lleva width/height al maestro en el ATRIBUTO, y el tamaño final lo
+// pone el CSS. No es redundante: sin ellos el navegador no sabe cuánto ocupa la
+// pieza hasta que el archivo llegó, y la fila del estante se acomoda dos veces
+// —una vacía y otra con las piezas—, que es un salto visible en la repisa.
 function nodoDeObjeto(objeto, tag = 'div') {
   const nodo = document.createElement(tag);
   nodo.className = 'objeto';
   nodo.dataset.id = objeto.id;
   if (objeto.obtenido) nodo.classList.add(CLASE_OBJETO_OBTENIDO);
-  nodo.innerHTML = svgDeObjeto(objeto.id);
+
+  const sprite = SPRITES_OBJETO[objeto.id];
+  nodo.innerHTML = sprite
+    ? `<img src="${sprite}" alt="" aria-hidden="true" decoding="async" ` +
+      `width="${SPRITE_OBJETO.maestro}" height="${SPRITE_OBJETO.maestro}">`
+    : svgDeObjeto(objeto.id);
+
   return nodo;
 }
 

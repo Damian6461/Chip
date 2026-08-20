@@ -2950,56 +2950,23 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   cursor: pointer;
 }
 
-/* LA REPISA LLENA. Con la colección completa —ocho piezas— no entran ocho
-   siluetas de 29 px en 137 px de tabla, y hay que elegir qué se rompe.
-
-   Descartadas: achicarlas hasta que entren las deja en 17 px, que es de donde
-   veníamos y era ilegible en mobile. Dos filas ponen la de arriba flotando en
-   el aire, que es justo el problema que vinimos a arreglar. Mostrar sólo las
-   últimas cinco esconde cosas que el jugador encontró.
-
-   Lo que queda es amontonarlas, que además es lo que pasa de verdad en un
-   estante: las piezas chicas terminan una contra otra. Pero amontonadas TODAS
-   AL MISMO PLANO se funden en un borrón —probado, y se ve exactamente así—.
-   Lo que las separa es la profundidad: con muchas piezas, una de cada dos se
-   corre para atrás, más chica y más oscura, y entonces cada una se recorta
-   contra su vecina en vez de fundirse con ella. */
-.estante:has(.objeto:nth-child(5)) {
-  gap: 0;
-  isolation: isolate;
-}
-
-.estante:has(.objeto:nth-child(5)) .objeto {
-  z-index: 1;
-  width: calc(var(--alto-escena) * 0.030);
-  height: calc(var(--alto-escena) * 0.030);
-}
-
-.estante:has(.objeto:nth-child(5)) .objeto + .objeto {
-  margin-left: calc(var(--alto-escena) * -0.011);
-}
-
-/* Una de cada dos para atrás. Reemplaza al escalonado de a tres, que con la
-   repisa llena dejaba pares de piezas contiguas en el mismo plano. */
-.estante:has(.objeto:nth-child(5)) .objeto:nth-child(3n),
-.estante:has(.objeto:nth-child(5)) .objeto:nth-child(3n + 2) {
-  rotate: 0deg;
-  translate: 0 var(--base-objeto, 13%);
-  scale: 1 var(--repisa-achatado);
-  filter: saturate(0.88) brightness(0.9) drop-shadow(0 1px 2px rgb(0 0 0 / 0.85));
-}
-
-.estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
-  rotate: -4deg;
-  translate: 0 calc(var(--base-objeto, 13%) - 1.5px);
-  scale: 0.86 calc(var(--repisa-achatado) * 0.86);
-  filter: saturate(0.7) brightness(0.66) drop-shadow(0 1px 2px rgb(0 0 0 / 0.9));
-  /* Detrás de sus dos vecinas, no sólo más oscura: si la de atrás pinta encima
-     el recorte se invierte y el amontonamiento se vuelve a leer plano. En 0 y
-     no en -1 porque -1 se escaparía hasta #escena y se metería atrás de la
-     tabla; el isolate de .estante mantiene el orden acá adentro. */
-  z-index: 0;
-}
+/* LA REPISA LLENA — SE FUE ENTERA, Y NO POR EL TAMAÑO: ERA CÓDIGO MUERTO.
+ *
+ * Eran cinco reglas colgadas de `.estante:has(.objeto:nth-child(5))`, o sea "si
+ * una fila tiene cinco o más piezas": amontonarlas sin gap, achicarlas a 0,030
+ * del alto, solaparlas con un margin negativo y mandar una de cada dos para
+ * atrás a escala 0,86.
+ *
+ * Una fila NO PUEDE tener cinco. pintarEstante reparte con
+ * `PIEZAS_POR_ESTANTE = 4` y corta la lista en `4 * 2 = 8`: las filas reciben
+ * exactamente cuatro y cuatro, y el `Math.min` del índice no puede desbordar
+ * porque el slice ya limitó el total. El selector no matchea desde que la
+ * repisa pasó a dos tablas.
+ *
+ * Se descubrió buscando otra cosa: los tamaños que no son fracción entera del
+ * maestro. Dos de los cinco números prohibidos del archivo vivían acá, en
+ * reglas que nunca se aplicaron — que es la peor forma de tener un defecto,
+ * porque no se puede ver ni arreglando el que sí se ve. */
 
 /* Las piezas de la repisa, más grandes que en la grilla: están lejos y contra
    una pared oscura, y a 24 px había que ir a buscarlas. 0,034 del alto da 32 px
@@ -3015,17 +2982,16 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 }
 
 .estante .objeto {
-  /* El min() es lo que le permite encoger cuando la fila se llena. Sin él la
-     grilla reparte las columnas pero la pieza se sale de la suya. */
-  width: min(calc(var(--alto-escena) * 0.034), 100%);
-  height: auto;
-  aspect-ratio: 1;
-  /* PERSPECTIVA. La repisa está en el 19,5% del alto y el horizonte —el borde
-     del alféizar— en el 63%: la estamos mirando desde bastante abajo. A esa
-     altura de una cosa chica se ve la cara de adelante y casi nada de la de
-     arriba, o sea que se acorta en vertical. El achatado es leve a propósito:
-     de más, las piezas se leen como aplastadas y no como vistas desde abajo. */
-  scale: 1 var(--repisa-achatado);
+  /* Hereda el lado de .objeto y no lo pisa. Antes acá había un 0,034 del alto
+     de la escena —32 px en 944, 29 en 844— contra el 0,026 de la grilla del
+     menú: la MISMA pieza, dos tamaños, ninguno fracción entera del otro.
+
+     El `min(..., 100%)` que estaba acá para que la pieza encogiera cuando la
+     fila se llenaba tampoco está: encoger es exactamente lo prohibido. Que la
+     fila entre es una cuenta cerrada, no una consecuencia — cuatro de 16 son 64
+     px y la tabla más angosta que se soporta mide 73,2. Lo verifica un guardián
+     con ANCHO_MINIMO_SOPORTADO, para que el día que alguien ensanche la fila o
+     angoste la tabla se entere ahí y no mirando el teléfono. */
   /* EL PIVOTE ES LA LÍNEA DE APOYO, no el borde de la caja. Entre la tinta de la
      silueta y el borde de abajo de su caja hay entre 2,5 y 5,5 unidades de
      viewBox de aire, así que achatar o achicar alrededor de `bottom` levanta la
@@ -3066,13 +3032,17 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
 
 .estante .objeto:nth-child(3n) {
   rotate: 4deg;
-  /* Un poco más atrás en la tabla: más arriba, más chica y más apagada. Es el
-     mismo truco de profundidad que usa el polvo, aplicado a un píxel.
+  /* Un poco más atrás en la tabla: más arriba y más apagada. Es el mismo truco
+     de profundidad que usa el polvo, aplicado a un píxel.
      Eran 2 px, y sobre una pieza de 27 px eso ya no se leía como "más atrás"
-     sino como "despegada de la tabla". La escala y el apagado alcanzan para el
-     efecto; el que rompe el apoyo es el corrimiento. */
+     sino como "despegada de la tabla". El apagado alcanza para el efecto; el
+     que rompe el apoyo es el corrimiento.
+
+     Y ACÁ HABÍA UN scale(0,92), que sobre 16 px da 14,72: ni entero, ni
+     fracción entera del maestro. La profundidad ahora la hacen el corrimiento y
+     el brillo solos. Se pierde un poco de escalonado y se gana que la pieza
+     mida siempre lo mismo, que es la mitad del punto de tener un maestro. */
   translate: 0 calc(var(--base-objeto, 13%) - 1px);
-  scale: 0.92 calc(var(--repisa-achatado) * 0.92);
   filter: saturate(0.82) brightness(0.82) drop-shadow(0 1px 2px rgb(0 0 0 / 0.85));
 }
 
@@ -3128,11 +3098,21 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   --organico-claro: #c9b489;
   --organico-veta: #5f4f2f;
 
-  /* 16 px fijos eran ilegibles: en un teléfono de 390 de ancho había que ir a
-     buscarlas. Atado al alto de la escena escala con el aparato y da 24 px en
-     944 y 22 en 844, que es donde una silueta de 24x24 se empieza a leer. */
-  width: calc(var(--alto-escena) * 0.026);
-  height: calc(var(--alto-escena) * 0.026);
+  /* EL LADO ES UNO SOLO Y VUELVE A SER FIJO: --objeto-grilla-lado, 16 px, que
+     es el maestro de 32 dividido por 2.
+
+     Acá había un 0,026 del alto de la escena con este comentario: "16 px fijos
+     eran ilegibles, atado al alto escala con el aparato". Era cierto de un SVG
+     de 24x24 —un vector se redibuja a 22 o a 24 sin costo— y deja de serlo con
+     los PNG a maestro 32: ahí cualquier tamaño que no divida al maestro por un
+     entero remuestrea, y 22 px de un maestro de 32 no es pixel art, es una foto
+     borrosa de pixel art.
+
+     Se cambia legibilidad por filo, a sabiendas. Si a 16 las piezas no se
+     distinguen entre sí, lo que sube es el MAESTRO —32 a 48, y la grilla a 24—,
+     no este número suelto. Ver TAMANO_OBJETO. */
+  width: var(--objeto-grilla-lado);
+  height: var(--objeto-grilla-lado);
   flex: 0 0 auto;
   /* Lo que falta: la misma forma, en sombra. No es "apagado" sino oscuro, que
      es lo que se lee contra la ventana iluminada — con opacidad sola se
@@ -3193,6 +3173,27 @@ body:not(.es-noche) .mota:nth-child(16) { animation-delay: -12s; }
   stroke-linejoin: round;
 }
 
+/* EL PNG DEL OBJETO, cuando lo tiene. Mismo tratamiento que el resto del arte
+   de Chip: nada de suavizado.
+
+   `pixelated` es lo único que hace falta acá y es lo único que va: el maestro es
+   32 y los dos tamaños del juego son 32 y 16, o sea escala 1 y escala 1/2. Un
+   medio exacto con vecino más cercano promedia de a cuatro píxeles limpios y no
+   inventa tonos intermedios, que es justamente lo que el remuestreo suave sí
+   hace. Ver TAMANO_OBJETO: sin esa aritmética, `pixelated` no alcanza para
+   nada. */
+.objeto img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+#coleccion-grilla .objeto img {
+  width: var(--objeto-grilla-lado);
+  height: var(--objeto-grilla-lado);
+}
+
 
 /* DE NOCHE LA REPISA SE APAGA. Los colores de la tabla están medidos contra la
    pared de día; de noche la pared entera baja y la tabla se quedaba con luz de
@@ -3213,10 +3214,6 @@ body.es-noche .estante .objeto.obtenido {
 
 body.es-noche .estante .objeto:nth-child(3n) {
   filter: saturate(0.55) brightness(0.5) drop-shadow(0 1px 2px rgb(0 0 0 / 0.9));
-}
-
-body.es-noche .estante:has(.objeto:nth-child(5)) .objeto:nth-child(2n) {
-  filter: saturate(0.45) brightness(0.42) drop-shadow(0 1px 2px rgb(0 0 0 / 0.92));
 }
 
 /* La llegada: aparece de la nada con un rebotecito y se queda.
@@ -3481,22 +3478,60 @@ body.es-noche #piso {
   color: #b8bec8;
 }
 
+/* LA GRILLA SE HACE MÁS CHICA Y MÁS DENSA, y no es cosmético: es la consecuencia
+   de que la pieza mida 16.
+
+   Eran cuatro columnas al ANCHO DISPONIBLE, o sea celdas de 94 px en un menú de
+   390, con el dibujo ocupando la celda entera. Cuando el dibujo bajó a 16 —el
+   tamaño de grilla, ver TAMANO_OBJETO— quedaron treinta y seis cavernas de 94
+   con un punto en el medio. Se miró y se ve exactamente así de mal.
+
+   El error no era el 16: era medir la CELDA con el ancho de la pantalla. Una
+   celda que crece con el teléfono obliga al dibujo a crecer con ella, que es
+   justo lo que el maestro prohíbe.
+
+   Ahora la celda es fija en 48 —tres veces la pieza, y por arriba del mínimo
+   táctil de 44— y entran las que entren. En 390 son seis columnas: treinta y
+   seis piezas en seis filas, que se lee como un catálogo de cosas chicas y no
+   como una grilla de botones vacíos.
+
+   `auto-fill` con un ancho FIJO y no con `minmax(48px, 1fr)`: el `1fr` las
+   volvería a estirar hasta llenar la fila y estaríamos en el mismo lugar. */
 #coleccion-grilla {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, calc(var(--objeto-grilla-lado) * 3));
+  justify-content: space-between;
   gap: var(--esp-1);
 }
 
-/* En la grilla las piezas son botones y se ven más grandes que en el rincón. */
+/* En la grilla las piezas son BOTONES, y el botón no es el dibujo.
+ *
+ * La celda sigue ocupando su columna entera —es la caja del dedo, y en cuatro
+ * columnas de un menú de 390 eso da 80 px de lado, muy por encima del mínimo de
+ * 44— pero el dibujo de adentro mide exactamente --objeto-grilla-lado y va
+ * centrado. Es el mismo reparto que ya hacía #piso: caja grande para el dedo,
+ * pieza chica para el ojo.
+ *
+ * Antes el dibujo era la celda: 100% del ancho de la columna, o sea un tamaño
+ * que depende del ancho del teléfono y que casi nunca cae en un múltiplo de 16.
+ * Esa es la única regla del archivo que ataba el tamaño de una pieza al
+ * CONTENEDOR en vez de a un número, y por eso era la más difícil de ver. */
 #coleccion-grilla .objeto {
   width: 100%;
   height: auto;
   aspect-ratio: 1;
-  padding: 6px;
+  padding: 0;
+  display: grid;
+  place-items: center;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid #262b36;
   border-radius: 2px;
   cursor: pointer;
+}
+
+#coleccion-grilla .objeto svg {
+  width: var(--objeto-grilla-lado);
+  height: var(--objeto-grilla-lado);
 }
 
 #coleccion-detalle {

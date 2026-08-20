@@ -2539,11 +2539,38 @@ export const PIEZAS_POR_ESTANTE = 4;
 export const ESTANTES = 2;
 export const SEPARACION_ESTANTES = 6.2;
 
-// Está por encima del horizonte —el borde del alféizar, en el 63% del alto— así
-// que se ve DESDE ABAJO. Los objetos se achatan un poco en vertical y su base
-// queda tapada por el canto de la tabla, que es exactamente lo que pasa cuando
-// mirás una repisa alta.
-export const ACHATADO_REPISA = 0.88;
+// UN OBJETO TIENE DOS TAMAÑOS EN TODO EL JUEGO, y ninguno de los dos se elige
+// por sitio.
+//
+// Antes había cinco: 0,026 del alto para la grilla, 0,034 para el estante, 0,030
+// para el estante lleno, 36 px fijos para el piso, y el 100% de la celda en el
+// menú. Cinco números atados a tres unidades distintas —% del alto de la escena,
+// píxeles, % del contenedor— para dibujar la MISMA pieza. Ninguno era fracción
+// entera de los otros, así que el mismo dibujo salía remuestreado distinto en
+// cada lugar donde aparecía.
+//
+// Con arte vectorial eso era feo y nada más: un SVG se redibuja a cualquier
+// tamaño. Con los PNG a maestro 32 que vienen, es la diferencia entre pixel art
+// y una foto de pixel art: cualquier tamaño que no sea el maestro dividido por
+// un entero mezcla píxeles vecinos y el filo se convierte en un degradé.
+//
+//   maestro  32   el tamaño en que está dibujado el arte
+//   mundo    32   el piso: la pieza está EN el galpón, a escala 1:1
+//   grilla   16   el estante y la colección: 32/2, mitad exacta
+//
+// Las dos divisiones son enteras —32/32 = 1 y 32/16 = 2— y eso lo verifica un
+// guardián, porque el modo en que esto se rompe es que alguien ajuste un tamaño
+// a ojo hasta que "se vea bien" y meta un 20 o un 24 que no divide a nada.
+//
+// En píxeles fijos y no en % de la escena, por lo mismo que el mínimo táctil: un
+// píxel de arte no se achica porque la ventana sea más angosta. Lo que está
+// pegado a un sprite escala con el sprite; lo que está en el mundo va fijo.
+export const TAMANO_OBJETO = { maestro: 32, mundo: 32, grilla: 16 };
+
+// EL ANCHO MÁS ANGOSTO EN QUE TIENE QUE ENTRAR LA FILA. No es el viewport de
+// prueba: es el más chico que se piensa soportar, y está acá porque el guardián
+// del estante lo necesita para decidir si cuatro piezas de 16 caben en la tabla.
+export const ANCHO_MINIMO_SOPORTADO = 320;
 
 // El contorno de cada pieza en un tono OSCURO DE SU PROPIO COLOR, no negro. Es
 // la regla que salió de los corazones: el negro hunde la forma, y un tono
@@ -2608,7 +2635,11 @@ export const LIENZO_OBJETO = 24;
 
 // Va en una tabla VARS_* y no como string suelto: el test del puente recolecta
 // los nombres de custom property de ahí, y suelto quedaba invisible para él.
-export const VARS_OBJETO = { base: '--base-objeto', apoyo: '--apoyo-objeto' };
+export const VARS_OBJETO = {
+  base: '--base-objeto',
+  apoyo: '--apoyo-objeto',
+  grilla: '--objeto-grilla-lado'
+};
 
 export const FILOS_OBJETO = {
   'arandela-dorada': '#5a3a10',
@@ -2616,6 +2647,49 @@ export const FILOS_OBJETO = {
   'nota-tanque': '#5a3a10'
 };
 export const FILO_OBJETO_POR_DEFECTO = '#1b222c';
+
+// ---- El arte de los objetos: los PNG que reemplazan a las siluetas ----
+//
+// Las treinta y seis formas de formas.js son provisorias desde el primer día.
+// El arte de verdad son PNG a maestro 32, dibujados uno por uno, y el nombre de
+// cada archivo es el id del objeto en datos-objetos.js. Eso no es una comodidad:
+// es lo que permite que el mapa de abajo se genere y se verifique solo, en vez
+// de ser una tabla escrita a mano que se desincroniza en el tercer archivo.
+//
+// EL MAPA ARRANCA VACÍO Y ESO ES LO CORRECTO, no un pendiente. `spriteDeObjeto`
+// devuelve null para todo lo que no esté acá, y el que dibuja cae en la silueta
+// de siempre. O sea: los sprites entran DE A UNO, sin un momento en que el juego
+// esté a medio migrar. Un mapa lleno de rutas a archivos que no existen habría
+// dejado treinta y cinco cuadrados rotos en el estante.
+//
+// PARA CABLEARLOS, cuando los PNG estén en sprites/objetos/:
+//   node tools/sellar-sprites.mjs     lee la carpeta y reescribe este mapa
+//   node tests/sellar-cache.mjs       los mete en ARCHIVOS_CACHE y sube versión
+//
+// El guardián de assets.test.js cruza las tres direcciones, igual que el de la
+// voz: que todo lo mapeado exista en disco, que todo lo que está en disco esté
+// mapeado, y que todo id mapeado sea un objeto real del catálogo.
+export const SPRITE_OBJETO = {
+  carpeta: 'sprites/objetos/',
+  extension: '.png',
+  // El lado en que están dibujados. Es el mismo número que TAMANO_OBJETO.maestro
+  // y vive repetido acá a propósito: si un día el arte se rehace a 48 y alguien
+  // toca uno solo de los dos, el guardián lo ve. Un valor derivado no puede
+  // contradecir a su origen, y acá contradecirse es exactamente lo que hay que
+  // poder detectar.
+  maestro: 32
+};
+
+// LOS QUE NUNCA VAN A TENER SPRITE, con el motivo. Sin esta lista, el guardián
+// que exige "todo objeto del catálogo tiene su PNG" tendría que aflojarse hasta
+// no exigir nada, y una excepción sin nombre es una excepción que crece.
+//
+//   marca-derrape   no es una cosa que Chip levantó: son dos huellas de oruga
+//                   frenando, una marca del piso. La sigue dibujando formas.js.
+export const OBJETOS_SIN_SPRITE = ['marca-derrape'];
+
+// id -> ruta. Lo escribe tools/sellar-sprites.mjs; no se edita a mano.
+export const SPRITES_OBJETO = {};
 
 // Los colores de la tabla, MEDIDOS contra la pared donde va, no elegidos a ojo.
 //
@@ -2646,8 +2720,7 @@ export const VARS_REPISA = {
   x: '--repisa-x',
   y: '--repisa-y',
   ancho: '--repisa-ancho',
-  alto: '--repisa-alto',
-  achatado: '--repisa-achatado'
+  alto: '--repisa-alto'
 };
 
 // ---- La apertura ----
@@ -4283,13 +4356,18 @@ export const ZONA_PISO = {
 //
 // Medía 25 px de lado en una escena de 480: poco más de la mitad del mínimo
 // táctil de 44, y además difícil de descubrir — una cosa de 25 px en una escena
-// de 480 es fácil de no ver. El dibujo sube a 36 y el área táctil va a 44 con
+// de 480 es fácil de no ver. El dibujo subió a 36 y el área táctil a 44 con
 // padding invisible alrededor, que es el mismo reparto que ya hace el botón del
 // menú: grande para el dedo, discreta para el ojo.
 //
 // En píxeles y no en % de la escena a propósito: 44 px es un mínimo del DEDO, y
 // el dedo no se achica cuando la ventana es más angosta.
-export const OBJETO_PISO = { lado: 36, toque: 44 };
+//
+// EL 36 SE FUE A 32 y no es un ajuste de gusto: 36 no es fracción entera de un
+// maestro de 32 —es 1,125— así que la pieza del piso, que es la que se ve más
+// grande de todas, era justo la que salía remuestreada. Ver TAMANO_OBJETO. El
+// dibujo pierde 4 px de lado y la caja táctil no se mueve: sigue en 44.
+export const OBJETO_PISO = { lado: TAMANO_OBJETO.mundo, toque: 44 };
 
 // EL BRILLO QUE LO HACE DESCUBRIBLE. El pedido pide "un brillo muy sutil o un
 // movimiento mínimo", y explícitamente NO un ícono parpadeante.
