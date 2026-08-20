@@ -3667,9 +3667,23 @@ body.es-noche #piso {
   color: #b8bec8;
 }
 
+/* EL MISMO RITMO QUE LA COLECCIÓN, y es la corrección de algo que quedó peor
+   que antes.
+
+   Cuando las piezas bajaron a 16 px la grilla de objetos pasó a celdas fijas de
+   48 y siete columnas. Ésta se quedó en cuatro columnas al ancho disponible, o
+   sea celdas de 94, y el menú quedó descosido: dos grillas con dos ritmos, una
+   arriba de la otra.
+
+   Los gigantes NO son objetos —son sombras de cosas enormes, no cosas que Chip
+   levantó— y por eso su dibujo NO usa TAMANO_OBJETO. Pero el menú es uno solo:
+   lo que se unifica es la CELDA, que es lo que hace el ritmo. Adentro, la
+   silueta va al doble que un objeto, que es lo único que este cambio dice de
+   ellos y es verdad: son más grandes. */
 #gigantes-grilla {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fill, calc(var(--objeto-grilla-lado) * 3));
+  justify-content: space-between;
   gap: var(--esp-1);
 }
 
@@ -3679,13 +3693,24 @@ body.es-noche #piso {
   width: 100%;
   height: auto;
   aspect-ratio: 1;
-  padding: 6px;
+  padding: 0;
+  display: grid;
+  place-items: center;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid #262b36;
   border-radius: 2px;
   cursor: pointer;
   opacity: 0.5;
   filter: none;
+}
+
+/* LA SILUETA VA AL DOBLE QUE UN OBJETO. No es TAMANO_OBJETO: un gigante no es
+   una cosa que Chip levantó, es la sombra de algo enorme. Lo único que este
+   número dice es que son más grandes que lo que se junta, y a 32 px en una celda
+   de 48 la sombra se lee entera sin llenar el casillero. */
+#gigantes-grilla .gigante svg {
+  width: calc(var(--objeto-grilla-lado) * 2);
+  height: calc(var(--objeto-grilla-lado) * 2);
 }
 
 /* Con el nombre sabido, la sombra se ve entera. Sigue siendo una sombra. */

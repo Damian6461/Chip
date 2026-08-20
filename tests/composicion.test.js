@@ -1705,6 +1705,31 @@ prueba('ojos: cada gesto tiene su contenedor y adentro sus dos mitades', () => {
   }
 });
 
+// EL MENÚ ES UNO SOLO, Y ESO SE DEFIENDE EN LA CELDA.
+//
+// Cuando las piezas bajaron a 16 px, la grilla de objetos pasó a celdas fijas y
+// la de gigantes se quedó en cuatro columnas al ancho disponible. El menú quedó
+// con dos ritmos, uno arriba del otro, y eso NO se ve en ningún número: las dos
+// grillas funcionaban perfectamente por separado.
+//
+// Los gigantes no son objetos y su dibujo no usa TAMANO_OBJETO. Lo que comparten
+// es la CELDA, que es lo que hace el ritmo.
+prueba('menú: las dos grillas comparten la celda', () => {
+  const celda = /repeat\(auto-fill,\s*calc\(var\(--objeto-grilla-lado\)\s*\*\s*3\)\)/;
+  const coleccion = bloqueEntre(CSS, '#coleccion-grilla {', '#coleccion-grilla .objeto');
+  const gigantes = bloqueEntre(CSS, '#gigantes-grilla {', '#gigantes-grilla .gigante');
+
+  verdadero(celda.test(coleccion), `la grilla de la colección cambió de celda: ${coleccion.trim()}`);
+  verdadero(celda.test(gigantes), `la de gigantes no usa la misma celda: ${gigantes.trim()}`);
+
+  // Y que la celda siga siendo más grande que el mínimo táctil: es la caja del
+  // dedo, y 3 x 16 son 48.
+  verdadero(
+    TAMANO_OBJETO.grilla * 3 >= 44,
+    `la celda mide ${TAMANO_OBJETO.grilla * 3} px y el mínimo del dedo es 44`
+  );
+});
+
 prueba('ojos: las cuatro capas del ojo comparten el filtrado', () => {
   // #parpado era la única sin `pixelated` —medido: `auto` contra `pixelated` en
   // las otras tres—. Su máscara es el mismo .webp de 256 escalado a la caja de
