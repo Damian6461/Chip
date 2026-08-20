@@ -229,11 +229,28 @@
 </p>
 <div id="rodeada"></div>
 
-<h2>c.ter — El desgaste: dos variantes, sin elegir</h2>
+<h2>c.ter — El desgaste: se eligió A, por filas</h2>
 <p>
-  Ninguna de las dos está en <code>style.css</code>: se declaran acá, que es donde
-  va una propuesta que todavía no se decidió. El resto de la ficha es la hoja de
-  verdad.
+  <strong>Elegida la A y ya está en <code>style.css</code>.</strong> Se lee como pintura
+  usada; la B se lee como pieza rota, que es otra cosa y dice algo que no queremos decir de
+  la consola de Chip. Las dos se siguen declarando acá abajo para poder compararlas: lo que
+  ves en la fila de muestras de esta sección son las <em>propuestas</em> pintadas encima, y
+  lo que ves en el resto de la página es la hoja de verdad, que ya trae la A.
+</p>
+<p>
+  Un cambio contra la propuesta original, y es el que la hace escalar: los cuatro huecos
+  estaban en posiciones fijas —11, 34, 57 y 80— separadas por 23 exactos, y en la hoja van
+  como un patrón que se repite cada 23. En el ancho en que se decidió da lo mismo: la
+  chapita mide 96 px en un teléfono de 390, así que el quinto hueco caería en 103 y no
+  entra. La diferencia aparece en pantallas más anchas, donde el patrón sigue y las
+  posiciones fijas habrían dejado la mitad derecha de la chapa sin gastar.
+</p>
+<p>
+  Y los píxeles del render de verdad, contados uno por uno:
+  <code>node verificacion/chapita-desgaste.mjs</code>. Captura la botonera a escala 1 y
+  cuenta los tonos de cada fila de cada chapita. Da un solo tono en la fila de arriba y en
+  la de abajo, y en la del medio la pintura más cuatro huecos en x = 11, 34, 57 y 80, con
+  separación 23 en las tres chapitas. Ni un píxel mezclado.
 </p>
 <div class="nota">
   <p>

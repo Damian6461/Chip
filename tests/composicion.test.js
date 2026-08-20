@@ -739,6 +739,100 @@ prueba('cable: los filos son colores y no mezclas en vivo', () => {
   verdadero(!/opacity:/.test(filos), 'volvió una opacidad a los filos, y con ella la mezcla');
 });
 
+// ---- QUÉ ES UN DEGRADÉ Y QUÉ ES UNA BANDA ----
+//
+// Este guardián decía `!/gradient/` a secas y estuvo bien mientras la chapita fue
+// un color plano. Cuando pasó a llevar el desgaste por filas —tres capas de un
+// píxel, y la del medio partida— se puso rojo, y tenía razón EN LO QUE MIRABA:
+// hay gradients en la regla. Lo que no sabía es que ninguno degrada.
+//
+// La diferencia, que es la que importa:
+//
+//   `linear-gradient(#c8781f, #e8a24a)`        una RAMPA. Entre las dos puntas
+//                                              hay cien tonos que no están en la
+//                                              paleta. Esto es lo prohibido.
+//   `linear-gradient(#e8a24a 0 0)`             una BANDA de un solo color.
+//   `repeating-linear-gradient(90deg,
+//      #c8781f 0 22px, #0000 22px 23px)`       DOS BANDAS con el corte en un
+//                                              píxel entero. Ningún tono medio.
+//
+// Lo que las separa, sintácticamente, es que cada parada de color declare un
+// RANGO —dos posiciones— y no un punto. Una parada con dos posiciones pinta una
+// banda maciza; dos paradas con un punto cada una interpolan entre ellas. Así
+// que la regla queda: en la ficha, toda parada de color tiene que traer su rango.
+//
+// La razón de aflojar el guardián en vez de sacarlo: sin él, la próxima vez que
+// alguien quiera "darle un poquito de volumen" a la chapita, un
+// `linear-gradient(#e8a24a, #c8781f)` entra sin que nadie diga nada. Y esta es
+// justamente la pieza que se rehizo tres veces por tener relieve.
+function degradesBlandos(bloque) {
+  const malos = [];
+
+  for (const m of bloque.matchAll(/(?:repeating-)?(?:linear|radial|conic)-gradient\(/g)) {
+    // El paréntesis de cierre se busca contando, no con un regex: adentro hay
+    // `calc(...)` y un `[^)]*` cortaría en el primero.
+    let prof = 0;
+    let j = m.index + m[0].length - 1;
+    for (; j < bloque.length; j++) {
+      if (bloque[j] === '(') prof++;
+      else if (bloque[j] === ')' && --prof === 0) break;
+    }
+    const dentro = bloque.slice(m.index + m[0].length, j);
+
+    // Las paradas se separan por comas de PRIMER NIVEL: las de adentro de un
+    // calc() no cuentan.
+    const paradas = [];
+    let buffer = '';
+    prof = 0;
+    for (const c of dentro) {
+      if (c === '(') prof++;
+      else if (c === ')') prof--;
+      if (c === ',' && prof === 0) {
+        paradas.push(buffer.trim());
+        buffer = '';
+      } else buffer += c;
+    }
+    paradas.push(buffer.trim());
+
+    for (const parada of paradas) {
+      // El ángulo o la forma no es una parada de color.
+      if (/^(to\s|\d+deg|\d+turn|circle|ellipse|at\s)/.test(parada)) continue;
+      if (!parada) continue;
+
+      // Un color seguido de DOS posiciones. El color puede ser un var(), un hex
+      // o un `#0000`; las posiciones, longitudes o calc().
+      const posiciones = parada
+        .replace(/^(?:var\(--[\w-]+\)|#[0-9a-fA-F]{3,8}|[a-z]+)/, '')
+        .trim();
+      const cuantas = posiciones ? partesDePrimerNivel(posiciones).length : 0;
+
+      if (cuantas < 2) {
+        malos.push(`${m[0]}…) tiene una parada sin rango: "${parada}"`);
+      }
+    }
+  }
+
+  return malos;
+}
+
+// Trocitos separados por espacios de primer nivel, para contar posiciones sin
+// que un `calc(a - b)` cuente como tres.
+function partesDePrimerNivel(texto) {
+  const partes = [];
+  let buffer = '';
+  let prof = 0;
+  for (const c of texto) {
+    if (c === '(') prof++;
+    else if (c === ')') prof--;
+    if (/\s/.test(c) && prof === 0) {
+      if (buffer) partes.push(buffer);
+      buffer = '';
+    } else buffer += c;
+  }
+  if (buffer) partes.push(buffer);
+  return partes;
+}
+
 prueba('botonera: la ficha es plana — ni degradés, ni relieve, ni un blur en reposo', () => {
   // Un color por trazo y nada en el medio. Lo que cambió respecto de la versión
   // con caja: ANTES acá se prohibía `box-shadow` a secas, porque el único
@@ -754,7 +848,11 @@ prueba('botonera: la ficha es plana — ni degradés, ni relieve, ni un blur en 
   // Un blur, sí — y ahí se va la fuente pixel, los cantos duros y los íconos de
   // 16 unidades, todos juntos.
   const bloque = bloqueEntre(CSS, '#acciones button {', '#acciones button::before');
-  verdadero(!/gradient/.test(bloque), 'volvió un degradé a la ficha');
+  igual(
+    degradesBlandos(bloque).join(' | '),
+    '',
+    'volvió un degradé a la ficha: dos colores que se cruzan en vez de dos bandas'
+  );
   verdadero(!/color-mix/.test(bloque), 'volvió un tono mezclado en vez de uno de la paleta');
 
   const sombras = [...bloque.matchAll(/(?:box|text)-shadow:\s*([^;]+);/g)].flatMap((m) => sombrasDe(m[1]));
@@ -773,6 +871,30 @@ prueba('botonera: la ficha es plana — ni degradés, ni relieve, ni un blur en 
       `una longitud fraccionaria en una sombra: ${l.join(' ')}`
     );
   }
+});
+
+prueba('botonera: el guardián del degradé se lo ve rojo con una rampa de verdad', () => {
+  // 1. La rampa clásica, que es lo que este guardián existe para impedir.
+  // Denuncia las DOS paradas, no la rampa como una sola cosa, y está bien así:
+  // el mensaje nombra cada parada que le falta el rango, que es lo que hay que
+  // arreglar. La primera versión de esta prueba esperaba una sola denuncia y se
+  // puso roja — la prueba estaba mal, no el detector.
+  const rampa = 'background-image: linear-gradient(#c8781f, #e8a24a);';
+  verdadero(degradesBlandos(rampa).length === 2, `no vio la rampa: ${degradesBlandos(rampa)}`);
+
+  // 2. La rampa disfrazada de porcentajes, que es como suele entrar.
+  const disfrazada = 'background: linear-gradient(180deg, var(--boton-naranja) 0%, #e8a24a 100%);';
+  verdadero(degradesBlandos(disfrazada).length === 2, 'dos paradas de un punto, dos denuncias');
+
+  // 3. Y NO LADRA DONDE NO DEBE: las tres capas reales de la chapita, con sus
+  //    calc() adentro, que es donde un parser ingenuo se rompe.
+  const bandas =
+    'background-image: linear-gradient(var(--chapita-luz) 0 0),' +
+    'repeating-linear-gradient(90deg,' +
+    ' var(--chapita-base) 0 calc(var(--p) - var(--h)),' +
+    ' #0000 calc(var(--p) - var(--h)) var(--p)),' +
+    'linear-gradient(var(--chapita-sombra) 0 0);';
+  igual(degradesBlandos(bandas).join(' | '), '', 'las bandas macizas no son un degradé');
 });
 
 prueba('botonera: la ficha son dos trazos, y los dos caen en la grilla', () => {

@@ -3949,7 +3949,46 @@ body.es-noche #piso {
   left: calc(var(--boton-chapita-inset) + var(--boton-chapita-filo));
   right: calc(var(--boton-chapita-inset) + var(--boton-chapita-filo));
   height: var(--boton-chapita-alto);
-  background: var(--boton-naranja);
+
+  /* ---- EL DESGASTE, POR FILAS ----
+   *
+   * La chapita deja de ser un color plano y pasa a ser TRES FILAS DE UN PÍXEL,
+   * que es exactamente su alto. Se eligió esta variante contra la que se comía
+   * las puntas: ver BOTONERA.desgaste, con el porqué.
+   *
+   * Los tres colores viven en tokens propios y no en las capas, y ése es el
+   * truco que hace que esto no se rompa en los otros dos estados: `:active` y
+   * `:disabled` sólo redefinen los tres tokens, y las capas —que son la FORMA
+   * del desgaste— quedan escritas una sola vez acá. Si cada estado repitiera el
+   * `background-image`, la primera vez que alguien tocara el patrón lo tocaría
+   * en uno de los tres.
+   *
+   * La fila del medio va con `repeat-x` y las otras dos con `no-repeat`: sólo
+   * la del medio tiene patrón. El hueco es transparente de verdad —no un gris
+   * pintado encima— así que por ahí se ve el piso del galpón, que es lo que
+   * significa que la pintura se saltó.
+   *
+   * La franja `#0000` del final del repeating no interpola con nada: los dos
+   * stops son coincidentes, así que el borde del hueco cae en el píxel entero y
+   * no hay un solo tono intermedio. */
+  --chapita-luz: var(--boton-naranja-luz);
+  --chapita-base: var(--boton-naranja);
+  --chapita-sombra: var(--boton-naranja-sombra);
+
+  background-color: transparent;
+  background-repeat: no-repeat, repeat-x, no-repeat;
+  background-image:
+    linear-gradient(var(--chapita-luz) 0 0),
+    repeating-linear-gradient(
+      90deg,
+      var(--chapita-base) 0 calc(var(--boton-desgaste-periodo) - var(--boton-desgaste-hueco)),
+      #0000 calc(var(--boton-desgaste-periodo) - var(--boton-desgaste-hueco))
+        var(--boton-desgaste-periodo)
+    ),
+    linear-gradient(var(--chapita-sombra) 0 0);
+  background-size: 100% 1px, var(--boton-desgaste-periodo) 1px, 100% 1px;
+  background-position: 0 0, var(--boton-desgaste-arranque) 1px, 0 2px;
+
   /* Expansión y no corrimiento: `0 0 0 1px` da UN PÍXEL EXACTO en los cuatro
      lados. Cuatro sombras corridas —una por lado— habrían dado lo mismo en el
      papel y habrían dejado las esquinas dependiendo de que las cuatro se
@@ -3958,16 +3997,22 @@ body.es-noche #piso {
   box-shadow: 0 0 0 var(--boton-chapita-filo) #000;
   pointer-events: none;
 
-  /* SOLTAR ES MÁS LENTO QUE APRETAR. El dedo baja de golpe y el material vuelve
-     solo: la transición de reposo usa el tiempo LARGO —el de volver— y la de
-     :active lo pisa con el corto.
-
-     ESTABA EN EL BOTÓN Y AHORA ESTÁ ACÁ, y no es una mudanza cosmética: lo que
-     cambiaba de color al apretar era el relleno del botón, y el botón ya no
-     tiene relleno. La transición se habría quedado interpolando `transparent`
-     contra `transparent` — una declaración que siempre da lo mismo y se lee como
-     una decisión. Lo que cambia de color ahora es la chapita. */
-  transition: background-color var(--presion-sube) ease-out;
+  /* ACÁ ESTABA `transition: background-color`, Y SE FUE CON EL COLOR PLANO.
+   *
+   * El argumento era bueno y sigue siéndolo para lo que describía: soltar es más
+   * lento que apretar, el dedo baja de golpe y el material vuelve solo. Lo que
+   * dejó de ser cierto es que haya un `background-color` que animar: ahora es
+   * `transparent` en los tres estados y lo que cambia son tres tokens de color
+   * adentro de las capas. Una custom property no interpola sin `@property`, así
+   * que la declaración se habría quedado animando transparente contra
+   * transparente — que es EXACTAMENTE lo que este comentario advertía cuando la
+   * transición se mudó acá desde el botón. La misma trampa, un paso más adelante.
+   *
+   * Y registrarlas con `@property` para recuperar el cruce sería ir contra el
+   * resto del punto: un cruce de color entre dos naranjas de pintura inventa
+   * tonos intermedios que no están en la paleta, sobre una pieza que se viene
+   * limpiando justamente de eso. El cambio al apretar es un corte, como el de
+   * los ojos. */
 }
 
 /* EL PIE. Una línea fina abajo, más corta que la chapita, para que la ficha se
@@ -4084,12 +4129,22 @@ body.es-noche #piso {
    que es lo que lo deja arriba: si se escribiera solo el halo, el anillo negro
    desaparecería justo al apretar, que es el cuadro en el que el dedo tapa media
    ficha y menos se puede perder el contorno. */
+/* Y AL APRETAR SE REDEFINEN LOS TRES TOKENS Y NADA MÁS. El patrón del desgaste
+   —las capas, los tamaños, las posiciones— está escrito una sola vez en la regla
+   de reposo. Acá se toca el color y la pieza sigue siendo la misma pieza
+   gastada, iluminada.
+
+   Los tres van al mismo crema: una chapita encendida no tiene cara iluminada y
+   cara en sombra, está toda prendida. Lo que sobrevive del desgaste al apretar
+   son los HUECOS, que son transparentes y siguen dejando ver el piso — o sea que
+   la pieza no cambia de silueta, sólo de temperatura. */
 #acciones button:active:not(:disabled):not([aria-disabled='true'])::after {
-  background: var(--boton-naranja-claro);
+  --chapita-luz: var(--boton-naranja-claro);
+  --chapita-base: var(--boton-naranja-claro);
+  --chapita-sombra: var(--boton-naranja-claro);
   box-shadow:
     0 0 0 var(--boton-chapita-filo) #000,
     0 0 var(--boton-chapita-halo) var(--boton-naranja-claro);
-  transition: background-color var(--presion-baja) ease-in;
 }
 
 /* El ícono se enciende al tocar. Es un cambio de color plano, no un destello
@@ -4124,11 +4179,19 @@ body.es-noche #piso {
    COLORES_BOTON_CHAPITA. Antes acá iba `--panel-linea`, el gris del texto
    apagado, y eso funcionaba mientras la franja estuviera sobre un relleno
    oscuro conocido; sobre el piso del atardecer un gris medio desaparece. */
-#acciones button:disabled::after,
-#acciones button[aria-disabled='true']::after,
+/* El pie no tiene desgaste —es una línea de 1 px, no hay filas que gastar— así
+   que le alcanza con el `background` de siempre. La chapita, en cambio, redefine
+   sus tres tokens y conserva las capas, por lo mismo que en :active. */
 #acciones button:disabled::before,
 #acciones button[aria-disabled='true']::before {
   background: var(--boton-naranja-apagado);
+}
+
+#acciones button:disabled::after,
+#acciones button[aria-disabled='true']::after {
+  --chapita-luz: var(--boton-naranja-apagado);
+  --chapita-base: var(--boton-naranja-apagado);
+  --chapita-sombra: var(--boton-naranja-apagado);
 }
 
 #acciones button:disabled svg,

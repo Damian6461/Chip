@@ -1033,8 +1033,21 @@ export const VARS_ANIMACION = {
   saltoAgacha: '--salto-agacha',
   saltoAltura: '--salto-altura',
   saltoRebote: '--salto-rebote',
-  presionBaja: '--presion-baja',
-  presionSube: '--presion-sube',
+  // ACÁ ESTABAN `--presion-baja` y `--presion-sube`, LAS DOS MITADES DEL APRETÓN.
+  //
+  // Sus únicos dos lectores eran las transiciones de color de la chapita, y esas
+  // se fueron cuando la chapita pasó a ser tres filas con tokens adentro: un
+  // token de color no interpola sin `@property`, así que la transición habría
+  // quedado animando `transparent` contra `transparent`.
+  //
+  // PRESION_BOTON no se va: la suma de sus dos mitades es DURACION_PRESION_MS,
+  // que sí tiene lector —el panel del menú—. Lo que se va es el par de nombres
+  // que el tema escribía y ya no lee nadie, que es exactamente lo que el
+  // guardián del puente denuncia. Lo denunció.
+  //
+  // Si algún día vuelve una animación asimétrica de apretón, los dos números
+  // siguen en PRESION_BOTON con su motivo escrito: 60 abajo y 140 arriba, porque
+  // el dedo baja de golpe y el material vuelve solo.
   llegadaDesde: '--llegada-desde',
   llegadaAplaste: '--llegada-aplaste',
   zetaDesde: '--zeta-desde',
@@ -3072,6 +3085,41 @@ export const BOTONERA = {
   // EXACTAMENTE la de antes; lo único que cambió está adentro.
   chapita: { alto: 3, inset: 8, filo: 1, halo: 4 },
 
+  // ---- EL DESGASTE, VARIANTE A: POR FILAS ----
+  //
+  // Se probaron dos en verificacion/botonera-chapita.html y se eligió ésta: por
+  // FILAS, y no la B, que se comía las puntas de la pieza. La A se lee como
+  // pintura usada; la B se lee como pieza rota, que es otra cosa y dice algo
+  // que no queremos decir de la consola de Chip.
+  //
+  // Las tres filas de 1 px son las tres del alto de la chapita, y cada una hace
+  // un trabajo:
+  //
+  //   arriba   `naranja-luz`, el brillo de la pintura. La cara que mira al techo.
+  //   medio    la pintura base, PARTIDA: cada `periodo` px se salta uno y queda
+  //            transparente. Un píxel sin capa deja ver el piso del galpón, que
+  //            es lo que significa "saltado". No se pinta un gris encima: se
+  //            saca la pintura.
+  //   abajo    `naranja-sombra`, la misma pintura sin luz.
+  //
+  // TODO ENTERO Y NADA SUPERPUESTO: tres capas de 1 px de alto en y = 0, 1 y 2,
+  // y los huecos de 1 px en x enteros. No hay un solo píxel mezclado, que es la
+  // condición de que esto sea pixel art y no una textura.
+  //
+  // EL PERÍODO DE 23 SALE DE LOS CUATRO HUECOS DE LA PROPUESTA —11, 34, 57 y
+  // 80— que estaban separados por 23 exactos. Acá va como patrón que se repite
+  // en vez de como cuatro posiciones fijas, y da el mismo resultado en el ancho
+  // en que se decidió: la chapita mide ~102 px en un teléfono de 390, o sea que
+  // el quinto hueco caería en 103 y no entra. La diferencia aparece en pantallas
+  // más anchas, donde el patrón sigue y las posiciones fijas habrían dejado la
+  // mitad derecha de la chapa sin gastar.
+  //
+  // `arranque` es lo que hace que el primer hueco caiga en x = 11: el hueco
+  // del patrón está al final del período, así que la capa se corre 12 px para
+  // que el 22 del patrón caiga en el 11 de la pieza. Es un número derivado y
+  // está escrito porque el CSS no puede hacer la cuenta.
+  desgaste: { periodo: 23, hueco: 1, arranque: 12 },
+
   // ---- EL PIE ----
   //
   // Una línea fina abajo, más corta que la chapita, para que la ficha se lea
@@ -3113,6 +3161,9 @@ export const VARS_BOTONERA = {
   chapitaInset: '--boton-chapita-inset',
   chapitaFilo: '--boton-chapita-filo',
   chapitaHalo: '--boton-chapita-halo',
+  desgastePeriodo: '--boton-desgaste-periodo',
+  desgasteHueco: '--boton-desgaste-hueco',
+  desgasteArranque: '--boton-desgaste-arranque',
   pieAlto: '--boton-pie-alto',
   pieInset: '--boton-pie-inset',
   pieAbajo: '--boton-pie-abajo',
@@ -3968,9 +4019,19 @@ export const COLORES_TOMA = {
 //             naranja del juego bajado en luminancia por el ilustrador, no por
 //             una cuenta: ya existe pintado en la escena, sobre la caja que
 //             está a un metro de la botonera.
+//   luz       #e8a24a, el `naranja-alto` de la caja de conexión. Es literalmente
+//             el brillo de esa misma pintura naranja: la fila de arriba de la
+//             chapita es la que recibe la luz del galpón.
+//   sombra    #c8781f otra vez, el mismo que `apagado`. Que sean el mismo hex no
+//             es un descuido ni un ahorro: la fila de abajo de una pintura y una
+//             pintura entera sin corriente son la MISMA pintura sin luz. Van en
+//             dos nombres porque significan cosas distintas y se pueden separar;
+//             hoy coinciden.
 export const COLORES_BOTON_CHAPITA = {
   'naranja-claro': COLORES_BULBO.cargando.nucleo,
-  'naranja-apagado': COLORES_TOMA.naranja
+  'naranja-apagado': COLORES_TOMA.naranja,
+  'naranja-luz': COLORES_TOMA['naranja-alto'],
+  'naranja-sombra': COLORES_TOMA.naranja
 };
 
 

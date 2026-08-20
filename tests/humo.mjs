@@ -24,97 +24,18 @@
 // alcanza con lanzarlo con `--remote-debugging-port` y hablarle. Son cien líneas
 // y no bajan ciento cincuenta megas de navegador.
 //
+// Esas cien líneas viven en tools/cromo.mjs y no acá, porque son dos los que
+// necesitan un navegador de verdad: este test y las verificaciones que miran
+// píxeles. Estuvieron duplicadas exactamente una vez.
+//
 // ---- POR QUÉ FALLA EN VEZ DE SALTEARSE SI NO ENCUENTRA CHROME ----
 //
 // Porque un test de humo que se saltea solo es exactamente el agujero que vino a
 // tapar: verde sin haber mirado. Si el navegador no está donde lo busca, se le
 // dice con CHIP_NAVEGADOR y sigue. Callarse no es una opción.
 
-import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { servir } from '../tools/servir.mjs';
-
-const CANDIDATOS = [
-  process.env.CHIP_NAVEGADOR,
-  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-  '/usr/bin/chromium-browser',
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-].filter(Boolean);
-
-function buscarNavegador() {
-  return CANDIDATOS.find((ruta) => existsSync(ruta)) ?? null;
-}
-
-// El puerto real de DevTools sale de stderr y no se puede adivinar: se lanza con
-// `--remote-debugging-port=0` para no chocar con un Chrome abierto a mano, y
-// Chrome contesta con la línea "DevTools listening on ws://...".
-function esperarPuerto(proceso, ms = 15000) {
-  return new Promise((listo, error) => {
-    let texto = '';
-    const reloj = setTimeout(
-      () => error(new Error(`Chrome no anunció su puerto en ${ms} ms. Dijo: ${texto.slice(-400)}`)),
-      ms
-    );
-    proceso.stderr.on('data', (trozo) => {
-      texto += trozo;
-      const m = texto.match(/ws:\/\/([^/]+)\//);
-      if (m) {
-        clearTimeout(reloj);
-        listo(m[1]);
-      }
-    });
-    proceso.on('exit', (codigo) => {
-      clearTimeout(reloj);
-      error(new Error(`Chrome se cerró con código ${codigo} antes de anunciar el puerto`));
-    });
-  });
-}
-
-// Un cliente CDP mínimo: manda comandos numerados y reparte los eventos.
-function conectar(url) {
-  return new Promise((listo, error) => {
-    const ws = new WebSocket(url);
-    let id = 0;
-    const pendientes = new Map();
-    const oyentes = [];
-
-    ws.addEventListener('message', (e) => {
-      const msg = JSON.parse(e.data);
-      if (msg.id !== undefined) {
-        const p = pendientes.get(msg.id);
-        pendientes.delete(msg.id);
-        if (p) (msg.error ? p.error : p.listo)(msg.error ?? msg.result);
-      } else {
-        for (const f of oyentes) f(msg);
-      }
-    });
-    ws.addEventListener('error', () => error(new Error(`no se pudo hablar con ${url}`)));
-    ws.addEventListener('open', () =>
-      listo({
-        enviar(metodo, params = {}) {
-          return new Promise((l, e) => {
-            const n = ++id;
-            pendientes.set(n, { listo: l, error: e });
-            ws.send(JSON.stringify({ id: n, method: metodo, params }));
-          });
-        },
-        alEvento(f) {
-          oyentes.push(f);
-        },
-        cerrar() {
-          ws.close();
-        }
-      })
-    );
-  });
-}
-
-const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+import { abrirCromo, buscarNavegador, dormir } from '../tools/cromo.mjs';
 
 // LO QUE SE MIRA UNA VEZ QUE ASENTÓ. Corre adentro de la página: son las tres
 // preguntas de "arrancó de verdad", elegidas porque son justo las tres que el
@@ -148,31 +69,13 @@ export async function correrHumo(informar = () => {}) {
   }
 
   const { servidor, puerto } = await servir(0);
-  const perfil = mkdtempSync(join(tmpdir(), 'chip-humo-'));
-  let chrome = null;
   let cliente = null;
 
   try {
-    chrome = spawn(navegador, [
-      '--headless=new',
-      '--remote-debugging-port=0',
-      `--user-data-dir=${perfil}`,
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--disable-gpu',
-      '--window-size=390,844',
-      'about:blank'
-    ]);
-
-    const host = await esperarPuerto(chrome);
-
-    // Un target nuevo y limpio. El perfil es temporal, así que no hay service
-    // worker viejo sirviendo una versión de ayer — que es el otro modo de falla
-    // que este proyecto ya conoce.
-    const nuevo = await fetch(`http://${host}/json/new?about:blank`, { method: 'PUT' }).then((r) =>
-      r.json()
-    );
-    cliente = await conectar(nuevo.webSocketDebuggerUrl);
+    // Perfil TEMPORAL, que lo arma abrirCromo: sin service worker viejo
+    // sirviendo una versión de ayer, que es el otro modo de falla que este
+    // proyecto ya conoce, y sin el localStorage de nadie.
+    cliente = await abrirCromo({ ancho: 390, alto: 844 });
 
     const errores = [];
     cliente.alEvento((msg) => {
@@ -194,17 +97,43 @@ export async function correrHumo(informar = () => {}) {
     await cliente.enviar('Page.enable');
     await cliente.enviar('Page.navigate', { url: `http://127.0.0.1:${puerto}/index.html` });
 
-    // ASENTAR. El juego pinta en el arranque, corre el decay, registra el
-    // service worker y arranca sus timers. Dos segundos es de sobra para lo que
-    // se está buscando —un error de arranque sale en el primer cuadro— y no
-    // tanto como para que el test se vuelva lento de correr.
+    // ASENTAR, Y ESPERAR A QUE SE DESOCUPE.
+    //
+    // Dos segundos alcanzan para lo que se está buscando —un error de arranque
+    // sale en el primer cuadro— y NO alcanzan para el otro modo de falla, que
+    // apareció corriendo esto cuatro veces: una de cada cuatro daba rojo en
+    // `#pantalla quedó en display:none` y `la mascota quedó en
+    // estado-esperando`, sin un solo error de consola.
+    //
+    // No era un bug: era el juego. `esperando` es el estado en que Chip aguanta
+    // el paso de un gigante —brazos cruzados, pantalla del pecho apagada— y dura
+    // DURACION_ESPERANDO_MS arrancando hasta 8 s después de abrir. O sea que la
+    // aserción del arranque estaba denunciando un estado legítimo, una de cada
+    // cuatro veces.
+    //
+    // Un test intermitente es peor que no tener test: la respuesta a un rojo
+    // intermitente es correrlo de nuevo, y esa costumbre se lleva puestos los
+    // rojos de verdad. Así que en vez de esperar más tiempo fijo —que lo haría
+    // lento siempre para arreglar un caso raro— se sondea hasta que se desocupe,
+    // con tope. El caso común sale en dos segundos; el del gigante espera lo que
+    // tenga que esperar y no miente.
+    //
+    // La ventana más larga no debilita nada: los errores de consola se juntan
+    // todo el tiempo que la página esté abierta.
     await dormir(2000);
 
-    const { result } = await cliente.enviar('Runtime.evaluate', {
-      expression: SONDA,
-      returnByValue: true
-    });
-    const sonda = JSON.parse(result.value);
+    let sonda = null;
+    const limite = Date.now() + 20000;
+    while (true) {
+      const { result } = await cliente.enviar('Runtime.evaluate', {
+        expression: SONDA,
+        returnByValue: true
+      });
+      sonda = JSON.parse(result.value);
+      const ocupado = /estado-esperando/.test(sonda.clases) || sonda.pantalla === 'none';
+      if (!ocupado || Date.now() > limite) break;
+      await dormir(500);
+    }
 
     anotar(
       'humo: el juego abre sin un solo error de consola',
@@ -233,13 +162,9 @@ export async function correrHumo(informar = () => {}) {
     anotar('humo: el juego abre sin un solo error de consola', `no se pudo correr: ${e.message}`);
   } finally {
     try {
-      cliente?.cerrar();
+      await cliente?.cerrar();
     } catch {}
-    chrome?.kill();
     servidor.close();
-    try {
-      rmSync(perfil, { recursive: true, force: true });
-    } catch {}
   }
 
   const fallaron = resultados.filter((r) => !r.ok).length;
