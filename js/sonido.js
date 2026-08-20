@@ -55,7 +55,7 @@
 // que `preload: 'none'` siga valiendo. Lo que cambia es que su salida pasa por un
 // GainNode en vez de por su propiedad `volume`.
 
-import { AMBIENTES, SONIDO } from './config.js';
+import { AMBIENTES, SONIDO, VOZ, VOZ_DE, VOCES, VOCES_LARGAS } from './config.js';
 
 let capas = []; // { audio, ganancia }
 let indiceActivo = 0;
@@ -91,9 +91,34 @@ function crearCapa() {
   const fuente = c.createMediaElementSource(audio);
   const ganancia = c.createGain();
   ganancia.gain.value = 0;
-  fuente.connect(ganancia).connect(c.destination);
+  fuente.connect(ganancia).connect(mezclaDelAmbiente());
 
   return { audio, ganancia };
+}
+
+// EL MASTER DEL AMBIENTE, Y ES POR QUÉ NO SE TOCA `audio.volume`.
+//
+// Cuando Chip habla, el ambiente tiene que correrse para atrás. La tentación es
+// bajarle `volume` al <audio>, y arriba está escrito por qué no: el volumen del
+// elemento se queda en 1 y quien manda es el GainNode; mezclar los dos controles
+// da una ganancia que es el producto de dos cosas y ninguna sabe de la otra.
+//
+// Pero el GainNode de cada capa YA TIENE DUEÑO: se lo programa `cruzar` con
+// curvas de igual potencia, y meter una segunda mano ahí es el mismo problema
+// con otro nombre.
+//
+// Así que hay un segundo gain EN SERIE, después de las dos capas. Cada uno tiene
+// un solo dueño: las capas son del crossfade y el master es del ducking. Dos
+// ganancias en cadena se multiplican solas y ninguna necesita saber de la otra.
+let masterAmbiente = null;
+function mezclaDelAmbiente() {
+  if (!masterAmbiente) {
+    const c = contexto();
+    masterAmbiente = c.createGain();
+    masterAmbiente.gain.value = 1;
+    masterAmbiente.connect(c.destination);
+  }
+  return masterAmbiente;
 }
 
 function asegurarCargado() {
@@ -365,4 +390,126 @@ document.addEventListener('visibilitychange', () => {
   } else {
     reanudar();
   }
+});
+
+// ============================================================================
+// LA VOZ DE CHIP
+// ============================================================================
+//
+// Veinte archivos que estuvieron en el repo sin un solo lector. Lo que sigue es
+// el cableado, y las REGLAS DE CUÁNDO PUEDE HABLAR son el punto entero: un bicho
+// que emite un sonido cada vez que pasa algo no se lee como que tiene voz, se
+// lee como una interfaz que hace ruido.
+//
+// Son seis y todas dicen que NO:
+//
+//   1. nunca dos veces seguidas el mismo archivo
+//   2. las largas, no más de una cada varios minutos
+//   3. nunca encimadas: si ya está sonando una, la nueva SE DESCARTA
+//   4. un piso de silencio entre dos cualesquiera
+//   5. nada si el sonido está apagado o si el contexto no arrancó
+//   6. nada, NUNCA, con la pestaña oculta
+//
+// LA TERCERA SE DESCARTA Y NO SE ENCOLA, y es deliberado: una cola convierte un
+// pico de eventos en un monólogo que sigue sonando cuando ya no viene a cuento.
+// Lo que se perdió, se perdió.
+
+let vozNodo = null;
+let vozGanancia = null;
+let ultimaVoz = null;
+let ultimoHabla = 0;
+let ultimaLarga = 0;
+let hablando = false;
+
+function asegurarVoz() {
+  if (vozNodo) return;
+  const c = contexto();
+  vozNodo = new Audio();
+  // `auto` y no `none`: una voz que empieza a bajarse recién cuando hace falta
+  // llega tarde y se pierde el momento. Son archivos cortos y están en
+  // ARCHIVOS_CACHE, así que después del primer arranque salen del disco.
+  vozNodo.preload = 'auto';
+  vozNodo.volume = 1;
+  document.body.appendChild(vozNodo);
+
+  vozGanancia = c.createGain();
+  vozGanancia.gain.value = VOZ.volumen;
+  // La voz NO pasa por el master del ambiente: si pasara, agacharse se agacharía
+  // a sí misma.
+  c.createMediaElementSource(vozNodo).connect(vozGanancia).connect(c.destination);
+
+  vozNodo.addEventListener('ended', soltarLaVoz);
+  // Si el archivo no carga, el estado tiene que volver igual. Sin esto un 404
+  // deja `hablando` en true para siempre y Chip se queda mudo sin decir por qué.
+  vozNodo.addEventListener('error', soltarLaVoz);
+}
+
+function agacharAmbiente(factor, ms) {
+  if (!masterAmbiente || !ctx) return;
+  const ahora = ctx.currentTime;
+  masterAmbiente.gain.cancelScheduledValues(ahora);
+  masterAmbiente.gain.setValueAtTime(masterAmbiente.gain.value, ahora);
+  masterAmbiente.gain.linearRampToValueAtTime(factor, ahora + ms / 1000);
+}
+
+function soltarLaVoz() {
+  hablando = false;
+  agacharAmbiente(1, VOZ.volverMs);
+}
+
+// Elige un archivo de los candidatos, sin repetir el anterior. Con un solo
+// candidato y ése siendo el anterior, devuelve null: la regla 1 gana sobre las
+// ganas de decir algo.
+function elegir(candidatos) {
+  const otros = candidatos.filter((id) => id !== ultimaVoz);
+  if (!otros.length) return null;
+  return otros[Math.floor(Math.random() * otros.length)];
+}
+
+// `hablar(situacion)` — la clave es la situación, no el archivo. Ver VOZ_DE.
+//
+// Devuelve el id que sonó, o null si no sonó nada. Devolver algo y no ser void es
+// para que se pueda probar sin oír: un test puede llamar veinte veces y contar.
+export function hablar(situacion) {
+  // 6 primero, y es la más terminante de las seis: una voz en una pestaña que
+  // nadie está mirando no llega tarde, llega mal.
+  if (document.visibilityState === 'hidden') return null;
+  if (!encendido || !ctx || ctx.state !== 'running') return null;
+  if (hablando) return null;
+
+  const candidatos = VOZ_DE[situacion];
+  if (!candidatos) return null;
+
+  const ahora = Date.now();
+  if (ahora - ultimoHabla < VOZ.cooldownMs) return null;
+
+  const id = elegir([].concat(candidatos));
+  if (!id) return null;
+
+  // El cooldown de las largas se consulta DESPUÉS de elegir, porque cuál salió
+  // decide si aplica. Una situación con cuatro candidatos largos queda muda
+  // durante todo el cooldown, y está bien: son las que se cuentan.
+  const esLarga = VOCES_LARGAS.includes(id);
+  if (esLarga && ahora - ultimaLarga < VOZ.cooldownLargasMs) return null;
+
+  asegurarVoz();
+  hablando = true;
+  ultimaVoz = id;
+  ultimoHabla = ahora;
+  if (esLarga) ultimaLarga = ahora;
+
+  agacharAmbiente(VOZ.agacharAmbiente, VOZ.agacharMs);
+  vozNodo.src = VOCES[id];
+  vozNodo.currentTime = 0;
+  // Si el navegador se niega, el estado vuelve igual: el `catch` no es cosmético.
+  vozNodo.play().catch(soltarLaVoz);
+  return id;
+}
+
+// La pestaña se oculta con una voz sonando: se corta. Es la misma regla 6, en el
+// otro sentido — no alcanza con no empezar, hay que no seguir.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' || !hablando) return;
+  vozNodo.pause();
+  soltarLaVoz();
 });

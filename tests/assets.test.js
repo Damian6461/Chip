@@ -40,7 +40,10 @@ import {
   AJUSTE_OJOS,
   RUTAS_CUERPO,
   INCLINACION_CABEZA,
-  ANGULO_BRAZO_SIN_CUERPO
+  ANGULO_BRAZO_SIN_CUERPO,
+  VOZ,
+  VOCES,
+  VOCES_LARGAS
 } from '../js/config.js';
 import {
   LIMITES_PESO,
@@ -749,4 +752,50 @@ prueba('verificacion/: las cuatro copias de la cabecera no se separaron', () => 
         'la página equivocada.'
     );
   }
+});
+
+// ============================================================================
+// LA VOZ DE CHIP, EN LAS DOS DIRECCIONES
+// ============================================================================
+//
+// Veinte archivos que estuvieron en el repo sin un solo lector: `sonido.js` sólo
+// sabía de ambientes y de lluvia. El cruce va en las dos direcciones porque los
+// dos modos de falla son distintos y los dos son silenciosos:
+//
+//   archivo sin mapear   Damián grabó un sonido y nadie lo pone nunca. Es el
+//                        estado del que venimos, y no se nota: no suena y ya.
+//   id sin archivo       una situación pide un archivo que no está. Tampoco se
+//                        nota: el <audio> tira un error que nadie mira y Chip se
+//                        queda callado en ese momento y en ningún otro.
+
+const VOCES_EN_DISCO = readdirSync(RAIZ + 'sonidos/chip')
+  .filter((n) => n.toLowerCase().endsWith(VOZ.extension))
+  .map((n) => VOZ.carpeta + n)
+  .sort();
+
+prueba('voz: todo archivo del disco está mapeado a una situación', () => {
+  verdadero(VOCES_EN_DISCO.length > 0, 'el parser no encontró ninguna voz en sonidos/chip');
+  const sinMapear = VOCES_EN_DISCO.filter((r) => !Object.values(VOCES).includes(r));
+  igual(sinMapear.join(' | '), '', 'voces grabadas que ninguna situación usa');
+});
+
+prueba('voz: toda situación mapeada apunta a un archivo que existe', () => {
+  const fantasmas = Object.values(VOCES).filter((r) => !VOCES_EN_DISCO.includes(r));
+  igual(fantasmas.join(' | '), '', 'situaciones que piden un archivo que no está en el disco');
+});
+
+prueba('voz: las largas existen y son un subconjunto', () => {
+  // No es redundante con las dos de arriba: VOCES_LARGAS es una lista APARTE, y
+  // el modo de falla es que alguien renombre un archivo y ésta se quede
+  // apuntando al viejo. Ahí la voz suena, pero deja de tener su cooldown de
+  // varios minutos y vuelve a cansar — sin que nada se ponga rojo.
+  const sueltas = VOCES_LARGAS.filter((id) => !(id in VOCES));
+  igual(sueltas.join(' | '), '', 'largas que no están en el mapeo');
+});
+
+prueba('voz: las veinte están en ARCHIVOS_CACHE', () => {
+  // Los ambientes NO se cachean, por decisión escrita. La voz sí: son cortos y
+  // tienen que estar al instante. Una voz que llega tarde no es una voz.
+  const faltan = Object.values(VOCES).filter((r) => !SW.includes(r));
+  igual(faltan.join(' | '), '', 'voces que no se instalan con la PWA');
 });

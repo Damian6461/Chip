@@ -33,7 +33,7 @@
 // este bloque explica cómo evitar. Es un carve-out consciente de la regla de
 // "toda constante vive en config.js", y está anotado también allá.
 
-const CACHE_VERSION = 'chip-cache-v107';
+const CACHE_VERSION = 'chip-cache-v108';
 
 // LA HUELLA DEL CONTENIDO DE ARCHIVOS_CACHE. No la lee nadie en runtime: existe
 // para que un test pueda contestar la única pregunta que importa acá, que es si
@@ -51,7 +51,7 @@ const CACHE_VERSION = 'chip-cache-v107';
 //
 // Se escribe sola: `node tests/sellar-cache.mjs` sube la versión y la recalcula.
 // No se edita a mano.
-const HUELLA_CACHE = '36f5cb37f00410dd';
+const HUELLA_CACHE = '2df09599ba8f1115';
 
 // No se cachean tests/, js/debug.js ni icons/generador.html: son superficies de
 // desarrollo y no forman parte del juego instalado.
@@ -92,6 +92,38 @@ const ARCHIVOS_CACHE = [
   // primera apertura sin red caería a la fuente de reserva y las etiquetas
   // cambiarían de forma. Se genera con `node tools/fuente-chip.mjs`.
   './fuentes/chip-pixel.ttf',
+
+  // ---- LA VOZ DE CHIP, Y SÍ VA EN EL CACHÉ ----
+  //
+  // Los AMBIENTES no se cachean, y está escrito arriba por qué: son 2,3 MB para
+  // algo que mucha gente no va a prender nunca. La voz es al revés y por dos
+  // motivos: son veinte archivos cortos —852 KB, 9,9 segundos en total— y sobre
+  // todo TIENEN QUE ESTAR AL INSTANTE. Un ambiente que tarda dos segundos en
+  // empezar no se nota; una voz que contesta un toque dos segundos después no es
+  // una voz, es un eco.
+  //
+  // Siguen en .wav porque no hay conversor a ogg en esta máquina — ver VOZ en
+  // config.js, con la medición de lo que el navegador puede y no puede escribir.
+  './sonidos/chip/01_curious_short.wav',
+  './sonidos/chip/02_brrup.wav',
+  './sonidos/chip/03_question.wav',
+  './sonidos/chip/04_thinking_long.wav',
+  './sonidos/chip/05_tiny_greeting.wav',
+  './sonidos/chip/06_murmur_long.wav',
+  './sonidos/chip/07_bright.wav',
+  './sonidos/chip/08_low_battery_hint.wav',
+  './sonidos/chip/09_what_was_that.wav',
+  './sonidos/chip/10_content.wav',
+  './sonidos/chip/11_long_conversation.wav',
+  './sonidos/chip/12_sleepy.wav',
+  './sonidos/chip/13_surprised_small.wav',
+  './sonidos/chip/14_robot_chuckle.wav',
+  './sonidos/chip/15_distant_feeling.wav',
+  './sonidos/chip/16_energetic_long.wav',
+  './sonidos/chip/17_idle_mumble.wav',
+  './sonidos/chip/18_long_scan.wav',
+  './sonidos/chip/19_drowsy_question.wav',
+  './sonidos/chip/20_signature_long.wav',
   // Los siete sprites de estado. Sin ellos, la app instalada y sin red levantaba
   // con el galpón de fondo y placeholders en el medio: ahora abre completa.
   // La lista está escrita a mano y no sale de RUTAS_SPRITES porque este archivo

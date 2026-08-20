@@ -26,7 +26,8 @@ import {
   encender,
   arrancarConElPrimerGesto,
   llover as lloverAmbiente,
-  dejarDeLlover as dejarDeLloverAmbiente
+  dejarDeLlover as dejarDeLloverAmbiente,
+  hablar
 } from './sonido.js';
 import {
   render,
@@ -188,8 +189,8 @@ conectarAcciones({
   // sesión es la dueña del proceso; acá sólo se dice cuándo baja y sube el dedo.
   onCargarAbajo: () => sesion.arrancarCarga(),
   onCargarArriba: () => sesion.soltarCarga(),
-  onJugar: () => sesion.ejecutar(E.jugando, jugar, 'jugar'),
-  onLimpiar: () => sesion.ejecutar(E.limpiando, limpiar, 'limpiar')
+  onJugar: () => { hablar('confirmar'); return sesion.ejecutar(E.jugando, jugar, 'jugar'); },
+  onLimpiar: () => { hablar('confirmar'); return sesion.ejecutar(E.limpiando, limpiar, 'limpiar'); }
 });
 
 // El gesto de acariciar. Va aparte de conectarAcciones porque no es una acción:
@@ -199,9 +200,12 @@ conectarAcciones({
 // Los tres gestos. ui.js decide CUÁL fue —interpretar punteros es presentación—
 // y la sesión decide qué significa cada uno.
 conectarCaricia({
-  onCaricia: () => sesion.acariciar(),
-  onToque: () => sesion.tocar(),
-  onFastidio: () => sesion.fastidiar(),
+  // LA VOZ VA ACÁ Y NO ADENTRO DE LA SESIÓN, con el mismo criterio que separa a
+  // ui.js del modelo: qué SUENA es presentación. La sesión decide si el gesto
+  // aplica; el sonido acompaña al gesto, no al resultado.
+  onCaricia: () => { hablar('caricia'); return sesion.acariciar(); },
+  onToque: () => { hablar('toque'); return sesion.tocar(); },
+  onFastidio: () => { hablar('fastidio'); return sesion.fastidiar(); },
   fastidiado: () => sesion.estaFastidiado()
 });
 

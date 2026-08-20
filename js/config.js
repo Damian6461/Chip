@@ -4396,6 +4396,117 @@ export const SONIDO = {
   pasosCurva: 128
 };
 
+// ============================================================================
+// LA VOZ DE CHIP
+// ============================================================================
+//
+// Veinte archivos que estuvieron en el repo sin un solo lector: `sonido.js` sólo
+// sabía de ambientes y de lluvia, así que Chip era mudo. Esto los cablea.
+//
+// ---- EL FORMATO, Y POR QUÉ SIGUEN SIENDO .wav ----
+//
+// El pedido era pasarlos a .ogg, que es lo que usa el resto del proyecto, y no
+// se pudo. NO HAY CONVERSOR: la máquina no tiene ffmpeg, oggenc ni sox, y el
+// único codificador de audio disponible es el `MediaRecorder` del navegador, que
+// en este Chrome contesta:
+//
+//   audio/ogg                false
+//   audio/ogg; codecs=opus   false
+//   audio/webm; codecs=opus  true
+//   audio/mp4                true
+//
+// O sea que el navegador puede escribir webm/opus o mp4/aac, pero NO ogg. Y
+// cualquiera de los dos sería un SEGUNDO formato en el proyecto, que es
+// exactamente el motivo por el que se pedía ogg. Entre meter un formato nuevo o
+// dejar el original, se deja el original: un .wav suena en todos lados, no
+// pierde calidad y no compromete al proyecto con un contenedor más.
+//
+// LO QUE CUESTA, medido: los veinte suman 852 KB en wav y duran 9,9 segundos en
+// total, a 44,1 kHz, 16 bits, mono. En opus a 64 kbps serían unos 80 KB. La
+// diferencia es real y vale la pena, pero necesita una herramienta que hoy no
+// está.
+//
+// `extension` está aparte justamente para eso: el día que haya conversor, se
+// convierten los veinte y se cambia esta línea. Nada más.
+export const VOZ = {
+  carpeta: 'sonidos/chip/',
+  extension: '.wav',
+
+  // Más alta que el ambiente, y bastante: la voz es lo que hay que escuchar y el
+  // ambiente es lo que tiene que estar abajo. Ver SONIDO.volumen, que es 0,28.
+  volumen: 0.85,
+
+  // ---- LAS REGLAS DE CUÁNDO PUEDE HABLAR ----
+  //
+  // Son el punto entero. Un bicho que emite un sonido cada vez que pasa algo no
+  // se lee como que tiene voz: se lee como una interfaz que hace ruido.
+  //
+  // El piso entre dos voces. Cuatro segundos es lo que hace que dos cosas
+  // seguidas —un toque y una acción— no salgan pegadas.
+  cooldownMs: 4000,
+
+  // Y LAS LARGAS TIENEN SU PROPIO PISO, mucho más alto. Un murmullo largo
+  // repetido cansa: son las que se cuentan, no las que acompañan.
+  cooldownLargasMs: 240000,
+
+  // Cuánto baja el ambiente mientras Chip habla, como FACTOR de su volumen. No
+  // se apaga: se corre para atrás.
+  agacharAmbiente: 0.35,
+  agacharMs: 180,
+  volverMs: 420
+};
+
+// LAS LARGAS. Salen de acá y no de mirarle el nombre al archivo: un `_long` en
+// el nombre es una convención que se puede romper sin que nada avise.
+export const VOCES_LARGAS = [
+  '04_thinking_long',
+  '06_murmur_long',
+  '11_long_conversation',
+  '18_long_scan',
+  '20_signature_long'
+];
+
+// ---- EL MAPEO. Es de Damián y del revisor, no mío ----
+//
+// La clave es la SITUACIÓN y el valor es el archivo. Al revés —archivo como
+// clave— el día que dos situaciones compartan sonido habría que repetir la
+// entrada, y ahí es donde se separan.
+//
+// `idleProfundo` es la única con varias: son las cuatro largas que se turnan, y
+// que además pasan por el cooldown de las largas. La quinta larga, la firma, va
+// sola porque es de otra naturaleza: rarísima, de las que se cuentan.
+export const VOZ_DE = {
+  saludo: '05_tiny_greeting',
+  toque: '01_curious_short',
+  caricia: '10_content',
+  cariciaLarga: '14_robot_chuckle',
+  confirmar: '02_brrup',
+  hecho: '07_bright',
+  fastidio: '13_surprised_small',
+  distraida: '03_question',
+  distraidaNoche: '19_drowsy_question',
+  evento: '09_what_was_that',
+  standby: '12_sleepy',
+  idle: '17_idle_mumble',
+  critico: '08_low_battery_hint',
+  jugando: '16_energetic_long',
+  gigantes: '15_distant_feeling',
+  idleProfundo: ['04_thinking_long', '06_murmur_long', '11_long_conversation', '18_long_scan'],
+  firma: '20_signature_long'
+};
+
+// Los veinte, aplanados. Es lo que recorre el service worker y lo que cruza el
+// test contra el disco, en las dos direcciones: que no sobre ni falte ninguno.
+// ES UN MAPA DE id A RUTA, y la primera versión era una lista de rutas. Con una
+// lista, `hablar` tenía que volver a armar la ruta —carpeta + id + extensión— y
+// eso es la misma cuenta escrita en dos lugares: el día que cambie la extensión,
+// uno de los dos se queda viejo.
+export const VOCES = Object.fromEntries(
+  Object.values(VOZ_DE)
+    .flat()
+    .map((id) => [id, `${VOZ.carpeta}${id}${VOZ.extension}`])
+);
+
 export const PARAM_DEBUG = 'debug';
 
 // CÓMO SE ABRE EL PANEL EN LA APP INSTALADA.
