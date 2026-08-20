@@ -4705,13 +4705,66 @@ export const VOCES = Object.fromEntries(
 //
 // El piso de 4 segundos de VOZ.cooldownMs manda igual sobre todos: esto decide
 // si se INTENTA, no si suena.
+//
+// ---- LO QUE FALTABA ACÁ ERAN LOS GESTOS, Y ERA EL AGUJERO GRANDE ----
+//
+// `toque`, `caricia` y `fastidio` no estaban en esta tabla, y el cableado de los
+// gestos —`conectarCaricia`, en el mismo main.js que tenía el filtro— llamaba a
+// `hablar` directamente para los tres. O sea que el único filtro de los gestos
+// era el piso de 4 segundos: TOCAR A CHIP LO HACÍA HABLAR SIEMPRE.
+//
+// Contado, no supuesto — ver verificacion/voz-sesion.mjs, mil corridas de diez
+// minutos con un gesto cada seis segundos durante los dos primeros:
+//
+//                          antes         después
+//   veces que habla        21,4          10,7
+//   por minuto              2,14          1,07
+//   hueco mediano           6,0 s        13,5 s
+//
+// Veinte de esas 21,4 eran gestos. Un bicho que contesta el 100% de los toques
+// no tiene voz: es un botón que hace ruido. Los tres números nuevos van hacia
+// MENOS, que es la consigna cuando hay duda.
+//
+//   toque      0,35   uno de cada tres. Es el gesto más barato de hacer y el que
+//                     más se repite; contestarlo siempre lo convierte en un
+//                     soundboard.
+//   caricia    0,5    la mitad. Una caricia cuesta más que un toque y se lee
+//                     como dirigida, así que merece más respuesta.
+//   fastidio   0,6    el más alto de los tres, y no es contradictorio: pasa poco
+//                     —hay que pedirle algo que ya está hecho— y cuando pasa, es
+//                     justo lo que hay que oír.
+//
+// ---- Y LA PUERTA ES UNA SOLA: `hablar` ----
+//
+// Antes esta tabla la leía main.js con un `seAnima()` propio, y quedaba del lado
+// de quien llamaba: los estados pasaban por el filtro y los gestos, cableados
+// veinte líneas más arriba en el mismo archivo, no. Ahora la consulta `hablar`,
+// o sea el único lugar por el que pasa toda voz. Un filtro que depende de que
+// cada llamador se acuerde de usarlo no es un filtro.
+//
+// LAS CLAVES SON SITUACIONES DE VOZ_DE, y eso lo verifica un guardián. Acá decía
+// `feliz`, que NO es una situación: main.js miraba `feliz` y después llamaba a
+// `hablar('cariciaLarga')`. Funcionaba de casualidad, con el nombre del estado
+// visual de un lado y el de la situación del otro. Es la misma familia del bug
+// que se encontró el día que se escribió el test del mapeo — `hablar('feliz')`
+// devolviendo null en silencio.
+//
+// LO QUE NO ESTÁ ACÁ HABLA SIEMPRE, sujeto a las seis reglas. El default es 1 y
+// no 0: esta tabla dice "hablá MENOS que siempre, y cuánto menos", no "quién
+// puede hablar". Con default 0, agregar una situación a VOZ_DE y olvidarse de
+// esta tabla la dejaba muda sin decirlo.
 export const PROBABILIDAD_VOZ = {
   standby: 0.7,
   critico: 0.7,
   jugando: 0.35,
-  feliz: 0.15,
+  cariciaLarga: 0.15,
   hecho: 0.2,
   evento: 0.5,
+  toque: 0.35,
+  caricia: 0.5,
+  fastidio: 0.6,
+  // Redundante contra el default de 1, y se queda: que el saludo del día suene
+  // siempre es una decisión, y una decisión escrita vale más que una ausencia.
   saludo: 1
 };
 

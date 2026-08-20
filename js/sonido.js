@@ -55,7 +55,15 @@
 // que `preload: 'none'` siga valiendo. Lo que cambia es que su salida pasa por un
 // GainNode en vez de por su propiedad `volume`.
 
-import { AMBIENTES, SONIDO, VOZ, VOZ_DE, VOCES, VOCES_LARGAS } from './config.js';
+import {
+  AMBIENTES,
+  SONIDO,
+  VOZ,
+  VOZ_DE,
+  VOCES,
+  VOCES_LARGAS,
+  PROBABILIDAD_VOZ
+} from './config.js';
 
 let capas = []; // { audio, ganancia }
 let indiceActivo = 0;
@@ -275,6 +283,46 @@ export function dejarDeLlover() {
   franjaActual = null;
 }
 
+// ---- CUÁNDO EL SONIDO EMPIEZA A SONAR DE VERDAD ----
+//
+// No es cuando el jugador toca. Es un rato después, y ese rato se llevó puesto
+// el saludo del día.
+//
+// El mecanismo, medido: los dos escuchan el MISMO `pointerdown` con capture. El
+// primero es el de acá, que llama a `encender(true)` y ése a
+// `contexto().resume()`. `resume()` devuelve una PROMESA: el contexto no queda
+// en `running` en la misma vuelta. El segundo listener era el del saludo, que
+// llamaba a `hablar('saludo')` — y lo primero que hace `hablar` es mirar
+// `ctx.state !== 'running'` y devolver null. En silencio, que es la parte peor:
+// el saludo no fallaba, no existía.
+//
+// Así que en vez de que el saludo adivine cuándo puede hablar, el sonido AVISA.
+// `cuandoSuene(fn)` corre `fn` en el momento en que el contexto está realmente
+// corriendo: ya mismo si lo está, o cuando el resume resuelva.
+//
+// Y sirve para el otro caso también, que es el que iba a aparecer después: si el
+// jugador abre con el sonido apagado y lo prende desde el menú, el saludo sale
+// ahí. Antes ese camino no pasaba por ningún `pointerdown` armado y el saludo se
+// perdía igual.
+let esperandoElSonido = [];
+
+function avisarQueSuena() {
+  const cola = esperandoElSonido;
+  esperandoElSonido = [];
+  for (const fn of cola) {
+    try {
+      fn();
+    } catch {
+      // Un aviso que falla no puede llevarse puesto a los otros ni al audio.
+    }
+  }
+}
+
+export function cuandoSuene(fn) {
+  if (encendido && ctx && ctx.state === 'running') fn();
+  else esperandoElSonido.push(fn);
+}
+
 export function encender(activo) {
   encendido = activo;
 
@@ -304,7 +352,7 @@ export function encender(activo) {
   // silencio que ni el propio módulo sabía que existía.
   contexto()
     .resume()
-    .catch(armarElGesto);
+    .then(avisarQueSuena, armarElGesto);
 
   if (!capas[0].vigilada) {
     for (const capa of capas) {
@@ -479,6 +527,23 @@ export function hablar(situacion) {
 
   const candidatos = VOZ_DE[situacion];
   if (!candidatos) return null;
+
+  // ---- LA SÉPTIMA, QUE ES UNA MONEDA Y NO UNA REGLA ----
+  //
+  // Las seis de arriba dicen cuándo NO PUEDE hablar. Ésta dice cuándo NO QUIERE,
+  // y por eso va después: no tiene sentido tirar los dados para algo que igual
+  // no iba a sonar.
+  //
+  // ESTABA EN main.js, en un `seAnima()` propio, y ahí es donde estaba el
+  // agujero: los gestos —toque, caricia, fastidio— se cablean en
+  // conectarCaricia y llamaban a `hablar` de una, así que esquivaban el filtro entero. Tocar a Chip lo hacía
+  // hablar el 100% de las veces, con el piso de 4 segundos como único límite.
+  // Un filtro que vive al lado de algunos de sus sujetos no es un filtro; vive
+  // acá, que es la única puerta por la que pasa toda voz.
+  //
+  // El default es 1: lo que no está en la tabla habla siempre. Ver
+  // PROBABILIDAD_VOZ.
+  if (Math.random() >= (PROBABILIDAD_VOZ[situacion] ?? 1)) return null;
 
   const ahora = Date.now();
   if (ahora - ultimoHabla < VOZ.cooldownMs) return null;

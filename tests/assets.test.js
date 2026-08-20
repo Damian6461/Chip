@@ -45,6 +45,7 @@ import {
   VOCES,
   VOCES_LARGAS,
   VOZ_DE,
+  PROBABILIDAD_VOZ,
   SPRITE_OBJETO,
   SPRITES_OBJETO,
   OBJETOS_SIN_SPRITE,
@@ -601,11 +602,45 @@ prueba('sonido: un resume rechazado vuelve a armar el gesto', () => {
     `armarElGesto aparece ${rescates.length} veces: hacen falta la definición, el ` +
       'export, el rescate del resume de encender() y el de reanudar()'
   );
+  // Acepta las dos formas de mirar el rechazo, y la de dos argumentos es la que
+  // está puesta hoy: `resume().then(avisarQueSuena, armarElGesto)`.
+  //
+  // No es un aflojar del guardián por comodidad. `.then(f).catch(g)` también
+  // atraparía un error tirado por `f` —o sea, un aviso al saludo que explota
+  // haría creer que el audio falló y rearmaría el gesto—, y la forma de dos
+  // argumentos separa las dos cosas: `g` corre SÓLO si el resume se rechazó.
+  // Para lo que este test cuida, la de dos argumentos es más estricta.
   verdadero(
     /\.resume\(\)\s*\n?\s*\.catch\(armarElGesto\)/.test(SONIDO_JS) ||
-      /resume\(\)\.catch\(armarElGesto\)/.test(SONIDO_JS),
+      /resume\(\)\.catch\(armarElGesto\)/.test(SONIDO_JS) ||
+      /\.resume\(\)\s*\n?\s*\.then\([\w]+,\s*armarElGesto\)/.test(SONIDO_JS),
     'encender() tiene que mirar si el resume falló'
   );
+});
+
+// EL SALUDO NO PUEDE VOLVER A COLGARSE DEL GESTO.
+//
+// Estuvo cableado a un `pointerdown` que corría en la misma vuelta que el que
+// enciende el audio, y `resume()` es una promesa: cuando el saludo llamaba a
+// `hablar`, el contexto todavía no estaba corriendo y `hablar` devolvía null en
+// silencio. El saludo no fallaba — no existía. Verificado en el navegador: con
+// el toque, lo único que se reproducía era el ambiente.
+prueba('voz: el saludo espera a que el sonido suene de verdad, no al gesto', () => {
+  verdadero(
+    /export function cuandoSuene/.test(SONIDO_JS),
+    'sonido.js tiene que ofrecer el aviso de "ya está sonando"'
+  );
+  verdadero(
+    /cuandoSuene\(/.test(MAIN_JS),
+    'main.js tiene que usarlo para el saludo'
+  );
+
+  // Y que el saludo NO esté colgado de un pointerdown propio: ése es el defecto,
+  // escrito tal cual estaba.
+  const saludoEnGesto = /addEventListener\(\s*'pointerdown'[\s\S]{0,200}hablar\(\s*'saludo'/.test(
+    MAIN_JS
+  );
+  verdadero(!saludoEnGesto, 'el saludo volvió a colgarse de un pointerdown y ahí no suena');
 });
 
 // ---- Y UN GUARDIÁN PARA EL GUARDIÁN ----
@@ -837,6 +872,46 @@ prueba('voz: toda situación mapeada tiene al menos un punto de llamada', () => 
     (situacion) => !new RegExp(`hablar\\(\\s*['"]${situacion}['"]`).test(FUENTES_QUE_HABLAN)
   );
   igual(mudas.join(' | '), '', 'situaciones mapeadas que nadie llama: la voz existe y no se usa');
+});
+
+// LAS CLAVES DE PROBABILIDAD_VOZ TIENEN QUE SER SITUACIONES DE VERDAD.
+//
+// Tenía `feliz`, que NO es una situación: es el nombre del estado visual.
+// main.js miraba la probabilidad de `feliz` y después llamaba a
+// `hablar('cariciaLarga')`. Funcionaba de casualidad, con dos vocabularios
+// distintos a los dos lados de una línea.
+//
+// Es la misma familia del bug que se encontró el día que se escribió el test del
+// mapeo: `hablar('feliz')` devolviendo null en silencio. Ahora que la moneda la
+// tira `hablar` con la clave de la situación, una clave que no existe deja a esa
+// situación con el default y el número escrito no se aplica a nada — otra vez en
+// silencio.
+prueba('voz: toda clave de PROBABILIDAD_VOZ es una situación del mapeo', () => {
+  const inventadas = Object.keys(PROBABILIDAD_VOZ).filter((clave) => !(clave in VOZ_DE));
+  igual(
+    inventadas.join(' | '),
+    '',
+    'claves de PROBABILIDAD_VOZ que no son situaciones de VOZ_DE: el número no lo lee nadie'
+  );
+});
+
+prueba('voz: la moneda vive en hablar y no en quien llama', () => {
+  // El defecto que esto cierra: si la probabilidad vuelve a quedar del lado del
+  // llamador, alcanza con que UNA llamada nueva se olvide de consultarla para
+  // que esa situación hable siempre. Pasó con los tres gestos.
+  verdadero(
+    /PROBABILIDAD_VOZ\[situacion\]/.test(SONIDO_JS),
+    'hablar() tiene que consultar PROBABILIDAD_VOZ con la situación que recibió'
+  );
+  // Se busca el USO y no la MENCIÓN: main.js nombra la tabla en el comentario
+  // que cuenta por qué se mudó, y ese comentario tiene que poder existir. La
+  // primera versión de esta prueba prohibía la palabra y se puso roja contra su
+  // propia explicación.
+  const sinComentarios = MAIN_JS.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  verdadero(
+    !/PROBABILIDAD_VOZ/.test(sinComentarios),
+    'main.js volvió a tirar la moneda por su cuenta, y ahí es donde se filtran los gestos'
+  );
 });
 
 prueba('voz: el parser de llamadas encuentra algo', () => {

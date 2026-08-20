@@ -12,7 +12,7 @@
 // el reloj de pared, los timers de verdad, el service worker y el panel de
 // debug. Y el estado vivo ya no vive acá: lo tiene la sesión.
 
-import { MS_POR_HORA, FRANJAS_DIA, DURACION_CRUCE_APERTURA_MS, DURACION_CRUCE_FONDO_MS, TICK_VISUAL_MS, ESTADOS_VISUALES as E, PARAM_DEBUG, RUTA_SW, ZONA_PISO, CLIMAS, PROBABILIDAD_VOZ, VOZ_IDLE } from './config.js';
+import { MS_POR_HORA, FRANJAS_DIA, DURACION_CRUCE_APERTURA_MS, DURACION_CRUCE_FONDO_MS, TICK_VISUAL_MS, ESTADOS_VISUALES as E, PARAM_DEBUG, RUTA_SW, ZONA_PISO, CLIMAS, VOZ_IDLE } from './config.js';
 import { crearEstadoNuevo, cargarEstado, guardarEstado } from './estado.js';
 import { aplicarDecay } from './decay.js';
 import { cargar, jugar, limpiar } from './acciones.js';
@@ -27,7 +27,8 @@ import {
   arrancarConElPrimerGesto,
   llover as lloverAmbiente,
   dejarDeLlover as dejarDeLloverAmbiente,
-  hablar
+  hablar,
+  cuandoSuene
 } from './sonido.js';
 import {
   render,
@@ -107,14 +108,20 @@ let refrescarDebug = null;
 // problema en vez de resolverlo. Lo que corresponde es que la declaración esté
 // arriba de su primer uso, y su primer uso es la línea de abajo.
 //
-// Las dos van juntas: `seAnima` también es TDZ —es un const— y `vozAlEntrar` la
-// llama.
+// (Iba junto con `seAnima`, que era const y por lo tanto también TDZ. `seAnima`
+// ya no está: ver abajo.)
 let vozEstadoAnterior = null;
 
-// UNA TIRADA POR ENTRADA, y el piso de 4 segundos de VOZ.cooldownMs manda igual
-// sobre el resultado. O sea que hay dos filtros en serie: éste decide si se
-// INTENTA y `hablar` decide si suena.
-const seAnima = (clave) => Math.random() < (PROBABILIDAD_VOZ[clave] ?? 0);
+// ACÁ ESTABA `seAnima`, LA TIRADA DE PROBABILIDAD_VOZ, Y SE MUDÓ A `hablar`.
+//
+// El motivo no es de prolijidad: los gestos —toque, caricia, fastidio— se cablean
+// en el mismo main.js pero por otra puerta, y llamaban a `hablar` directamente, así que esquivaban este filtro
+// entero. Tocar a Chip lo hacía hablar el 100% de las veces, con el piso de 4
+// segundos como único límite. Un filtro que vive al lado de ALGUNOS de sus
+// sujetos no es un filtro.
+//
+// Ahora la moneda la tira `hablar`, que es la única puerta por la que pasa toda
+// voz, y este archivo se limita a decir QUÉ situación es. Ver PROBABILIDAD_VOZ.
 
 const sesion = crearSesion({
   estado: visita.estado,
@@ -436,7 +443,7 @@ const apiDebug = {
     // El gigante que pasa es un evento de la escena: Chip lo nota. Va acá y no en
     // el arranque porque en el arranque los eventos se muestran de una y el
     // navegador todavía no tuvo su gesto para el audio.
-    if (seAnima('evento')) hablar('evento');
+    hablar('evento');
     // El mismo par que en el arranque. Si acá faltara, el hito de la grúa —que
     // es de la categoría `grandes`— saldría por debug sin la pose, y el panel
     // estaría probando un camino que no es el del juego.
@@ -590,17 +597,17 @@ function vozAlEntrar(estadoVisual, esNoche) {
   // la entrada a idle: se entra a idle desde muchos lados, y sólo desde estos
   // dos hay algo que terminó.
   if ((antes === E.jugando || antes === E.limpiando) && estadoVisual !== antes) {
-    if (seAnima('hecho') && hablar('hecho')) return;
+    if (hablar('hecho')) return;
   }
 
-  if (estadoVisual === E.standby && seAnima('standby')) return void hablar('standby');
-  if (estadoVisual === E.critico && seAnima('critico')) return void hablar('critico');
-  if (estadoVisual === E.jugando && seAnima('jugando')) return void hablar('jugando');
+  if (estadoVisual === E.standby) return void hablar('standby');
+  if (estadoVisual === E.critico) return void hablar('critico');
+  if (estadoVisual === E.jugando) return void hablar('jugando');
   // FELIZ SUENA CON `cariciaLarga`, que es la misma risita: el mapeo dice que
   // 14_robot_chuckle cubre las dos cosas. Acá decía `hablar('feliz')`, que NO es
   // una clave del mapa, así que devolvía null en silencio y el estado feliz nunca
   // sonaba. Lo agarró el test de mapa contra llamada, que existe para esto.
-  if (estadoVisual === E.feliz && seAnima('feliz')) return void hablar('cariciaLarga');
+  if (estadoVisual === E.feliz) return void hablar('cariciaLarga');
 }
 
 // ---- EL IDLE TIENE SU PROPIO RELOJ ----
@@ -628,16 +635,26 @@ setInterval(() => {
 // después de un rato" de "es otro día".
 //
 // NO SUENA EN EL ARRANQUE, y no por decisión: el navegador exige un gesto para
-// reproducir audio, y abrir la app no lo es. Queda armado y sale con el primer
-// toque, que es el mismo gesto que rescata el ambiente. Si el jugador no toca
-// nada, no hay saludo — y es preferible a un saludo que no suena y nadie sabe
-// por qué.
+// reproducir audio, y abrir la app no lo es. Si el jugador no prende el sonido
+// ni toca nada, no hay saludo — y es preferible a un saludo que no suena y nadie
+// sabe por qué.
+//
+// ESTABA COLGADO DE UN `pointerdown` Y NO SONABA NUNCA. Los dos listeners —el
+// que enciende el audio y éste— escuchaban el mismo evento con capture, en ese
+// orden. El primero llama a `contexto().resume()`, que devuelve una PROMESA: el
+// contexto NO queda corriendo en la misma vuelta. Este corría enseguida, `hablar`
+// miraba `ctx.state !== 'running'` y devolvía null. En silencio. El saludo no
+// fallaba: no existía.
+//
+// Verificado en el navegador antes y después: con el toque, lo único que se
+// reproducía era `ambiente-dia.ogg`.
+//
+// Ahora el saludo no adivina cuándo puede hablar: `cuandoSuene` lo llama en el
+// momento en que el sonido está realmente corriendo. Eso arregla de paso el
+// camino que no pasaba por ningún gesto armado — abrir con el sonido apagado y
+// prenderlo desde el menú.
 if (visita.horasFuera >= 12) {
-  document.addEventListener(
-    'pointerdown',
-    () => {
-      if (seAnima('saludo')) hablar('saludo');
-    },
-    { capture: true, once: true }
-  );
+  cuandoSuene(() => {
+    hablar('saludo');
+  });
 }
