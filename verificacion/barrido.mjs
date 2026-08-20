@@ -1,14 +1,17 @@
-// EL BARRIDO DE LAS CUATRO REGLAS YA ESCRITAS.
+// EL BARRIDO DE LAS REGLAS YA ESCRITAS.
 //
 //   node verificacion/barrido.mjs
 //
-// Cuatro reglas que este proyecto se dio a sí mismo, y la pregunta no es si están
+// Cinco reglas que este proyecto se dio a sí mismo, y la pregunta no es si están
 // escritas —lo están— sino si quedó algún caso vivo:
 //
 //   1. El resplandor se dibuja, la sombra se difumina.
 //   2. El cambio de un dibujo a otro es un CORTE, no una disolvencia.
 //   3. Todo tamaño de sprite es fracción entera de su maestro.
 //   4. Ningún corte por texto en tests/ va sin tope.
+//   5. La dureza es para lo que genera la máquina. Lo que dibujó una persona se
+//      respeta — la quinta es nueva y va al revés que las otras: no busca
+//      suavidad que sobra, busca DUREZA QUE NO CORRESPONDE.
 //
 // POR QUÉ UN SCRIPT Y NO UNA LISTA A MANO. Porque una lista a mano queda vieja
 // el mismo día, y porque tres de las cuatro no se pueden contestar leyendo: hay
@@ -16,12 +19,13 @@
 // imagen. Lo que sí va a mano es el VEREDICTO de cada caso, que es una decisión
 // y no una medición — y por eso está declarado abajo, con nombre y motivo.
 //
-// Los que tienen veredicto declarado salen como TOLERADO. Cualquier otro sale
-// como VIVO, que es lo que hay que mirar.
+// Los que tienen veredicto declarado salen como ok. Cualquier otro sale como
+// VIVO, que es lo que hay que mirar.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { servir } from '../tools/servir.mjs';
 import { abrirCromo, dormir } from '../tools/cromo.mjs';
+import { leerPng } from '../tools/png.mjs';
 
 const RAIZ = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
 const CSS = readFileSync(RAIZ + 'style.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -305,6 +309,141 @@ try {
         `pintado ${i.pintado.join('x').padEnd(15)} x${factor.toFixed(4)} ` +
         `${entero ? 'entero' : 'NO entero'} · ${i.suavizado}`
     );
+  }
+
+  // ==================================================================
+  // 5. ¿LE PUSIMOS UNA REGLA DE MÁQUINA A ALGO QUE DIBUJÓ UNA PERSONA?
+  // ==================================================================
+  //
+  // El principio del README es una pregunta: ¿lo dibujó una persona, o lo genera
+  // el navegador ahora? Persona se respeta, máquina va dura.
+  //
+  // Este barrido la aplica al revés de como se aplicó hasta ahora: en vez de
+  // buscar suavidad que sobra, busca DUREZA QUE NO CORRESPONDE.
+  console.log('\n====================================================================');
+  console.log('5. DUREZA APLICADA A ALGO DIBUJADO');
+  console.log('====================================================================\n');
+
+  // Quién es de quién. Se declara a mano porque es una pregunta sobre el ORIGEN
+  // del dibujo, y eso no está en el CSS: un `<img>` de un .webp del ilustrador y
+  // un `<img>` de un PNG de pixel art se ven iguales desde acá.
+  const QUIEN_LO_DIBUJO = {
+    '#canvas-mascota': 'persona — el sprite de Chip',
+    '#cabeza': 'persona — la cabeza de Chip',
+    '#brazo-izq, #brazo-der': 'persona — los brazos de Chip',
+    '#ojos': 'persona — la capa de ojos de Chip',
+    '#parpado': 'persona — la máscara sale del mismo .webp de los ojos',
+    '.ojos-gesto': 'persona — recortes de otras poses de Chip',
+    '.objeto img': 'MÁQUINA — pixel art a maestro 32, escala 1 o 1/2'
+  };
+
+  const duras = [];
+  for (const { selector, cuerpo } of reglasDePrimerNivel(CSS)) {
+    if (!selector) continue;
+    for (const m of cuerpo.matchAll(/(?:^|;)\s*image-rendering\s*:\s*([^;}]+)/g)) {
+      if (m[1].trim() !== 'pixelated') continue;
+      duras.push({ selector, quien: QUIEN_LO_DIBUJO[selector] ?? 'SIN DECLARAR' });
+    }
+  }
+
+  for (const d of duras) {
+    const esDeMaquina = d.quien.startsWith('MÁQUINA');
+    console.log(`${esDeMaquina ? '  ok ' : 'VIVO'}  ${d.selector.padEnd(26)} ${d.quien}`);
+  }
+
+  console.log('');
+  console.log('  `image-rendering: pixelated` fuerza vecino más cercano. Sobre pixel art a');
+  console.log('  escala entera eso es exactamente lo correcto. Sobre una ilustración de');
+  console.log('  bordes suaves AMPLIADA x1,45 —que es lo que pasa con las capas de Chip— no');
+  console.log('  conserva ningún píxel de diseño, porque no hay: lo que hace es repartir los');
+  console.log('  del archivo en tamaños distintos entre sí.');
+  console.log('');
+  console.log('  NO SE TOCA ACÁ. Es arte de Damián y la decisión es suya. Lo que sigue es');
+  console.log('  cuánto cambia la cara si se saca, medido.');
+
+  // Cuánto cambia la cara. Se compara `pixelated` contra `auto` sobre la misma
+  // caja, con todo quieto.
+  await evaluar(`(() => {
+    const e = document.createElement('style');
+    e.textContent = '*, *::before, *::after { animation: none !important; transition: none !important; }' +
+      ' #apertura { display: none !important; }';
+    document.head.appendChild(e);
+    return 1;
+  })()`);
+  await dormir(600);
+
+  const cajaCara = JSON.parse(
+    await evaluar(`(() => {
+      const n = document.getElementById('cabeza-grupo') || document.getElementById('chip');
+      const r = n.getBoundingClientRect();
+      return JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top),
+        width: Math.round(r.width), height: Math.round(r.height) });
+    })()`)
+  );
+
+  if (cajaCara.width > 10) {
+    const foto = async () => {
+      const f = await cromo.enviar('Page.captureScreenshot', {
+        format: 'png',
+        captureBeyondViewport: false,
+        clip: { ...cajaCara, scale: 1 }
+      });
+      return leerPng(Buffer.from(f.data, 'base64'));
+    };
+
+    const conDuro = await foto();
+    await evaluar(`(() => {
+      const e = document.createElement('style');
+      e.id = 'suave';
+      e.textContent = '#canvas-mascota, #cabeza, #brazo-izq, #brazo-der, #ojos, #parpado, .ojos-gesto { image-rendering: auto !important; }';
+      document.head.appendChild(e);
+      return 1;
+    })()`);
+    await dormir(400);
+    const conSuave = await foto();
+    await evaluar(`document.getElementById('suave').remove(), 1`);
+
+    let cambian = 0;
+    let sumaDelta = 0;
+    let maxDelta = 0;
+    const tonosDuro = new Set();
+    const tonosSuave = new Set();
+    for (let i = 0; i < conDuro.datos.length; i += conDuro.canales) {
+      const d = Math.max(
+        Math.abs(conDuro.datos[i] - conSuave.datos[i]),
+        Math.abs(conDuro.datos[i + 1] - conSuave.datos[i + 1]),
+        Math.abs(conDuro.datos[i + 2] - conSuave.datos[i + 2])
+      );
+      tonosDuro.add((conDuro.datos[i] << 16) | (conDuro.datos[i + 1] << 8) | conDuro.datos[i + 2]);
+      tonosSuave.add((conSuave.datos[i] << 16) | (conSuave.datos[i + 1] << 8) | conSuave.datos[i + 2]);
+      if (d <= 4) continue;
+      cambian++;
+      sumaDelta += d;
+      maxDelta = Math.max(maxDelta, d);
+    }
+
+    const total = conDuro.ancho * conDuro.alto;
+    console.log('');
+    console.log(`  Caja de la cabeza: ${conDuro.ancho}x${conDuro.alto} px`);
+    console.log(`  Cambian ${cambian} de ${total} píxeles (${((cambian / total) * 100).toFixed(1)}%)`);
+    console.log(`  delta máximo ${maxDelta} · delta medio ${(sumaDelta / Math.max(1, cambian)).toFixed(1)}`);
+    console.log(`  tonos: ${tonosDuro.size} con pixelated, ${tonosSuave.size} con auto`);
+    console.log('');
+    console.log('  Más tonos con `auto` no es peor por sí solo: son los tonos que la');
+    console.log('  interpolación inventa entre dos píxeles del archivo. Menos tonos con');
+    console.log('  `pixelated` tampoco es mejor: son los mismos píxeles del archivo repetidos');
+    console.log('  en bloques de tamaño desparejo. Las dos son formas de que el navegador');
+    console.log('  resuelva un x1,45 que el dibujo no pidió.');
+
+    // Las dos caras, ampliadas por enteros, para poder mirarlas al lado.
+    const { mkdirSync } = await import('node:fs');
+    const { ampliarYEscribir } = await import('../tools/png-escribir.mjs');
+    const salida = new URL('capturas/', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+    mkdirSync(salida, { recursive: true });
+    ampliarYEscribir(conDuro, 2, `${salida}cara-pixelated-x2.png`);
+    ampliarYEscribir(conSuave, 2, `${salida}cara-auto-x2.png`);
+    console.log('');
+    console.log(`  Las dos caras en verificacion/capturas/cara-pixelated-x2.png y cara-auto-x2.png`);
   }
 
   console.log(
