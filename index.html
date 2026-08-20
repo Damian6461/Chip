@@ -237,10 +237,29 @@
            Las mitades salen del MISMO archivo, recortadas con clip-path por el
            hueco de columnas vacías que separa los dos ojos. No hay assets nuevos
            y no se toca un píxel del dibujo: se coloca cada mitad, nada más. -->
-      <img id="ojos-contento-izq" class="ojos-gesto" alt="" aria-hidden="true" hidden>
-      <img id="ojos-contento-der" class="ojos-gesto" alt="" aria-hidden="true" hidden>
-      <img id="ojos-cerrado-izq" class="ojos-gesto" alt="" aria-hidden="true" hidden>
-      <img id="ojos-cerrado-der" class="ojos-gesto" alt="" aria-hidden="true" hidden>
+      <!-- LOS DOS CONTENEDORES, que son lo único que hay entre el recorte y la
+           cuenca. Existen para llevar UNA COSA: la máscara.
+
+           Las capas de gesto están transformadas —translate en % y scale de
+           hasta 1,19— y `mask` se aplica ANTES que `transform`. Una máscara
+           puesta en la capa VIAJA CON ELLA y termina corrida de la cuenca
+           exactamente lo que la capa está corrida. Medido: puesta en la capa
+           corta entre el 3% y el 65% de la tinta oscura que desborda, según el
+           gesto; puesta acá, en un contenedor que NO se transforma, corta entre
+           el 74% y el 93%. Ver verificacion/ojos-mascara.mjs.
+
+           No llevan nada más. Se comprobó que son neutros: con el contenedor
+           puesto y sin máscara, el render es idéntico píxel por píxel al de sin
+           contenedor. Un envoltorio que cambia la geometría convertiría
+           cualquier comparación en una comparación de dos layouts. -->
+      <div class="ojos-gesto-caja">
+        <img id="ojos-contento-izq" class="ojos-gesto" alt="" aria-hidden="true" hidden>
+        <img id="ojos-contento-der" class="ojos-gesto" alt="" aria-hidden="true" hidden>
+      </div>
+      <div class="ojos-gesto-caja">
+        <img id="ojos-cerrado-izq" class="ojos-gesto" alt="" aria-hidden="true" hidden>
+        <img id="ojos-cerrado-der" class="ojos-gesto" alt="" aria-hidden="true" hidden>
+      </div>
 
       <!-- LA LUZ DE LA CABEZA VA ADENTRO DEL GRUPO, y no es una preferencia de
            orden: es que el poste está PINTADO en el sprite, así que cuando la

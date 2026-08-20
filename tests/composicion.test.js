@@ -1475,6 +1475,63 @@ prueba('ojos: las reglas que apagan ganan por especificidad, no por orden', () =
   }
 });
 
+// LA MÁSCARA DE LA CUENCA VA EN EL CONTENEDOR, Y NO ES UN DETALLE DE ESTILO.
+//
+// `mask` se aplica ANTES que `transform`, y las capas de gesto llevan un
+// translate en % y un scale de hasta 1,19. Puesta en la capa, la máscara viaja
+// con el ajuste y recorta con una cuenca corrida: medido, corta entre el 3% y el
+// 65% de la tinta oscura que desborda, según el gesto. Puesta en el contenedor,
+// entre el 74% y el 93%.
+//
+// O sea que mover esta declaración una regla más adentro no la rompe de forma
+// visible: sigue recortando ALGO. Es exactamente el tipo de cambio que parece
+// una limpieza y deshace una medición.
+prueba('ojos: la máscara de la cuenca recorta desde el contenedor, no desde la capa', () => {
+  const caja = bloqueEntre(CSS, '.ojos-gesto-caja {', '.ojos-gesto {');
+  verdadero(
+    /mask-image:\s*var\(--mascara-ojos\)/.test(caja),
+    'el contenedor tiene que recortar con la misma máscara que el párpado'
+  );
+  verdadero(
+    /mask-size:\s*100% 100%/.test(caja),
+    'la máscara va estirada a la caja: es el mismo lienzo de 256 escalado'
+  );
+
+  // Y NO en la capa: ahí es donde no sirve.
+  const capa = bloqueEntre(CSS, '.ojos-gesto {', '.ojos-gesto[hidden]');
+  verdadero(
+    !/mask-image/.test(capa),
+    'volvió la máscara a la capa transformada, que es la variante que se midió peor'
+  );
+
+  // El contenedor no puede llevar nada que cambie la geometría: se comprobó que
+  // es neutro y esa comprobación vale mientras siga sin tamaño propio.
+  verdadero(
+    !/\bwidth:|\bheight:|padding:|margin:|transform:|scale:|translate:/.test(caja),
+    'el contenedor le puso geometría propia: deja de ser neutro y las capas de adentro se mueven'
+  );
+});
+
+prueba('ojos: cada gesto tiene su contenedor y adentro sus dos mitades', () => {
+  const cajas = HTML.match(/class="ojos-gesto-caja"/g) || [];
+  igual(cajas.length, 2, `hay ${cajas.length} contenedores y los gestos son dos: contento y cerrado`);
+
+  // Las cuatro capas tienen que estar ADENTRO de un contenedor. Una suelta no
+  // se recorta, y el defecto sería visible sólo en ese gesto.
+  for (const gesto of ['contento', 'cerrado']) {
+    const desde = HTML.indexOf(`id="ojos-${gesto}-izq"`);
+    const hasta = HTML.indexOf(`id="ojos-${gesto}-der"`);
+    verdadero(desde > 0 && hasta > desde, `faltan las mitades de ${gesto}`);
+    const antes = HTML.slice(0, desde);
+    const aperturas = (antes.match(/class="ojos-gesto-caja"/g) || []).length;
+    const cierres = (antes.match(/<\/div>/g) || []).length;
+    verdadero(
+      aperturas > 0,
+      `las mitades de ${gesto} tienen que estar adentro de un contenedor con máscara`
+    );
+  }
+});
+
 prueba('ojos: las cuatro capas del ojo comparten el filtrado', () => {
   // #parpado era la única sin `pixelated` —medido: `auto` contra `pixelated` en
   // las otras tres—. Su máscara es el mismo .webp de 256 escalado a la caja de

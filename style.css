@@ -913,6 +913,55 @@ body.es-noche #rayo {
    con la cabeza dibujada un 13% más chica. Sin eso, cambiar de cara además
    achicaría los ojos, que es justo el salto que se quiere evitar. Los números
    están medidos: ver AJUSTE_OJOS en config.js. */
+/* LA CUENCA RECORTA AL RECORTE.
+ *
+ * Las capas de gesto son recortes de OTRAS poses —`limpiando` y `standby`, con
+ * la cabeza dibujada más chica— colocados sobre la cuenca de ésta con dieciséis
+ * números medidos. Por bien colocados que estén, el recorte trae SU PROPIO
+ * contorno oscuro, y ese contorno cae afuera de la cuenca: es el borde que se
+ * ve durante la caricia.
+ *
+ * La máscara es el alfa del sprite normal de los ojos de ESTA cabeza — el mismo
+ * archivo que ya usa `#parpado`, por la misma variable, que ui.js cambia con el
+ * estado. Lo que quede afuera de la cuenca no se dibuja.
+ *
+ * MEDIDO, cuatro gestos, en verificacion/ojos-mascara.mjs — tinta OSCURA que
+ * desborda de la cuenca, contra el mismo cuadro sin gesto:
+ *
+ *                          desborde oscuro   se lleva del gesto
+ *   sin máscara            190 a 302 px            —
+ *   máscara en la capa     corta 3% a 65%        1 a 3%
+ *   máscara acá            corta 74% a 93%          0%
+ *
+ * POR QUÉ VA EN EL CONTENEDOR Y NO EN LA CAPA: `mask` se aplica ANTES que
+ * `transform`. Puesta en la capa, la máscara se mueve con el ajuste y recorta
+ * con una cuenca corrida — de ahí ese 3% del primer gesto, donde el
+ * corrimiento la deja casi inservible. El contenedor no se transforma, así que
+ * la cuenca queda donde la cuenca está.
+ *
+ * Y NO REEMPLAZA A LOS DIECISÉIS AJUSTES, que era la otra mitad de la
+ * hipótesis. También medido: con los ajustes apagados el desborde pasa de 545 a
+ * 1.829 px. La máscara RECORTA y los ajustes COLOCAN; son dos trabajos y hacen
+ * falta los dos. Con la máscara sola, el ojo del recorte queda adentro de la
+ * cuenca pero dibujado 13% más chico y corrido, que es un defecto que ningún
+ * recorte arregla.
+ *
+ * El borde que deja no es duro: el alfa de ese sprite es 94% parcial —es una
+ * ilustración, no pixel art, ver el README— así que la máscara desvanece en vez
+ * de cortar. Ese desvanecido lo dibujó el ilustrador, no el rasterizador, y por
+ * eso se respeta. */
+.ojos-gesto-caja {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-mask-image: var(--mascara-ojos);
+  mask-image: var(--mascara-ojos);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
 .ojos-gesto {
   position: absolute;
   inset: 0;

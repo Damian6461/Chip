@@ -1,10 +1,57 @@
 # Chip
 
-Virtual pet en pixel art. HTML, CSS y JavaScript vanilla con módulos ES. Sin frameworks, sin build, sin dependencias.
+Virtual pet con estética de sprite. HTML, CSS y JavaScript vanilla con módulos ES. Sin frameworks, sin build, sin dependencias.
 
 Este archivo documenta **lo que el código hace hoy**: cómo correrlo, qué contratos hay que respetar y dónde están los bordes filosos. Es lo que hace falta para trabajar mañana.
 
 El **por qué** de las decisiones —lo que se probó y se descartó, y los bugs que costó encontrar— vive en [EL-PORQUE.md](EL-PORQUE.md). El brief editorial no está en el repo.
+
+---
+
+## El principio estético: quién dibujó ese borde
+
+Este es el primero de todos y decide los demás. Decía «virtual pet en pixel art»
+ahí arriba, y **Chip no es pixel art.**
+
+Medido sobre los archivos, decodificados por el mismo navegador que los dibuja —
+`node verificacion/alfa-sprites.mjs`:
+
+| archivo | con tinta | alfa parcial | colores |
+|---|---|---|---|
+| `idle-cabeza.webp` | 15 054 px | **14 688 (98 %)** | 10 194 |
+| `idle.webp` | 29 649 px | 28 979 (98 %) | 19 930 |
+| `idle-ojos.webp` | 5 587 px | 5 254 (94 %) | 3 297 |
+
+De los 15 054 píxeles con tinta de esa cabeza, **366 son opacos**. Todo el resto
+es alfa parcial. Un pixel art de verdad tiene decenas de colores y un alfa
+binario: un píxel está o no está. Esto es una **ilustración de bordes suaves con
+estética de sprite**, y el borde suave no es un artefacto de compresión — *es el
+dibujo*.
+
+### La regla
+
+> **La suavidad que dibujó el ilustrador es parte del dibujo. La suavidad que
+> produce el navegador no la dibujó nadie.**
+
+Lo que dibuja una persona —Chip, los fondos, los sprites— va suave y **no se
+toca**. Lo que genera la máquina —el cable, la botonera, los pulsos, los
+resplandores, las transiciones— va duro, porque cualquier tono intermedio ahí lo
+decidió un rasterizador y no un dibujante.
+
+Ante la duda, una sola pregunta: **¿lo dibujó una persona, o lo genera el
+navegador ahora?** Persona → se respeta. Máquina → duro.
+
+### Qué NO cambia esto
+
+Todas las decisiones que salieron de la regla vieja siguen en pie, porque todas
+cayeron del lado de la máquina: el cable con `crispEdges`, el desgaste de la
+chapita en filas enteras, el anillo del pulso dibujado en escalones, los dos
+filtros del pecho que se fueron. Lo que estaba mal era el argumento, no las
+decisiones.
+
+Y explícitamente: **no se «arreglan» los bordes de Chip ni de los fondos.** Un
+barrido que encuentre alfa parcial en un sprite del ilustrador encontró el
+dibujo, no un defecto.
 
 ---
 
