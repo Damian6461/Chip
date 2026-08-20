@@ -143,6 +143,14 @@ const ms = (n) => `${n}ms`;
 const pct = (n) => `${n}%`;
 const px = (n) => `${n}px`;
 
+// Un hex de la paleta con alfa. No es una mezcla: los tres canales son los del
+// color declarado y lo único que se agrega es transparencia, así que lo que se
+// ve por debajo es el fondo real y no un tono inventado.
+const conAlfa = (hex, alfa) => {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return `rgba(${r}, ${g}, ${b}, ${alfa})`;
+};
+
 // La tabla de bandas se convierte en un polygon() de clip-path: se baja por el
 // borde izquierdo y se sube por el derecho. Cada banda aporta dos vértices por
 // lado —su techo y su piso— para que el escalón quede recto y no en diagonal.
@@ -205,6 +213,8 @@ export function variablesDeTema() {
     [VARS_ANIMACION.saltoAgacha]: px(SALTO.agacha),
     [VARS_ANIMACION.saltoAltura]: px(SALTO.altura),
     [VARS_ANIMACION.saltoRebote]: px(SALTO.rebote),
+    [VARS_ANIMACION.presionBaja]: ms(PRESION_BOTON.baja),
+    [VARS_ANIMACION.presionSube]: ms(PRESION_BOTON.sube),
     [VARS_ANIMACION.llegadaDesde]: px(LLEGADA.desde),
     [VARS_ANIMACION.llegadaAplaste]: String(LLEGADA.aplaste),
     [VARS_ANIMACION.zetaDesde]: String(ZETA.desde),
@@ -400,9 +410,14 @@ export function variablesDeTema() {
     [VARS_BOTONERA.chapitaInset]: px(BOTONERA.chapita.inset),
     [VARS_BOTONERA.chapitaFilo]: px(BOTONERA.chapita.filo),
     [VARS_BOTONERA.chapitaHalo]: px(BOTONERA.chapita.halo),
-    [VARS_BOTONERA.desgastePeriodo]: px(BOTONERA.desgaste.periodo),
-    [VARS_BOTONERA.desgasteHueco]: px(BOTONERA.desgaste.hueco),
-    [VARS_BOTONERA.desgasteArranque]: px(BOTONERA.desgaste.arranque),
+    // La caja del apretón: el crema de `cargando` con la alfa de BOTONERA.presion.
+    // Se arma acá y no en la hoja porque el CSS no puede ponerle alfa a un hex
+    // sin `color-mix`, que es justamente lo que la botonera tiene prohibido — y
+    // prohibido con razón: un color-mix inventa un TONO, y lo que acá se quiere
+    // es transparencia de verdad, con el piso viéndose por debajo.
+    [VARS_BOTONERA.presion]: conAlfa(COLORES_BULBO.cargando.nucleo, BOTONERA.presion.alfa),
+    // (Acá iban los tres números del patrón de huecos del desgaste. Se fueron
+    // con el patrón: leía como LEDs. Ver el bloque del desgaste en BOTONERA.)
     [VARS_BOTONERA.pieAlto]: px(BOTONERA.pie.alto),
     [VARS_BOTONERA.pieInset]: px(BOTONERA.pie.inset),
     [VARS_BOTONERA.pieAbajo]: px(BOTONERA.pie.abajo),

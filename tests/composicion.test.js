@@ -47,6 +47,7 @@ import {
   COLORES_TOMA,
   COLORES_PANEL,
   BOTONERA,
+  PRESION_BOTON,
   FUENTE_BOTONERA,
   ANTENA_INERCIA,
   RITMOS_RAYO,
@@ -980,6 +981,93 @@ prueba('botonera: el guardián del degradé se lo ve rojo con una rampa de verda
     ' #0000 calc(var(--p) - var(--h)) var(--p)),' +
     'linear-gradient(var(--chapita-sombra) 0 0);';
   igual(degradesBlandos(bandas).join(' | '), '', 'las bandas macizas no son un degradé');
+});
+
+// LA TRANSPARENCIA ES RESPUESTA, NO DECORACIÓN.
+//
+// El botón perdió su caja por un motivo medido: tres variantes de relleno se
+// rechazaron seguidas porque las tres compartían la silueta rectangular. Volver
+// a poner un fondo en reposo desharía eso, y es un cambio de una línea que se
+// vería razonable en un diff.
+//
+// Lo que SÍ vuelve es un rectángulo tenue mientras el dedo está apoyado: dice
+// "te escuché", que es información sin otra forma de darse — la chapita cambia
+// de color, pero el dedo la está tapando justo.
+//
+// Las tres cosas que este guardián ata: que en reposo no haya caja, que la del
+// apretón sea claramente transparente y no un relleno, y que las dos mitades del
+// apretón sigan siendo asimétricas.
+prueba('botonera: la caja tenue existe SÓLO mientras el dedo está apoyado', () => {
+  const reposo = bloqueEntre(CSS, '#acciones button {', '#acciones button:disabled');
+  verdadero(
+    /background:\s*transparent/.test(reposo),
+    'el botón volvió a tener caja en reposo, que es lo que se sacó con medición'
+  );
+
+  const activo = bloqueEntre(
+    CSS,
+    "#acciones button:active:not(:disabled):not([aria-disabled='true']) {",
+    "#acciones button:active:not(:disabled):not([aria-disabled='true'])::after"
+  );
+  verdadero(
+    /background-color:\s*var\(--boton-presion\)/.test(activo),
+    'falta la caja del apretón, o dejó de salir de config'
+  );
+
+  // Y ASIMÉTRICO: baja rápido, vuelve lento. Es de las primeras decisiones del
+  // proyecto y la única forma de que un botón no se sienta de plástico duro.
+  verdadero(
+    /transition:\s*background-color\s+var\(--presion-baja\)/.test(activo),
+    'el apretón tiene que usar la mitad corta'
+  );
+  verdadero(
+    /transition:\s*background-color\s+var\(--presion-sube\)/.test(reposo),
+    'y la vuelta, la mitad larga'
+  );
+  verdadero(
+    PRESION_BOTON.baja < PRESION_BOTON.sube,
+    `bajar tarda ${PRESION_BOTON.baja} y volver ${PRESION_BOTON.sube}: el apretón dejó de ser asimétrico`
+  );
+});
+
+prueba('botonera: la caja del apretón es transparente de verdad, no un relleno', () => {
+  // El pedido fue explícito: "que sea claramente transparente, no un relleno".
+  // A 0,14 el piso del galpón se sigue leyendo entero por debajo; arriba de un
+  // tercio empieza a leerse como una chapa que aparece, que es de donde venimos.
+  verdadero(
+    BOTONERA.presion.alfa > 0 && BOTONERA.presion.alfa <= 0.3,
+    `la caja del apretón va al ${BOTONERA.presion.alfa}: arriba de 0,3 deja de ser transparencia`
+  );
+
+  // Y ES LA ÚNICA MEZCLA EN VIVO DE LA PIEZA. Que sea la única es lo que la hace
+  // legible como excepción; dos ya serían un estilo.
+  const banda = bloqueEntre(CSS, '#acciones {', '#acciones button:disabled', 8000);
+  const alfas = [...banda.matchAll(/rgba?\([^)]*\/\s*0?\.\d+\)|rgba\([^)]*,\s*0?\.\d+\s*\)/g)];
+  verdadero(
+    alfas.length === 0,
+    `hay ${alfas.length} colores con alfa escritos a mano en la botonera: ${alfas.map((m) => m[0]).join(', ')}. ` +
+      'La del apretón sale de config por --boton-presion.'
+  );
+});
+
+prueba('botonera: la chapita no tiene patrón encima', () => {
+  // Los cuatro huecos del desgaste se fueron porque se leían como LEDs. La
+  // lección es más grande que los tres números que se borraron: CUALQUIER COSA
+  // REGULAR sobre esa barra se lee como información, y la barra está en la
+  // botonera de un aparato.
+  //
+  // Un `repeating-linear-gradient` es la forma exacta en que eso vuelve.
+  const chapita = bloqueEntre(CSS, '#acciones button::after {', '#acciones button::before');
+  verdadero(
+    !/repeating-/.test(chapita),
+    'volvió un patrón repetido a la chapita, y un patrón regular ahí se lee como LEDs'
+  );
+
+  // Las tres filas siguen siendo tres bandas macizas de 1 px.
+  verdadero(
+    /background-size:\s*100% 1px/.test(chapita),
+    'las tres filas del desgaste tienen que medir 1 px de alto y el ancho entero'
+  );
 });
 
 prueba('botonera: la ficha son dos trazos, y los dos caen en la grilla', () => {

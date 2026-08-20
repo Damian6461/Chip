@@ -1033,21 +1033,21 @@ export const VARS_ANIMACION = {
   saltoAgacha: '--salto-agacha',
   saltoAltura: '--salto-altura',
   saltoRebote: '--salto-rebote',
-  // ACÁ ESTABAN `--presion-baja` y `--presion-sube`, LAS DOS MITADES DEL APRETÓN.
+  // LAS DOS MITADES DEL APRETÓN, QUE SE FUERON Y VOLVIERON EN LA MISMA SEMANA.
   //
-  // Sus únicos dos lectores eran las transiciones de color de la chapita, y esas
-  // se fueron cuando la chapita pasó a ser tres filas con tokens adentro: un
-  // token de color no interpola sin `@property`, así que la transición habría
-  // quedado animando `transparent` contra `transparent`.
+  // Se fueron cuando la chapita pasó a ser tres filas con tokens de color
+  // adentro: sus únicos lectores eran las transiciones de esa chapita, y un
+  // token no interpola sin `@property`. El guardián del puente las denunció como
+  // escritas sin lector, con razón, y se sacaron.
   //
-  // PRESION_BOTON no se va: la suma de sus dos mitades es DURACION_PRESION_MS,
-  // que sí tiene lector —el panel del menú—. Lo que se va es el par de nombres
-  // que el tema escribía y ya no lee nadie, que es exactamente lo que el
-  // guardián del puente denuncia. Lo denunció.
-  //
-  // Si algún día vuelve una animación asimétrica de apretón, los dos números
-  // siguen en PRESION_BOTON con su motivo escrito: 60 abajo y 140 arriba, porque
-  // el dedo baja de golpe y el material vuelve solo.
+  // Volvieron con la caja tenue del apretón, que sí es un `background-color` de
+  // verdad y sí se puede animar. Queda anotado porque la vuelta enseña algo: el
+  // guardián tenía razón las dos veces, y lo que estaba mal no era el par de
+  // números —60 abajo y 140 arriba, el dedo baja de golpe y el material vuelve
+  // solo— sino que en el medio no hubiera nada que animar. Un número correcto
+  // puede quedarse sin sujeto y volver a tenerlo.
+  presionBaja: '--presion-baja',
+  presionSube: '--presion-sube',
   llegadaDesde: '--llegada-desde',
   llegadaAplaste: '--llegada-aplaste',
   zetaDesde: '--zeta-desde',
@@ -3106,19 +3106,25 @@ export const BOTONERA = {
   // y los huecos de 1 px en x enteros. No hay un solo píxel mezclado, que es la
   // condición de que esto sea pixel art y no una textura.
   //
-  // EL PERÍODO DE 23 SALE DE LOS CUATRO HUECOS DE LA PROPUESTA —11, 34, 57 y
-  // 80— que estaban separados por 23 exactos. Acá va como patrón que se repite
-  // en vez de como cuatro posiciones fijas, y da el mismo resultado en el ancho
-  // en que se decidió: la chapita mide ~102 px en un teléfono de 390, o sea que
-  // el quinto hueco caería en 103 y no entra. La diferencia aparece en pantallas
-  // más anchas, donde el patrón sigue y las posiciones fijas habrían dejado la
-  // mitad derecha de la chapa sin gastar.
+  // ---- Y ACÁ VIVÍAN LOS CUATRO HUECOS, QUE SE FUERON ----
   //
-  // `arranque` es lo que hace que el primer hueco caiga en x = 11: el hueco
-  // del patrón está al final del período, así que la capa se corre 12 px para
-  // que el 22 del patrón caiga en el 11 de la pieza. Es un número derivado y
-  // está escrito porque el CSS no puede hacer la cuenta.
-  desgaste: { periodo: 23, hueco: 1, arranque: 12 },
+  // La fila del medio iba PARTIDA: un período de 23 px, un hueco de 1, y un
+  // arranque de 12 para que el primero cayera en x = 11. Estaba medido sobre el
+  // render —huecos exactos en 11, 34, 57 y 80, ni un píxel mezclado— y hacía
+  // exactamente lo que decía que hacía.
+  //
+  // Se fue porque SE LEE COMO LEDS. Cuatro puntos regulares sobre una barra
+  // naranja, en la botonera de un aparato, no dicen "pintura saltada": dicen
+  // indicadores. Y los indicadores de esta pieza ya se habían sacado dos días
+  // antes, por este mismo motivo.
+  //
+  // La lección es más grande que los tres números: CUALQUIER COSA REGULAR sobre
+  // esa barra se lee como información. El desgaste tiene que estar en la
+  // MATERIA —las tres filas de luz, pintura y sombra— y no en un patrón encima
+  // de ella. Una superficie gastada no tiene ritmo.
+  //
+  // Lo que queda son las tres bandas macizas, que era la otra mitad de la
+  // variante A y la que sí funciona.
 
   // ---- EL PIE ----
   //
@@ -3130,7 +3136,30 @@ export const BOTONERA = {
   // `alfa` no es cosmética: a plena opacidad son dos naranjas iguales arriba y
   // abajo y la pieza se lee simétrica, que es justamente lo que una etiqueta
   // apoyada no es. Al 55% la chapita manda y el pie acompaña.
-  pie: { alto: 1, inset: 22, abajo: 2, alfa: 0.55 }
+  pie: { alto: 1, inset: 22, abajo: 2, alfa: 0.55 },
+
+  // ---- LA CAJA QUE APARECE AL APRETAR ----
+  //
+  // En reposo el botón no tiene caja, y eso no cambia. Lo que aparece al apoyar
+  // el dedo es un rectángulo tenue detrás del texto, y se va al soltar.
+  //
+  // ES OTRA COSA QUE LA CAJA QUE SE SACÓ. Aquélla era decoración: estaba
+  // siempre, y dibujaba una silueta rectangular que competía con la chapita por
+  // decir dónde está el botón. Ésta es ACUSE DE RECIBO — sólo existe mientras el
+  // dedo está apoyado, y dice "te escuché", que es información sin otra forma de
+  // darse: la chapita cambia de color, pero el dedo la está tapando justo.
+  //
+  // 14% del crema de `cargando`, que es el mismo blanco cálido con el que el
+  // juego dice "esto está encendido". A esa alfa el piso del galpón se sigue
+  // leyendo entero por debajo: no es una chapa que aparece, es una zona que se
+  // aclara.
+  //
+  // Y ES LA ÚNICA MEZCLA EN VIVO DE LA PIEZA, a propósito. La regla de la
+  // botonera es opacidad 1 y colores de la paleta, y esta transparencia la
+  // rompe: se rompe porque lo que se está dibujando es LA TRANSPARENCIA, no un
+  // color. Un tono opaco a mitad de camino diría otra cosa — diría que hay una
+  // chapa ahí.
+  presion: { alfa: 0.14 }
 };
 
 // ---- ACÁ ESTABA BOTONERA.sombra, LA ELIPSE DE CONTACTO ----
@@ -3161,9 +3190,7 @@ export const VARS_BOTONERA = {
   chapitaInset: '--boton-chapita-inset',
   chapitaFilo: '--boton-chapita-filo',
   chapitaHalo: '--boton-chapita-halo',
-  desgastePeriodo: '--boton-desgaste-periodo',
-  desgasteHueco: '--boton-desgaste-hueco',
-  desgasteArranque: '--boton-desgaste-arranque',
+  presion: '--boton-presion',
   pieAlto: '--boton-pie-alto',
   pieInset: '--boton-pie-inset',
   pieAbajo: '--boton-pie-abajo',

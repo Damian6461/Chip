@@ -3974,6 +3974,30 @@ body.es-noche #piso {
      estar a 6 px del borde a estar a 7 — los dos enteros. */
   background: transparent;
   border: 0;
+
+  /* ---- Y LA TRANSPARENCIA VUELVE, PERO SÓLO COMO RESPUESTA ----
+   *
+   * En reposo no hay caja: es la línea de arriba y no se toca. Al apretar
+   * aparece un rectángulo tenue detrás del texto y se va al soltar.
+   *
+   * ES DISTINTO DE LA CAJA QUE SE SACÓ, y la diferencia no es de grado. Aquélla
+   * era DECORACIÓN: estaba siempre, dibujaba una silueta rectangular alrededor
+   * de la etiqueta y competía con la chapita por decir dónde está el botón. Ésta
+   * es ACUSE DE RECIBO: sólo existe mientras el dedo está apoyado, y lo que
+   * comunica es "te escuché", que es información que no tiene otra forma de
+   * darse — la chapita cambia de color, pero el dedo la está tapando.
+   *
+   * Va CLARAMENTE TRANSPARENTE y no como relleno: 14% del crema de `cargando`.
+   * A esa alfa el piso del galpón sigue leyéndose entero por debajo, así que no
+   * es una chapa que aparece, es una zona que se aclara.
+   *
+   * Y ACÁ VUELVEN --presion-baja Y --presion-sube, que se habían quedado sin un
+   * solo lector cuando la chapita pasó a tres filas con tokens de color adentro
+   * —un token no interpola sin @property— y estuvieron a un commit de borrarse.
+   * El apretón asimétrico es de las primeras decisiones del proyecto: el dedo
+   * baja de golpe y el material vuelve solo, 60 abajo y 140 arriba. Acá hay un
+   * `background-color` de verdad, así que se puede volver a animar. */
+  transition: background-color var(--presion-sube) ease-out;
   /* Punto 3.2. Cero, no "poco": 3px de radio son tres píxeles interpolados en
      cada esquina. Sin relleno ni borde no recorta nada hoy; se queda porque la
      decisión sigue en pie y el día que algo vuelva a pintar esta caja tiene que
@@ -4056,7 +4080,7 @@ body.es-noche #piso {
    *
    * La chapita deja de ser un color plano y pasa a ser TRES FILAS DE UN PÍXEL,
    * que es exactamente su alto. Se eligió esta variante contra la que se comía
-   * las puntas: ver BOTONERA.desgaste, con el porqué.
+   * las puntas: ver el bloque del desgaste en BOTONERA, con el porqué.
    *
    * Los tres colores viven en tokens propios y no en las capas, y ése es el
    * truco que hace que esto no se rompa en los otros dos estados: `:active` y
@@ -4065,31 +4089,33 @@ body.es-noche #piso {
    * `background-image`, la primera vez que alguien tocara el patrón lo tocaría
    * en uno de los tres.
    *
-   * La fila del medio va con `repeat-x` y las otras dos con `no-repeat`: sólo
-   * la del medio tiene patrón. El hueco es transparente de verdad —no un gris
-   * pintado encima— así que por ahí se ve el piso del galpón, que es lo que
-   * significa que la pintura se saltó.
+   * ---- LOS CUATRO HUECOS SE FUERON ----
    *
-   * La franja `#0000` del final del repeating no interpola con nada: los dos
-   * stops son coincidentes, así que el borde del hueco cae en el píxel entero y
-   * no hay un solo tono intermedio. */
+   * La fila del medio iba partida: cada 23 px se saltaba un píxel y quedaba
+   * transparente, para que se viera el piso por ahí. Estaba medido, caía en x =
+   * 11, 34, 57 y 80, y ni un píxel salía mezclado.
+   *
+   * Y se lee como LEDS. Cuatro puntos regulares sobre una barra naranja en la
+   * botonera de un aparato no dicen "pintura saltada", dicen "indicadores" — que
+   * es exactamente la pieza que se sacó de acá hace dos días. El defecto no
+   * estaba en la ejecución: estaba en que cualquier cosa REGULAR sobre esa barra
+   * se lee como información.
+   *
+   * Queda el desgaste por filas, que era la otra mitad de la variante A y la que
+   * sí funciona: 1 px claro arriba, la pintura en el medio, 1 px oscuro abajo.
+   * Tres bandas macizas, ningún patrón. */
   --chapita-luz: var(--boton-naranja-luz);
   --chapita-base: var(--boton-naranja);
   --chapita-sombra: var(--boton-naranja-sombra);
 
   background-color: transparent;
-  background-repeat: no-repeat, repeat-x, no-repeat;
+  background-repeat: no-repeat;
   background-image:
     linear-gradient(var(--chapita-luz) 0 0),
-    repeating-linear-gradient(
-      90deg,
-      var(--chapita-base) 0 calc(var(--boton-desgaste-periodo) - var(--boton-desgaste-hueco)),
-      #0000 calc(var(--boton-desgaste-periodo) - var(--boton-desgaste-hueco))
-        var(--boton-desgaste-periodo)
-    ),
+    linear-gradient(var(--chapita-base) 0 0),
     linear-gradient(var(--chapita-sombra) 0 0);
-  background-size: 100% 1px, var(--boton-desgaste-periodo) 1px, 100% 1px;
-  background-position: 0 0, var(--boton-desgaste-arranque) 1px, 0 2px;
+  background-size: 100% 1px;
+  background-position: 0 0, 0 1px, 0 2px;
 
   /* Expansión y no corrimiento: `0 0 0 1px` da UN PÍXEL EXACTO en los cuatro
      lados. Cuatro sombras corridas —una por lado— habrían dado lo mismo en el
@@ -4219,6 +4245,10 @@ body.es-noche #piso {
    con él: son sus pseudo-elementos. */
 #acciones button:active:not(:disabled):not([aria-disabled='true']) {
   transform: translateY(2px);
+  /* La caja tenue, y su mitad rápida del apretón: baja de golpe (60 ms) y vuelve
+     sola (140 ms, en la regla de reposo). Ver el bloque del botón. */
+  background-color: var(--boton-presion);
+  transition: background-color var(--presion-baja) ease-in;
 }
 
 /* La chapita pasa al crema caliente del bulbo de `cargando` —el mismo blanco

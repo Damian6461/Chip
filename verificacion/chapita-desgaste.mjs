@@ -4,9 +4,14 @@
 //
 // ---- QUÉ PREGUNTA CONTESTA ----
 //
-// El desgaste por filas es tres capas de fondo de 1 px de alto, y la del medio
-// partida cada 23 px para dejar un píxel transparente. Por construcción eso no
-// puede mezclar tonos: todas las medidas son enteras y ninguna capa se superpone.
+// El desgaste por filas son tres capas de fondo de 1 px de alto: luz, pintura y
+// sombra. Por construcción eso no puede mezclar tonos — todas las medidas son
+// enteras y ninguna capa se superpone.
+//
+// La del medio iba PARTIDA cada 23 px para dejar ver el piso por cuatro huecos.
+// Se fue: cuatro puntos regulares sobre una barra naranja se leen como LEDs, no
+// como pintura saltada. Cualquier cosa REGULAR sobre esa barra se lee como
+// información.
 //
 // "Por construcción" es exactamente el tipo de argumento que este proyecto ya
 // aprendió a no creerle. Un `background-position` de 12 px sobre un botón cuyo
@@ -18,16 +23,15 @@
 // se cuentan los tonos de cada fila de cada chapita. Lo que tiene que dar:
 //
 //   fila 0    un solo tono, el naranja-alto de la caja de conexión
-//   fila 1    DOS tonos: la pintura base y lo que se ve por los huecos
+//   fila 1    un solo tono, la pintura base
 //   fila 2    un solo tono, el naranja gastado
 //
-// Un tercer tono en la fila 0 o en la 2, o más de dos familias en la 1, es
-// antialiasing. Y el hueco tiene que medir 1 px exacto y repetirse cada 23.
+// Un segundo tono en cualquiera de las tres es antialiasing.
 
 import { servir } from '../tools/servir.mjs';
 import { abrirCromo, dormir } from '../tools/cromo.mjs';
 import { leerPng, aHex } from '../tools/png.mjs';
-import { BOTONERA, COLORES_BOTON, COLORES_BOTON_CHAPITA } from '../js/config.js';
+import { COLORES_BOTON, COLORES_BOTON_CHAPITA } from '../js/config.js';
 
 const ANCHO = 390;
 const ALTO = 844;
@@ -114,8 +118,7 @@ try {
     2: COLORES_BOTON_CHAPITA['naranja-sombra']
   };
 
-  console.log(`Viewport ${ANCHO}x${ALTO}, escala 1. Período ${BOTONERA.desgaste.periodo}, ` +
-    `hueco ${BOTONERA.desgaste.hueco}, arranque ${BOTONERA.desgaste.arranque}.\n`);
+  console.log(`Viewport ${ANCHO}x${ALTO}, escala 1. Desgaste por FILAS MACIZAS, sin patrón.\n`);
 
   let problemas = 0;
 
@@ -143,31 +146,28 @@ try {
       const esperado = esperados[y];
       const dominante = tonos[0][0];
 
-      // La fila del medio tiene dos poblaciones legítimas: la pintura y lo que
-      // se ve por los huecos, que es el piso del galpón y por lo tanto NO es un
-      // color fijo — el fondo cambia con la hora. Así que ahí no se compara
-      // contra un hex: se cuenta cuántos píxeles NO son la pintura, y tienen que
-      // ser exactamente los huecos.
+      // LA FILA DEL MEDIO YA NO TIENE HUECOS, y este chequeo es lo que queda de
+      // cuando los tenía. Iba partida cada 23 px para dejar ver el piso, y se
+      // fue porque cuatro puntos regulares sobre una barra naranja se leen como
+      // LEDs y no como pintura saltada.
+      //
+      // Así que ahora las tres filas se miden igual: un solo tono cada una. Y el
+      // chequeo se queda en vez de borrarse, mirando lo contrario de lo que
+      // miraba: que NO haya huecos. Si vuelven, este número los ve.
       if (y === 1) {
         for (let x = 0; x < img.ancho; x++) {
           const p = (y * img.ancho + x) * img.canales;
           if (hex(img.datos[p], img.datos[p + 1], img.datos[p + 2]) !== esperado) huecos.push(x);
         }
-        const separaciones = huecos.slice(1).map((v, i) => v - huecos[i]);
-        const todosIguales = separaciones.every((s) => s === BOTONERA.desgaste.periodo);
-        console.log(
-          `  fila ${y}  pintura ${esperado} en ${cuenta.get(esperado) ?? 0}/${img.ancho} px · ` +
-            `huecos en x = ${huecos.join(', ')} · separaciones ${[...new Set(separaciones)].join('/')}`
-        );
-        if (!todosIguales && separaciones.length) {
-          console.log('    OJO: los huecos no están parejos.');
+        if (huecos.length) {
+          console.log(
+            `  fila ${y}  OJO: ${huecos.length} píxeles que no son la pintura, en x = ` +
+              `${huecos.slice(0, 12).join(', ')}${huecos.length > 12 ? '…' : ''}. ` +
+              'El desgaste es por filas macizas; un patrón acá vuelve a leerse como LEDs.'
+          );
           problemas++;
+          continue;
         }
-        if (huecos[0] !== 11) {
-          console.log(`    OJO: el primer hueco cae en ${huecos[0]} y la decisión dice 11.`);
-          problemas++;
-        }
-        continue;
       }
 
       const limpia = tonos.length === 1 && dominante === esperado;
@@ -182,7 +182,7 @@ try {
   }
 
   console.log(problemas === 0
-    ? 'Ni un píxel mezclado: las tres filas salen macizas y los huecos caen donde tienen que caer.'
+    ? 'Ni un píxel mezclado: las tres filas salen macizas y sin patrón encima.'
     : `${problemas} cosa(s) para mirar.`);
 } finally {
   await cromo.cerrar();
