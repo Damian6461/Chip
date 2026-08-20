@@ -35,12 +35,44 @@ const resultado = correrPruebas(({ nombre, ok, mensaje }) => {
   }
 });
 
-console.log(`${GRIS}${'-'.repeat(60)}${FIN}`);
+// ---- Y EL QUE ABRE EL JUEGO ----
+//
+// Va acá adentro y no en un comando aparte, y esa es la mitad del asunto: un
+// test de humo que hay que acordarse de correr es un test que no corre. Los
+// trescientos treinta y dos de arriba estuvieron verdes con la app tirando
+// ReferenceError al abrirla, así que la lección no es "falta un test", es "falta
+// un test EN EL MISMO COMANDO".
+//
+// Es asíncrono —levanta un servidor y un Chrome— y el runner de arriba es
+// síncrono a propósito, así que trae su propio conteo y se suma al final. Se
+// puede saltear con CHIP_SIN_HUMO=1 para el ciclo corto de escribir tests de
+// texto; no se puede saltear sin decirlo.
+const { correrHumo } = await import('./humo.mjs');
 
-if (resultado.fallaron === 0) {
-  console.log(`${VERDE}${resultado.pasaron} pasaron${FIN}, 0 fallaron`);
-} else {
-  console.log(`${resultado.pasaron} pasaron, ${ROJO}${resultado.fallaron} fallaron${FIN}`);
+const humo = process.env.CHIP_SIN_HUMO
+  ? { pasaron: 0, fallaron: 0, total: 0, salteado: true }
+  : await correrHumo(({ nombre, ok, mensaje }) => {
+      if (ok) {
+        console.log(`${VERDE}  ok  ${FIN} ${nombre}`);
+      } else {
+        console.log(`${ROJO}FALLA${FIN} ${nombre}`);
+        console.log(`        ${ROJO}${mensaje}${FIN}`);
+      }
+    });
+
+if (humo.salteado) {
+  console.log(`${ROJO} !!!  ${FIN} el test de humo NO corrió: CHIP_SIN_HUMO está puesto`);
 }
 
-process.exit(resultado.fallaron === 0 ? 0 : 1);
+console.log(`${GRIS}${'-'.repeat(60)}${FIN}`);
+
+const pasaron = resultado.pasaron + humo.pasaron;
+const fallaron = resultado.fallaron + humo.fallaron;
+
+if (fallaron === 0) {
+  console.log(`${VERDE}${pasaron} pasaron${FIN}, 0 fallaron`);
+} else {
+  console.log(`${pasaron} pasaron, ${ROJO}${fallaron} fallaron${FIN}`);
+}
+
+process.exit(fallaron === 0 ? 0 : 1);

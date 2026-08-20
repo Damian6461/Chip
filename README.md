@@ -519,6 +519,50 @@ mirar una sola fuente y creerle.
 
 ---
 
+### Una suite que no abre el juego no sabe si el juego abre
+
+**332 tests en verde con la app tirando `ReferenceError` en el arranque y la
+pantalla del pecho apagada.** Se reportó desde afuera como «no se muestra la
+carga», que es el síntoma a tres capas de distancia de la causa.
+
+La causa: `let vozEstadoAnterior` declarado cuatrocientas líneas debajo de su
+primer uso. `crearSesion` pinta durante su construcción, el wrapper de render
+llama a `vozAlEntrar` —una declaración de función, izada, así que la llamada
+entra— y adentro lee un `let` que todavía no se evaluó. **Zona muerta temporal.**
+Y el error no se queda en la voz: revienta la cadena de pintado entera.
+
+Ninguno de los 332 podía verlo, **y no por un descuido de alguno**: todos leen
+archivos y cruzan texto. Verifican lo que está escrito. Ninguno ejecuta el juego,
+y este defecto es sintácticamente impecable — pasa cualquier lectura y revienta
+al correr.
+
+Los tests de texto verifican lo que está escrito. **Hace falta al menos uno que
+verifique que ARRANCA**, y está en `tests/humo.mjs`: abre `index.html` en un
+Chrome de verdad por CDP crudo —sin dependencias, que la regla del repo vale más
+que la comodidad—, espera dos segundos, y falla si hubo un solo error de consola
+o una excepción sin atrapar. Más tres preguntas de que arrancó y no arrancó a
+medias: `#pantalla` no está en `display:none`, la mascota salió de
+`estado-esperando`, y el display del pecho tiene un número.
+
+**Corre dentro de `node tests/correr.mjs` y no en un comando aparte.** Un test de
+humo que hay que acordarse de correr es un test que no corre; la lección no es
+«falta un test», es «falta un test **en el mismo comando**».
+
+Y dos cosas que se aprendieron al verlo en rojo, porque un rojo no se explica, se
+reproduce:
+
+- **De las cuatro aserciones, la que atrapa este bug es la del error de consola.
+  Las tres del DOM pasaron igual** con el defecto puesto, en perfil limpio y a
+  300 ms y a 2 s: el render que revienta se pierde, pero uno posterior repara el
+  DOM. Sirven para otra falla —un arranque que nunca completa— y no para ésta.
+  Anotado acá y no maquillado: tres verdes al lado de un rojo no son tres
+  verificaciones.
+- **Un test de humo que se saltea solo es el mismo agujero de nuevo.** Si no
+  encuentra el navegador, falla y dice cómo apuntárselo con `CHIP_NAVEGADOR`.
+  Callarse sería verde sin haber mirado, que es exactamente de donde venimos.
+
+---
+
 ## Cadena de estados visuales
 
 Prioridad, gana la primera condición verdadera:

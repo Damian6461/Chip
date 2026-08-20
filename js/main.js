@@ -89,6 +89,33 @@ guardarEstado(visita.estado);
 // arrancan de un botón.
 let refrescarDebug = null;
 
+// EL ESTADO ANTERIOR DE LA VOZ, DECLARADO ACÁ Y NO ABAJO CON EL RESTO DE LA VOZ.
+//
+// Estaba junto a `vozAlEntrar`, a cuatrocientas líneas de acá, y eso rompía la
+// app entera al arrancar. El mecanismo, que no se ve leyendo el bloque de la
+// voz: `crearSesion` PINTA durante su construcción, o sea acá abajo, en la línea
+// siguiente. El wrapper de render llama a `vozAlEntrar`, que es una declaración
+// de función y está izada, así que la llamada entra sin problema — y adentro
+// lee un `let` que todavía no se evaluó. Zona muerta temporal: ReferenceError.
+//
+// Y el error no se queda en la voz: revienta el render, o sea la cadena entera
+// de pintado. Sin pantalla de pecho, sin batería, sin panel de debug, y Chip
+// clavado en `esperando` con los brazos cruzados. Se reportó como "no se muestra
+// la carga", que es un síntoma a tres capas de distancia de la causa.
+//
+// `var` lo arreglaba en una palabra y no es lo que corresponde: esconde el
+// problema en vez de resolverlo. Lo que corresponde es que la declaración esté
+// arriba de su primer uso, y su primer uso es la línea de abajo.
+//
+// Las dos van juntas: `seAnima` también es TDZ —es un const— y `vozAlEntrar` la
+// llama.
+let vozEstadoAnterior = null;
+
+// UNA TIRADA POR ENTRADA, y el piso de 4 segundos de VOZ.cooldownMs manda igual
+// sobre el resultado. O sea que hay dos filtros en serie: éste decide si se
+// INTENTA y `hablar` decide si suena.
+const seAnima = (clave) => Math.random() < (PROBABILIDAD_VOZ[clave] ?? 0);
+
 const sesion = crearSesion({
   estado: visita.estado,
   vista: {
@@ -546,13 +573,10 @@ conectarDebugOculto(abrirPanelDebug);
 // pintada. El render corre muchas veces por segundo cuando algo se anima; los
 // cambios de estado son unos pocos por minuto.
 
-let vozEstadoAnterior = null;
-
-// UNA TIRADA POR ENTRADA, y el piso de 4 segundos de VOZ.cooldownMs manda igual
-// sobre el resultado. O sea que hay dos filtros en serie: éste decide si se
-// INTENTA y `hablar` decide si suena.
-const seAnima = (clave) => Math.random() < (PROBABILIDAD_VOZ[clave] ?? 0);
-
+// `vozEstadoAnterior` y `seAnima` NO están acá: viven arriba de `crearSesion`,
+// que es su primer uso. Ver el comentario largo allá — tenerlas acá, al lado de
+// la función que las usa, es lo que se lee más natural y es exactamente lo que
+// dejaba la app tirando ReferenceError al abrirla.
 function vozAlEntrar(estadoVisual, esNoche) {
   const antes = vozEstadoAnterior;
   if (estadoVisual === antes) return;
