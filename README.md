@@ -362,7 +362,7 @@ archivo `fondo-mediodia.webp`. Reproducido después, archivo por archivo:
 
 ```
 fondo-amanecer    66,1
-fondo-dia         58,9      <- éste es el atardecer
+fondo-atardecer         58,9      <- éste es el atardecer
 fondo-mediodia   112,0      <- de acá salía el 112
 fondo-noche       25,3
 ```
@@ -371,7 +371,7 @@ Sobrevivió porque las dos mitades eran verdaderas por separado: existe una fran
 con 112 y existe una franja llamada atardecer. Sólo se cayó cuando alguien midió
 las cuatro **desde el archivo** y no desde la tabla.
 
-Y no es una trampa de una sola vez: `fondo-dia.webp` **es** el atardecer, con el
+Y no es una trampa de una sola vez: `fondo-atardecer.webp` **es** el atardecer, con el
 nombre viejo mantenido para no romper referencias. O sea que el proyecto ya tenía
 un archivo cuyo nombre miente, y este error es lo que pasa cuando esa mentira se
 propaga a un script.
@@ -660,7 +660,7 @@ Los dos fondos son PNG-8 cuantizados, bajo 500 KB cada uno. **No son pixel art d
 
 | Archivo | Antes | Ahora | Paleta | Dither |
 |---|---|---|---|---|
-| `fondo-dia.png` | 1620 KB | 464 KB | 101 colores | no |
+| `fondo-atardecer.png` | 1620 KB | 464 KB | 101 colores | no |
 | `fondo-noche.png` | 1467 KB | 411 KB | 48 colores | sí |
 
 El dither va por imagen y no por gusto: en el día el piso queda limpio sin él y el dither le mete grano visible; en la noche, sin dither el farol de la pared hace anillos concéntricos en la caída de luz. A 256 colores no bandea ninguna de las dos, pero pesan 765 KB y 946 KB — fuera de presupuesto.

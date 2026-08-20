@@ -1430,9 +1430,18 @@ body.es-noche #rayo {
   display: block;
   width: 100%;
   height: 100%;
-  /* El halo del cian es lo que lo despega del cuerpo gris de Chip: sin esto, a
-     este tamaño, el pulso se confunde con un reflejo de la chapa. */
-  filter: drop-shadow(0 0 5px var(--pulso-halo));
+  /* EL RESPLANDOR YA ESTABA DIBUJADO, Y ENCIMA TENÍA UN BLUR.
+
+     Acá había `filter: drop-shadow(0 0 5px var(--pulso-halo))` con esta nota: "el
+     halo del cian es lo que lo despega del cuerpo gris de Chip". La observación
+     era buena y el remedio estaba de más: la forma YA tiene sus dos escalones
+     dibujados —un huso en --pulso-halo y adentro otro en --pulso-nucleo, ver
+     PULSO en formas.js—. El drop-shadow era un tercer resplandor, y gaussiano.
+
+     Es la misma familia que el halo del pulso del cable: en pixel art una luz no
+     es gaussiana, es escalonada. Y `shape-rendering` no lo veía, porque los
+     filtros se aplican después del rasterizado. */
+  shape-rendering: crispEdges;
 }
 
 /* Los cuatro nacen apretados en el zócalo (48-52%) y se abren apenas al subir:
@@ -4664,8 +4673,18 @@ body.sin-movimiento *::after {
   shape-rendering: crispEdges;
 }
 
+/* EL FILO DE ARRIBA NO ES EL DEL CABLE, y esto es la corrección de un cruce.
+
+   Con el cuerpo del conector oscuro, --cable-filo-arriba era su tono claro. Con
+   el cuerpo en el gris de Chip (#676c77) quedó AL REVÉS: #575f68 es más oscuro
+   que el cuerpo —1,23 de contraste y del lado equivocado— así que las dos filas
+   se leían como un contorno y no como luz de arriba a la izquierda.
+
+   #a4a8ad es la cara iluminada de la caja de conexión: metal claro, de la
+   paleta, y de la misma familia que el resto del galpón. La de abajo se queda
+   con el tono oscuro del cable, que sí sigue siendo más oscuro que el cuerpo. */
 .cable-conector-filo-arriba {
-  fill: var(--cable-filo-arriba);
+  fill: var(--toma-arriba);
   shape-rendering: crispEdges;
 }
 
@@ -4730,9 +4749,12 @@ body.sin-movimiento *::after {
   animation: viajar-pulso var(--cable-pulso-ciclo) linear infinite reverse;
 }
 
-/* El anillo va MÁS CLARO que el núcleo y no más oscuro: en pixel art una luz
-   chica revienta en el borde, no se apaga. Es el cian casi blanco del núcleo del
-   bulbo de idle, que el juego ya usa para el centro caliente de una luz. */
+/* EL ANILLO VA MÁS OSCURO QUE EL NÚCLEO, y acá decía lo contrario.
+
+   Estaba en el cian casi blanco del bulbo de idle, con el argumento de que una
+   luz chica revienta en el borde. Medido contra el resto de las luces de Chip,
+   ese anillo era lo más brillante de la pantalla —235,9 de luminancia— y le
+   ganaba la atención al LED del pecho, que está en 200,8. Ver CABLE.halo. */
 .pulso-cable-anillo {
   fill: var(--cable-halo);
   shape-rendering: crispEdges;

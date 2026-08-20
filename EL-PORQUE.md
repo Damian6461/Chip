@@ -281,12 +281,12 @@ El galpón tenía día y noche. Ahora tiene cuatro panorámicas con la misma com
 |---|---|---|---|
 | amanecer | 7-11 | `fondo-amanecer.webp` | lila, luz fría y baja |
 | mediodía | 11-17 | `fondo-mediodia.webp` | azul, luz blanca y alta |
-| atardecer | 17-23 | `fondo-dia.webp` | dorado, luz larga |
+| atardecer | 17-23 | `fondo-atardecer.webp` | dorado, luz larga |
 | noche | 23-7 | `fondo-noche.webp` | estrellas |
 
 **El corte de la noche no es un número nuevo:** son `HORA_STANDBY_INICIO` y `HORA_STANDBY_FIN`, los mismos que deciden el standby. La invariante de siempre —si Chip duerme, afuera es de noche— queda garantizada por construcción y no por dos tablas que hay que acordarse de mantener iguales.
 
-**Ojo con los nombres de archivo:** `fondo-dia.webp` **es el atardecer**. Mantiene el nombre viejo para no romper referencias. Se verificó mirando las cuatro, no leyendo los nombres.
+**Ojo con los nombres de archivo:** `fondo-atardecer.webp` **es el atardecer**. Mantiene el nombre viejo para no romper referencias. Se verificó mirando las cuatro, no leyendo los nombres.
 
 **La luz se interpola adentro del tramo.** Cada franja declara dónde arranca su charco; el destino es el arranque de la siguiente, y `luzDelMomento()` interpola posición, radio, color y fuerza según lo que se corrió la hora — con minutos, no con la hora entera, o daría cuatro saltos por tramo. Al final del atardecer la luz ya viaja hacia la fuerza 0 de la noche y llega apagada al cambio de fondo.
 

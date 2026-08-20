@@ -1398,10 +1398,25 @@ export const ESPERA_SEGUNDO_EVENTO_MS = 4000;
 // 21 el fondo cambiaba a nocturno y todo lo demás seguía iluminado de día, que
 // eso sí se ve como un bug.
 //
-// OJO CON LOS NOMBRES DE ARCHIVO. `fondo-dia.webp` es el ATARDECER: mantiene el
-// nombre viejo para no romper referencias. El lila es `fondo-amanecer`, el azul
-// `fondo-mediodia` y el nocturno `fondo-noche`. Verificado mirando las cuatro,
-// no leyendo los nombres.
+// LOS CUATRO ARCHIVOS SE LLAMAN COMO LO QUE SON, y uno no se llamaba así.
+//
+// Acá decía: "OJO CON LOS NOMBRES DE ARCHIVO. `fondo-dia.webp` es el ATARDECER:
+// mantiene el nombre viejo para no romper referencias." O sea que el proyecto
+// tenía, escrito y aceptado, un archivo cuyo nombre mentía sobre su contenido.
+//
+// Y MORDIÓ. El revisor midió el piso de las cuatro franjas, mapeó la etiqueta
+// `atardecer` al archivo equivocado y publicó un 112 de luminancia atribuido al
+// atardecer que era del mediodía. El número era correcto y la etiqueta no; un
+// número mal etiquetado sobrevive a la revisión, porque el que revisa comprueba
+// el número. Ver la regla en el README.
+//
+// Así que `fondo-dia.webp` pasó a llamarse `fondo-atardecer.webp`. No hace falta
+// mapa de compatibilidad: el único consumidor del nombre es ARCHIVOS_CACHE, que
+// está versionado — un teléfono con la versión vieja tiene su propia caché con
+// el nombre viejo adentro, y al subir la versión se baja todo de nuevo.
+//
+// Los otros cinco ya decían la verdad: amanecer, mediodía, noche, niebla y
+// tormenta. Verificado abriéndolos, no leyendo los nombres.
 //
 // `luz` es dónde arranca el charco de cada tramo. El final de un tramo es el
 // arranque del siguiente, y sprites.js interpola entre los dos según lo que se
@@ -1427,7 +1442,7 @@ export const FRANJAS_DIA = [
     nombre: 'atardecer',
     desde: 18,
     hasta: 21,
-    fondo: 'sprites/fondo-dia.webp',
+    fondo: 'sprites/fondo-atardecer.webp',
     luz: { x: 58, y: 80, radio: 66, color: '#ff9440', fuerza: 0.38 }
   },
   {
@@ -2270,7 +2285,7 @@ export const ABERTURA_VENTANA = { x: 2.8, y: 5.6, ancho: 35.5, alto: 53.3 };
 // recortara. Recortada está. Lo que sí se pinta afuera es otra cosa y más chica:
 // el filo del marco. Décima entrada de la tabla del README.
 //
-// La forma sale del arte. En `fondo-dia` el cielo mide entre 180 y 235 de
+// La forma sale del arte. En `fondo-atardecer` el cielo mide entre 180 y 235 de
 // luminancia y el marco entre 40 y 130 —separación limpia, alcanza un umbral— y
 // el hueco resulta ser: x 148 a 319 de la panorámica, y 58 a 578, con el borde
 // de arriba barriendo de x=163 en y=60 hasta x=319 en y=150. Es el mismo agujero
@@ -2668,12 +2683,12 @@ export const VARS_REPISA = {
 // salir del generador quedan atados al sprite real y se regeneran solos cuando
 // alguien toca a Chip.
 //
-// El recorte del fondo está MEDIDO sobre fondo-dia.webp (1672x941): el cielo de
+// El recorte del fondo está MEDIDO sobre fondo-atardecer.webp (1672x941): el cielo de
 // la ventana ocupa x 7,4% a 20,3% y y 8,9% a 73,5%. El cuadrado se corre apenas
 // a la derecha del borde para que la ventana quede en el tercio izquierdo y
 // entre pared a la derecha, que es lo que le da profundidad al ícono.
 export const ICONOS = {
-  fondo: 'sprites/fondo-dia.webp',
+  fondo: 'sprites/fondo-atardecer.webp',
   chip: 'sprites/idle.webp',
   // Lado del recorte, en fracción del alto del fondo, y desde dónde.
   recorte: { lado: 0.86, x: 0.024, y: 0.07 },
@@ -3417,11 +3432,32 @@ export const CABLE = {
   // energía viva— es todo el efecto. Si el cable también fuera cian, los pulsos
   // no tendrían contra qué destacarse.
   energia: '#5fe6ff',
-  // EL ANILLO DEL PULSO, y no es un hex nuevo: es el núcleo del bulbo de `idle`,
-  // el cian casi blanco que el juego ya usa para el centro caliente de una luz.
-  // Va MÁS CLARO que la energía y no más oscuro, que es como se lee una luz
-  // pequeña en pixel art: el borde es donde revienta, no donde se apaga.
-  halo: '#dffcff',
+  // EL ANILLO DEL PULSO, Y ES OSCURO. ESTUVO CLARO Y ME EQUIVOQUÉ.
+  //
+  // Estaba en #dffcff —el núcleo del bulbo de idle— con este argumento escrito
+  // al lado: "va más claro que la energía porque en pixel art una luz chica
+  // revienta en el borde, no se apaga". El argumento suena bien y nunca se midió
+  // contra lo único que importaba acá, que es el resto de las luces de Chip.
+  //
+  // Medido, en luminancia sobre 255:
+  //
+  //   anillo #dffcff        235,9   <- lo más brillante de toda la pantalla
+  //   LED del pecho #01ffff 200,8
+  //   núcleo #5fe6ff        168,9
+  //
+  // O sea que el pulso le ganaba la atención al LED del pecho, y el que se la
+  // ganaba NO ERA EL NÚCLEO —que ya estaba 32 puntos por debajo— sino el anillo
+  // que agregué yo. Bajar el núcleo, que era lo que parecía, no habría movido el
+  // número: el techo lo ponía el borde.
+  //
+  // #2a6f86 es el cuerpo del bulbo de `standby`, o sea un cian apagado que ya
+  // está en la paleta. Con él el pulso entero queda en 168,9 de techo, el LED
+  // vuelve a ser lo más brillante, y el escalón interno MEJORA: el núcleo saca
+  // 3,83 contra el anillo, contra 1,23 que sacaba el candidato del medio.
+  //
+  // Y sigue leyéndose sobre el cable: el anillo saca 2,50 contra #2b3138 y el
+  // núcleo 8,91.
+  halo: '#2a6f86',
   // La sombra donde entra al puerto: sin ella el cable se apoya, no se enchufa.
   sombraPuerto: '#050a0e',
   // La ficha: un gris de plástico, más claro que el cable. Tiene que leerse como

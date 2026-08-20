@@ -160,7 +160,7 @@ prueba('caché: todo asset de ARCHIVOS_CACHE existe en el repo', () => {
 // de instalarse.
 // Los fondos salen de FRANJAS_DIA y de CLIMAS, que es donde están de verdad.
 // Antes salían de un `RUTAS_FONDOS` con dos entradas de cuando el galpón tenía
-// dos fondos: este cruce miraba `fondo-dia` y `fondo-noche` y no se enteraba de
+// dos fondos: este cruce miraba `fondo-atardecer` y `fondo-noche` y no se enteraba de
 // `fondo-amanecer`, `fondo-mediodia`, `fondo-tormenta` ni `fondo-niebla`. Un
 // guardián que verifica la mitad de lo que dice verificar es peor que ninguno,
 // porque ocupa el lugar del que haría falta.

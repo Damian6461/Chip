@@ -680,7 +680,7 @@ prueba('sesión: el tramo sólo se guarda cuando cambia, no en cada tick', () =>
 prueba('sesión: si el tramo cambió mientras no estabas, el fondo se siembra con el anterior', () => {
   const { sesion, vista } = sesionDePrueba(crearEstadoNuevo(), { ahora: T0 });
 
-  const atardecer = { nombre: 'atardecer', fondo: 'sprites/fondo-dia.webp' };
+  const atardecer = { nombre: 'atardecer', fondo: 'sprites/fondo-atardecer.webp' };
   const sembro = sesion.sembrarTramoAnterior(atardecer, 400);
 
   igual(sembro, true, 'a mediodía, viniendo del atardecer, hay de dónde venir');
