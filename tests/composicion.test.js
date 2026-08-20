@@ -2256,6 +2256,146 @@ prueba('estante: cuatro piezas de 16 entran en la tabla más angosta que se sopo
   );
 });
 
+// ============================================================================
+// EL RESPLANDOR SE DIBUJA, LA SOMBRA SE DIFUMINA
+// ============================================================================
+//
+// La regla ya estaba escrita en el README y no la hacía cumplir nadie. Se
+// aplicó a mano al pulso del cable, y quedaron dos vivos en el pecho hasta que
+// alguien los fue a buscar de nuevo. Un tercero sigue vivo, declarado abajo.
+//
+// LA DIFERENCIA, que es lo que este guardián tiene que saber distinguir:
+//
+//   SOMBRA      tiene CORRIMIENTO y es oscura. Es un objeto tapando la luz, y
+//               una sombra de verdad es blanda. `drop-shadow(0 1px 2px #000)`.
+//   RESPLANDOR  no tiene corrimiento y es de color. Es luz saliendo de la
+//               pieza, y acá la luz se DIBUJA: en escalones, con alfa entera,
+//               como el anillo del pulso del cable. `drop-shadow(0 0 3px cian)`
+//               es lo prohibido.
+//
+// Y por qué importa tanto sobre pixel art, medido y no supuesto: el número del
+// pecho tenía `drop-shadow(0 0 2px cian)` sobre una fuente de 3x5 con
+// `shape-rendering="crispEdges"` puesto. Contando los píxeles de cian PURO en la
+// captura, el filtro los bajaba de 91 a 44. No le agregaba un halo — le mezclaba
+// la mitad de sus propios píxeles con el fondo. crispEdges se aplica ANTES del
+// filtro y el filtro no lo ve.
+//
+// El corrimiento cero con blur cero NO cuenta como resplandor: eso es una
+// silueta corrida cero píxeles, o sea nada. Y cuatro drop-shadow de blur cero
+// corridos un píxel entero son un CONTORNO, que es la técnica permitida y la
+// que ya usan los íconos de la botonera.
+const RESPLANDORES_TOLERADOS = new Map([
+  [
+    '.objeto.en-piso',
+    'El brillo que hace descubrible la pieza tirada en el piso. Es un ' +
+      'resplandor difuminado y viola la regla. Se deja vivo A PROPÓSITO y ' +
+      'anotado: hoy la pieza es un SVG vectorial, así que el filtro no le come ' +
+      'píxeles propios a nada. Cuando entre su PNG a maestro 32 esto pasa a ser ' +
+      'el defecto del número del pecho otra vez, y hay que rehacerlo como anillo ' +
+      'escalonado. Ver BRILLO_PISO.'
+  ]
+]);
+
+function resplandoresDifuminados(texto) {
+  const encontrados = [];
+
+  for (const { selector, cuerpo } of reglasDePrimerNivel(texto)) {
+    if (!selector) continue;
+
+    for (const m of cuerpo.matchAll(/(?:^|;)\s*(?:-webkit-)?filter\s*:\s*([^;}]+)/g)) {
+      for (const s of m[1].matchAll(/drop-shadow\(/g)) {
+        let prof = 0;
+        let j = s.index + s[0].length - 1;
+        for (; j < m[1].length; j++) {
+          if (m[1][j] === '(') prof++;
+          else if (m[1][j] === ')' && --prof === 0) break;
+        }
+        const args = partesDePrimerNivel(m[1].slice(s.index + s[0].length, j).trim());
+
+        // `<color>? x y blur <color>?`. Se toma la CORRIDA de longitudes: un
+        // color corta la corrida. `var()` y `calc()` cuentan como longitud
+        // porque en esa posición lo son — y si el blur queda en un var, no se
+        // resuelve acá: se denuncia por no poder mirarse, que es lo honesto.
+        const esColor = (a) =>
+          /^(#|rgb|hsl|color-mix|transparent$|currentcolor$)/i.test(a) ||
+          /^[a-z]+$/i.test(a);
+        const primera = args.findIndex((a) => !esColor(a));
+        if (primera < 0) continue;
+        const largos = [];
+        for (let k = primera; k < args.length && !esColor(args[k]); k++) largos.push(args[k]);
+
+        if (largos.length < 3) continue; // sin blur declarado: no hay difuminado
+
+        const [x, y] = largos.map(parseFloat);
+        const blur = parseFloat(largos[2]);
+
+        // Con corrimiento es una sombra, y una sombra puede ser blanda. Se mira
+        // antes que el blur para no denunciar sombras con radio en variable.
+        if (x !== 0 || y !== 0) continue;
+
+        // Blur cero: es un contorno, y está permitido.
+        if (blur === 0) continue;
+
+        const sinResolver = Number.isNaN(blur) ? ` (el radio es ${largos[2]})` : '';
+        encontrados.push(`${selector} { filter: ${m[1].trim()} }${sinResolver}`);
+      }
+
+      // `blur()` a secas sobre un elemento entero es otra cosa —desenfoque de
+      // profundidad, la lluvia y la sombra de Chip— y no es un resplandor. No se
+      // mira acá.
+    }
+  }
+
+  return encontrados;
+}
+
+prueba('luz: ningún resplandor se difumina, salvo los declarados', () => {
+  const vivos = resplandoresDifuminados(CSS).filter(
+    (r) => ![...RESPLANDORES_TOLERADOS.keys()].some((sel) => r.startsWith(sel + ' '))
+  );
+
+  igual(
+    vivos.join(' | '),
+    '',
+    'resplandores con blur: la luz se dibuja en escalones, no se difumina'
+  );
+});
+
+prueba('luz: la lista de tolerados no tiene entradas que ya no existan', () => {
+  // Una excepción que sobrevive a su sujeto es peor que ninguna: le da permiso
+  // a un selector que mañana significa otra cosa.
+  const presentes = resplandoresDifuminados(CSS);
+  const muertas = [...RESPLANDORES_TOLERADOS.keys()].filter(
+    (sel) => !presentes.some((r) => r.startsWith(sel + ' '))
+  );
+  igual(muertas.join(' | '), '', 'excepciones toleradas cuyo resplandor ya no está');
+});
+
+prueba('luz: se lo ve rojo con los dos que se acaban de sacar del pecho', () => {
+  const comoEstaba =
+    '#pantalla-numero svg { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--color-bateria) 55%, transparent)); }' +
+    '#rayo svg { filter: drop-shadow(0 0 3px var(--rayo-color)); }';
+  igual(
+    resplandoresDifuminados(comoEstaba).length,
+    2,
+    `tiene que ver los dos y vio ${resplandoresDifuminados(comoEstaba).length}`
+  );
+
+  // Y NO LADRA DONDE NO DEBE, que es la mitad que se olvida:
+  const permitidos =
+    // una sombra: tiene corrimiento y es negra
+    '#menu-boton { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.75)); }' +
+    // un contorno: cuatro corrimientos enteros con blur cero
+    '#acciones button svg { filter: drop-shadow(0 1px 0 #000) drop-shadow(1px 0 0 #000); }' +
+    // un desenfoque de profundidad, que no es un resplandor
+    '#lluvia .gota { filter: blur(var(--desenfoque)); }';
+  igual(
+    resplandoresDifuminados(permitidos).join(' | '),
+    '',
+    'una sombra, un contorno y un desenfoque de profundidad no son resplandores'
+  );
+});
+
 // Acá estaba `los ojos cruzan Y se mueven`, que exigía `opacity` en la lista de
 // #ojos. Lo reemplaza `ojos: el cambio de cara es un corte y no una
 // disolvencia`, más arriba en este mismo archivo, que pide exactamente lo

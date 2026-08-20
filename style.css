@@ -639,11 +639,47 @@ body.es-noche #toma {
 
    El ancho lo decide el viewBox: así "9%" y "100%" tienen los glifos del mismo
    tamaño y sólo cambia lo que ocupan. */
+/* ACÁ HABÍA UN `drop-shadow(0 0 2px ...)`, Y SE FUE. LOS NÚMEROS:
+ *
+ * Se capturó el número a escala 1 con el filtro puesto y sin él, y se contaron
+ * los píxeles de cian PURO —el color del glifo, sin mezclar con nada—:
+ *
+ *   sin filtro   91 píxeles de #01ffff
+ *   con blur     44
+ *
+ * O sea que el difuminado se comía LA MITAD DEL GLIFO. No le agregaba un halo a
+ * una fuente de píxeles: le mezclaba los propios píxeles con el fondo del
+ * display, y de paso subía los tonos de la región de 267 a 487.
+ *
+ * Y eso pasa a pesar de que el SVG pide `shape-rendering="crispEdges"`
+ * explícitamente, porque crispEdges se aplica ANTES del filtro: el filtro no lo
+ * ve, rasteriza de nuevo y promedia. Es exactamente el mismo mecanismo que ya
+ * nos había mordido en el cable.
+ *
+ * NO SE REEMPLAZA POR UN ANILLO, y también está medido. Se probaron dos:
+ *
+ *   anillo duro de 1 px al 45%   el núcleo vuelve a caer a 44 píxeles puros —
+ *                                cuatro drop-shadow encadenados rasterizan
+ *                                cuatro veces, así que el remedio tiene la
+ *                                misma enfermedad.
+ *   anillo duro de 1 px pleno    el glifo pasa de 91 a 275 píxeles: triplica su
+ *                                área y le cierra los huecos al 0, al 6, al 8 y
+ *                                al 9. Una fuente de 3x5 no tiene lugar para un
+ *                                contorno.
+ *
+ * Así que el número queda pelado, con sus 91 píxeles de cian puro, que es la
+ * mayor cantidad de las cuatro variantes. Lo que decía "esto está encendido"
+ * sigue estando: es el color, que es el mismo cian de la batería, y son las
+ * barras de al lado.
+ *
+ * LAS BARRAS SÍ CONSERVAN SU RESPLANDOR, y no es una inconsistencia: el de las
+ * barras es un `box-shadow`, que se dibuja DETRÁS de la caja y no la toca. Un
+ * `filter: drop-shadow` rasteriza el elemento entero y le pasa por encima. Una
+ * florece alrededor, el otro atraviesa. Ver verificacion/filtros-pecho.mjs. */
 #pantalla-numero svg {
   display: block;
   height: var(--pantalla-num-glifo);
   width: auto;
-  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--color-bateria) 55%, transparent));
 }
 
 
@@ -669,11 +705,28 @@ body.es-noche #toma {
   pointer-events: none;
 }
 
+/* Y ACÁ HABÍA UN `drop-shadow(0 0 3px ...)`. También se fue, y por el argumento
+ * más simple de los dos: EL RESPLANDOR YA ESTÁ, y no lo hace el filtro.
+ *
+ * Lo hace `mix-blend-mode: screen` del padre. El rayo no tapa al que está
+ * pintado en el sprite: le SUMA luz. Esa suma es el resplandor, y está en la
+ * forma, no encima de ella — que es la condición para que el filtro sea un
+ * tercero de más.
+ *
+ * Medido, con las animaciones pausadas y a su opacidad real de 0,47: el blur
+ * cambia 366 píxeles de 2240, con un delta MEDIO de 5,3 sobre 255 y un máximo
+ * de 28. A cambio de eso mete 112 tonos nuevos en una región que tenía 265 y
+ * derrama 3 px afuera de la pieza. Cinco unidades de 255 no las ve nadie; los
+ * tonos y el derrame sí se acumulan con todo lo demás.
+ *
+ * Y una advertencia de método, porque la primera medición dio CERO y era
+ * mentira: se había hecho con movimiento reducido, que le clava al rayo
+ * `opacity: 0.22`, y a esa opacidad la mezcla screen devuelve lo mismo con halo
+ * y sin halo. Un cero que sale de haber apagado el sujeto no es un cero. */
 #rayo svg {
   display: block;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 3px var(--rayo-color));
 }
 
 /* Reposo: el corazón eléctrico latiendo. Más lento que la antena y fuera de

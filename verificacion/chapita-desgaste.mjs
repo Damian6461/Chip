@@ -26,6 +26,7 @@
 
 import { servir } from '../tools/servir.mjs';
 import { abrirCromo, dormir } from '../tools/cromo.mjs';
+import { leerPng, aHex } from '../tools/png.mjs';
 import { BOTONERA, COLORES_BOTON, COLORES_BOTON_CHAPITA } from '../js/config.js';
 
 const ANCHO = 390;
@@ -104,67 +105,8 @@ try {
     capturas.push({ ...c, png: Buffer.from(foto.data, 'base64') });
   }
 
-  // ---- El decodificador de PNG, sin dependencias ----
-  //
-  // Chrome devuelve PNG de 8 bits por canal. Sólo hace falta leer IHDR y IDAT,
-  // inflar con `zlib` —que viene en Node— y deshacer los cinco filtros por fila.
-  // Es lo mismo que ya hace verificacion/cable-tonos.mjs; si aparece una tercera
-  // copia, se muda a tools/.
-  const { inflateSync } = await import('node:zlib');
+  const hex = aHex;
 
-  function leerPng(buf) {
-    let i = 8;
-    let ancho = 0;
-    let alto = 0;
-    let canales = 0;
-    const trozos = [];
-
-    while (i < buf.length) {
-      const largo = buf.readUInt32BE(i);
-      const tipo = buf.toString('ascii', i + 4, i + 8);
-      const datos = buf.subarray(i + 8, i + 8 + largo);
-      if (tipo === 'IHDR') {
-        ancho = datos.readUInt32BE(0);
-        alto = datos.readUInt32BE(4);
-        const color = datos[9];
-        canales = color === 6 ? 4 : color === 2 ? 3 : 0;
-        if (!canales) throw new Error(`tipo de color ${color} no contemplado`);
-        if (datos[8] !== 8) throw new Error(`profundidad ${datos[8]} no contemplada`);
-      } else if (tipo === 'IDAT') trozos.push(datos);
-      else if (tipo === 'IEND') break;
-      i += 12 + largo;
-    }
-
-    const crudo = inflateSync(Buffer.concat(trozos));
-    const paso = ancho * canales;
-    const salida = Buffer.alloc(alto * paso);
-
-    for (let y = 0; y < alto; y++) {
-      const filtro = crudo[y * (paso + 1)];
-      const linea = crudo.subarray(y * (paso + 1) + 1, y * (paso + 1) + 1 + paso);
-      for (let x = 0; x < paso; x++) {
-        const a = x >= canales ? salida[y * paso + x - canales] : 0;
-        const b = y > 0 ? salida[(y - 1) * paso + x] : 0;
-        const c = x >= canales && y > 0 ? salida[(y - 1) * paso + x - canales] : 0;
-        let v = linea[x];
-        if (filtro === 1) v += a;
-        else if (filtro === 2) v += b;
-        else if (filtro === 3) v += (a + b) >> 1;
-        else if (filtro === 4) {
-          const p = a + b - c;
-          const pa = Math.abs(p - a);
-          const pb = Math.abs(p - b);
-          const pc = Math.abs(p - c);
-          v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
-        }
-        salida[y * paso + x] = v & 0xff;
-      }
-    }
-
-    return { ancho, alto, canales, datos: salida };
-  }
-
-  const hex = (r, g, b) => '#' + [r, g, b].map((n) => n.toString(16).padStart(2, '0')).join('');
 
   const esperados = {
     0: COLORES_BOTON_CHAPITA['naranja-luz'],
