@@ -739,6 +739,14 @@ function cabeceraDe(html, pagina) {
   const desde = html.indexOf('<div id="como-abrirla">');
   const hasta = html.indexOf('</script>', desde);
   if (desde < 0 || hasta < 0) return null;
+  // Y EL TOPE, que faltaba. Este corte busca dos anclas y las dos existen hoy,
+  // pero el modo de falla de un corte por texto no es que el ancla no exista: es
+  // que la SEGUNDA aparezca mucho más lejos de lo que uno cree —otro `</script>`
+  // se coló en el medio— y el bloque pase a ser media página. Ahí las cuatro
+  // copias se comparan por su contenido entero y el guardián deja de comparar la
+  // cabecera. Tres mil caracteres es holgado para un bloque que mide dos mil
+  // novecientos, y es tres veces menos que la página más chica.
+  if (hasta - desde > 3000) return null;
   // Los finales de línea se normalizan antes de comparar. En un checkout de
   // Windows con autocrlf, un archivo recién escrito y otro que pasó por git
   // pueden diferir en CRLF contra LF sin que el TEXTO cambie en nada — y este
@@ -767,8 +775,19 @@ prueba('verificacion/: cada página avisa si la abrieron por file://', () => {
       `${pagina} tiene el aviso pero nada lo enciende`
     );
     // Y el aviso NO puede venir en un módulo, que es justo lo que se bloquea.
-    const antesDelAviso = html.slice(0, html.indexOf('location.protocol'));
+    //
+    // El corte lleva su red: si `location.protocol` no estuviera, `indexOf` daría
+    // −1, `slice(0, -1)` devolvería la página entera menos un carácter, y el
+    // `lastIndexOf('<script')` encontraría el ÚLTIMO script del archivo — que es
+    // otro, y probablemente uno de tipo module. El test daría rojo por el motivo
+    // equivocado, o peor, verde si ese script no fuera module. La aserción de
+    // arriba ya garantiza que está, pero un corte no puede depender de que otra
+    // aserción lo cuide.
+    const dondeAvisa = html.indexOf('location.protocol');
+    verdadero(dondeAvisa >= 0, `en ${pagina} no está el aviso que este corte busca`);
+    const antesDelAviso = html.slice(0, dondeAvisa);
     const scriptQueLoContiene = antesDelAviso.lastIndexOf('<script');
+    verdadero(scriptQueLoContiene >= 0, `en ${pagina} el aviso no está adentro de ningún <script>`);
     verdadero(
       !/type=["']module["']/.test(html.slice(scriptQueLoContiene, scriptQueLoContiene + 60)),
       `en ${pagina} el aviso vive adentro de un módulo, o sea que no corre cuando hace falta`

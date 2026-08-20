@@ -519,6 +519,56 @@ mirar una sola fuente y creerle.
 
 ---
 
+### Un filtro que depende de que cada llamador se acuerde de usarlo no es un filtro
+
+`PROBABILIDAD_VOZ` decidía cuánto habla Chip, y la moneda la tiraba un `seAnima()`
+de `main.js`, o sea **del lado de quien llama**. Los estados pasaban por el
+filtro. Los gestos —`toque`, `caricia`, `fastidio`—, cableados veinte líneas más
+arriba en el mismo archivo, llamaban a `hablar` directamente y no pasaban por
+nada. **Tocar a Chip lo hacía hablar el 100% de las veces.**
+
+Contado sobre mil sesiones simuladas de diez minutos: 21,4 voces con un hueco
+mediano de 6 segundos, y veinte de esas 21,4 eran gestos. Un bicho que contesta
+todos los toques no tiene voz: es un botón que hace ruido.
+
+El arreglo no fue agregar tres números —eso también— sino **mover la moneda a
+`hablar`**, que es la única puerta por la que pasa toda voz. Un filtro que vive
+al lado de *algunos* de sus sujetos se saltea solo en cuanto aparece un sujeto
+nuevo, y nadie se entera.
+
+Y el default pasó de 0 a 1: la tabla dice «hablá **menos** que siempre, y cuánto
+menos», no «quién puede hablar». Con default 0, agregar una situación al mapeo y
+olvidarse de la tabla la dejaba muda en silencio.
+
+---
+
+### Un cero que sale de haber apagado el sujeto no es un cero
+
+Pasó tres veces en una tanda, con tres sujetos distintos, y las tres se leían
+igual de bien:
+
+- El filtro del rayo del pecho informó **0 píxeles cambiados** — «el filtro no
+  hace nada». La medición estaba hecha con movimiento reducido, que le clava
+  `opacity: 0.22` al rayo, y a esa opacidad la mezcla `screen` devuelve lo mismo
+  con halo y sin halo. A opacidad plena: 13 464 píxeles, delta 255.
+- Después de sacar los dos filtros, la misma página informó **caja 0×0 y cero
+  cambios**. Estaba pasando un gigante: `esperando` apaga la pantalla del pecho y
+  el rayo.
+- Las tres chapitas de la botonera dieron **el mismo tono en las tres filas** — o
+  sea, sin desgaste. La partida nueva arranca con todo al 100% y los tres botones
+  apagados, y en apagado las tres filas SON el mismo tono. Correcto para ese
+  estado, y no decía nada de lo que se estaba midiendo.
+
+La forma es siempre la misma: **el instrumento midió bien y el sujeto no estaba**.
+Y el resultado no se parece a un error, se parece a una buena noticia.
+
+Lo que cambió en las herramientas: **pausar en vez de apagar** (`animation-play-state:
+paused` en lugar de movimiento reducido), **sembrar el estado que se quiere
+medir** en vez de aceptar el que venga, y **negarse a imprimir números cuando el
+sujeto no está** — «NO HAY MEDICIÓN» en lugar de un cero.
+
+---
+
 ### Una suite que no abre el juego no sabe si el juego abre
 
 **332 tests en verde con la app tirando `ReferenceError` en el arranque y la

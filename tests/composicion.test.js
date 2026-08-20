@@ -1434,10 +1434,13 @@ prueba('ids: cada tabla de la repisa trae su propio gradiente', () => {
 // parecidos, deshace el arreglo sin tocar un solo valor y sin que nada se queje.
 // Eso no se ve en una captura: se ve acá.
 
+// `enciendeGesto` estaba acá y no lo leía nadie: se calculaba una posición para
+// compararla contra otras dos y esa comparación se fue cuando el arreglo dejó de
+// depender del orden. Un índice muerto en un test que se llama "el orden importa"
+// es justamente el tipo de resto que hace dudar de lo que el test verifica.
 const ORDEN_OJOS = (() => {
   const posicion = (fragmento) => CSS.indexOf(fragmento);
   return {
-    enciendeGesto: posicion('#chip.ojos-contento #ojos-contento-izq'),
     apagaOjos: posicion('#chip.ojos-contento #ojos'),
     apagaContento: posicion('#chip.ojos-cerrado #ojos-contento-izq')
   };
